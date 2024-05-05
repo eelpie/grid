@@ -25,7 +25,7 @@ case class KinesisReceiverConfig(
   override val isDev: Boolean,
   streamName: String,
   rewindFrom: Option[DateTime],
-  metricsLevel: MetricsLevel = MetricsLevel.DETAILED
+  metricsLevel: MetricsLevel = MetricsLevel.NONE
 ) extends AwsClientV2BuilderUtils {
   lazy val kinesisClient: KinesisAsyncClient = withAWSCredentialsV2(KinesisAsyncClient.builder()).build()
   lazy val dynamoClient: DynamoDbAsyncClient = withAWSCredentialsV2(DynamoDbAsyncClient.builder()).build()
