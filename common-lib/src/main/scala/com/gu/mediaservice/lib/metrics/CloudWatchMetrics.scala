@@ -107,11 +107,13 @@ private class MetricsActor(namespace: String, client: CloudWatchClient) extends 
       .toSeq
 
     aggregatedMetrics.grouped(maxGroupSize).foreach(chunkedMetrics => { //can only send max 20 metrics to CW at a time
+      /* Yeah nah
       client.putMetricData(PutMetricDataRequest.builder()
         .namespace(namespace)
         .metricData(chunkedMetrics.asJava)
         .build()
       )
+      */
     })
 
     logger.info(s"Put ${data.size} metric data points (aggregated to ${aggregatedMetrics.size} points) to namespace $namespace")
