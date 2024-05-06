@@ -17,6 +17,7 @@ spec:
       containers:
       - name: thrall
         image: eu.gcr.io/grid-301122/thrall:0.1
+        imagePullPolicy: Always
         volumeMounts:
         - name: gu-config
           mountPath: /etc/gu
@@ -43,5 +44,4 @@ spec:
       - name: grid-config
         configMap:
           name: grid
-      terminationGracePeriodSeconds: 180
 
