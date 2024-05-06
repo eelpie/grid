@@ -24,3 +24,10 @@ usage
 A regular Riff Raff deploy of the app `usage` will deploy to both usage and usage-stream.
 If you need to schedule one app deployment before the other (e.g. usage-stream before usage)
 then use the Preview deployment page to select the specific app to deploy.
+
+
+
+## Startup
+
+Exits with `App name is invalid: None`. Almost certainly todo with the usage and usage-stream choice mentioned above.
+The Guardian appear to deploy the same in 2 different roles!?
