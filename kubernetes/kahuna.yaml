@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kahuna
+  labels:
+    app: kahuna
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kahuna
+  template:
+    metadata:
+      labels:
+        app: kahuna
+    spec:
+      containers:
+      - name: kahuna
+        image: eu.gcr.io/grid-301122/kahuna:0.1
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: gu-config
+          mountPath: /etc/gu
+        - name: grid-config
+          mountPath: /etc/grid
+      volumes:
+      - name: gu-config
+        configMap:
+          name: gu
+      - name: common-config
+        configMap:
+          name: common
+      - name: grid-config
+        configMap:
+          name: grid
