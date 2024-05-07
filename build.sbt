@@ -275,15 +275,6 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
     .settings(commonSettings ++ buildInfo ++ Seq(
       dockerBaseImage := "openjdk:11-jre",
       dockerExposedPorts := Seq(port),
-      // TODO image-loader specific
-      dockerCommands ++= Seq(
-        Cmd("USER", "root"), Cmd("RUN", "apt-get", "update"),
-        Cmd("RUN", "apt-get", "install", "-y", "apt-utils"),
-        Cmd("RUN", "apt-get", "install", "-y", "graphicsmagick"),
-        Cmd("RUN", "apt-get", "install", "-y", "graphicsmagick-imagemagick-compat"),
-        Cmd("RUN", "apt-get", "install", "-y", "pngquant"),
-        Cmd("RUN", "apt-get", "install", "-y", "libimage-exiftool-perl")
-      ),
       playDefaultPort := port,
       debianPackageDependencies := Seq("java11-runtime-headless"),
       Linux / maintainer := "Guardian Developers <dig.dev.software@theguardian.com>",
@@ -303,8 +294,50 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
       },
       Universal / mappings ++= Seq(
         file("common-lib/src/main/resources/application.conf") -> "conf/application.conf",
+        file("common-lib/src/main/resources/logback.xml") -> "conf/logback.xml"
+      ),
+      Universal / javaOptions ++= Seq(
+        "-Dpidfile.path=/dev/null",
+        s"-Dconfig.file=/opt/docker/conf/application.conf",
+        s"-Dlogger.file=/opt/docker/conf/logback.xml"
+      )))
+}
+
+def playImageLoaderProject(projectName: String, port: Int, path: Option[String] = None): Project = {
+  project(projectName, path)
+    .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
+    .dependsOn(restLib)
+    .settings(commonSettings ++ buildInfo ++ Seq(
+      dockerBaseImage := "openjdk:11-jre",
+      dockerExposedPorts := Seq(port),
+      dockerCommands ++= Seq(
+        Cmd("USER", "root"), Cmd("RUN", "apt-get", "update"),
+        Cmd("RUN", "apt-get", "install", "-y", "apt-utils"),
+        Cmd("RUN", "apt-get", "install", "-y", "graphicsmagick"),
+        Cmd("RUN", "apt-get", "install", "-y", "graphicsmagick-imagemagick-compat"),
+        Cmd("RUN", "apt-get", "install", "-y", "pngquant"),
+        Cmd("RUN", "apt-get", "install", "-y", "libimage-exiftool-perl")
+      ),
+      playDefaultPort := port,
+      debianPackageDependencies := Seq("openjdk-8-jre-headless"),
+      Linux / maintainer := "Guardian Developers <dig.dev.software@theguardian.com>",
+      Linux / packageSummary := description.value,
+      packageDescription := description.value,
+      bashScriptEnvConfigLocation := Some("/etc/environment"),
+      Debian / makeEtcDefault := None,
+      Debian / packageBin := {
+        val originalFileName = (Debian / packageBin).value
+        val (base, ext) = originalFileName.baseAndExt
+        val newBase = base.replace(s"_${version.value}_all", "")
+        val newFileName = file(originalFileName.getParent) / s"$newBase.$ext"
+        IO.move(originalFileName, newFileName)
+        println(s"Renamed $originalFileName to $newFileName")
+        newFileName
+      },
+      Universal / mappings ++= Seq(
+        file("common-lib/src/main/resources/application.conf") -> "conf/application.conf",
         file("common-lib/src/main/resources/logback.xml") -> "conf/logback.xml",
-        // TODO image-loader specific
+        file("image-loader/cmyk.icc") -> "cmyk.icc",
         file("image-loader/facebook-TINYsRGB_c2.icc") -> "facebook-TINYsRGB_c2.icc",
         file("image-loader/grayscale.icc") -> "grayscale.icc",
         file("image-loader/srgb.icc") -> "srgb.icc"
