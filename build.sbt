@@ -5,7 +5,6 @@ import scala.sys.process._
 import scala.util.control.NonFatal
 import scala.collection.JavaConverters._
 import com.typesafe.sbt.packager.docker._
-import com.typesafe.sbt.packager.debian.JDebPackaging
 
 // We need to keep the timestamps to allow caching headers to work as expected on assets.
 // The below should work, but some problem in one of the plugins (possible the play plugin? or sbt-web?) causes
