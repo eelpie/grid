@@ -879,12 +879,6 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>es6.cluster</code></td>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
     <td><code>es6.shards</code></td>
     <td></td>
     <td></td>
@@ -1188,19 +1182,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>indexed.image.sns.topic.arn</code></td>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
     <td><code>es6.url</code></td>
-    <td></td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td><code>es6.cluster</code></td>
     <td></td>
     <td></td>
     <td></td>
