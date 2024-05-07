@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: media-api
+  name: image-loader
   labels:
-    app: media-api
+    app: image-loader
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: media-api
+      app: image-loader
   template:
     metadata:
       labels:
-        app: media-api
+        app: image-loader
     spec:
       containers:
-      - name: media-api
-        image: eu.gcr.io/grid-301122/media-api:0.1
+      - name: image-loader
+        image: eu.gcr.io/grid-301122/image-loader:0.1
         imagePullPolicy: Always
         volumeMounts:
         - name: gu-config
@@ -48,12 +48,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: media-api
+  name: image-loader
 spec:
   type: NodePort
   selector:
-    app: media-api
+    app: image-loader
   ports:
     - protocol: TCP
       port: 9000
-      nodePort: 32410
+      nodePort: 32411
