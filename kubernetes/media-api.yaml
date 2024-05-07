@@ -45,3 +45,15 @@ spec:
         configMap:
           name: grid
 
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-api
+spec:
+  type: NodePort
+  selector:
+    app: media-api
+  ports:
+    - protocol: TCP
+      port: 9000
+      nodePort: 32410
