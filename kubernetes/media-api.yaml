@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: thrall
+  name: media-api
   labels:
-    app: thrall
+    app: media-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: thrall
+      app: media-api
   template:
     metadata:
       labels:
-        app: thrall
+        app: media-api
     spec:
       containers:
-      - name: thrall
-        image: eu.gcr.io/grid-301122/thrall:0.1
+      - name: media-api
+        image: eu.gcr.io/grid-301122/media-api:0.1
         imagePullPolicy: Always
         volumeMounts:
         - name: gu-config
