@@ -1,9 +1,10 @@
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, SimpleSqsMessageConsumer}
+import com.gu.mediaservice.lib.config.GuardianUrlSchemeServices
 import com.gu.mediaservice.lib.imaging.MagickImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
-import com.gu.mediaservice.lib.management.InnerServiceStatusCheckController
 import com.gu.mediaservice.lib.play.GridComponents
+import com.gu.mediaservice.lib.management.InnerServiceStatusCheckController
 import controllers.{ImageLoaderController, ImageLoaderManagement, UploadStatusController}
 import lib._
 import lib.storage.{ImageLoaderStore, QuarantineStore}
@@ -20,7 +21,8 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
     logger.info(s" $index -> ${processor.description}")
   }
 
-  private val gridClient = GridClient(config.services, config.services.loaderBaseUri)(wsClient)
+  val services = new GuardianUrlSchemeServices(config.domainRoot, config.serviceHosts, Set.empty)
+  private val gridClient = GridClient(services, config.services.loaderBaseUri)(wsClient)
 
   val store = new ImageLoaderStore(config)
   val maybeIngestQueue = config.maybeIngestSqsQueueUrl.map(queueUrl => new SimpleSqsMessageConsumer(queueUrl, config))
