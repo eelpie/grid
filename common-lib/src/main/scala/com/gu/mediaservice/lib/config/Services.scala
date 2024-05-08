@@ -1,5 +1,43 @@
 package com.gu.mediaservice.lib.config
 
+trait Services {
+
+  def kahunaBaseUri: String
+
+  def apiBaseUri: String
+
+  def loaderBaseUri: String
+
+  def projectionBaseUri: String
+
+  def cropperBaseUri: String
+
+  def metadataBaseUri: String
+
+  def imgopsBaseUri: String
+
+  def usageBaseUri: String
+
+  def collectionsBaseUri: String
+
+  def leasesBaseUri: String
+
+  def authBaseUri: String
+
+  def thrallBaseUri: String
+
+  def allInternalUris: Seq[String]
+
+  def corsAllowedDomains: Set[String]
+
+  def redirectUriParam: String
+
+  def redirectUriPlaceholder: String
+
+  def loginUriTemplate: String
+
+}
+
 case class ServiceHosts(
   kahunaPrefix: String,
   apiPrefix: String,
@@ -40,14 +78,14 @@ object ServiceHosts {
   }
 }
 
-class Services(
+class GuardianUrlSchemeServices(
   val domainRoot: String,
   hosts: ServiceHosts,
   corsAllowedOrigins: Set[String],
   domainRootOverride: Option[String] = None,
   imgopsBaseUriOverride: Option[String] = None,
   imgproxyBaseUriOverride: Option[String] = None
-) {
+) extends Services {
   private val kahunaHost: String      = s"${hosts.kahunaPrefix}$domainRoot"
   private val apiHost: String         = s"${hosts.apiPrefix}$domainRoot"
   private val loaderHost: String      = s"${hosts.loaderPrefix}${domainRootOverride.getOrElse(domainRoot)}"
@@ -62,15 +100,14 @@ class Services(
   private val projectionHost: String  = s"${hosts.projectionPrefix}${domainRootOverride.getOrElse(domainRoot)}"
   private val thrallHost: String      = s"${hosts.thrallPrefix}${domainRootOverride.getOrElse(domainRoot)}"
 
-
   val kahunaBaseUri      = baseUri(kahunaHost)
   val apiBaseUri         = baseUri(apiHost)
   val loaderBaseUri      = baseUri(loaderHost)
   val projectionBaseUri  = baseUri(projectionHost)
   val cropperBaseUri     = baseUri(cropperHost)
   val metadataBaseUri    = baseUri(metadataHost)
-  val imgopsBaseUri      = imgopsBaseUriOverride.getOrElse(baseUri(imgopsHost))
-  val imgproxyBaseUri    = imgproxyBaseUriOverride.getOrElse(baseUri(imgproxyHost))
+  val imgopsBaseUri      = baseUri(imgopsBaseUriOverride.getOrElse(baseUri(imgopsHost)))
+  val imgproxyBaseUri    = baseUri(imgproxyBaseUriOverride.getOrElse(baseUri(imgproxyHost)))
   val usageBaseUri       = baseUri(usageHost)
   val collectionsBaseUri = baseUri(collectionsHost)
   val leasesBaseUri      = baseUri(leasesHost)
@@ -96,5 +133,5 @@ class Services(
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
   val loginUriTemplate = s"$authBaseUri/login$redirectUriPlaceholder"
 
-  def baseUri(host: String) = s"https://$host"
+  private def baseUri(host: String) = s"https://$host"
 }
