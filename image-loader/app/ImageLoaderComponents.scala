@@ -1,6 +1,6 @@
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{Bedrock, S3Vectors, SimpleSqsMessageConsumer, Embedder}
-import com.gu.mediaservice.lib.config.Services
+import com.gu.mediaservice.lib.config.{GuardianUrlSchemeServices}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.management.InnerServiceStatusCheckController
@@ -45,7 +45,7 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
     new QuarantineUploader(new QuarantineStore(config), config)
   )
 
-  val services = new Services(config.domainRoot, config.serviceHosts, Set.empty)
+  val services = new GuardianUrlSchemeServices(config.domainRoot, config.serviceHosts, Set.empty)
   private val gridClient = GridClient(services)(wsClient)
 
   val metrics = new ImageLoaderMetrics(config, actorSystem, applicationLifecycle)
