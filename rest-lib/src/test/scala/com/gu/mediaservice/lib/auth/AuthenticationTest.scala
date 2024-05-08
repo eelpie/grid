@@ -1,31 +1,28 @@
 package com.gu.mediaservice.lib.auth
 
 import com.gu.mediaservice.GridClient
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.{Materializer, SystemMaterializer}
 import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, OnBehalfOfPrincipal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
 import com.gu.mediaservice.lib.auth.provider._
-import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, GuardianUrlSchemeServices, ServiceHosts, Services}
+import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, SingleHostServices}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.{Materializer, SystemMaterializer}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{BeforeAndAfterAll, EitherValues}
-import org.scalatestplus.play.PlaySpec
-import play.api.{Configuration, Environment}
 import play.api.http.Status
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.crypto.CookieSigner
 import play.api.libs.json.{Format, Json}
 import play.api.libs.typedmap.{TypedKey, TypedMap}
 import play.api.libs.ws.{DefaultWSCookie, WSRequest}
-import play.api.mvc.{Cookie, DiscardingCookie, PlayBodyParsers, RequestHeader, Result, Results}
+import play.api.mvc._
 import play.api.test.Helpers.defaultAwaitTimeout
 import play.api.test.{FakeRequest, Helpers, WsTestClient}
-import play.libs.ws.WSCookie
+import play.api.{Configuration, Environment}
 
-import java.lang.IllegalStateException
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.Future
 import scala.util.Try
@@ -310,7 +307,7 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
 
   "GridClient should set write methods before signing" in {
     WsTestClient.withClient { client =>
-      val services = new GuardianUrlSchemeServices("example.com", ServiceHosts.guardianPrefixes, Set.empty)
+      val services = new SingleHostServices("example.com", 9000)
       val gridClient = GridClient(services, services.apiBaseUri)(client)
       val stop = new IllegalStateException("Stop before sending HTTP")
 

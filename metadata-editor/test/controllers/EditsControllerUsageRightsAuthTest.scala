@@ -3,7 +3,7 @@ package controllers
 import com.gu.mediaservice.lib.auth.Authentication.{OnBehalfOfPrincipal, Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
-import com.gu.mediaservice.lib.config.{CommonConfig, GuardianUrlSchemeServices, ServiceHosts, Services}
+import com.gu.mediaservice.lib.config.{CommonConfig, ServiceHosts, SingleHostServices}
 import lib.{EditsConfig, EditsStore, Notifications}
 import org.apache.pekko.actor.ActorSystem
 import org.mockito.ArgumentMatchers.{any, anyString}
@@ -37,7 +37,7 @@ class EditsControllerUsageRightsAuthTest extends AnyFunSpec with Matchers with M
     val config: EditsConfig = mock[EditsConfig]
     val ws: WSClient = mock[WSClient]
 
-    private val services = new GuardianUrlSchemeServices("example.com", ServiceHosts.guardianPrefixes, Set.empty)
+    private val services = new SingleHostServices("example.com", 9000)
     when(config.domainRoot).thenReturn("example.com")
     when(config.serviceHosts).thenReturn(ServiceHosts.guardianPrefixes)
     when(config.services).thenReturn(services)
