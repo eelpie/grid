@@ -48,19 +48,19 @@ class Services(
   imgopsBaseUriOverride: Option[String] = None,
   imgproxyBaseUriOverride: Option[String] = None
 ) {
-  val kahunaHost: String      = s"${hosts.kahunaPrefix}$domainRoot"
-  val apiHost: String         = s"${hosts.apiPrefix}$domainRoot"
-  val loaderHost: String      = s"${hosts.loaderPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val cropperHost: String     = s"${hosts.cropperPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val metadataHost: String    = s"${hosts.metadataPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val imgopsHost: String      = s"${hosts.imgopsPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val imgproxyHost: String    = s"${hosts.imgproxyPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val usageHost: String       = s"${hosts.usagePrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val collectionsHost: String = s"${hosts.collectionsPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val leasesHost: String      = s"${hosts.leasesPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val authHost: String        = s"${hosts.authPrefix}$domainRoot"
-  val projectionHost: String  = s"${hosts.projectionPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val thrallHost: String      = s"${hosts.thrallPrefix}${domainRootOverride.getOrElse(domainRoot)}"
+  private val kahunaHost: String      = s"${hosts.kahunaPrefix}$domainRoot"
+  private val apiHost: String         = s"${hosts.apiPrefix}$domainRoot"
+  private val loaderHost: String      = s"${hosts.loaderPrefix}${domainRootOverride.getOrElse(domainRoot)}"
+  private val cropperHost: String     = s"${hosts.cropperPrefix}${domainRootOverride.getOrElse(domainRoot)}"
+  private val metadataHost: String    = s"${hosts.metadataPrefix}${domainRootOverride.getOrElse(domainRoot)}"
+  private val imgopsHost: String      = s"${hosts.imgopsPrefix}${domainRootOverride.getOrElse(domainRoot)}"
+  private val imgproxyHost: String    = s"${hosts.imgproxyPrefix}${domainRootOverride.getOrElse(domainRoot)}"
+  private val usageHost: String       = s"${hosts.usagePrefix}${domainRootOverride.getOrElse(domainRoot)}"
+  private val collectionsHost: String = s"${hosts.collectionsPrefix}${domainRootOverride.getOrElse(domainRoot)}"
+  private val leasesHost: String      = s"${hosts.leasesPrefix}${domainRootOverride.getOrElse(domainRoot)}"
+  private val authHost: String        = s"${hosts.authPrefix}$domainRoot"
+  private val projectionHost: String  = s"${hosts.projectionPrefix}${domainRootOverride.getOrElse(domainRoot)}"
+  private val thrallHost: String      = s"${hosts.thrallPrefix}${domainRootOverride.getOrElse(domainRoot)}"
 
 
   val kahunaBaseUri      = baseUri(kahunaHost)
