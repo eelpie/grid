@@ -40,7 +40,7 @@ object ServiceHosts {
 
 class Services(val domainRoot: String, hosts: ServiceHosts, corsAllowedOrigins: Set[String], domainRootOverride: Option[String] = None) {
   private val kahunaHost: String      = s"${hosts.kahunaPrefix}$domainRoot"
-  val apiHost: String         = s"${hosts.apiPrefix}$domainRoot"
+  private val apiHost: String         = s"${hosts.apiPrefix}$domainRoot"
   private val loaderHost: String      = s"${hosts.loaderPrefix}${domainRootOverride.getOrElse(domainRoot)}"
   private val cropperHost: String     = s"${hosts.cropperPrefix}${domainRootOverride.getOrElse(domainRoot)}"
   private val metadataHost: String    = s"${hosts.metadataPrefix}${domainRootOverride.getOrElse(domainRoot)}"
