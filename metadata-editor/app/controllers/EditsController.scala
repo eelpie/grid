@@ -1,29 +1,24 @@
 package controllers
 
 
-import java.net.URI
-import java.net.URLDecoder.decode
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model._
-import com.gu.mediaservice.lib.aws.DynamoDB
 import com.gu.mediaservice.lib.auth.Authentication.Principal
 import com.gu.mediaservice.lib.auth.Permissions.EditMetadata
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
-import com.gu.mediaservice.lib.aws.NoItemFound
-import com.gu.mediaservice.lib.config.{GuardianUrlSchemeServices, Services}
+import com.gu.mediaservice.lib.aws.{DynamoDB, NoItemFound}
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
 import lib._
-import lib.Edit
-import org.joda.time.DateTime
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc.{BaseController, ControllerComponents}
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 
+import java.net.URI
+import java.net.URLDecoder.decode
 import scala.concurrent.{ExecutionContext, Future}
-import scala.collection.compat._
 
 
 // FIXME: the argoHelpers are all returning `Ok`s (200)
@@ -57,8 +52,7 @@ class EditsController(
 
   import com.gu.mediaservice.lib.metadata.UsageRightsMetadataMapper.usageRightsToMetadata
 
-  val services: Services = new GuardianUrlSchemeServices(config.domainRoot, config.serviceHosts, Set.empty)
-  val gridClient: GridClient = GridClient(services, services.metadataBaseUri)(ws)
+  private val gridClient: GridClient = GridClient(config.services, config.services.metadataBaseUri)(ws)
 
   val metadataBaseUri = config.services.metadataBaseUri
   private val AuthenticatedAndAuthorised = auth andThen authorisation.CommonActionFilters.authorisedForArchive
