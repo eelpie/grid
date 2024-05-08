@@ -85,35 +85,11 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
   val domainRootOverride: Option[String] = stringOpt("domain.root-override")
   val contentWebBaseUrl: String = string("content.web.baseUrl")
   val rootAppName: String = stringDefault("app.name.root", "media")
-  val serviceHosts = ServiceHosts(
-    stringDefault("hosts.kahunaPrefix", s"$rootAppName."),
-    stringDefault("hosts.apiPrefix", s"api.$rootAppName."),
-    stringDefault("hosts.loaderPrefix", s"loader.$rootAppName."),
-    stringDefault("hosts.projectionPrefix", s"loader-projection.$rootAppName."),
-    stringDefault("hosts.cropperPrefix", s"cropper.$rootAppName."),
-    stringDefault("hosts.metadataPrefix", s"$rootAppName-metadata."),
-    stringDefault("hosts.imgopsPrefix", s"$rootAppName-imgops."),
-    stringDefault("hosts.imgproxyPrefix", s"$rootAppName-imgproxy."),
-    stringDefault("hosts.usagePrefix", s"$rootAppName-usage."),
-    stringDefault("hosts.collectionsPrefix", s"$rootAppName-collections."),
-    stringDefault("hosts.leasesPrefix", s"$rootAppName-leases."),
-    stringDefault("hosts.authPrefix", s"$rootAppName-auth."),
-    stringDefault("hosts.thrallPrefix", s"thrall.$rootAppName.")
-  )
 
   val corsAllowedOrigins: Set[String] = getStringSet("security.cors.allowedOrigins")
 
-  val imgopsBaseUriOverride: Option[String] = stringOpt("images.imgops.baseUri").filter(_.nonEmpty)
-  val imgproxyBaseUriOverride: Option[String] = stringOpt("images.imgproxy.baseUri").filter(_.nonEmpty)
-
-  val services = new GuardianUrlSchemeServices(
-    domainRoot,
-    serviceHosts,
-    corsAllowedOrigins,
-    domainRootOverride,
-    imgopsBaseUriOverride,
-    imgproxyBaseUriOverride
-  )
+  private val singleHostUrl: String = string("single.host.url")
+  val services: Services = new SingleHostServices(singleHostUrl)
 
   /**
    * Load in a list of domain metadata specifications from configuration. For example:
