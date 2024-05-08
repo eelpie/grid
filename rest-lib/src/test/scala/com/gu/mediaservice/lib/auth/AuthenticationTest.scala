@@ -6,7 +6,7 @@ import org.apache.pekko.stream.{Materializer, SystemMaterializer}
 import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, OnBehalfOfPrincipal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
 import com.gu.mediaservice.lib.auth.provider._
-import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, ServiceHosts, Services}
+import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, GuardianUrlSchemeServices, ServiceHosts, Services}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.freespec.AsyncFreeSpec
@@ -310,7 +310,7 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
 
   "GridClient should set write methods before signing" in {
     WsTestClient.withClient { client =>
-      val services = new Services("example.com", ServiceHosts.guardianPrefixes, Set.empty)
+      val services = new GuardianUrlSchemeServices("example.com", ServiceHosts.guardianPrefixes, Set.empty)
       val gridClient = GridClient(services, services.apiBaseUri)(client)
       val stop = new IllegalStateException("Stop before sending HTTP")
 
