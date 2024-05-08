@@ -4,7 +4,7 @@ import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication.{Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, SimplePermission}
-import com.gu.mediaservice.lib.config.{CommonConfig, ServiceHosts, Services}
+import com.gu.mediaservice.lib.config.{CommonConfig, GuardianUrlSchemeServices, ServiceHosts, Services}
 import com.gu.mediaservice.lib.aws.S3Object
 import com.gu.mediaservice.lib.logging.LogMarker
 import lib._
@@ -64,7 +64,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
       override def onBehalfOf(principal: Principal): Either[String, WSRequest => WSRequest] = Left("Not authenticated")
     }
     val commonConfig = mock[CommonConfig]
-    when(commonConfig.services).thenReturn(new Services("example.test", ServiceHosts.guardianPrefixes, Set.empty))
+    when(commonConfig.services).thenReturn(new GuardianUrlSchemeServices("example.test", ServiceHosts.guardianPrefixes, Set.empty))
     val auth = new Authentication(
       commonConfig,
       AuthenticationProviders(userProvider, machineProvider, new InnerServiceAuthenticationProvider(mock[CookieSigner], "test")),

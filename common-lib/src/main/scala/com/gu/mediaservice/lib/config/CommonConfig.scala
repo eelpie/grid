@@ -104,7 +104,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
   val imgopsBaseUriOverride: Option[String] = stringOpt("images.imgops.baseUri").filter(_.nonEmpty)
   val imgproxyBaseUriOverride: Option[String] = stringOpt("images.imgproxy.baseUri").filter(_.nonEmpty)
 
-  val services = new Services(
+  val services = new GuardianUrlSchemeServices(
     domainRoot,
     serviceHosts,
     corsAllowedOrigins,
