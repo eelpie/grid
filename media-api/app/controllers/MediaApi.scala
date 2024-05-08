@@ -1,25 +1,23 @@
 package controllers
 
-import org.apache.pekko.stream.scaladsl.StreamConverters
 import com.google.common.net.HttpHeaders
-import com.gu.mediaservice.{GridClient, JsonDiff}
 import com.gu.mediaservice.lib.argo._
 import com.gu.mediaservice.lib.argo.model.{Action, _}
-import com.gu.mediaservice.lib.auth.Authentication.{Request, _}
+import com.gu.mediaservice.lib.auth.Authentication._
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, EditMetadata, UploadImages, DeleteImage => DeleteImagePermission}
 import com.gu.mediaservice.lib.auth._
-import com.gu.mediaservice.lib.aws.{ContentDisposition, Embedder, ImageIds, ThrallMessageSender, UpdateMessage}
-import com.gu.mediaservice.lib.config.Services
-import com.gu.mediaservice.lib.config.{GuardianUrlSchemeServices, Services}
+import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
+import com.gu.mediaservice.{GridClient, JsonDiff}
 import lib._
 import lib.elasticsearch._
 import org.apache.http.entity.ContentType
+import org.apache.pekko.stream.scaladsl.StreamConverters
 import org.http4s.UriTemplate
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.http.HttpEntity
@@ -27,8 +25,7 @@ import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
-import software.amazon.awssdk.services.s3vectors.model.{QueryOutputVector, QueryVectorsResponse}
-import scala.jdk.CollectionConverters._
+
 import java.net.URI
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -48,8 +45,7 @@ class MediaApi(
                 embedder: Embedder,
 )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition {
 
-  val services: Services = new GuardianUrlSchemeServices(config.domainRoot, config.serviceHosts, Set.empty)
-  val gridClient: GridClient = GridClient(services)(ws)
+  private val gridClient: GridClient = GridClient(config.services)(ws)
 
   private val searchParamList = List(
     "q",
