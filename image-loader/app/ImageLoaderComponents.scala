@@ -1,8 +1,6 @@
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, SimpleSqsMessageConsumer}
 import com.gu.mediaservice.lib.imaging.ImageOperations
-import com.gu.mediaservice.lib.config.GuardianUrlSchemeServices
-import com.gu.mediaservice.lib.imaging.MagickImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.management.InnerServiceStatusCheckController
 import com.gu.mediaservice.lib.play.GridComponents
