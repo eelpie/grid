@@ -4,13 +4,13 @@ import com.gu.mediaservice.lib.auth.Authentication.{Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, SimplePermission}
 import com.gu.mediaservice.lib.aws.{Embedder, S3, ThrallMessageSender, UpdateMessage}
-import com.gu.mediaservice.lib.config.{CommonConfig, ServiceHosts}
+import com.gu.mediaservice.lib.config.{CommonConfig, GuardianUrlSchemeServices, ServiceHosts}
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.model.{Image, ImageStatusRecord, NoRights}
-import lib.{ImageResponse, MediaApiConfig, MediaApiMetrics, PreviewContentApi}
 import lib.elasticsearch.{ElasticSearch, Fixtures}
 import lib.querysyntax.Parser
+import lib.{ImageResponse, MediaApiConfig, MediaApiMetrics, PreviewContentApi}
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{never, verify, when}
@@ -57,8 +57,8 @@ class MediaApiTest extends AnyFunSpec with Matchers with MockitoSugar with Scala
     }
 
     when(config.domainRoot).thenReturn("example.com")
-    when(config.serviceHosts).thenReturn(ServiceHosts.guardianPrefixes)
     when(config.aiSearchEmbeddingCacheMaxSize).thenReturn(10)
+    when(config.services).thenReturn(new GuardianUrlSchemeServices("example.com", ServiceHosts.guardianPrefixes, Set.empty))
     when(es.getImageById(any[String])(any[ExecutionContext], any[LogMarker]))
       .thenReturn(Future.successful(Some(image)))
     when(response.canBeDeleted(any[Image])).thenReturn(true)
