@@ -9,6 +9,7 @@ import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsa
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.config.Services
+import com.gu.mediaservice.lib.config.{GuardianUrlSchemeServices, Services}
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -49,7 +50,7 @@ class MediaApi(
                 embedder: Embedder,
 )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition {
 
-  val services: Services = new Services(config.domainRoot, config.serviceHosts, Set.empty)
+  val services: Services = new GuardianUrlSchemeServices(config.domainRoot, config.serviceHosts, Set.empty)
   val gridClient: GridClient = GridClient(services)(ws)
 
   // Process-local cache keyed on normalised query text. Stores the Bedrock Future so that
