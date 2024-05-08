@@ -8,8 +8,6 @@ import com.gu.mediaservice.lib.auth.Authentication._
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, EditMetadata, UploadImages, DeleteImage => DeleteImagePermission}
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws._
-import com.gu.mediaservice.lib.config.Services
-import com.gu.mediaservice.lib.config.{GuardianUrlSchemeServices, Services}
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -31,7 +29,6 @@ import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
 
 import java.net.URI
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -50,8 +47,7 @@ class MediaApi(
                 embedder: Embedder,
 )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition {
 
-  val services: Services = new GuardianUrlSchemeServices(config.domainRoot, config.serviceHosts, Set.empty)
-  val gridClient: GridClient = GridClient(services)(ws)
+  private val gridClient: GridClient = GridClient(config.services)(ws)
 
   // Process-local cache keyed on normalised query text. Stores the Bedrock Future so that
   // concurrent requests for the same query share a single in-flight Bedrock call, and
