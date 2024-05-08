@@ -83,13 +83,13 @@ protected class SingleHostServices(val hostname: String, baseport: Int) extends 
 
   val loaderBaseUri: String = baseUri(hostname, baseport + 3)
 
-  val projectionBaseUri: String = "TODO"
+  val projectionBaseUri: String = "TODOPROJECTION"
 
   val cropperBaseUri: String = baseUri(hostname, baseport + 6)
 
   val metadataBaseUri: String = baseUri(hostname, baseport + 7)
 
-  val imgopsBaseUri: String = "TODO"
+  val imgopsBaseUri: String = "TODOIMAGEOPS"
 
   val usageBaseUri: String = baseUri(hostname, baseport + 9)
 
@@ -97,7 +97,7 @@ protected class SingleHostServices(val hostname: String, baseport: Int) extends 
 
   val leasesBaseUri: String = baseUri(hostname, baseport + 12)
 
-  val authBaseUri: String = "TODO"
+  val authBaseUri: String = "TODOAUTH"
 
   private val thrallBaseUri: String = baseUri(hostname, baseport + 200)
 
