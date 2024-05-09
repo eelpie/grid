@@ -150,7 +150,7 @@ lazy val auth = playProject("auth", 9011)
 
 lazy val collections = playProject("collections", 9010)
 
-lazy val cropper = playProject("cropper", 9006)
+lazy val cropper = playImageLoaderProject("cropper", 9006)
 
 lazy val imageLoader = playProject("image-loader", 9003).settings(
   libraryDependencies ++= Seq(
