@@ -185,6 +185,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
   def isMediaApiUri(uri: String): Boolean = uri.startsWith(config.apiUri)
 
   def fetchSourceFromApi(uri: String, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal): Future[SourceImage] = {
+    logger.info("Requesting source from API: " + uri)
 
     case class HttpClientResponse(status: Int, statusText: String, json: JsValue)
 
