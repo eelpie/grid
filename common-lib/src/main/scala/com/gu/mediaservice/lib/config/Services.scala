@@ -36,6 +36,19 @@ trait Services {
 
   def loginUriTemplate: String
 
+  def apiInternalBaseUri: String
+
+  def collectionsInternalBaseUri: String
+
+  def cropperInternalBaseUri: String
+
+  def leasesInternalBaseUri: String
+
+  def metadataInternalBaseUri: String
+
+  def projectionInternalBaseUri: String
+
+  def usageInternalBaseUri: String
 }
 
 case class ServiceHosts(
@@ -122,8 +135,16 @@ protected class SingleHostServices(val hostname: String, baseport: Int) extends 
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
   val loginUriTemplate = s"$authBaseUri/login$redirectUriPlaceholder"
 
+  val apiInternalBaseUri: String = baseUri("media-api", 9000)
+  val collectionsInternalBaseUri: String = baseUri("collections", 9000)
+  val cropperInternalBaseUri: String = baseUri("cropper", 9000)
+  val leasesInternalBaseUri: String = baseUri("leases", 9000)
+  val metadataInternalBaseUri: String = baseUri("metadata-editor", 9000)
+  val projectionInternalBaseUri: String = baseUri("projection", 9000)
+  val usageInternalBaseUri: String = baseUri("usages", 9000)
 
   private def baseUri(host: String, port: Int) = s"http://$host:$port"
+
 
 }
 
@@ -176,4 +197,12 @@ protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHost
   val loginUriTemplate = s"$authBaseUri/login$redirectUriPlaceholder"
 
   private def baseUri(host: String) = s"https://$host"
+
+  val apiInternalBaseUri: String = apiBaseUri
+  val collectionsInternalBaseUri: String = collectionsBaseUri
+  val cropperInternalBaseUri: String = cropperBaseUri
+  val leasesInternalBaseUri: String = leasesBaseUri
+  val metadataInternalBaseUri: String = metadataBaseUri
+  val projectionInternalBaseUri: String = projectionBaseUri
+  val usageInternalBaseUri: String = usageBaseUri
 }
