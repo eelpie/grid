@@ -15,7 +15,7 @@ class AuthControllerTest extends AnyFunSpec with Matchers with MockitoSugar {
 
   private def controller(domainRoot: String): AuthController = {
     val config = mock[AuthConfig]
-    val services = new SingleHostServices("example.test", 9000)
+    val services = new SingleHostServices("example.test")
     when(config.domainRoot).thenReturn(domainRoot)
     when(config.services).thenReturn(services)
     when(config.mediaApiUri).thenReturn(services.apiBaseUri)

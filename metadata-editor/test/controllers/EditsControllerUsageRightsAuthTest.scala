@@ -37,7 +37,7 @@ class EditsControllerUsageRightsAuthTest extends AnyFunSpec with Matchers with M
     val config: EditsConfig = mock[EditsConfig]
     val ws: WSClient = mock[WSClient]
 
-    private val services = new SingleHostServices("example.com", 9000)
+    private val services = new SingleHostServices("example.com")
     when(config.domainRoot).thenReturn("example.com")
     when(config.services).thenReturn(services)
 
