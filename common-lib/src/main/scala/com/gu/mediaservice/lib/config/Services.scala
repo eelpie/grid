@@ -96,7 +96,7 @@ protected class SingleHostServices(val hostname: String, baseport: Int) extends 
 
   val loaderBaseUri: String = baseUri(hostname, baseport + 3)
 
-  val projectionBaseUri: String = "TODOPROJECTION"
+  val projectionBaseUri: String = loaderBaseUri
 
   val cropperBaseUri: String = baseUri(hostname, baseport + 6)
 
