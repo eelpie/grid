@@ -1,7 +1,7 @@
 package controllers
 
 import _root_.play.api.libs.json._
-import _root_.play.api.mvc.{BaseController, ControllerComponents}
+import _root_.play.api.mvc.{BaseController, ControllerComponents, Request}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.Link
@@ -49,7 +49,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
 
   def index = auth { indexResponse }
 
-  def export = auth.async(parse.json) { httpRequest =>
+  def export = auth.async(parse.json) { httpRequest: Authentication.Request[JsValue] =>
     httpRequest.body.validate[ExportRequest] map { exportRequest =>
       implicit val logMarker: LogMarker = MarkerMap(
         "requestType" -> "export",
@@ -59,7 +59,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
       val user = httpRequest.user
       val onBehalfOfPrincipal = auth.getOnBehalfOfPrincipal(user)
 
-      executeRequest(exportRequest, user, onBehalfOfPrincipal).map { case (imageId, export) =>
+      executeRequest(exportRequest, user, onBehalfOfPrincipal, httpRequest).map { case (imageId, export) =>
 
         val cropJson = Json.toJson(export).as[JsObject]
         val updateMessage = UpdateMessage(subject = UpdateImageExports, id = Some(imageId), crops = Some(Seq(export)))
@@ -160,11 +160,12 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
   }
 
   def executeRequest(
-    exportRequest: ExportRequest, user: Principal, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal
+    exportRequest: ExportRequest, user: Principal, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal,
+    request: Authentication.Request[JsValue]
   )(implicit logMarker: LogMarker): Future[(String, Crop)] = {
 
     for {
-      _ <- verify(isMediaApiImageUri(exportRequest.uri, config.apiUri), InvalidSource)
+      _ <- verify(isMediaApiImageUri(exportRequest.uri, config.apiUri(request)), InvalidSource)
       apiImage <- fetchSourceFromApi(exportRequest.uri, onBehalfOfPrincipal)
       _ <- verify(apiImage.valid, InvalidImage)
       // Image should always have dimensions, but we want to safely extract the Option
