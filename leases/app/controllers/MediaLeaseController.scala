@@ -113,14 +113,13 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     }
   }
 
-  def getLease(id: String) = auth.async { _ => Future {
+  def getLease(id: String) = auth.async { request => Future {
       val leases = store.get(id)
-
       leases.foldLeft(notFound)((_, lease) => respond[MediaLease](
           uri = config.leaseUri(id),
           data = lease,
           links = lease.id
-            .map(config.mediaApiLink)
+            .map(id => config.mediaApiLink(id)(request))
             .toList
         ))
     }
@@ -149,12 +148,12 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     )
   }}
 
-  def getLeasesForMedia(id: String) = auth.async { _ => Future {
+  def getLeasesForMedia(id: String) = auth.async { request => Future {
       val leases = store.getForMedia(id)
 
       respond[LeasesByMedia](
         uri = config.leasesMediaUri(id),
-        links = List(config.mediaApiLink(id)),
+        links = List(config.mediaApiLink(id)(request)),
         data = LeasesByMedia.build(leases)
       )
     }

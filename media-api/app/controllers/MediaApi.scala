@@ -5,7 +5,7 @@ import com.google.common.net.HttpHeaders
 import com.gu.mediaservice.{GridClient, JsonDiff}
 import com.gu.mediaservice.lib.argo._
 import com.gu.mediaservice.lib.argo.model.{Action, _}
-import com.gu.mediaservice.lib.auth.Authentication._
+import com.gu.mediaservice.lib.auth.Authentication.{Request, _}
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, EditMetadata, UploadImages, DeleteImage => DeleteImagePermission}
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws.{ContentDisposition, ThrallMessageSender, UpdateMessage}
@@ -234,7 +234,7 @@ class MediaApi(
   }
 
   def downloadImageExport(imageId: String, exportId: String, width: Int) = auth.async { request =>
-    implicit val r = request
+    implicit val r: Request[AnyContent] = request
 
     elasticSearch.getImageById(imageId) map {
       case Some(source) if hasPermission(request.user, source) =>
@@ -409,11 +409,11 @@ class MediaApi(
   }
 
   def postToUsages(uri: String, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal, mediaId: String, user: String,
-                   partnerName: Option[String] = None, startPending: Option[String] = None) = {
+                   partnerName: Option[String] = None, startPending: Option[String] = None)(implicit r: Request[AnyContent]) = {
 
     val baseRequest = ws.url(uri)
       .withHttpHeaders(Authentication.originalServiceHeaderName -> config.appName,
-        HttpHeaders.ORIGIN -> config.rootUri,
+        HttpHeaders.ORIGIN -> config.rootUri(r),
         HttpHeaders.CONTENT_TYPE -> ContentType.APPLICATION_JSON.getMimeType)
 
     val request = onBehalfOfPrincipal(baseRequest)
