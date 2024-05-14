@@ -301,7 +301,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
 
   import play.api.libs.json.JodaWrites._
 
-  def imageResponseWrites(id: String, expandFileMetaData: Boolean): OWrites[Image] = (
+  def imageResponseWrites(id: String, expandFileMetaData: Boolean)(implicit request: Request[AnyContent]): OWrites[Image] = (
     (__ \ "id").write[String] ~
       (__ \ "uploadTime").write[DateTime] ~
       (__ \ "uploadedBy").write[String] ~
@@ -332,7 +332,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
 
     ) (unlift(Image.unapply))
 
-  def fileMetaDataUri(id: String) = URI.create(s"${config.rootUri}/images/$id/fileMetadata")
+  def fileMetaDataUri(id: String)(request: Request[AnyContent]) = URI.create(s"${config.rootUri(request)}/images/$id/fileMetadata")
 
   def usagesUri(id: String) = URI.create(s"${config.usageUri}/usages/media/$id")
 
@@ -362,10 +362,10 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     ))
   }
 
-  def fileMetadataEntity(id: String, expandFileMetaData: Boolean, fileMetadata: FileMetadata) = {
+  def fileMetadataEntity(id: String, expandFileMetaData: Boolean, fileMetadata: FileMetadata)(implicit request: Request[AnyContent]) = {
     val displayableMetadata = if (expandFileMetaData) Some(fileMetadata) else None
 
-    EmbeddedEntity[FileMetadata](fileMetaDataUri(id), displayableMetadata)
+    EmbeddedEntity[FileMetadata](fileMetaDataUri(id)(request), displayableMetadata)
   }
 }
 
