@@ -4,6 +4,7 @@ import com.amazonaws.services.identitymanagement._
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.net.URI.ensureSecure
+import play.api.mvc.RequestHeader
 
 import scala.util.Try
 
@@ -12,7 +13,7 @@ case class KinesisReaderConfig(streamName: String, arn: String, appName: String)
 
 class UsageConfig(resources: GridConfigResources) extends CommonConfig(resources) with GridLogging {
   val usageUri: String = services.usageBaseUri
-  val apiUri: String = services.apiBaseUri
+  val apiUri: RequestHeader => String = services.apiBaseUri
 
   val defaultMaxRetries = 4
   val defaultMaxPrintRequestSizeInKb = 500

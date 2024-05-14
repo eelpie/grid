@@ -1,10 +1,12 @@
 package com.gu.mediaservice.lib.config
 
+import play.api.mvc.RequestHeader
+
 trait Services {
 
   def kahunaBaseUri: String
 
-  def apiBaseUri: String
+  def apiBaseUri(request: RequestHeader): String
 
   def loaderBaseUri: String
 
@@ -26,7 +28,7 @@ trait Services {
 
   def guardianWitnessBaseUri: String
 
-  def corsAllowedDomains: Set[String]
+  def corsAllowedDomains(request: RequestHeader): Set[String]
 
   def redirectUriParam: String
 
@@ -52,7 +54,7 @@ trait Services {
 protected class SingleHostServices(val hostname: String, val baseport: Int) extends Services {
   val kahunaBaseUri: String = baseUri(hostname, baseport + 20)
 
-  val apiBaseUri: String = subpathedServiceBaseUri("media-api")
+  override def apiBaseUri(request: RequestHeader): String = subpathedServiceBaseUri("media-api")
 
   val loaderBaseUri: String = subpathedServiceBaseUri("image-loader")
 
@@ -76,7 +78,7 @@ protected class SingleHostServices(val hostname: String, val baseport: Int) exte
 
   val guardianWitnessBaseUri: String = "https://n0ticeapis.com"
 
-  val corsAllowedDomains: Set[String] = Set(kahunaBaseUri, apiBaseUri, thrallBaseUri)
+  override def corsAllowedDomains(request: RequestHeader): Set[String] = Set(kahunaBaseUri, apiBaseUri(request), thrallBaseUri)
 
   val redirectUriParam = "redirectUri"
   val redirectUriPlaceholder = s"{?$redirectUriParam}"

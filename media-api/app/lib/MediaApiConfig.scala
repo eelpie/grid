@@ -3,6 +3,7 @@ package lib
 import com.amazonaws.services.cloudfront.util.SignerUtils
 import com.gu.mediaservice.lib.config.{CommonConfigWithElastic, GridConfigResources}
 import org.joda.time.DateTime
+import play.api.mvc.RequestHeader
 
 import java.security.PrivateKey
 import scala.util.Try
@@ -30,7 +31,7 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   val cloudFrontPrivateKeyBucketKey: Option[String] = stringOpt("cloudfront.private-key.key")
   val cloudFrontKeyPairId: Option[String]           = stringOpt("cloudfront.keypair.id")
 
-  val rootUri: String = services.apiBaseUri
+  val rootUri: RequestHeader => String = services.apiBaseUri
   val kahunaUri: String = services.kahunaBaseUri
   val cropperUri: String = services.cropperBaseUri
   val loaderUri: String = services.loaderBaseUri
