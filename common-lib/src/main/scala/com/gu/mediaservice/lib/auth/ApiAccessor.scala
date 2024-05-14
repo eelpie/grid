@@ -30,7 +30,7 @@ object ApiAccessor extends ArgoHelpers {
     case Internal => true
     case ReadOnly => request.method == "GET"
     case Syndication => {
-      val isMediaApiRequest = request.uri.startsWith(services.apiBaseUri) // TODO check this!
+      val isMediaApiRequest = request.uri.startsWith(services.apiBaseUri(request)) // TODO check this!
       request.method == "GET" && isMediaApiRequest && request.path.startsWith("/images")
     }
   }
