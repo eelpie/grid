@@ -14,6 +14,7 @@ import lib.usagerights.CostCalculator
 import org.joda.time.DateTime
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
+import play.api.mvc.{AnyContent, Request}
 import play.utils.UriEncoding
 
 import java.net.URI
@@ -61,7 +62,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
               withWritePermission: Boolean,
               withDeleteImagePermission: Boolean,
               withDeleteCropsOrUsagePermission: Boolean,
-              included: List[String] = List(), tier: Tier): (JsValue, List[Link], List[Action]) = {
+              included: List[String] = List(), tier: Tier)(implicit request: Request[AnyContent]): (JsValue, List[Link], List[Action]) = {
 
     val image = imageWrapper.instance
 
@@ -120,29 +121,29 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
       .get
 
     val links: List[Link] = tier match {
-      case Internal => imageLinks(id, imageUrl, pngUrl, withWritePermission, valid) ++ getDownloadLinks(id, isDownloadable)
-      case _ => List(downloadLink(id), downloadOptimisedLink(id))
+      case Internal => imageLinks(id, imageUrl, pngUrl, withWritePermission, valid)(request) ++ getDownloadLinks(id, isDownloadable)(request)
+      case _ => List(downloadLink(id)(request), downloadOptimisedLink(id)(request))
     }
 
     val isDeletable = canBeDeleted(image) && withDeleteImagePermission
 
-    val actions: List[Action] = if (tier == Internal) imageActions(id, isDeletable, withWritePermission, withDeleteCropsOrUsagePermission) else Nil
+    val actions: List[Action] = if (tier == Internal) imageActions(id, isDeletable, withWritePermission, withDeleteCropsOrUsagePermission)(request) else Nil
 
     (data, links, actions)
   }
 
-  private def downloadLink(id: String) = Link("download", s"${config.rootUri}/images/$id/download")
-  private def downloadOptimisedLink(id: String) = Link("downloadOptimised", s"${config.rootUri}/images/$id/downloadOptimised?{&width,height,quality}")
+  private def downloadLink(id: String)(request: Request[AnyContent]) = Link("download", s"${config.rootUri(request)}/images/$id/download")
+  private def downloadOptimisedLink(id: String)(request: Request[AnyContent])  = Link("downloadOptimised", s"${config.rootUri(request)}/images/$id/downloadOptimised?{&width,height,quality}")
 
 
-  private def getDownloadLinks(id: String, isDownloadable: Boolean): List[Link] = {
+  private def getDownloadLinks(id: String, isDownloadable: Boolean)(request: Request[AnyContent]): List[Link] = {
     (config.restrictDownload, isDownloadable) match {
       case (true, false) => Nil
-      case (_, _) => List(downloadLink(id), downloadOptimisedLink(id))
+      case (_, _) => List(downloadLink(id)(request), downloadOptimisedLink(id)(request))
     }
   }
 
-  def imageLinks(id: String, secureUrl: String, securePngUrl: Option[String], withWritePermission: Boolean, valid: Boolean): List[Link] = {
+  def imageLinks(id: String, secureUrl: String, securePngUrl: Option[String], withWritePermission: Boolean, valid: Boolean)(request: Request[AnyContent]): List[Link] = {
     import BoolImplicitMagic.BoolToOption
     val cropLinkMaybe = valid.toOption(Link("crops", s"${config.cropperUri}/crops/$id"))
     val editLinkMaybe = withWritePermission.toOption(Link("edits", s"${config.metadataUri}/metadata/$id"))
@@ -152,9 +153,9 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     val imageLink = Link("ui:image", s"${config.kahunaUri}/images/$id")
     val usageLink = Link("usages", s"${config.usageUri}/usages/media/$id")
     val leasesLink = Link("leases", s"${config.leasesUri}/leases/media/$id")
-    val fileMetadataLink = Link("fileMetadata", s"${config.rootUri}/images/$id/fileMetadata")
+    val fileMetadataLink = Link("fileMetadata", s"${config.rootUri(request)}/images/$id/fileMetadata")
     val projectionLink = Link("loader", s"${config.loaderUri}/images/project/$id")
-    val projectionDiffLink = Link("api", s"${config.rootUri}/images/$id/projection/diff")
+    val projectionDiffLink = Link("api", s"${config.rootUri(request)}/images/$id/projection/diff")
 
     editLinkMaybe.toList ++ cropLinkMaybe.toList ++ optimisedPngLinkMaybe.toList ++
       List(
@@ -162,10 +163,10 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
         projectionLink, projectionDiffLink)
   }
 
-  def imageActions(id: String, isDeletable: Boolean, withWritePermission: Boolean, withDeleteCropsOrUsagePermission: Boolean): List[Action] = {
+  def imageActions(id: String, isDeletable: Boolean, withWritePermission: Boolean, withDeleteCropsOrUsagePermission: Boolean)(request: Request[AnyContent]): List[Action] = {
 
-    val imageUri = URI.create(s"${config.rootUri}/images/$id")
-    val reindexUri = URI.create(s"${config.rootUri}/images/$id/reindex")
+    val imageUri = URI.create(s"${config.rootUri(request)}/images/$id")
+    val reindexUri = URI.create(s"${config.rootUri(request)}/images/$id/reindex")
     val addCollectionUri = URI.create(s"${config.collectionsUri}/images/$id")
     val addLeaseUri = URI.create(s"${config.leasesUri}/leases")
     val addLeasesUri = URI.create(s"${config.leasesUri}/leases/media/$id")

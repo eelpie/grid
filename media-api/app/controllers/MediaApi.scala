@@ -80,10 +80,13 @@ class MediaApi(
     "persisted"
   ).mkString(",")
 
-  private val searchLinkHref = s"${config.rootUri}/images{?$searchParamList}"
+  private def searchLinkHref()(request: Request[AnyContent]) = {
+    s"${config.rootUri(request)}/images{?$searchParamList}"
+  }
 
-  private val searchLink = Link("search", searchLinkHref)
-
+  private def searchLink()(request: Request[AnyContent]) = {
+    Link("search", searchLinkHref()(request))
+  }
 
   private def getUploader(imageId: String, user: Principal): Future[Option[String]] = elasticSearch.getImageUploaderById(imageId)
 
@@ -95,27 +98,29 @@ class MediaApi(
       // ^ Flatten None away
     )
 
+    val request = ???
+
     val userCanUpload: Boolean = authorisation.hasPermissionTo(UploadImages)(user)
     val userCanArchive: Boolean = authorisation.hasPermissionTo(ArchiveImages)(user)
 
     val maybeLoaderLink: Option[Link] = Some(Link("loader", config.loaderUri)).filter(_ => userCanUpload)
     val maybeArchiveLink: Option[Link] = Some(Link("archive", s"${config.metadataUri}/metadata/{id}/archived")).filter(_ => userCanArchive)
     val indexLinks = List(
-      searchLink,
-      Link("image",           s"${config.rootUri}/images/{id}"),
+      searchLink()(request),
+      Link("image",           s"${config.rootUri(request)}/images/{id}"),
       // FIXME: credit is the only field available for now as it's the only on
       // that we are indexing as a completion suggestion
-      Link("metadata-search", s"${config.rootUri}/suggest/metadata/{field}{?q}"),
-      Link("label-search",    s"${config.rootUri}/images/edits/label{?q}"),
+      Link("metadata-search", s"${config.rootUri(request)}/suggest/metadata/{field}{?q}"),
+      Link("label-search",    s"${config.rootUri(request)}/images/edits/label{?q}"),
       Link("cropper",         config.cropperUri),
       Link("edits",           config.metadataUri),
       Link("session",         s"${config.authUri}/session"),
       Link("witness-report",  s"${config.services.guardianWitnessBaseUri}/2/report/{id}"),
       Link("collections",     config.collectionsUri),
-      Link("permissions",     s"${config.rootUri}/permissions"),
+      Link("permissions",     s"${config.rootUri(request)}/permissions"),
       Link("leases",          config.leasesUri),
       Link("syndicate-image", s"${config.rootUri}/images/{id}/{partnerName}/{startPending}/syndicateImage"),
-      Link("undelete",        s"${config.rootUri}/images/{id}/undelete")
+      Link("undelete",        s"${config.rootUri(request)}/images/{id}/undelete")
     ) ++ maybeLoaderLink.toList ++ maybeArchiveLink.toList
     respond(indexData, indexLinks)
   }
@@ -196,7 +201,7 @@ class MediaApi(
     elasticSearch.getImageById(id) map {
       case Some(image) if hasPermission(request.user, image) =>
         val links = List(
-          Link("image", s"${config.rootUri}/images/$id")
+          Link("image", s"${config.rootUri(request)}/images/$id")
         )
         respond(Json.toJson(image.fileMetadata), links)
       case _ => ImageNotFound(id)
@@ -209,7 +214,7 @@ class MediaApi(
     elasticSearch.getImageById(id) map {
       case Some(image) if hasPermission(request.user, image) =>
         val links = List(
-          Link("image", s"${config.rootUri}/images/$id")
+          Link("image", s"${config.rootUri(request)}/images/$id")
         )
         respond(Json.toJson(image.exports), links)
       case _ => ImageNotFound(id)
@@ -452,15 +457,15 @@ class MediaApi(
 
     val include = getIncludedFromParams(request)
 
-    def hitToImageEntity(elasticId: String, image: SourceWrapper[Image]): EmbeddedEntity[JsValue] = {
+    def hitToImageEntity(elasticId: String, image: SourceWrapper[Image])(implicit request: Request[AnyContent]): EmbeddedEntity[JsValue] = {
       val writePermission = authorisation.isUploaderOrHasPermission(request.user, image.instance.uploadedBy, EditMetadata)
       val deletePermission = authorisation.isUploaderOrHasPermission(request.user, image.instance.uploadedBy, DeleteImagePermission)
       val deleteCropsOrUsagePermission = canUserDeleteCropsOrUsages(request.user)
 
       val (imageData, imageLinks, imageActions) =
-        imageResponse.create(elasticId, image, writePermission, deletePermission, deleteCropsOrUsagePermission, include, request.user.accessor.tier)
+        imageResponse.create(elasticId, image, writePermission, deletePermission, deleteCropsOrUsagePermission, include, request.user.accessor.tier)(request)
       val id = (imageData \ "id").as[String]
-      val imageUri = URI.create(s"${config.rootUri}/images/$id")
+      val imageUri = URI.create(s"${config.rootUri(request)}/images/$id")
       EmbeddedEntity(uri = imageUri, data = Some(imageData), imageLinks, imageActions)
     }
 
@@ -485,7 +490,7 @@ class MediaApi(
       // TODO: respondErrorCollection?
       errors => Future.successful(respondError(UnprocessableEntity, InvalidUriParams.errorKey,
         // Annoyingly `NonEmptyList` and `IList` don't have `mkString`
-        errors.map(_.message).list.reduce(_+ ", " +_), List(searchLink))
+        errors.map(_.message).list.reduce(_+ ", " +_), List(searchLink()(request)))
       ),
       params => respondSuccess(params)
     )
