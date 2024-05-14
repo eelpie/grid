@@ -92,13 +92,11 @@ class MediaApi(
 
   private def authorisedForDeleteImageOrUploader(imageId: String) = authorisation.actionFilterForUploaderOr(imageId, DeleteImagePermission, getUploader)
 
-  private def indexResponse(user: Principal) = {
+  private def indexResponse(user: Principal)(request: Request[AnyContent]) = {
     val indexData = Json.obj(
       "description" -> "This is the Media API"
       // ^ Flatten None away
     )
-
-    val request = ???
 
     val userCanUpload: Boolean = authorisation.hasPermissionTo(UploadImages)(user)
     val userCanArchive: Boolean = authorisation.hasPermissionTo(ArchiveImages)(user)
@@ -131,7 +129,7 @@ class MediaApi(
   private def ImageNotFound(id: String) = respondError(NotFound, "image-not-found", s"No image found with the given id $id")
   private def ExportNotFound = respondError(NotFound, "export-not-found", "No export found with the given id")
 
-  def index = auth { request => indexResponse(request.user) }
+  def index = auth { request => indexResponse(request.user)(request) }
 
   def getIncludedFromParams(request: AuthenticatedRequest[AnyContent, Principal]): List[String] = {
     val includedQuery: Option[String] = request.getQueryString("include")
