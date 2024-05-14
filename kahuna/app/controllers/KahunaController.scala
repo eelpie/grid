@@ -3,7 +3,7 @@ package controllers
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication.Principal
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, BaseControllerWithLoginRedirects}
-import lib.{ExampleSwitch, FeatureSwitches, KahunaConfig}
+import lib.{ExampleSwitch, FeatureSwitches, KahunaClientServiceUrls, KahunaConfig}
 import play.api.mvc.ControllerComponents
 import play.api.libs.json._
 
@@ -64,6 +64,11 @@ class KahunaController(
       else
         Html("undefined")
 
+
+    val kahunaClientServiceUrls = KahunaClientServiceUrls(
+      mediaApiUri = config.mediaApiUri(request)
+    )
+
     Ok(views.html.main(
       s"${config.authUri}/login?redirectUri=$returnUri",
       fieldAliases,
@@ -77,7 +82,8 @@ class KahunaController(
       costFilterChargeable,
       maybeOrgOwnedValue,
       config,
-      featureSwitchesJson
+      featureSwitchesJson,
+      kahunaClientServiceUrls
     ))
   }
 
