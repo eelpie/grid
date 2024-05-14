@@ -8,7 +8,7 @@ import com.gu.mediaservice.model._
 import lib.EditsConfig
 import model.UsageRightsProperty
 import play.api.libs.json._
-import play.api.mvc.{BaseController, ControllerComponents}
+import play.api.mvc.{AnyContent, BaseController, ControllerComponents, Request}
 
 import scala.concurrent.ExecutionContext
 
@@ -18,7 +18,7 @@ class EditsApi(auth: Authentication, config: EditsConfig,
 
 
     // TODO: add links to the different responses esp. to the reference image
-  val indexResponse = {
+  def indexResponse()(implicit request: Request[AnyContent]) = {
     val indexData = Map("description" -> "This is the Metadata Editor Service")
     val indexLinks = List(
       Link("edits",             s"${config.rootUri}/metadata/{id}"),
@@ -31,9 +31,11 @@ class EditsApi(auth: Authentication, config: EditsConfig,
     respond(indexData, indexLinks)
   }
 
-  def index = auth { indexResponse }
+  def index = auth { request =>
+    indexResponse()(request)
+  }
 
-  val usageRightsResponse = {
+  def usageRightsResponse()(implicit request: Request[AnyContent]) = {
     val usageRights = config.applicableUsageRights.toList
 
     val usageRightsData = usageRights
@@ -42,7 +44,9 @@ class EditsApi(auth: Authentication, config: EditsConfig,
     respond(usageRightsData)
   }
 
-  def getUsageRights = auth { usageRightsResponse }
+  def getUsageRights = auth { request =>
+    usageRightsResponse()(request)
+  }
 }
 
 case class CategoryResponse(
