@@ -1,10 +1,12 @@
 package com.gu.mediaservice.lib.config
 
+import play.api.mvc.RequestHeader
+
 trait Services {
 
   def kahunaBaseUri: String
 
-  def apiBaseUri: String
+  def apiBaseUri(request: RequestHeader): String
 
   def loaderBaseUri: String
 
@@ -26,7 +28,7 @@ trait Services {
 
   def guardianWitnessBaseUri: String
 
-  def corsAllowedDomains: Set[String]
+  def corsAllowedDomains(request: RequestHeader): Set[String]
 
   def redirectUriParam: String
 
@@ -90,7 +92,7 @@ object ServiceHosts {
 protected class SingleHostServices(val rootUrl: String) extends Services {
   val kahunaBaseUri: String = rootUrl
 
-  val apiBaseUri: String = subpathedServiceBaseUri("media-api")
+  override def apiBaseUri(request: RequestHeader): String = subpathedServiceBaseUri("media-api")
 
   val loaderBaseUri: String = subpathedServiceBaseUri("image-loader")
 
@@ -114,7 +116,7 @@ protected class SingleHostServices(val rootUrl: String) extends Services {
 
   val guardianWitnessBaseUri: String = "https://n0ticeapis.com"
 
-  val corsAllowedDomains: Set[String] = Set(kahunaBaseUri, apiBaseUri, thrallBaseUri)
+  override def corsAllowedDomains(request: RequestHeader): Set[String] = Set(kahunaBaseUri, apiBaseUri(request), thrallBaseUri)
 
   val redirectUriParam = "redirectUri"
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
@@ -149,7 +151,7 @@ protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHost
   private val thrallHost: String = s"${hosts.thrallPrefix}${domainRootOverride.getOrElse(domainRoot)}"
 
   val kahunaBaseUri = baseUri(kahunaHost)
-  val apiBaseUri = baseUri(apiHost)
+  override def apiBaseUri(request: RequestHeader): String = baseUri(apiHost)
   val loaderBaseUri = baseUri(loaderHost)
   val projectionBaseUri = baseUri(projectionHost)
   val cropperBaseUri = baseUri(cropperHost)
@@ -163,7 +165,7 @@ protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHost
 
   val guardianWitnessBaseUri: String = "https://n0ticeapis.com"
 
-  val corsAllowedDomains: Set[String] = corsAllowedOrigins.map(baseUri) + kahunaBaseUri + apiBaseUri + thrallBaseUri
+  override def corsAllowedDomains(request: RequestHeader): Set[String] = corsAllowedOrigins.map(baseUri) + kahunaBaseUri + apiBaseUri(request) + thrallBaseUri
 
   val redirectUriParam = "redirectUri"
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
@@ -171,7 +173,7 @@ protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHost
 
   private def baseUri(host: String) = s"https://$host"
 
-  val apiInternalBaseUri: String = apiBaseUri
+  val apiInternalBaseUri: String = baseUri(apiHost)
   val collectionsInternalBaseUri: String = collectionsBaseUri
   val cropperInternalBaseUri: String = cropperBaseUri
   val leasesInternalBaseUri: String = leasesBaseUri

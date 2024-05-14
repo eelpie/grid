@@ -84,7 +84,7 @@ class UsageApi(
 
         val uri = usageUri(usage.id)
         val links = List(
-          Link("media", s"${config.services.apiBaseUri}/images/$mediaId"),
+          Link("media", s"${config.services.apiBaseUri(req)}/images/$mediaId"),
           Link("media-usage", s"${config.services.usageBaseUri}/usages/media/$mediaId")
         )
 
@@ -144,7 +144,7 @@ class UsageApi(
         case _ =>
           val uri = Try { URI.create(s"${config.services.usageBaseUri}/usages/media/$mediaId") }.toOption
           val links = List(
-            Link("media", s"${config.services.apiBaseUri}/images/$mediaId")
+            Link("media", s"${config.services.apiBaseUri(req)}/images/$mediaId")
           )
 
           respondCollection[EntityResponse[Usage]](

@@ -8,7 +8,7 @@ import com.gu.mediaservice.lib.auth.provider.AuthenticationProviders
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, Internal}
 import com.gu.mediaservice.lib.guardian.auth.PandaAuthenticationProvider
 import play.api.libs.json.Json
-import play.api.mvc.{BaseController, ControllerComponents, Result}
+import play.api.mvc.{AnyContent, BaseController, ControllerComponents, Request, Result}
 
 import java.net.URI
 import java.util.Date
@@ -21,10 +21,10 @@ class AuthController(auth: Authentication, providers: AuthenticationProviders, v
   extends BaseController
   with ArgoHelpers {
 
-  val indexResponse = {
+  def indexResponse()(r: Request[AnyContent]) = {
     val indexData = Map("description" -> "This is the Auth API")
     val indexLinks = List(
-      Link("root",          config.mediaApiUri),
+      Link("root",          config.mediaApiUri(r)),
       Link("login",         config.services.loginUriTemplate),
       Link("ui:logout",     s"${config.rootUri}/logout"),
       Link("session",       s"${config.rootUri}/session")
@@ -42,7 +42,9 @@ class AuthController(auth: Authentication, providers: AuthenticationProviders, v
     }
   }
 
-  def index = auth { indexResponse }
+  def index = auth { request =>
+    indexResponse()(request)
+  }
 
   def session = auth { request =>
     val showPaid = authorisation.hasPermissionTo(ShowPaid)(request.user)
