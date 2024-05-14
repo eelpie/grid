@@ -3,10 +3,11 @@ package lib
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.net.URI.ensureSecure
+import play.api.mvc.RequestHeader
 
 class UsageConfig(resources: GridConfigResources) extends CommonConfig(resources) with GridLogging {
   val usageUri: String = services.usageBaseUri
-  val apiUri: String = services.apiBaseUri
+  val apiUri: RequestHeader => String = services.apiBaseUri
 
   val defaultMaxPrintRequestSizeInKb = 500
   val defaultDateLimit = "2016-01-01T00:00:00+00:00"

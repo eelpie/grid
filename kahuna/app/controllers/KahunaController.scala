@@ -82,7 +82,7 @@ class KahunaController(
   }
 
   def quotas = authentication { req =>
-    Ok(views.html.quotas(config.mediaApiUri))
+    Ok(views.html.quotas(config.mediaApiUri(req)))
   }
 
   def notifications = authentication { req =>

@@ -2,6 +2,7 @@ package lib
 
 import com.gu.mediaservice.lib.argo.model.Link
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
+import play.api.mvc.{AnyContent, Request}
 
 import java.net.URI
 import scala.util.Try
@@ -18,6 +19,6 @@ class LeasesConfig(resources: GridConfigResources) extends CommonConfig(resource
   def leaseUri(leaseId: String): Option[URI] = Try { URI.create(s"$leasesUri/$leaseId") }.toOption
   def leasesMediaUri(mediaId: String) = Try { URI.create(s"$leasesUri/media/$mediaId") }.toOption
 
-  private def mediaApiUri(id: String) = s"${services.apiBaseUri}/images/$id"
-  def mediaApiLink(id: String) = Link("media", mediaApiUri(id))
+  private def mediaApiUri(id: String)(implicit r: Request[AnyContent]) = s"${services.apiBaseUri(r)}/images/$id"
+  def mediaApiLink(id: String)(implicit r: Request[AnyContent]) = Link("media", mediaApiUri(id))
 }
