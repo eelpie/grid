@@ -54,7 +54,9 @@ trait Services {
 protected class SingleHostServices(val hostname: String, val baseport: Int) extends Services {
   val kahunaBaseUri: String = baseUri(hostname, baseport + 20)
 
-  override def apiBaseUri(request: RequestHeader): String = subpathedServiceBaseUri("media-api")
+  override def apiBaseUri(request: RequestHeader): String=  {
+    vhostServiceName("media-api", request)
+  }
 
   val loaderBaseUri: String = subpathedServiceBaseUri("image-loader")
 
@@ -91,6 +93,11 @@ protected class SingleHostServices(val hostname: String, val baseport: Int) exte
   val metadataInternalBaseUri: String = internalServiceBaseUri("metadata-editor", 9000)
   val projectionInternalBaseUri: String = internalServiceBaseUri("projection", 9000)
   val usageInternalBaseUri: String = internalServiceBaseUri("usages", 9000)
+
+  private def vhostServiceName(serviceName: String, request: RequestHeader): String = {
+    val vhostRootUrl = request.host
+    s"https://$vhostRootUrl/" + serviceName
+  }
 
   private def subpathedServiceBaseUri(serviceName: String): String = s"$rootUrl/$serviceName"
 
