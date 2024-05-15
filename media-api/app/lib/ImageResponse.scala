@@ -14,7 +14,7 @@ import lib.usagerights.CostCalculator
 import org.joda.time.DateTime
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import play.api.mvc.{AnyContent, Request}
+import play.api.mvc.{AnyContent, Request, RequestHeader}
 import play.utils.UriEncoding
 
 import java.net.URI
@@ -146,9 +146,9 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     import BoolImplicitMagic.BoolToOption
     val cropLinkMaybe = valid.toOption(Link("crops", s"${config.cropperUri}/crops/$id"))
     val editLinkMaybe = withWritePermission.toOption(Link("edits", s"${config.metadataUri}/metadata/$id"))
-    val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgopsUri(new URI(secureUrl))) }
+    val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgopsUri(new URI(secureUrl))(request)) }
 
-    val optimisedLink = Link("optimised", makeImgopsUri(new URI(secureUrl)))
+    val optimisedLink = Link("optimised", makeImgopsUri(new URI(secureUrl))(request))
     val imageLink = Link("ui:image", s"${config.kahunaUri}/images/$id")
     val usageLink = Link("usages", s"${config.usageUri}/usages/media/$id")
     val leasesLink = Link("leases", s"${config.leasesUri}/leases/media/$id")
@@ -255,11 +255,8 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
       "aliases" -> JsObject(aliases)
     ))
 
-  def makeImgopsUri(uri: URI): String =
-    config.imgopsUri + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
-
-  def makeOptimisedPngImageopsUri(uri: URI): String = {
-    config.imgopsUri + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w, h, q}"
+  def makeImgopsUri(uri: URI)(request: RequestHeader): String = {
+    config.imgopsUri(request) + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
   }
 
   private def updateCustomSpecialInstructions(source: JsValue): Reads[JsObject] = {
