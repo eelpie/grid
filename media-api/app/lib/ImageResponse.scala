@@ -37,7 +37,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
 
   implicit val costing = Costing
 
-  val metadataBaseUri: String = config.services.metadataBaseUri
+  override val metadataBaseUri: RequestHeader => String = config.services.metadataBaseUri
 
   type FileMetadataEntity = EmbeddedEntity[FileMetadata]
 
@@ -102,7 +102,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     val aliases = extractAliasFieldValues(config, imageWrapper)
 
     val data = source.transform(addSecureSourceUrl(imageUrl))
-      .flatMap(_.transform(wrapUserMetadata(id)))
+      .flatMap(_.transform(wrapUserMetadata(id)(request)))
       .flatMap(_.transform(addSecureThumbUrl(thumbUrl)))
       .flatMap(_.transform(
         pngUrl
@@ -145,8 +145,8 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
 
   def imageLinks(id: String, secureUrl: String, securePngUrl: Option[String], withWritePermission: Boolean, valid: Boolean)(request: Request[AnyContent]): List[Link] = {
     import BoolImplicitMagic.BoolToOption
-    val cropLinkMaybe = valid.toOption(Link("crops", s"${config.cropperUri}/crops/$id"))
-    val editLinkMaybe = withWritePermission.toOption(Link("edits", s"${config.metadataUri}/metadata/$id"))
+    val cropLinkMaybe = valid.toOption(Link("crops", s"${config.cropperUri(request)}/crops/$id"))
+    val editLinkMaybe = withWritePermission.toOption(Link("edits", s"${config.metadataUri(request)}/metadata/$id"))
     val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgopsUri(new URI(secureUrl))(request)) }
 
     val optimisedLink = Link("optimised", makeImgopsUri(new URI(secureUrl))(request))
@@ -225,10 +225,10 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
         "value" -> isPersisted,
         "reasons" -> persistenceReasons)))
 
-  def wrapUserMetadata(id: String): Reads[JsObject] =
+  def wrapUserMetadata(id: String)(request: Request[Any]): Reads[JsObject] =
     __.read[JsObject].map { root =>
       val edits = (root \ "userMetadata").asOpt[Edits].getOrElse(Edits.getEmpty)
-      val editsJson = Json.toJson(editsEmbeddedEntity(id, edits))
+      val editsJson = Json.toJson(editsEmbeddedEntity(id, edits)(request))
 
       root ++ Json.obj("userMetadata" -> editsJson)
     }
