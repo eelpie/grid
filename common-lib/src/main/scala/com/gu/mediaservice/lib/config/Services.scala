@@ -12,9 +12,9 @@ trait Services {
 
   def projectionBaseUri: String
 
-  def cropperBaseUri: String
+  def cropperBaseUri(request: RequestHeader): String
 
-  def metadataBaseUri: String
+  def metadataBaseUri(request: RequestHeader): String
 
   def imgopsBaseUri(request: RequestHeader): String
 
@@ -98,10 +98,11 @@ protected class SingleHostServices(val rootUrl: String) extends Services {
 
   val projectionBaseUri: String = loaderBaseUri
 
-  val cropperBaseUri: String = subpathedServiceBaseUri("cropper")
+  override def cropperBaseUri(request: RequestHeader): String = vhostServiceName("cropper", request)
 
-  val metadataBaseUri: String = subpathedServiceBaseUri("metadata-editor")
-  override def imgopsBaseUri(request: RequestHeader): String=  vhostServiceName("imgops", request)
+  override def metadataBaseUri(request: RequestHeader): String = vhostServiceName("metadata-editor", request)
+
+  override def imgopsBaseUri(request: RequestHeader): String = vhostServiceName("imgops", request)
 
   val usageBaseUri: String =subpathedServiceBaseUri("usage")
 
@@ -158,8 +159,8 @@ protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHost
   override def apiBaseUri(request: RequestHeader): String = baseUri(apiHost)
   val loaderBaseUri = baseUri(loaderHost)
   val projectionBaseUri = baseUri(projectionHost)
-  val cropperBaseUri = baseUri(cropperHost)
-  val metadataBaseUri = baseUri(metadataHost)
+  override def cropperBaseUri(request: RequestHeader): String = baseUri(cropperHost)
+  override def metadataBaseUri(request: RequestHeader): String = baseUri(metadataHost)
   override def imgopsBaseUri(request: RequestHeader): String = baseUri(imgopsHost)
   val usageBaseUri = baseUri(usageHost)
   val collectionsBaseUri = baseUri(collectionsHost)
@@ -179,9 +180,9 @@ protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHost
 
   val apiInternalBaseUri: String = baseUri(apiHost)
   val collectionsInternalBaseUri: String = collectionsBaseUri
-  val cropperInternalBaseUri: String = cropperBaseUri
+  val cropperInternalBaseUri: String = baseUri(cropperHost)
   val leasesInternalBaseUri: String = leasesBaseUri
-  val metadataInternalBaseUri: String = metadataBaseUri
+  val metadataInternalBaseUri: String = baseUri(metadataHost)
   val projectionInternalBaseUri: String = projectionBaseUri
   val usageInternalBaseUri: String = usageBaseUri
 }
