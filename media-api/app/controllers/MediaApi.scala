@@ -409,7 +409,7 @@ class MediaApi(
         }
 
         Future.successful(
-          Redirect(config.imgopsUri + List(sourceImageUri.getPath, sourceImageUri.getRawQuery).mkString("?") + s"&w=$width&h=$height&q=$quality")
+          Redirect(config.imgopsUri(request) + List(sourceImageUri.getPath, sourceImageUri.getRawQuery).mkString("?") + s"&w=$width&h=$height&q=$quality")
         )
       }
       case _ => Future.successful(ImageNotFound(id))

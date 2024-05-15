@@ -16,7 +16,7 @@ trait Services {
 
   def metadataBaseUri: String
 
-  def imgopsBaseUri: String
+  def imgopsBaseUri(request: RequestHeader): String
 
   def usageBaseUri: String
 
@@ -54,9 +54,7 @@ trait Services {
 protected class SingleHostServices(val hostname: String, val baseport: Int) extends Services {
   val kahunaBaseUri: String = baseUri(hostname, baseport + 20)
 
-  override def apiBaseUri(request: RequestHeader): String=  {
-    vhostServiceName("media-api", request)
-  }
+  override def apiBaseUri(request: RequestHeader): String=  vhostServiceName("media-api", request)
 
   val loaderBaseUri: String = subpathedServiceBaseUri("image-loader")
 
@@ -65,8 +63,7 @@ protected class SingleHostServices(val hostname: String, val baseport: Int) exte
   val cropperBaseUri: String = subpathedServiceBaseUri("cropper")
 
   val metadataBaseUri: String = subpathedServiceBaseUri("metadata-editor")
-
-  val imgopsBaseUri: String = subpathedServiceBaseUri("imgops")
+  override def imgopsBaseUri(request: RequestHeader): String=  vhostServiceName("imgops", request)
 
   val usageBaseUri: String =subpathedServiceBaseUri("usage")
 
