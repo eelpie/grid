@@ -6,7 +6,7 @@ import com.gu.mediaservice.lib.net.URI.ensureSecure
 import play.api.mvc.RequestHeader
 
 class UsageConfig(resources: GridConfigResources) extends CommonConfig(resources) with GridLogging {
-  val usageUri: String = services.usageBaseUri
+  val usageUri: RequestHeader => String = services.usageBaseUri
   val apiUri: RequestHeader => String = services.apiBaseUri
 
   val defaultMaxPrintRequestSizeInKb = 500

@@ -37,33 +37,35 @@ class UsageApi(
 
   private val AuthenticatedAndAuthorisedToDelete = auth andThen authorisation.CommonActionFilters.authorisedForDeleteCropsOrUsages
 
-  private def wrapUsage(usage: Usage): EntityResponse[Usage] = {
+  private def wrapUsage(usage: Usage)(request: Request[AnyContent]): EntityResponse[Usage] = {
     EntityResponse(
-      uri = usageUri(usage.id),
+      uri = usageUri(usage.id)(request),
       data = usage
     )
   }
 
-  private def usageUri(usageId: String): Option[URI] = {
+  private def usageUri(usageId: String)(request: Request[AnyContent]): Option[URI] = {
     val encodedUsageId = UriEncoding.encodePathSegment(usageId, "UTF-8")
-    Try { URI.create(s"${config.usageUri}/usages/$encodedUsageId") }.toOption
+    Try { URI.create(s"${config.usageUri(request)}/usages/$encodedUsageId") }.toOption
   }
 
-  val indexResponse = {
+  def indexResponse()(request: Request[AnyContent]) = {
     val indexData = Map("description" -> "This is the Usage Recording service")
     val indexLinks = List(
-      Link("usages-by-media", s"${config.usageUri}/usages/media/{id}"),
-      Link("usages-by-id", s"${config.usageUri}/usages/{id}")
+      Link("usages-by-media", s"${config.usageUri(request)}/usages/media/{id}"),
+      Link("usages-by-id", s"${config.usageUri(request)}/usages/{id}")
     )
 
-    val printPostUri = URI.create(s"${config.usageUri}/usages/print")
+    val printPostUri = URI.create(s"${config.usageUri(request)}/usages/print")
     val actions = List(
       ArgoAction("print-usage", printPostUri, "POST")
     )
 
     respond(indexData, indexLinks, actions)
   }
-  def index = auth { indexResponse }
+  def index = auth { request =>
+    indexResponse()(request)
+  }
 
   def forUsage(usageId: String) = auth.async { req =>
     implicit val logMarker: LogMarker = MarkerMap(
@@ -81,10 +83,10 @@ class UsageApi(
         val usage = UsageBuilder.build(mediaUsage)
         val mediaId = mediaUsage.mediaId
 
-        val uri = usageUri(usage.id)
+        val uri = usageUri(usage.id)(req)
         val links = List(
           Link("media", s"${config.services.apiBaseUri(req)}/images/$mediaId"),
-          Link("media-usage", s"${config.services.usageBaseUri}/usages/media/$mediaId")
+          Link("media-usage", s"${config.services.usageBaseUri(req)}/usages/media/$mediaId")
         )
 
         respond[Usage](data = usage, uri = uri, links = links)
@@ -111,7 +113,7 @@ class UsageApi(
       usages match {
         case Nil => respondNotFound("No usages found.")
         case _ =>
-          val uri = Try { URI.create(s"${config.services.usageBaseUri}/usages/media/$mediaId") }.toOption
+          val uri = Try { URI.create(s"${config.services.usageBaseUri(req)}/usages/media/$mediaId") }.toOption
           val links = List(
             Link("media", s"${config.services.apiBaseUri(req)}/images/$mediaId")
           )
@@ -119,7 +121,7 @@ class UsageApi(
           respondCollection[EntityResponse[Usage]](
             uri = uri,
             links = links,
-            data = usages.map(wrapUsage)
+            data = usages.map(u => wrapUsage(u)(req))
           )
       }
     }).recover {
