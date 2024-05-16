@@ -1,7 +1,7 @@
 package controllers
 
 import _root_.play.api.libs.json._
-import _root_.play.api.mvc.{BaseController, ControllerComponents, Request}
+import _root_.play.api.mvc.{AnyContent, BaseController, ControllerComponents, Request}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.Link
@@ -39,15 +39,17 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
 
   val AuthenticatedAndAuthorisedToDeleteCrops = auth andThen authorisation.CommonActionFilters.authorisedForDeleteCropsOrUsages
 
-  val indexResponse = {
+  def indexResponse()(request: Request[AnyContent]) = {
     val indexData = Map("description" -> "This is the Cropper Service")
     val indexLinks = List(
-      Link("crop", s"${config.rootUri}/crops")
+      Link("crop", s"${config.rootUri(request)}/crops")
     )
     respond(indexData, indexLinks)
   }
 
-  def index = auth { indexResponse }
+  def index = auth { request =>
+    indexResponse()(request)
+  }
 
   def export = auth.async(parse.json) { httpRequest: Authentication.Request[JsValue] =>
     httpRequest.body.validate[ExportRequest] map { exportRequest =>
@@ -117,7 +119,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
 
     store.listCrops(id) map (_.toList) map { crops =>
       val deleteCropsAction =
-        ArgoAction("delete-crops", URI.create(s"${config.rootUri}/crops/$id"), "DELETE")
+        ArgoAction("delete-crops", URI.create(s"${config.rootUri(httpRequest)}/crops/$id"), "DELETE")
 
       lazy val cropDownloadLinks = for {
         crop <- crops
