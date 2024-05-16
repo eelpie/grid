@@ -1,7 +1,6 @@
 package controllers
 
 import java.net.URI
-
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.{EmbeddedEntity, Link}
 import com.gu.mediaservice.lib.auth.Authentication
@@ -13,9 +12,9 @@ import model.Node
 import org.joda.time.DateTime
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import play.api.mvc.{BaseController, ControllerComponents}
+import play.api.mvc.{AnyContent, BaseController, ControllerComponents, Request}
 import store.{CollectionsStore, CollectionsStoreError}
-import com.gu.mediaservice.lib.net.{ URI => UriOps }
+import com.gu.mediaservice.lib.net.{URI => UriOps}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -37,24 +36,24 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
   import com.gu.mediaservice.lib.argo.model.{Action => ArgoAction}
 
   def uri(u: String) = URI.create(u)
-  val collectionUri = uri(s"${config.rootUri}/collections")
-  def collectionUri(p: List[String] = Nil) = {
+  def collectionUri()(request: Request[AnyContent]) = uri(s"${config.rootUri(request)}/collections")
+  def collectionUri(p: List[String] = Nil)(request: Request[Any]) = {
     val path = if(p.nonEmpty) s"/${pathToUri(p)}" else ""
-    uri(s"${config.rootUri}/collections$path")
+    uri(s"${config.rootUri(request)}/collections$path")
   }
 
   val appIndex = AppIndex("media-collections", "The one stop shop for collections")
-  val indexLinks = List(Link("collections", collectionUri.toString))
+  def indexLinks()(request: Request[AnyContent]) = List(Link("collections", collectionUri()(request).toString))
 
-  def getNodeAction(n: Node[Collection]): Option[Link] = Some(Link("collection", collectionUri(n.fullPath).toString))
-  def addChildAction(pathId: List[String] = Nil): Option[ArgoAction] = Some(ArgoAction("add-child", collectionUri(pathId), "POST"))
-  def addChildAction(n: Node[Collection]): Option[ArgoAction] = addChildAction(n.fullPath)
-  def removeNodeAction(n: Node[Collection]): Option[ArgoAction] = if (n.children.nonEmpty) None else Some(
-    ArgoAction("remove", collectionUri(n.fullPath), "DELETE")
+  def getNodeAction(n: Node[Collection])(request: Request[Any]): Option[Link] = Some(Link("collection", collectionUri(n.fullPath)(request).toString))
+  def addChildAction(pathId: List[String] = Nil)(request: Request[Any]): Option[ArgoAction] = Some(ArgoAction("add-child", collectionUri(pathId)(request), "POST"))
+  def addChildAction(n: Node[Collection])(request: Request[Any]): Option[ArgoAction] = addChildAction(n.fullPath)(request)
+  def removeNodeAction(n: Node[Collection])(request: Request[Any]): Option[ArgoAction] = if (n.children.nonEmpty) None else Some(
+    ArgoAction("remove", collectionUri(n.fullPath)(request), "DELETE")
   )
 
   def index = authenticated { req =>
-    respond(appIndex, links = indexLinks)
+    respond(appIndex, links = indexLinks()(req))
   }
 
   def collectionNotFound(path: String) =
@@ -69,12 +68,12 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
   def storeError(message: String) =
     respondError(InternalServerError, "collection-store-error", message)
 
-  def getActions(n: Node[Collection]): List[ArgoAction] = {
-    List(addChildAction(n), removeNodeAction(n)).flatten
+  def getActions(n: Node[Collection])(request: Request[Any]): List[ArgoAction] = {
+    List(addChildAction(n)(request), removeNodeAction(n)(request)).flatten
   }
 
-  def getLinks(n: Node[Collection]): List[Link] = {
-    List(getNodeAction(n)).flatten
+  def getLinks(n: Node[Collection])(request: Request[Any]): List[Link] = {
+    List(getNodeAction(n)(request)).flatten
   }
 
   def correctedCollections = authenticated.async { req =>
@@ -106,11 +105,11 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
       (collection) => collection.description)
   }
 
-  def getCollection(collectionPathId: String) = authenticated.async {
+  def getCollection(collectionPathId: String) = authenticated.async { request =>
     store.get(uriToPath(collectionPathId)).map {
       case Some(collection) =>
         val node = Node(collection.path.last, Nil, collection.path, collection.path, Some(collection))
-        respond(node, actions = getActions(node))
+        respond(node, actions = getActions(node)(request))
       case None =>
         respondNotFound("Collection not found")
     } recover {
@@ -119,10 +118,21 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
   }
 
   def getCollections = authenticated.async { req =>
+
+    implicit def asArgo: Writes[Node[Collection]] = (
+      (__ \ "basename").write[String] ~
+        (__ \ "children").lazyWrite[CollectionsEntity](Writes[CollectionsEntity]
+          // This is so we don't have to rewrite the Write[Seq[T]]
+          (seq => Json.toJson(seq))).contramap(collectionsEntity(_: List[Node[Collection]])(req)) ~
+        (__ \ "fullPath").write[List[String]] ~
+        (__ \ "data").writeNullable[Collection] ~
+        (__ \ "cssColour").writeNullable[String]
+      )(node => (node.basename, node.children, node.fullPath, node.data, getCssColour(node.fullPath)))
+
     allCollections.map { tree =>
       respond(
         Json.toJson(tree)(asArgo),
-        actions = List(addChildAction()).flatten
+        actions = List(addChildAction()(req)).flatten
       )
     } recover {
       case e: CollectionsStoreError => storeError(e.message)
@@ -141,7 +151,7 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
         store.add(collection).map { collection =>
           val node = Node(collection.path.last, Nil, collection.path, collection.path, Some(collection))
           logger.info(apiKeyMarkers(req.user.accessor), s"Adding collection ${path.mkString("/")}")
-          respond(node, links = getLinks(node), actions = getActions(node))
+          respond(node, links = getLinks(node)(req), actions = getActions(node)(req))
         } recover {
           case e: CollectionsStoreError => storeError(e.message)
         }
@@ -194,19 +204,9 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
   )(node => (node.basename, node.children, node.fullPath, node.data))
 
   type CollectionsEntity = Seq[EmbeddedEntity[Node[Collection]]]
-  implicit def asArgo: Writes[Node[Collection]] = (
-    (__ \ "basename").write[String] ~
-      (__ \ "children").lazyWrite[CollectionsEntity](Writes[CollectionsEntity]
-          // This is so we don't have to rewrite the Write[Seq[T]]
-          (seq => Json.toJson(seq))).contramap(collectionsEntity) ~
-      (__ \ "fullPath").write[List[String]] ~
-      (__ \ "data").writeNullable[Collection] ~
-      (__ \ "cssColour").writeNullable[String]
-    )(node => (node.basename, node.children, node.fullPath, node.data, getCssColour(node.fullPath)))
 
-
-  def collectionsEntity(nodes: List[Node[Collection]]): CollectionsEntity = {
-    nodes.map(n => EmbeddedEntity(collectionUri(n.fullPath), Some(n), links = getLinks(n), actions = getActions(n)))
+  def collectionsEntity(nodes: List[Node[Collection]])(request: Request[Any]): CollectionsEntity = {
+    nodes.map(n => EmbeddedEntity(collectionUri(n.fullPath)(request), Some(n), links = getLinks(n)(request), actions = getActions(n)(request)))
   }
 
 }
