@@ -104,7 +104,7 @@ class ImageLoaderController(auth: Authentication,
     val indexLinks = List(
       Link("prepare", s"${config.rootUri(request)}/prepare"),
       Link("uploadStatus", s"${config.rootUri(request)}/uploadStatus/{id}"),
-      Link("uploadStatuses", s"${config.rootUri(request)}/uploadStatuses/"),
+      Link("uploadStatuses", s"${config.rootUri(request)}/uploadStatuses"),
       Link("load", s"${config.rootUri(request)}/images{?uploadedBy,identifiers,uploadTime,filename}"),
       Link("import", s"${config.rootUri(request)}/imports{?uri,uploadedBy,identifiers,uploadTime,filename}")
     )
