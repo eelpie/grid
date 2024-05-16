@@ -16,6 +16,7 @@ import com.gu.mediaservice.lib.argo.model.Link
 import com.gu.mediaservice.lib.auth.Authentication.OnBehalfOfPrincipal
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws.{S3Ops, SimpleSqsMessageConsumer, SqsHelpers}
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{FALLBACK, LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
@@ -55,7 +56,7 @@ class ImageLoaderController(auth: Authentication,
                             authorisation: Authorisation,
                             metrics: ImageLoaderMetrics)
                            (implicit val ec: ExecutionContext, materializer: Materializer)
-  extends BaseController with ArgoHelpers with SqsHelpers {
+  extends BaseController with ArgoHelpers with SqsHelpers with InstanceForRequest {
 
   private val AuthenticatedAndAuthorised = auth andThen authorisation.CommonActionFilters.authorisedForUpload
 
@@ -213,6 +214,8 @@ class ImageLoaderController(auth: Authentication,
   }
 
   def getPreSignedUploadUrlsAndTrack: Action[AnyContent] = AuthenticatedAndAuthorised.async { request =>
+    val instance = instanceOf(request)
+
     val expiration = DateTimeUtils.now().plusHours(1)
 
     val mediaIdToFilenameMap = request.body.asJson.get.as[Map[String, String]]
@@ -222,6 +225,7 @@ class ImageLoaderController(auth: Authentication,
     Future.sequence(
 
       mediaIdToFilenameMap.map{case (mediaId, filename) =>
+        logger.info(s"Preparing file upload for instance $instance: $mediaId / $filename")
 
         val preSignedUrl = store.generatePreSignedUploadUrl(filename, expiration, uploadedBy, mediaId)
 
@@ -234,6 +238,7 @@ class ImageLoaderController(auth: Authentication,
           StatusType.Prepared,
           errorMessage = None,
           expires = expiration.toEpochSecond, // TTL in case upload is never completed by client
+          instance = instance
         )).map(_ =>
           mediaId -> preSignedUrl
         )
@@ -262,6 +267,8 @@ class ImageLoaderController(auth: Authentication,
     val parsedBody = DigestBodyParser.create(tempFile)
 
     AuthenticatedAndAuthorised.async(parsedBody) { req =>
+      val instance = instanceOf(req)
+
       val uploadedByToRecord = uploadedBy.getOrElse(Authentication.getIdentity(req.user))
 
       implicit val context: LogMarker =
@@ -272,7 +279,9 @@ class ImageLoaderController(auth: Authentication,
 
       val uploadStatus = if(config.uploadToQuarantineEnabled) StatusType.Pending else StatusType.Completed
       val uploadExpiry = Instant.now.getEpochSecond + config.uploadStatusExpiry.toSeconds
-      val record = UploadStatusRecord(req.body.digest, filename, uploadedByToRecord, printDateTime(uploadTimeToRecord), identifiers, uploadStatus, None, uploadExpiry)
+      val record = UploadStatusRecord(req.body.digest, filename, uploadedByToRecord, printDateTime(uploadTimeToRecord), identifiers, uploadStatus, None, uploadExpiry, instance)
+      logger.info(s"Loading image for instance $instance: record ${record.id} / $filename")
+
       val result = for {
         uploadRequest <- uploader.loadFile(
           req.body,
