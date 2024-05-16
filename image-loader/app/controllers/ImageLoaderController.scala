@@ -59,6 +59,9 @@ class ImageLoaderController(auth: Authentication,
 
   private val AuthenticatedAndAuthorised = auth andThen authorisation.CommonActionFilters.authorisedForUpload
 
+  //TODO first example of a non user facing message which needs to be made instance aware!
+  val maybeIngestQueueAndProcessor: Option[(SimpleSqsMessageConsumer, Future[Done])] = None
+  /*
   val maybeIngestQueueAndProcessor: Option[(SimpleSqsMessageConsumer, Future[Done])] = maybeIngestQueue.map { ingestQueue =>
     val processor = Source.repeat(())
       .mapAsyncUnordered(parallelism=1)(_ => {
@@ -94,26 +97,29 @@ class ImageLoaderController(auth: Authentication,
 
     (ingestQueue, processor)
   }
+  */
 
-  private lazy val indexResponse: Result = {
+  private def indexResponse(request: Request[AnyContent]): Result = {
     val indexData = Map("description" -> "This is the Loader Service")
     val indexLinks = List(
-      Link("prepare", s"${config.rootUri}/prepare"),
-      Link("uploadStatus", s"${config.rootUri}/uploadStatus/{id}"),
-      Link("uploadStatuses", s"${config.rootUri}/uploadStatuses"),
-      Link("load", s"${config.rootUri}/images{?uploadedBy,identifiers,uploadTime,filename}"),
-      Link("import", s"${config.rootUri}/imports{?uri,uploadedBy,identifiers,uploadTime,filename}")
+      Link("prepare", s"${config.rootUri(request)}/prepare"),
+      Link("uploadStatus", s"${config.rootUri(request)}/uploadStatus/{id}"),
+      Link("uploadStatuses", s"${config.rootUri(request)}/uploadStatuses/"),
+      Link("load", s"${config.rootUri(request)}/images{?uploadedBy,identifiers,uploadTime,filename}"),
+      Link("import", s"${config.rootUri(request)}/imports{?uri,uploadedBy,identifiers,uploadTime,filename}")
     )
     respond(indexData, indexLinks)
   }
 
-  def index: Action[AnyContent] = AuthenticatedAndAuthorised { indexResponse }
-
-  private def quarantineOrStoreImage(uploadRequest: UploadRequest)(implicit logMarker: LogMarker) = {
-    quarantineUploader.map(_.quarantineFile(uploadRequest)).getOrElse(for { uploadStatusUri <- uploader.storeFile(uploadRequest)} yield{uploadStatusUri.toJsObject})
+  def index: Action[AnyContent] = AuthenticatedAndAuthorised { request =>
+    indexResponse(request)
   }
 
-  private def handleMessageFromIngestBucket(sqsMessage:SQSMessage)(basicLogMarker: LogMarker): Future[Unit] = Future[Future[Unit]]{
+  private def quarantineOrStoreImage(uploadRequest: UploadRequest)(implicit logMarker: LogMarker, request: Request[Any]) = {
+    quarantineUploader.map(_.quarantineFile(uploadRequest)(request)).getOrElse(for { uploadStatusUri <- uploader.storeFile(uploadRequest)} yield{uploadStatusUri.toJsObject})
+  }
+
+  private def handleMessageFromIngestBucket(sqsMessage:SQSMessage)(basicLogMarker: LogMarker, request: Request[AnyContent]): Future[Unit] = Future[Future[Unit]]{
 
     logger.info(basicLogMarker, sqsMessage.toString)
 
@@ -153,7 +159,7 @@ class ImageLoaderController(auth: Authentication,
           }
           Future.unit
         } else {
-          attemptToProcessIngestedFile(s3IngestObject, isUiUpload)(logMarker) map { digestedFile =>
+          attemptToProcessIngestedFile(s3IngestObject, isUiUpload)(logMarker, request) map { digestedFile =>
             metrics.successfulIngestsFromQueue.incrementBothWithAndWithoutDimensions(metricDimensions).run
             logger.info(logMarker, s"Successfully processed image ${digestedFile.file.getName}")
             store.deleteObjectFromIngestBucket(s3IngestObject.key)
@@ -171,7 +177,7 @@ class ImageLoaderController(auth: Authentication,
     }
   }.flatten
 
-  private def attemptToProcessIngestedFile(s3IngestObject:S3IngestObject, isUiUpload: Boolean)(initialLogMarker:LogMarker): Future[DigestedFile] = {
+  private def attemptToProcessIngestedFile(s3IngestObject:S3IngestObject, isUiUpload: Boolean)(initialLogMarker:LogMarker, request: Request[AnyContent]): Future[DigestedFile] = {
 
     logger.info(initialLogMarker, "Attempting to process file")
     val tempFile = createTempFile("s3IngestBucketFile")(initialLogMarker)
@@ -185,6 +191,7 @@ class ImageLoaderController(auth: Authentication,
       "mediaId" -> digestedFile.digest
     )
 
+    implicit val r = request
     val futureUploadStatusUri = uploadDigestedFileToStore(
         digestedFileFuture = Future(digestedFile),
         uploadedBy = s3IngestObject.uploadedBy,
@@ -237,7 +244,7 @@ class ImageLoaderController(auth: Authentication,
     .map(Ok(_))
   }
 
-  def loadImage(uploadedBy: Option[String], identifiers: Option[String], uploadTime: Option[String], filename: Option[String]): Action[DigestedFile] =  {
+  def loadImage(uploadedBy: Option[String], identifiers: Option[String], uploadTime: Option[String], filename: Option[String]): Action[DigestedFile] = {
     val uploadTimeToRecord = DateTimeUtils.fromValueOrNow(uploadTime)
 
     val initialContext = MarkerMap(
@@ -275,7 +282,9 @@ class ImageLoaderController(auth: Authentication,
           filename.flatMap(_.trim.nonEmptyOpt)
         )
         _ <- uploadStatusTable.setStatus(record)
-        result <- quarantineOrStoreImage(uploadRequest)
+
+        result <- quarantineOrStoreImage(uploadRequest)(context, req)
+
       } yield result
       result.onComplete( _ => Try { deleteTempFile(tempFile) } )
 
@@ -359,7 +368,7 @@ class ImageLoaderController(auth: Authentication,
           identifiers,
           uploadTime,
           filename
-      )
+      )(context, request)
 
       // under all circumstances, remove the temp files
       uploadResultFuture.onComplete { _ =>
@@ -386,7 +395,7 @@ class ImageLoaderController(auth: Authentication,
     identifiers: Option[String],
     uploadTime: Option[String],
     filename: Option[String]
-  )(implicit logMarker:LogMarker): Future[UploadStatusUri] = {
+  )(implicit logMarker:LogMarker, request: Request[AnyContent]): Future[UploadStatusUri] = {
 
     for {
         digestedFile <- digestedFileFuture

@@ -23,11 +23,11 @@ class UploadStatusController(auth: Authentication,
                             (implicit val ec: ExecutionContext)
   extends BaseController with ArgoHelpers {
 
-  def getUploadStatus(imageId: String) = auth.async {
+  def getUploadStatus(imageId: String) = auth.async { request =>
     store.getStatus(imageId)
       .map {
         case Some(Right(record)) => respond(UploadStatus(record.status, record.errorMessage),
-          uri = Some(URI.create(s"${config.apiUri}/images/${imageId}")))
+          uri = Some(URI.create(s"${config.apiUri(request)}/images/$imageId")))
         case Some(Left(error)) => respondError(BadRequest, "cannot-get", s"Cannot get upload status ${error}")
         case None => respondNotFound(s"No upload status found for image id: ${imageId}")
       }
