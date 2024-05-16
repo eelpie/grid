@@ -64,10 +64,14 @@ class KahunaController(
       else
         Html("undefined")
 
+    val rootUri = config.rootUri(request)
 
     val kahunaClientServiceUrls = KahunaClientServiceUrls(
+      rootUri = rootUri,
       mediaApiUri = config.mediaApiUri(request)
     )
+
+    val returnUri = rootUri + okPath
 
     Ok(views.html.main(
       s"${config.authUri}/login?redirectUri=$returnUri",

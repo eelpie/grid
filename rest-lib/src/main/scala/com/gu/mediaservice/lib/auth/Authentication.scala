@@ -21,25 +21,25 @@ class Authentication(config: CommonConfig,
   // make the execution context implicit so it will be picked up appropriately
   implicit val ec: ExecutionContext = executionContext
 
-  val loginLinks: List[Link] = providers.userProvider.loginLink match {
+  def loginLinks()(request: RequestHeader): List[Link] = providers.userProvider.loginLink match {
     case DisableLoginLink => Nil
-    case BuiltInAuthService => List(Link("login", config.services.loginUriTemplate))
+    case BuiltInAuthService => List(Link("login", config.services.loginUriTemplate(request)))
     case ExternalLoginLink(link) => List(Link("login", link))
   }
 
-  def unauthorised(errorMessage: String, throwable: Option[Throwable] = None): Future[Result] = {
+  def unauthorised(errorMessage: String, throwable: Option[Throwable] = None)(request: RequestHeader): Future[Result] = {
     logger.info(s"Authentication failure $errorMessage", throwable.orNull)
-    Future.successful(respondError(Unauthorized, "authentication-failure", "Authentication failure", loginLinks))
+    Future.successful(respondError(Unauthorized, "authentication-failure", "Authentication failure", loginLinks()(request)))
   }
 
-  def forbidden(errorMessage: String): Future[Result] = {
+  def forbidden(errorMessage: String)(request: RequestHeader): Future[Result] = {
     logger.info(s"User not authorised: $errorMessage")
-    Future.successful(respondError(Forbidden, "principal-not-authorised", "Principal not authorised", loginLinks))
+    Future.successful(respondError(Forbidden, "principal-not-authorised", "Principal not authorised", loginLinks()(request)))
   }
 
-  def expired(user: UserPrincipal): Future[Result] = {
+  def expired(user: UserPrincipal)(request: RequestHeader): Future[Result] = {
     logger.info(s"User token expired for ${user.email}, return 419")
-    Future.successful(respondError(new Status(419), errorKey = "authentication-expired", errorMessage = "User authentication token has expired", loginLinks))
+    Future.successful(respondError(new Status(419), errorKey = "authentication-expired", errorMessage = "User authentication token has expired", loginLinks()(request)))
   }
 
   def authenticationStatus(requestHeader: RequestHeader): Either[Future[Result], Principal] = {
@@ -50,20 +50,20 @@ class Authentication(config: CommonConfig,
     // Authenticate request. Try with inner service authenticator first, then with API authenticator, and finally with user authenticator
     providers.innerServiceProvider.authenticateRequest(requestHeader) match {
       case Authenticated(authedUser) => Right(authedUser)
-      case Invalid(message, throwable) => Left(unauthorised(message, throwable))
-      case NotAuthorised(message) => Left(forbidden(s"Principal not authorised: $message")) // TODO: see if we can avoid repetition
+      case Invalid(message, throwable) => Left(unauthorised(message, throwable)(requestHeader))
+      case NotAuthorised(message) => Left(forbidden(s"Principal not authorised: $message")(requestHeader)) // TODO: see if we can avoid repetition
       case NotAuthenticated =>
         providers.apiProvider.authenticateRequest(requestHeader) match {
           case Authenticated(authedUser) => Right(authedUser)
-          case Invalid(message, throwable) => Left(unauthorised(message, throwable))
-          case NotAuthorised(message) => Left(forbidden(s"Principal not authorised: $message"))
+          case Invalid(message, throwable) => Left(unauthorised(message, throwable)(requestHeader))
+          case NotAuthorised(message) => Left(forbidden(s"Principal not authorised: $message")(requestHeader))
           case NotAuthenticated =>
             providers.userProvider.authenticateRequest(requestHeader) match {
-              case NotAuthenticated => Left(unauthorised("Not authenticated"))
-              case Expired(principal) => Left(expired(principal))
+              case NotAuthenticated => Left(unauthorised("Not authenticated")(requestHeader))
+              case Expired(principal) => Left(expired(principal)(requestHeader))
               case Authenticated(authedUser) => Right(authedUser)
-              case Invalid(message, throwable) => Left(unauthorised(message, throwable).map(flushToken))
-              case NotAuthorised(message) => Left(forbidden(s"Principal not authorised: $message"))
+              case Invalid(message, throwable) => Left(unauthorised(message, throwable)(requestHeader).map(flushToken))
+              case NotAuthorised(message) => Left(forbidden(s"Principal not authorised: $message")(requestHeader))
             }
         }
     }

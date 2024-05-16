@@ -32,14 +32,14 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   val cloudFrontKeyPairId: Option[String]           = stringOpt("cloudfront.keypair.id")
 
   val rootUri: RequestHeader => String = services.apiBaseUri
-  val kahunaUri: String = services.kahunaBaseUri
+  val kahunaUri: RequestHeader => String = services.kahunaBaseUri
   val cropperUri: RequestHeader => String = services.cropperBaseUri
   val loaderUri: RequestHeader => String = services.loaderBaseUri
   val metadataUri: RequestHeader => String = services.metadataBaseUri
   val imgopsUri: RequestHeader => String = services.imgopsBaseUri
   val usageUri: RequestHeader => String = services.usageBaseUri
   val leasesUri: RequestHeader => String = services.leasesBaseUri
-  val authUri: String = services.authBaseUri
+  val authUri: RequestHeader => String = services.authBaseUri
   val collectionsUri: RequestHeader => String = services.collectionsBaseUri
 
   val requiredMetadata = List("credit", "description", "usageRights")
