@@ -16,7 +16,7 @@ class LocalAuthenticationProvider (resources: AuthenticationProviderResources)
   logger.warn("Authentication set to local, every user will be authenticated")
 
   implicit val ec: ExecutionContext = resources.controllerComponents.executionContext
-  private val kahunaBaseURI: String = resources.commonConfig.services.kahunaBaseUri
+  private def kahunaBaseURI: RequestHeader => RedirectUri = resources.commonConfig.services.kahunaBaseUri
 
   override def authenticateRequest(request: RequestHeader): AuthenticationStatus = {
     Authenticated(UserPrincipal("John", "Doe", "johndoe@example.com"))
@@ -35,7 +35,7 @@ class LocalAuthenticationProvider (resources: AuthenticationProviderResources)
   }
 
   private def redirectToSource(request: RequestHeader): Result = {
-    request.getQueryString("redirectUri").map(redirectURL => Redirect(redirectURL)).getOrElse(Redirect(kahunaBaseURI))
+    request.getQueryString("redirectUri").map(redirectURL => Redirect(redirectURL)).getOrElse(Redirect(kahunaBaseURI(request)))
   }
 }
 
