@@ -66,7 +66,7 @@ protected class SingleHostServices(val hostname: String, val baseport: Int) exte
 
   override def imgopsBaseUri(request: RequestHeader): String = vhostServiceName("imgops", request)
 
-  override def usageBaseUri(request: RequestHeader): String = vhostServiceName("usages", request)
+  override def usageBaseUri(request: RequestHeader): String = vhostServiceName("usage", request)
 
   override def collectionsBaseUri(request: RequestHeader): String = vhostServiceName("collections", request)
 
@@ -90,7 +90,7 @@ protected class SingleHostServices(val hostname: String, val baseport: Int) exte
   val leasesInternalBaseUri: String = internalServiceBaseUri("leases", 9000)
   val metadataInternalBaseUri: String = internalServiceBaseUri("metadata-editor", 9000)
   val projectionInternalBaseUri: String = internalServiceBaseUri("projection", 9000)
-  val usageInternalBaseUri: String = internalServiceBaseUri("usages", 9000)
+  val usageInternalBaseUri: String = internalServiceBaseUri("usage", 9000)
 
   private def vhostServiceName(serviceName: String, request: RequestHeader): String = {
     val vhostRootUrl = request.host
