@@ -245,7 +245,7 @@ class ThrallController(
   }
 
   def restoreFromReplica: Action[AnyContent] = withLoginRedirect {implicit request =>
-    Ok(views.html.restoreFromReplica(s"${services.loaderBaseUri}/images/restore")) //FIXME figure out imageId bit
+    Ok(views.html.restoreFromReplica(s"${services.loaderBaseUri(request)}/images/restore")) //FIXME figure out imageId bit
   }
 
   def reattemptMigrationFailures(filter: String, page: Int): Action[AnyContent] = withLoginRedirectAsync { implicit request =>
