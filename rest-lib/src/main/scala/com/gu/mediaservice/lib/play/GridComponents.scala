@@ -53,7 +53,7 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
     Seq(
       //corsFilter,
       //csrfFilter TODO no longer gets bypassed thanks to preceding CORS check; CORS filter does not appear to tag the request if it passes for same origin.
-      securityHeadersFilter,
+      //securityHeadersFilter, TODO needs to be replemented to be request/instance specfic
       gzipFilter,
       new RequestLoggingFilter(materializer),
       // After RequestLoggingFilter so the request id is available to tag transactions with.
