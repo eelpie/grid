@@ -4,7 +4,7 @@ import play.api.mvc.RequestHeader
 
 trait Services {
 
-  def kahunaBaseUri: String
+  def kahunaBaseUri(request: RequestHeader): String
 
   def apiBaseUri(request: RequestHeader): String
 
@@ -24,7 +24,7 @@ trait Services {
 
   def leasesBaseUri(request: RequestHeader): String
 
-  def authBaseUri: String
+  def authBaseUri(request: RequestHeader): String
 
   def guardianWitnessBaseUri: String
 
@@ -34,7 +34,7 @@ trait Services {
 
   def redirectUriPlaceholder: String
 
-  def loginUriTemplate: String
+  def loginUriTemplate(requestHeader: RequestHeader): String
 
   def apiInternalBaseUri: String
 
@@ -52,7 +52,7 @@ trait Services {
 }
 
 protected class SingleHostServices(val rootUrl: String) extends Services {
-  val kahunaBaseUri: String = rootUrl
+  override def kahunaBaseUri(request: RequestHeader): String =  vhostServiceName("", request)
 
   override def apiBaseUri(request: RequestHeader): String=  vhostServiceName("media-api", request)
 
@@ -72,17 +72,17 @@ protected class SingleHostServices(val rootUrl: String) extends Services {
 
   override def leasesBaseUri(request: RequestHeader): String = vhostServiceName("leases", request)
 
-  val authBaseUri: String = subpathedServiceBaseUri("auth")
+  override def authBaseUri(request: RequestHeader): String = vhostServiceName("auth", request)
 
-  private val thrallBaseUri: String =  subpathedServiceBaseUri("thrall")
+  private def thrallBaseUri(request: RequestHeader): String = vhostServiceName("thrall", request)
 
   val guardianWitnessBaseUri: String = "https://n0ticeapis.com"
 
-  override def corsAllowedDomains(request: RequestHeader): Set[String] = Set(kahunaBaseUri, apiBaseUri(request), thrallBaseUri)
+  override def corsAllowedDomains(request: RequestHeader): Set[String] = Set(kahunaBaseUri(request), apiBaseUri(request), thrallBaseUri(request))
 
   val redirectUriParam = "redirectUri"
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
-  val loginUriTemplate = s"$authBaseUri/login$redirectUriPlaceholder"
+  def loginUriTemplate(request: RequestHeader): String = s"${authBaseUri(request)}/login$redirectUriPlaceholder"
 
   val apiInternalBaseUri: String = internalServiceBaseUri("media-api", 9000)
   val collectionsInternalBaseUri: String = internalServiceBaseUri("collections", 9000)
@@ -100,5 +100,6 @@ protected class SingleHostServices(val rootUrl: String) extends Services {
   private def subpathedServiceBaseUri(serviceName: String): String = s"$rootUrl/$serviceName"
 
   private def internalServiceBaseUri(host: String, port: Int) = s"http://$host:$port"
+
 }
 

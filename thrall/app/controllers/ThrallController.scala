@@ -85,7 +85,7 @@ class ThrallController(
           Ok(views.html.migrationFailuresOverview(
             failuresOverview,
             apiBaseUrl = services.apiBaseUri(request),
-            uiBaseUrl = services.kahunaBaseUri,
+            uiBaseUrl = services.kahunaBaseUri(request),
           ))
         )
       case _ => for {
@@ -95,7 +95,7 @@ class ThrallController(
         response = Ok(views.html.migrationFailuresOverview(
           failuresOverview,
           apiBaseUrl = services.apiBaseUri(request),
-          uiBaseUrl = services.kahunaBaseUri,
+          uiBaseUrl = services.kahunaBaseUri(request),
         ))
       } yield response
     }
@@ -109,7 +109,7 @@ class ThrallController(
             Ok(views.html.migrationFailures(
               failures,
               apiBaseUrl = services.apiBaseUri(request),
-              uiBaseUrl = services.kahunaBaseUri,
+              uiBaseUrl = services.kahunaBaseUri(request),
               filter,
               paging.page,
               shouldAllowReattempts = true
@@ -122,7 +122,7 @@ class ThrallController(
           response = Ok(views.html.migrationFailures(
             failures,
             apiBaseUrl = services.apiBaseUri(request),
-            uiBaseUrl = services.kahunaBaseUri,
+            uiBaseUrl = services.kahunaBaseUri(request),
             filter,
             paging.page,
             shouldAllowReattempts = false
