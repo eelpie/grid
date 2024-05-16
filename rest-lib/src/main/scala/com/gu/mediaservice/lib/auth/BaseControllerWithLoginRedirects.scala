@@ -15,7 +15,7 @@ trait BaseControllerWithLoginRedirects extends BaseController {
     auth.authenticationStatus(request) match {
       case Right(principal) =>
         handler(new AuthenticatedRequest(principal, request))
-      case Left(resultFuture) => auth.loginLinks.headOption match {
+      case Left(resultFuture) => auth.loginLinks()(request).headOption match {
         case None if isLoginOptional => handler(request) // if login is not strictly required, then still perform the action (just the user principal won't be available)
         case None => resultFuture // if login is strictly required, then return the auth failure result
         case Some(loginLink) =>

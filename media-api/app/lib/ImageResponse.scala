@@ -150,7 +150,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgopsUri(new URI(secureUrl))(request)) }
 
     val optimisedLink = Link("optimised", makeImgopsUri(new URI(secureUrl))(request))
-    val imageLink = Link("ui:image", s"${config.kahunaUri}/images/$id")
+    val imageLink = Link("ui:image", s"${config.kahunaUri(request)}/images/$id")
     val usageLink = Link("usages", s"${config.usageUri(request)}/usages/media/$id")
     val leasesLink = Link("leases", s"${config.leasesUri(request)}/leases/media/$id")
     val fileMetadataLink = Link("fileMetadata", s"${config.rootUri(request)}/images/$id/fileMetadata")
