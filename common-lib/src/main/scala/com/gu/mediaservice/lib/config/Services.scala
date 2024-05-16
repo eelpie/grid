@@ -8,9 +8,9 @@ trait Services {
 
   def apiBaseUri(request: RequestHeader): String
 
-  def loaderBaseUri: String
+  def loaderBaseUri(request: RequestHeader): String
 
-  def projectionBaseUri: String
+  def projectionBaseUri(request: RequestHeader): String
 
   def cropperBaseUri(request: RequestHeader): String
 
@@ -18,11 +18,11 @@ trait Services {
 
   def imgopsBaseUri(request: RequestHeader): String
 
-  def usageBaseUri: String
+  def usageBaseUri(request: RequestHeader): String
 
-  def collectionsBaseUri: String
+  def collectionsBaseUri(request: RequestHeader): String
 
-  def leasesBaseUri: String
+  def leasesBaseUri(request: RequestHeader): String
 
   def authBaseUri: String
 
@@ -56,9 +56,9 @@ protected class SingleHostServices(val hostname: String, val baseport: Int) exte
 
   override def apiBaseUri(request: RequestHeader): String=  vhostServiceName("media-api", request)
 
-  val loaderBaseUri: String = subpathedServiceBaseUri("image-loader")
+  override def loaderBaseUri(request: RequestHeader): String = vhostServiceName("image-loader", request)
 
-  val projectionBaseUri: String = loaderBaseUri
+  override def projectionBaseUri(request: RequestHeader): String = vhostServiceName("projection", request)
 
   override def cropperBaseUri(request: RequestHeader): String = vhostServiceName("cropper", request)
 
@@ -66,11 +66,11 @@ protected class SingleHostServices(val hostname: String, val baseport: Int) exte
 
   override def imgopsBaseUri(request: RequestHeader): String = vhostServiceName("imgops", request)
 
-  val usageBaseUri: String =subpathedServiceBaseUri("usage")
+  override def usageBaseUri(request: RequestHeader): String = vhostServiceName("usages", request)
 
-  val collectionsBaseUri: String = subpathedServiceBaseUri("collections")
+  override def collectionsBaseUri(request: RequestHeader): String = vhostServiceName("collections", request)
 
-  val leasesBaseUri: String = subpathedServiceBaseUri("leases")
+  override def leasesBaseUri(request: RequestHeader): String = vhostServiceName("leases", request)
 
   val authBaseUri: String = subpathedServiceBaseUri("auth")
 
@@ -100,6 +100,5 @@ protected class SingleHostServices(val hostname: String, val baseport: Int) exte
   private def subpathedServiceBaseUri(serviceName: String): String = s"$rootUrl/$serviceName"
 
   private def internalServiceBaseUri(host: String, port: Int) = s"http://$host:$port"
-
 }
 

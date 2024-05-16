@@ -12,7 +12,7 @@ import scala.util.Try
 case class KinesisReaderConfig(streamName: String, arn: String, appName: String)
 
 class UsageConfig(resources: GridConfigResources) extends CommonConfig(resources) with GridLogging {
-  val usageUri: String = services.usageBaseUri
+  val usageUri: RequestHeader => String = services.usageBaseUri
   val apiUri: RequestHeader => String = services.apiBaseUri
 
   val defaultMaxRetries = 4

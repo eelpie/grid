@@ -25,11 +25,11 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
 
   private val notFound = respondNotFound("MediaLease not found")
 
-  private val indexResponse = {
+  private def indexResponse()(request: Request[AnyContent]) = {
     val appIndex = AppIndex("media-leases", "Media leases service", Map())
     val indexLinks =  List(
-      Link("leases", s"${config.rootUri}/leases/{id}"),
-      Link("by-media-id", s"${config.rootUri}/leases/media/{id}"))
+      Link("leases", s"${config.rootUri(request)}/leases/{id}"),
+      Link("by-media-id", s"${config.rootUri(request)}/leases/media/{id}"))
     respond(appIndex, indexLinks)
   }
 
@@ -77,7 +77,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     }
   }
 
-  def index = auth { _ => indexResponse }
+  def index = auth { request => indexResponse()(request) }
 
   def reindex = auth.async { _ => Future {
     store.forEach { leases =>
@@ -116,7 +116,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   def getLease(id: String) = auth.async { request => Future {
       val leases = store.get(id)
       leases.foldLeft(notFound)((_, lease) => respond[MediaLease](
-          uri = config.leaseUri(id),
+          uri = config.leaseUri(id)(request),
           data = lease,
           links = lease.id
             .map(id => config.mediaApiLink(id)(request))
@@ -152,7 +152,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
       val leases = store.getForMedia(id)
 
       respond[LeasesByMedia](
-        uri = config.leasesMediaUri(id),
+        uri = config.leasesMediaUri(id)(request),
         links = List(config.mediaApiLink(id)(request)),
         data = LeasesByMedia.build(leases)
       )

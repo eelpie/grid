@@ -101,7 +101,7 @@ class MediaApi(
     val userCanUpload: Boolean = authorisation.hasPermissionTo(UploadImages)(user)
     val userCanArchive: Boolean = authorisation.hasPermissionTo(ArchiveImages)(user)
 
-    val maybeLoaderLink: Option[Link] = Some(Link("loader", config.loaderUri)).filter(_ => userCanUpload)
+    val maybeLoaderLink: Option[Link] = Some(Link("loader", config.loaderUri(request))).filter(_ => userCanUpload)
     val maybeArchiveLink: Option[Link] = Some(Link("archive", s"${config.metadataUri(request)}/metadata/{id}/archived")).filter(_ => userCanArchive)
     val indexLinks = List(
       searchLink()(request),
@@ -114,9 +114,9 @@ class MediaApi(
       Link("edits",           config.metadataUri(request)),
       Link("session",         s"${config.authUri}/session"),
       Link("witness-report",  s"${config.services.guardianWitnessBaseUri}/2/report/{id}"),
-      Link("collections",     config.collectionsUri),
+      Link("collections",     config.collectionsUri(request)),
       Link("permissions",     s"${config.rootUri(request)}/permissions"),
-      Link("leases",          config.leasesUri),
+      Link("leases",          config.leasesUri(request)),
       Link("syndicate-image", s"${config.rootUri}/images/{id}/{partnerName}/{startPending}/syndicateImage"),
       Link("undelete",        s"${config.rootUri(request)}/images/{id}/undelete")
     ) ++ maybeLoaderLink.toList ++ maybeArchiveLink.toList
