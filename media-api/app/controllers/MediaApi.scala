@@ -107,7 +107,7 @@ class MediaApi(
       Link("label-search",    s"${config.rootUri(request)}/images/edits/label{?q}"),
       Link("cropper",         config.cropperUri(request)),
       Link("edits",           config.metadataUri(request)),
-      Link("session",         s"${config.authUri}/session"),
+      Link("session",         s"${config.authUri(request)}/session"),
       Link("witness-report",  s"${config.services.guardianWitnessBaseUri}/2/report/{id}"),
       Link("collections",     config.collectionsUri(request)),
       Link("permissions",     s"${config.rootUri(request)}/permissions"),

@@ -28,13 +28,13 @@ class PandaAuthenticationProvider(
 
   implicit val ec: ExecutionContext = controllerComponents.executionContext
 
-  final override def authCallbackUrl: String = s"${resources.commonConfig.services.authBaseUri}/oauthCallback"
+  final override def authCallbackUrl: String = ??? // TODO We're stuck here but will be replacing Panda s"${resources.commonConfig.services.authBaseUri}/oauthCallback"
   override lazy val panDomainSettings: PanDomainAuthSettingsRefresher = buildPandaSettings()
   override def wsClient: WSClient = resources.wsClient
   override def controllerComponents: ControllerComponents = resources.controllerComponents
 
-  val loginLinks = List(
-    Link("login", resources.commonConfig.services.loginUriTemplate)
+  def loginLinks(request: RequestHeader) = List(
+    Link("login", resources.commonConfig.services.loginUriTemplate(request))
   )
 
   /**
@@ -86,13 +86,13 @@ class PandaAuthenticationProvider(
       // We then have to flatten the Future[Future[T]]. Fiddly...
       Future.fromTry(Try(processOAuthCallback()(requestHeader))).flatten.recover {
         // This is when session session args are missing
-        case e: OAuthException => respondError(BadRequest, "google-auth-exception", e.getMessage, loginLinks)
+        case e: OAuthException => respondError(BadRequest, "google-auth-exception", e.getMessage, loginLinks(requestHeader))
 
         // Class `missing anti forgery token` as a 4XX
         // see https://github.com/guardian/pan-domain-authentication/blob/master/pan-domain-auth-play_2-6/src/main/scala/com/gu/pandomainauth/service/GoogleAuth.scala#L63
         case e: IllegalArgumentException if e.getMessage == "The anti forgery token did not match" => {
           logger.error("Anti-forgery exception encountered", e)
-          respondError(BadRequest, "google-auth-exception", e.getMessage, loginLinks)
+          respondError(BadRequest, "google-auth-exception", e.getMessage, loginLinks(requestHeader))
         }
       }.map {
         // not very elegant, but this will override the redirect from panda with any alternative destination
