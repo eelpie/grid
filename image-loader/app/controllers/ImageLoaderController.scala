@@ -617,7 +617,7 @@ class ImageLoaderController(auth: Authentication,
 
   private def instanceOf(request: RequestHeader) = {
     // TODO some sort of filter supplied attribute
-    request.host
+    request.host.split(".").head
   }
 
 }
