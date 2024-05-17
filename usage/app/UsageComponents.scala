@@ -14,7 +14,6 @@ class UsageComponents(context: Context) extends GridComponents(context, new Usag
 
   val usageMetadataBuilder = new UsageMetadataBuilder(config)
   val mediaWrapper = new MediaWrapperOps(usageMetadataBuilder)
-  val liveContentApi = new LiveContentApi(config)(ScheduledExecutor())
   val usageGroupOps = new UsageGroupOps(config, mediaWrapper)
   val usageTable = new UsageTable(config)
   val usageMetrics = new UsageMetrics(config)
@@ -28,7 +27,7 @@ class UsageComponents(context: Context) extends GridComponents(context, new Usag
     Future.successful(())
   })
 
-  val controller = new UsageApi(auth, authorisation, usageTable, usageGroupOps, notifications, config, usageRecorder.usageApiSubject, liveContentApi, controllerComponents, playBodyParsers)
+  val controller = new UsageApi(auth, authorisation, usageTable, usageGroupOps, notifications, config, usageRecorder.usageApiSubject, controllerComponents, playBodyParsers)
 
 
   override lazy val router = new Routes(httpErrorHandler, controller, management)
