@@ -24,7 +24,7 @@ class ExternalThrallMessageTest extends AnyFreeSpec with Matchers with TableDriv
   "Make some JSON" - {
     "from an imageMessage" in {
       val image = ImageTest.createImage("hello")
-      val message = ImageMessage(nowUtc, image.copy(uploadTime = nowUtc))
+      val message = ImageMessage(nowUtc, image.copy(uploadTime = nowUtc), instance = "an-instance")
       //Manually set the image time, because the time zone data is lost in
       //conversion
       roundTrip(message)
