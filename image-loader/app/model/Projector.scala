@@ -89,7 +89,7 @@ class Projector(config: ImageUploadOpsCfg,
 
   private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3)
 
-  def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest)
+  def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest, instance: String)
                         (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[Image]] = {
     Future {
       import ImageIngestOperations.fileKeyFromId
@@ -106,7 +106,7 @@ class Projector(config: ImageUploadOpsCfg,
         val digestedFile = getSrcFileDigestForProjection(s3Source, imageId, tempFile)
         val extractedS3Meta = S3FileExtractedMetadata(s3Source.getObjectMetadata)
 
-        val finalImageFuture = projectImage(digestedFile, extractedS3Meta, gridClient, onBehalfOfFn)
+        val finalImageFuture = projectImage(digestedFile, extractedS3Meta, gridClient, onBehalfOfFn, instance)
         val finalImage = Await.result(finalImageFuture, Duration.Inf)
 
         Some(finalImage)
@@ -129,7 +129,8 @@ class Projector(config: ImageUploadOpsCfg,
   def projectImage(srcFileDigest: DigestedFile,
                    extractedS3Meta: S3FileExtractedMetadata,
                    gridClient: GridClient,
-                   onBehalfOfFn: WSRequest => WSRequest)
+                   onBehalfOfFn: WSRequest => WSRequest,
+                   instance: String)
                   (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
     val DigestedFile(tempFile_, id_) = srcFileDigest
 
@@ -146,7 +147,8 @@ class Projector(config: ImageUploadOpsCfg,
           uploadTime = extractedS3Meta.uploadTime,
           uploadedBy = extractedS3Meta.uploadedBy,
           identifiers = identifiers_,
-          uploadInfo = uploadInfo_
+          uploadInfo = uploadInfo_,
+          instance = instance // TODO careful with this one!
         )
 
         imageUploadProjectionOps.projectImageFromUploadRequest(uploadRequest) flatMap (
@@ -167,7 +169,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
 
   def projectImageFromUploadRequest(uploadRequest: UploadRequest)
                                    (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
-    val dependenciesWithProjectionsOnly = ImageUploadOpsDependencies(
+    val dependenciesWithProjectionsOnly: ImageUploadOpsDependencies = ImageUploadOpsDependencies(
       config,
       imageOps,
       projectOriginalFileAsS3Model,
@@ -198,9 +200,9 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
   }
 
   private def fetchOptimisedFile(
-    imageId: String, outFile: File
+    imageId: String, outFile: File, instance: String
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
-    val key = optimisedPngKeyFromId(imageId)
+    val key = optimisedPngKeyFromId(imageId, instance)
 
     fetchFile(config.originalFileBucket, key, outFile)
   }

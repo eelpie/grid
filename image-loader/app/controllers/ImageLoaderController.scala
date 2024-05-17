@@ -121,6 +121,7 @@ class ImageLoaderController(auth: Authentication,
   }
 
   private def handleMessageFromIngestBucket(sqsMessage:SQSMessage)(basicLogMarker: LogMarker, request: Request[AnyContent]): Future[Unit] = Future[Future[Unit]]{
+    val instance = ???  // TODO has to be on the message!
 
     logger.info(basicLogMarker, sqsMessage.toString)
 
@@ -160,7 +161,7 @@ class ImageLoaderController(auth: Authentication,
           }
           Future.unit
         } else {
-          attemptToProcessIngestedFile(s3IngestObject, isUiUpload)(logMarker, request) map { digestedFile =>
+          attemptToProcessIngestedFile(s3IngestObject, isUiUpload, instance)(logMarker, request) map { digestedFile =>
             metrics.successfulIngestsFromQueue.incrementBothWithAndWithoutDimensions(metricDimensions).run
             logger.info(logMarker, s"Successfully processed image ${digestedFile.file.getName}")
             store.deleteObjectFromIngestBucket(s3IngestObject.key)
@@ -178,7 +179,7 @@ class ImageLoaderController(auth: Authentication,
     }
   }.flatten
 
-  private def attemptToProcessIngestedFile(s3IngestObject:S3IngestObject, isUiUpload: Boolean)(initialLogMarker:LogMarker, request: Request[AnyContent]): Future[DigestedFile] = {
+  private def attemptToProcessIngestedFile(s3IngestObject:S3IngestObject, isUiUpload: Boolean, instance: String)(initialLogMarker:LogMarker, request: Request[AnyContent]): Future[DigestedFile] = {
 
     logger.info(initialLogMarker, "Attempting to process file")
     val tempFile = createTempFile("s3IngestBucketFile")(initialLogMarker)
@@ -198,7 +199,8 @@ class ImageLoaderController(auth: Authentication,
         uploadedBy = s3IngestObject.uploadedBy,
         identifiers =  None,
         uploadTime = Some(s3IngestObject.uploadTime.toString) , // upload time as iso string - uploader uses DateTimeUtils.fromValueOrNow
-        filename = Some(s3IngestObject.filename)
+        filename = Some(s3IngestObject.filename),
+        instance = instance
     )
 
     // under all circumstances, remove the temp files
@@ -288,7 +290,8 @@ class ImageLoaderController(auth: Authentication,
           uploadedByToRecord,
           identifiers,
           uploadTimeToRecord,
-          filename.flatMap(_.trim.nonEmptyOpt)
+          filename.flatMap(_.trim.nonEmptyOpt),
+          instance
         )
         _ <- uploadStatusTable.setStatus(record)
 
@@ -317,17 +320,20 @@ class ImageLoaderController(auth: Authentication,
 
   // Fetch
   def projectImageBy(imageId: String): Action[AnyContent] = {
+
     val initialContext = MarkerMap(
       "imageId" -> imageId,
       "requestType" -> "image-projection"
     )
     val tempFile = createTempFile(s"projection-$imageId")(initialContext)
     auth.async { req =>
+      val instance = instanceOf(req)
+
       implicit val context: LogMarker = initialContext ++ Map(
         "requestId" -> RequestLoggingFilter.getRequestId(req)
       )
       val onBehalfOfFn: OnBehalfOfPrincipal = auth.getOnBehalfOfPrincipal(req.user)
-      val result = projector.projectS3ImageById(imageId, tempFile, gridClient, onBehalfOfFn)
+      val result = projector.projectS3ImageById(imageId, tempFile, gridClient, onBehalfOfFn, instance)
 
       result.onComplete( _ => Try { deleteTempFile(tempFile) } )
 
@@ -356,6 +362,8 @@ class ImageLoaderController(auth: Authentication,
                    filename: Option[String]
                  ): Action[AnyContent] = {
     AuthenticatedAndAuthorised.async { request =>
+      val instance = instanceOf(request)
+
       implicit val context: MarkerMap = MarkerMap(
         "requestType" -> "import-image",
         "key-tier" -> request.user.accessor.tier.toString,
@@ -363,7 +371,7 @@ class ImageLoaderController(auth: Authentication,
         "requestId" -> RequestLoggingFilter.getRequestId(request)
       )
 
-      logger.info(context, "importImage request start")
+      logger.info(context, "importImage request start for $uri into instance $instance")
 
       val tempFile = createTempFile("download")
       val digestedFileFuture = for {
@@ -376,7 +384,8 @@ class ImageLoaderController(auth: Authentication,
           uploadedBy.getOrElse(Authentication.getIdentity(request.user)),
           identifiers,
           uploadTime,
-          filename
+          filename,
+          instance,
       )(context, request)
 
       // under all circumstances, remove the temp files
@@ -403,7 +412,8 @@ class ImageLoaderController(auth: Authentication,
     uploadedBy: String,
     identifiers: Option[String],
     uploadTime: Option[String],
-    filename: Option[String]
+    filename: Option[String],
+    instance: String
   )(implicit logMarker:LogMarker, request: Request[AnyContent]): Future[UploadStatusUri] = {
 
     for {
@@ -416,6 +426,7 @@ class ImageLoaderController(auth: Authentication,
           identifiers =  maybeStatus.flatMap(_.identifiers).orElse(identifiers),
           uploadTime =  DateTimeUtils.fromValueOrNow(maybeStatus.map(_.uploadTime).orElse(uploadTime)),
           filename =  maybeStatus.flatMap(_.fileName).orElse(filename).flatMap(_.trim.nonEmptyOpt),
+          instance
         )
         result <- uploader.storeFile(uploadRequest)
       } yield {
@@ -516,6 +527,7 @@ class ImageLoaderController(auth: Authentication,
 
   private case class RestoreFromReplicaForm(imageId: String)
   def restoreFromReplica: Action[AnyContent] = AuthenticatedAndAuthorised.async { implicit request =>
+    val instance = instanceOf(request)
 
     val imageId = Form(
       mapping(
@@ -562,7 +574,8 @@ class ImageLoaderController(auth: Authentication,
               metadata.uploadTime,
               metadata.uploadedBy,
               metadata.identifiers,
-              UploadInfo(metadata.uploadFileName)
+              UploadInfo(metadata.uploadFileName),
+              instance
             ),
             gridClient,
             auth.getOnBehalfOfPrincipal(request.user)
