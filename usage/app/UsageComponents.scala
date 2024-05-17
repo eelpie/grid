@@ -12,9 +12,7 @@ class UsageComponents(context: Context) extends GridComponents(context, new Usag
 
   final override val buildInfo = utils.buildinfo.BuildInfo
 
-  val usageMetadataBuilder = new UsageMetadataBuilder(config)
-  val mediaWrapper = new MediaWrapperOps(usageMetadataBuilder)
-  val usageGroupOps = new UsageGroupOps(config, mediaWrapper)
+  val usageGroupOps = new UsageGroupOps(config)
   val usageTable = new UsageTable(config)
   val usageMetrics = new UsageMetrics(config)
   val usageNotifier = new UsageNotifier(config, usageTable)
