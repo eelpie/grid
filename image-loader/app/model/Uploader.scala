@@ -390,7 +390,7 @@ class Uploader(val store: ImageLoaderStore,
 
     for {
       imageUpload <- fromUploadRequest(uploadRequest)
-      updateMessage = UpdateMessage(subject = Image, image = Some(imageUpload.image))
+      updateMessage = UpdateMessage(subject = Image, image = Some(imageUpload.image), instance = uploadRequest.instance)
       _ <- Future { notifications.publish(updateMessage) }
       // TODO: centralise where all these URLs are constructed
     } yield UploadStatusUri(s"${config.rootUri(request)}/uploadStatus/${uploadRequest.imageId}")
@@ -407,7 +407,7 @@ class Uploader(val store: ImageLoaderStore,
     imageWithUserEditsApplied <- ImageDataMerger.aggregate(imageWithoutUserEdits, gridClient, onBehalfOfFn)
     _ <- Future {
       notifications.publish(
-        UpdateMessage(subject = Image, image = Some(imageWithUserEditsApplied))
+        UpdateMessage(subject = Image, image = Some(imageWithUserEditsApplied), instance = uploadRequest.instance)
       )
     }
   } yield ()

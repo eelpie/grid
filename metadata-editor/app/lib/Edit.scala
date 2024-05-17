@@ -11,9 +11,9 @@ trait Edit extends MessageSubjects {
   def editsStore: EditsStore
   def notifications: Notifications
 
-  def publish(id: String, subject: String)(metadata: JsObject): Edits = {
+  def publish(id: String, subject: String, instance: String)(metadata: JsObject): Edits = {
     val edits = metadata.as[Edits]
-    val updateMessage = UpdateMessage(subject = subject, id = Some(id), edits = Some(edits))
+    val updateMessage = UpdateMessage(subject = subject, id = Some(id), edits = Some(edits), instance = String)
     notifications.publish(updateMessage)
     edits
   }
