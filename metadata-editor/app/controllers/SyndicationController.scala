@@ -3,6 +3,7 @@ package controllers
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws.{DynamoDB, NoItemFound}
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents, RequestHeader}
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
@@ -18,7 +19,8 @@ class SyndicationController(auth: Authentication,
                             val notifications: Notifications,
                             val config: EditsConfig,
                             override val controllerComponents: ControllerComponents)(implicit val ec: ExecutionContext)
-  extends BaseController with Syndication with MessageSubjects with ArgoHelpers with EditsResponse {
+  extends BaseController with Syndication with MessageSubjects with ArgoHelpers with EditsResponse
+    with InstanceForRequest {
 
   override val metadataBaseUri: RequestHeader => String = config.services.metadataBaseUri
 
@@ -67,10 +69,4 @@ class SyndicationController(auth: Authentication,
     deleteSyndicationAndPublish(id, instanceOf(request)).map(_ => Accepted)
   }
 
-  private def instanceOf(request: RequestHeader) = {
-    // TODO some sort of filter supplied attribute
-    request.host.split(".").head
-  }
-
 }
-

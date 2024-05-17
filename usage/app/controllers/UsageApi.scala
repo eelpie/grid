@@ -6,6 +6,7 @@ import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.{EntityResponse, Link, Action => ArgoAction}
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
 import com.gu.mediaservice.lib.aws.UpdateMessage
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.lib.usage.UsageBuilder
@@ -33,7 +34,7 @@ class UsageApi(
   playBodyParsers: PlayBodyParsers
 )(
   implicit val ec: ExecutionContext
-) extends BaseController with MessageSubjects with ArgoHelpers {
+) extends BaseController with MessageSubjects with ArgoHelpers with InstanceForRequest {
 
   private val AuthenticatedAndAuthorisedToDelete = auth andThen authorisation.CommonActionFilters.authorisedForDeleteCropsOrUsages
 
@@ -309,11 +310,6 @@ class UsageApi(
     val updateMessage = UpdateMessage(subject = DeleteUsages, id = Some(mediaId), instance = instanceOf(req))
     notifications.publish(updateMessage)
     Future.successful(Ok)
-  }
-
-  private def instanceOf(request: RequestHeader) = {
-    // TODO some sort of filter supplied attribute
-    request.host.split(".").head
   }
 
 }

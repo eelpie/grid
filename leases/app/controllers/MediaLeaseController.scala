@@ -1,10 +1,10 @@
 package controllers
 
 import java.util.UUID
-
 import com.gu.mediaservice.lib.argo._
 import com.gu.mediaservice.lib.argo.model._
 import com.gu.mediaservice.lib.auth._
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.model.leases.{LeasesByMedia, MediaLease}
 import lib.{LeaseNotifier, LeaseStore, LeasesConfig}
 import play.api.libs.json._
@@ -21,7 +21,7 @@ object AppIndex {
 
 class MediaLeaseController(auth: Authentication, store: LeaseStore, config: LeasesConfig, notifications: LeaseNotifier,
                           override val controllerComponents: ControllerComponents)(implicit val ec: ExecutionContext)
-  extends BaseController with ArgoHelpers {
+  extends BaseController with ArgoHelpers with InstanceForRequest {
 
   private val notFound = respondNotFound("MediaLease not found")
 
@@ -158,11 +158,6 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
         data = LeasesByMedia.build(leases)
       )
     }
-  }
-
-  private def instanceOf(request: RequestHeader) = {
-    // TODO some sort of filter supplied attribute
-    request.host.split(".").head
   }
 
 }
