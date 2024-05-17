@@ -6,7 +6,7 @@ trait InstanceForRequest {
 
   def instanceOf(request: RequestHeader): String = {
     // TODO some sort of filter supplied attribute
-    request.host.split(".").head
+    request.host.split("\\.").head
   }
 
 }
