@@ -16,6 +16,7 @@ import com.gu.mediaservice.lib.argo.model.Link
 import com.gu.mediaservice.lib.auth.Authentication.OnBehalfOfPrincipal
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws.{S3Ops, SimpleSqsMessageConsumer, SqsHelpers}
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{FALLBACK, LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
@@ -55,7 +56,7 @@ class ImageLoaderController(auth: Authentication,
                             authorisation: Authorisation,
                             metrics: ImageLoaderMetrics)
                            (implicit val ec: ExecutionContext, materializer: Materializer)
-  extends BaseController with ArgoHelpers with SqsHelpers {
+  extends BaseController with ArgoHelpers with SqsHelpers with InstanceForRequest {
 
   private val AuthenticatedAndAuthorised = auth andThen authorisation.CommonActionFilters.authorisedForUpload
 
