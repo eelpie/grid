@@ -5,13 +5,14 @@ import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.auth.Authentication.getIdentity
 import com.gu.mediaservice.lib.aws.{DynamoDB, NoItemFound, UpdateMessage}
 import com.gu.mediaservice.lib.collections.CollectionsManager
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.net.{URI => UriOps}
 import com.gu.mediaservice.model.{ActionData, Collection}
 import com.gu.mediaservice.syntax.MessageSubjects
 import lib.{CollectionsConfig, Notifications}
 import org.joda.time.DateTime
 import play.api.libs.json.Json
-import play.api.mvc.{BaseController, ControllerComponents, RequestHeader}
+import play.api.mvc.{BaseController, ControllerComponents}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -19,7 +20,7 @@ import scala.concurrent.Future
 
 class ImageCollectionsController(authenticated: Authentication, config: CollectionsConfig, notifications: Notifications,
                                  override val controllerComponents: ControllerComponents)
-  extends BaseController with MessageSubjects with ArgoHelpers {
+  extends BaseController with MessageSubjects with ArgoHelpers with InstanceForRequest {
 
   import CollectionsManager.onlyLatest
 
@@ -67,11 +68,6 @@ class ImageCollectionsController(authenticated: Authentication, config: Collecti
     val updateMessage = UpdateMessage(subject = SetImageCollections, id = Some(id), collections = Some(onlyLatestCollections), instance = instance)
     notifications.publish(updateMessage)
     onlyLatestCollections
-  }
-
-  private def instanceOf(request: RequestHeader) = {
-    // TODO some sort of filter supplied attribute
-    request.host.split(".").head
   }
 
 }
