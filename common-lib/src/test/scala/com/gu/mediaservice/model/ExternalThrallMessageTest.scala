@@ -47,7 +47,7 @@ class ExternalThrallMessageTest extends AnyFreeSpec with Matchers with TableDriv
       roundTrip(msg)
     }
     "from a UpdateImageUsagesMessage" in {
-      val msg = UpdateImageUsagesMessage("hello", nowUtc, UsageNotice("hello", JsArray()))
+      val msg = UpdateImageUsagesMessage("hello", nowUtc, UsageNotice("hello", JsArray(), "an-instance"))
       roundTrip(msg)
     }
     "from a ReplaceImageLeasesMessage" in {
