@@ -1,7 +1,7 @@
 package controllers
 
 import _root_.play.api.libs.json._
-import _root_.play.api.mvc.{AnyContent, BaseController, ControllerComponents, Request, RequestHeader}
+import _root_.play.api.mvc.{AnyContent, BaseController, ControllerComponents, Request}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.Link
@@ -9,6 +9,7 @@ import com.gu.mediaservice.lib.auth.Authentication.Principal
 import com.gu.mediaservice.lib.auth.Permissions.{DeleteCropsOrUsages, PrincipalFilter}
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws.UpdateMessage
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ExportResult
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
@@ -32,7 +33,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
                         override val controllerComponents: ControllerComponents,
                         authorisation: Authorisation,
                         gridClient: GridClient)(implicit val ec: ExecutionContext)
-  extends BaseController with MessageSubjects with ArgoHelpers with MediaApiUrls {
+  extends BaseController with MessageSubjects with ArgoHelpers with MediaApiUrls with InstanceForRequest {
 
   // Stupid name clash between Argo and Play
   import com.gu.mediaservice.lib.argo.model.{Action => ArgoAction}
@@ -194,10 +195,5 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
 
   def ifDefined[T](cond: => Option[T], error: Throwable): Future[T] =
     cond map Future.successful getOrElse Future.failed(error)
-
-  private def instanceOf(request: RequestHeader) = {
-    // TODO some sort of filter supplied attribute
-    request.host.split(".").head
-  }
 
 }
