@@ -35,7 +35,7 @@ class SyndicationController(auth: Authentication,
 
   def setPhotoshoot(id: String) = auth.async(parse.json) { req => {
     (req.body \ "data").asOpt[Photoshoot].map(photoshoot =>
-      setPhotoshootAndPublish(id, photoshoot)
+      setPhotoshootAndPublish(id, photoshoot, instanceOf(req))
         .map(photoshoot => respond(photoshoot))
     )
     .getOrElse(
@@ -43,8 +43,8 @@ class SyndicationController(auth: Authentication,
     )
   }}
 
-  def deletePhotoshoot(id: String) = auth.async {
-    deletePhotoshootAndPublish(id).map(_ => Accepted)
+  def deletePhotoshoot(id: String) = auth.async { request =>
+    deletePhotoshootAndPublish(id, instanceOf(request)).map(_ => Accepted)
   }
 
   def getSyndication(id: String): Action[AnyContent] = auth.async {
@@ -58,13 +58,18 @@ class SyndicationController(auth: Authentication,
 
   def setSyndication(id: String): Action[JsValue] = auth.async(parse.json) { req => {
     (req.body \ "data").asOpt[SyndicationRights].map(syndicationRight => {
-      setSyndicationAndPublish(id, syndicationRight)
+      setSyndicationAndPublish(id, syndicationRight, instanceOf(req))
         .map(syndicationRight => respond(syndicationRight))
     }).getOrElse(Future.successful(respondError(BadRequest, "invalid-form-data", "Invalid form data")))
   }}
 
-  def deleteSyndication(id: String): Action[AnyContent] = auth.async {
-    deleteSyndicationAndPublish(id).map(_ => Accepted)
+  def deleteSyndication(id: String): Action[AnyContent] = auth.async { request =>
+    deleteSyndicationAndPublish(id, instanceOf(request)).map(_ => Accepted)
+  }
+
+  private def instanceOf(request: RequestHeader) = {
+    // TODO some sort of filter supplied attribute
+    request.host.split(".").head
   }
 
 }
