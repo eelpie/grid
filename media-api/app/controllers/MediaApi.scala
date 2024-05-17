@@ -9,6 +9,7 @@ import com.gu.mediaservice.lib.auth.Authentication.{Request, _}
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, EditMetadata, UploadImages, DeleteImage => DeleteImagePermission}
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws.{ContentDisposition, ThrallMessageSender, UpdateMessage}
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.MarkerMap
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -41,7 +42,8 @@ class MediaApi(
                 mediaApiMetrics: MediaApiMetrics,
                 ws: WSClient,
                 authorisation: Authorisation
-)(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition {
+)(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition
+  with InstanceForRequest {
 
   private val gridClient: GridClient = GridClient(config.services)(ws)
 
@@ -551,11 +553,6 @@ class MediaApi(
     } else {
       None
     }
-  }
-
-  private def instanceOf(request: RequestHeader) = {
-    // TODO some sort of filter supplied attribute
-    request.host.split(".").head
   }
 
 }
