@@ -25,6 +25,7 @@ import java.net.{URI, URLDecoder}
 import java.util.concurrent.TimeUnit
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.JsonDiff
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.logging.MarkerMap
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.syntax.MessageSubjects
@@ -46,7 +47,8 @@ class MediaApi(
                 mediaApiMetrics: MediaApiMetrics,
                 ws: WSClient,
                 authorisation: Authorisation
-)(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers {
+)(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers
+  with InstanceForRequest {
 
   private val gridClient: GridClient = GridClient(config.services)(ws)
 
@@ -556,11 +558,6 @@ class MediaApi(
     } else {
       None
     }
-  }
-
-  private def instanceOf(request: RequestHeader) = {
-    // TODO some sort of filter supplied attribute
-    request.host.split(".").head
   }
 
 }
