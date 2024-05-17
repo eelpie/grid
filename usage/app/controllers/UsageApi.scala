@@ -29,7 +29,6 @@ class UsageApi(
   notifications: Notifications,
   config: UsageConfig,
   usageApiSubject: Subject[WithLogMarker[UsageGroup]],
-  liveContentApi: LiveContentApi,
   override val controllerComponents: ControllerComponents,
   playBodyParsers: PlayBodyParsers
 )(
