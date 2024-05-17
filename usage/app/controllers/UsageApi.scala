@@ -97,36 +97,6 @@ class UsageApi(
 
   }
 
-  def reindexForContent(contentId: String) = auth.async { req =>
-    implicit val logMarker: LogMarker = MarkerMap(
-      "requestType" -> "reindex-for-content",
-      "requestId" -> RequestLoggingFilter.getRequestId(req),
-      "contentId" -> contentId,
-    )
-
-    val query = liveContentApi.usageQuery(contentId)
-
-    liveContentApi.getResponse(query).map{response =>
-      response.content match {
-        case Some(content) =>
-          ContentHelpers
-            .getContentFirstPublished(content)
-            .map(LiveContentItem(content, _))
-            .map(_.copy(isReindex = true))
-            .foreach(_.emitAsUsageGroup(
-              usageApiSubject,
-              usageGroupOps
-            ))
-          Accepted
-        case _ =>
-          NotFound
-      }
-    }.recover { case error: Exception =>
-        logger.error(logMarker, s"UsageApi reindex for content ($contentId) failed!", error)
-        InternalServerError
-      }
-  }
-
   def forMedia(mediaId: String) = auth.async { req =>
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "usages-for-media-id",
