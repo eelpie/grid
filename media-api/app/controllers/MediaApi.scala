@@ -166,7 +166,7 @@ class MediaApi(
 
   def uploadedBy(id: String) = auth.async { request =>
     implicit val r = request
-    elasticSearch.getImageUploaderById(id) map {
+    elasticSearch.getImageUploaderById(id, instanceOf(request)) map {
       case Some(uploadedBy) =>
         respond(uploadedBy)
       case _ => ImageNotFound(id)
