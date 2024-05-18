@@ -30,7 +30,7 @@ import model.upload.{OptimiseOps, OptimiseWithPngQuant, UploadRequest}
 import org.joda.time.DateTime
 import play.api.libs.json.{JsObject, Json}
 import play.api.libs.ws.WSRequest
-import play.api.mvc.{AnyContent, Request}
+import play.api.mvc.{AnyContent, Request, RequestHeader}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -401,7 +401,7 @@ class Uploader(val store: ImageLoaderStore,
                   gridClient: GridClient,
                   onBehalfOfFn: WSRequest => WSRequest)
                  (implicit ec: ExecutionContext,
-                  logMarker: LogMarker): Future[Unit] = for {
+                  logMarker: LogMarker, request: RequestHeader): Future[Unit] = for {
     imageUpload <- fromUploadRequest(uploadRequest)
     imageWithoutUserEdits = imageUpload.image
     imageWithUserEditsApplied <- ImageDataMerger.aggregate(imageWithoutUserEdits, gridClient, onBehalfOfFn)
