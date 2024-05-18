@@ -35,20 +35,6 @@ trait Services {
   def redirectUriPlaceholder: String
 
   def loginUriTemplate(requestHeader: RequestHeader): String
-
-  def apiInternalBaseUri: String
-
-  def collectionsInternalBaseUri: String
-
-  def cropperInternalBaseUri: String
-
-  def leasesInternalBaseUri: String
-
-  def metadataInternalBaseUri: String
-
-  def projectionInternalBaseUri: String
-
-  def usageInternalBaseUri: String
 }
 
 case class ServiceHosts(
@@ -122,23 +108,10 @@ protected class SingleHostServices(val rootUrl: String) extends Services {
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
   def loginUriTemplate(request: RequestHeader): String = s"${authBaseUri(request)}/login$redirectUriPlaceholder"
 
-  val apiInternalBaseUri: String = internalServiceBaseUri("media-api", 9000)
-  val collectionsInternalBaseUri: String = internalServiceBaseUri("collections", 9000)
-  val cropperInternalBaseUri: String = internalServiceBaseUri("cropper", 9000)
-  val leasesInternalBaseUri: String = internalServiceBaseUri("leases", 9000)
-  val metadataInternalBaseUri: String = internalServiceBaseUri("metadata-editor", 9000)
-  val projectionInternalBaseUri: String = internalServiceBaseUri("projection", 9000)
-  val usageInternalBaseUri: String = internalServiceBaseUri("usage", 9000)
-
   private def vhostServiceName(serviceName: String, request: RequestHeader): String = {
     val vhostRootUrl = request.host
     s"https://$vhostRootUrl/" + serviceName
   }
-
-  private def subpathedServiceBaseUri(serviceName: String): String = s"$rootUrl/$serviceName"
-
-  private def internalServiceBaseUri(host: String, port: Int) = s"http://$host:$port"
-
 }
 
 protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHosts, corsAllowedOrigins: Set[String], domainRootOverride: Option[String] = None) extends Services {
@@ -177,12 +150,4 @@ protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHost
   override def loginUriTemplate(request: RequestHeader) = s"${authBaseUri(request)}/login$redirectUriPlaceholder"
 
   private def baseUri(host: String) = s"https://$host"
-
-  val apiInternalBaseUri: String = baseUri(apiHost)
-  val collectionsInternalBaseUri: String = baseUri(collectionsHost)
-  val cropperInternalBaseUri: String = baseUri(cropperHost)
-  val leasesInternalBaseUri: String = baseUri(leasesHost)
-  val metadataInternalBaseUri: String = baseUri(metadataHost)
-  val projectionInternalBaseUri: String = baseUri(projectionHost)
-  val usageInternalBaseUri: String = baseUri(usageHost)
 }

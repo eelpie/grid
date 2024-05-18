@@ -61,7 +61,10 @@ class EditsController(
   val metadataBaseUri: RequestHeader => String = config.services.metadataBaseUri
   private val AuthenticatedAndAuthorised = auth andThen authorisation.CommonActionFilters.authorisedForArchive
 
-  private def getUploader(imageId: String, user: Principal): Future[Option[String]] = gridClient.getUploadedBy(imageId, auth.getOnBehalfOfPrincipal(user))
+  private def getUploader(imageId: String, user: Principal, request: RequestHeader): Future[Option[String]] = {
+    implicit val r = request
+    gridClient.getUploadedBy(imageId, auth.getOnBehalfOfPrincipal(user))
+  }
 
   private def authorisedForEditMetadataOrUploader(imageId: String) = authorisation.actionFilterForUploaderOr(imageId, EditMetadata, getUploader)
 
@@ -170,7 +173,7 @@ class EditsController(
     )
   }
 
-  def setMetadataFromUsageRights(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async { req =>
+  def setMetadataFromUsageRights(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async { implicit req =>
     editsStore.get(id) flatMap { dynamoEntry =>
       gridClient.getMetadata(id, auth.getOnBehalfOfPrincipal(req.user)) flatMap { imageMetadata =>
         val edits = dynamoEntry.as[Edits]

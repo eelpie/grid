@@ -32,7 +32,7 @@ class Authorisation(provider: AuthorisationProvider, executionContext: Execution
   def actionFilterForUploaderOr(
                                           imageId: String,
                                           permission: SimplePermission,
-                                          getUploader: (String, Principal) => Future[Option[String]]
+                                          getUploader: (String, Principal, RequestHeader) => Future[Option[String]]
                                         )(implicit ec: ExecutionContext): ActionFilter[Request] = new ActionFilter[Request] {
 //    implicit val ec = executionContext
     override protected def filter[A](request: Request[A]): Future[Option[Result]] = {
@@ -42,7 +42,7 @@ class Authorisation(provider: AuthorisationProvider, executionContext: Execution
         Future.successful(None)
       } else {
         val result = for {
-          uploadedBy <- getUploader(imageId, request.user)
+          uploadedBy <- getUploader(imageId, request.user, request)
           isAuthorised = isUploaderOrHasPermission(request.user, uploadedBy.getOrElse(""), permission)
           if isAuthorised
         } yield {
