@@ -36,10 +36,10 @@ object MigrationStatusProvider {
 trait MigrationStatusProvider {
   self: ElasticSearchClient =>
 
-  def config: ElasticSearchConfig
+  def elasticSearchConfig: ElasticSearchConfig
 
-  def imagesCurrentAlias(instance: String): String = instance + "_" + config.aliases.current
-  def imagesMigrationAlias(instance: String): String = instance + "_" + config.aliases.migration
+  def imagesCurrentAlias(instance: String): String = instance + "_" + elasticSearchConfig.aliases.current
+  def imagesMigrationAlias(instance: String): String = instance + "_" + elasticSearchConfig.aliases.migration
   def imagesHistoricalAlias(instance: String): String = instance + "_" + "Images_Historical"
 
   def scheduler: Scheduler
