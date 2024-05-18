@@ -85,10 +85,6 @@ class MediaApi(
     Link("search", searchLinkHref()(request))
   }
 
-  private def getUploader(imageId: String, user: Principal): Future[Option[String]] = elasticSearch.getImageUploaderById(imageId)
-
-  private def authorisedForDeleteImageOrUploader(imageId: String) = authorisation.actionFilterForUploaderOr(imageId, DeleteImagePermission, getUploader)
-
   private def indexResponse(user: Principal)(request: Request[AnyContent]) = {
     val indexData = Json.obj(
       "description" -> "This is the Media API"
