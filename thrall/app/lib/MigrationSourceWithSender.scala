@@ -29,6 +29,7 @@ object MigrationSourceWithSender extends GridLogging {
     es: ElasticSearch,
     gridClient: GridClient,
     projectionParallelism: Int,
+    instance: String
   )(implicit ec: ExecutionContext): MigrationSourceWithSender = {
 
     // scroll through elasticsearch, finding image ids and versions to migrate
@@ -110,15 +111,15 @@ object MigrationSourceWithSender extends GridLogging {
     val idsSource = manualIdsSource.mergePreferred(scrollingIdsSource, preferred =  true)
 
     // project image from MigrationRequest, produce the MigrateImageMessage
-    val projectedImageSource: Source[MigrationRecord, NotUsed] = idsSource.mapAsyncUnordered(projectionParallelism) {
+    def projectedImageSource(instance: String): Source[MigrationRecord, NotUsed] = idsSource.mapAsyncUnordered(projectionParallelism) {
       case MigrationRequest(imageId, version) =>
         val migrateImageMessageFuture = (
           for {
             maybeProjection <- gridClient.getImageLoaderProjection(mediaId = imageId, innerServiceCall)
             maybeVersion = Some(version)
-          } yield MigrateImageMessage(imageId, maybeProjection, maybeVersion)
+          } yield MigrateImageMessage(imageId, maybeProjection, maybeVersion, instance)
         ).recover {
-          case error => MigrateImageMessage(imageId, Left(error.toString))
+          case error => MigrateImageMessage(imageId, Left(error.toString), instance)
         }
         migrateImageMessageFuture.map(message => MigrationRecord(
           payload = message,
@@ -128,7 +129,7 @@ object MigrationSourceWithSender extends GridLogging {
 
     MigrationSourceWithSender(
       send = submitIdForMigration,
-      source = projectedImageSource.mapMaterializedValue(_ => Future.successful(Done)),
+      source = projectedImageSource(instance).mapMaterializedValue(_ => Future.successful(Done)),
     )
   }
 }
