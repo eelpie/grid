@@ -35,20 +35,6 @@ trait Services {
   def redirectUriPlaceholder: String
 
   def loginUriTemplate(requestHeader: RequestHeader): String
-
-  def apiInternalBaseUri: String
-
-  def collectionsInternalBaseUri: String
-
-  def cropperInternalBaseUri: String
-
-  def leasesInternalBaseUri: String
-
-  def metadataInternalBaseUri: String
-
-  def projectionInternalBaseUri: String
-
-  def usageInternalBaseUri: String
 }
 
 protected class SingleHostServices(val rootUrl: String) extends Services {
@@ -84,22 +70,9 @@ protected class SingleHostServices(val rootUrl: String) extends Services {
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
   def loginUriTemplate(request: RequestHeader): String = s"${authBaseUri(request)}/login$redirectUriPlaceholder"
 
-  val apiInternalBaseUri: String = internalServiceBaseUri("media-api", 9000)
-  val collectionsInternalBaseUri: String = internalServiceBaseUri("collections", 9000)
-  val cropperInternalBaseUri: String = internalServiceBaseUri("cropper", 9000)
-  val leasesInternalBaseUri: String = internalServiceBaseUri("leases", 9000)
-  val metadataInternalBaseUri: String = internalServiceBaseUri("metadata-editor", 9000)
-  val projectionInternalBaseUri: String = internalServiceBaseUri("projection", 9000)
-  val usageInternalBaseUri: String = internalServiceBaseUri("usage", 9000)
-
   private def vhostServiceName(serviceName: String, request: RequestHeader): String = {
     val vhostRootUrl = request.host
     s"https://$vhostRootUrl/" + serviceName
   }
-
-  private def subpathedServiceBaseUri(serviceName: String): String = s"$rootUrl/$serviceName"
-
-  private def internalServiceBaseUri(host: String, port: Int) = s"http://$host:$port"
-
 }
 

@@ -22,6 +22,7 @@ import org.apache.tika.io.IOUtils
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.Logger
 import play.api.libs.ws.WSRequest
+import play.api.mvc.RequestHeader
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
@@ -90,7 +91,7 @@ class Projector(config: ImageUploadOpsCfg,
   private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3)
 
   def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest, instance: String)
-                        (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[Image]] = {
+                        (implicit ec: ExecutionContext, logMarker: LogMarker, request: RequestHeader): Future[Option[Image]] = {
     Future {
       import ImageIngestOperations.fileKeyFromId
       val s3Key = fileKeyFromId(imageId)
@@ -131,7 +132,7 @@ class Projector(config: ImageUploadOpsCfg,
                    gridClient: GridClient,
                    onBehalfOfFn: WSRequest => WSRequest,
                    instance: String)
-                  (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
+                  (implicit ec: ExecutionContext, logMarker: LogMarker, request: RequestHeader): Future[Image] = {
     val DigestedFile(tempFile_, id_) = srcFileDigest
 
     val identifiers_ = extractedS3Meta.identifiers
