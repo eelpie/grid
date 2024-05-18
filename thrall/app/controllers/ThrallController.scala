@@ -6,7 +6,7 @@ import akka.stream.scaladsl.{Sink, Source}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.{Authentication, BaseControllerWithLoginRedirects}
 import com.gu.mediaservice.lib.aws.ThrallMessageSender
-import com.gu.mediaservice.lib.config.Services
+import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
 import com.gu.mediaservice.lib.elasticsearch.{NotRunning, Running}
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.{CompleteMigrationMessage, CreateMigrationIndexMessage, UpsertFromProjectionMessage}
@@ -34,7 +34,8 @@ class ThrallController(
   override val services: Services,
   override val controllerComponents: ControllerComponents,
   gridClient: GridClient
-)(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging {
+)(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging
+  with InstanceForRequest{
 
   private val numberFormatter: Long => String = java.text.NumberFormat.getIntegerInstance().format
 
@@ -149,7 +150,8 @@ class ThrallController(
         case None =>
           messageSender.publish(CreateMigrationIndexMessage(
             migrationStart = DateTime.now(DateTimeZone.UTC),
-            gitHash = utils.buildinfo.BuildInfo.gitCommitId
+            gitHash = utils.buildinfo.BuildInfo.gitCommitId,
+            instanceOf(request)
           ))
           // poll until images migration alias is created, giving up after 10 seconds
           Await.result(
@@ -184,6 +186,7 @@ class ThrallController(
         case _: Running =>
           messageSender.publish(CompleteMigrationMessage(
             lastModified = DateTime.now(DateTimeZone.UTC),
+            instanceOf(request)
           ))
           // poll until images migration status is not running or error, giving up after 10 seconds
           Source(1 to 20)
@@ -238,7 +241,8 @@ class ThrallController(
       maybeImage <- gridClient.getImageLoaderProjection(imageId, auth.innerServiceCall)
     } yield { maybeImage match {
       case Some(projectedImage) =>
-        messageSender.publish(UpsertFromProjectionMessage(imageId, projectedImage, DateTime.now))
+        messageSender.publish(UpsertFromProjectionMessage(imageId, projectedImage, DateTime.now,
+          instanceOf(request)))
         Ok(s"upsert request for $imageId submitted")
       case None => NotFound("")
     }}
