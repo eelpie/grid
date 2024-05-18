@@ -24,6 +24,8 @@ import scala.util.Properties
 
 trait ElasticSearchTestBase extends AnyFreeSpec with Matchers with Fixtures with BeforeAndAfterAll with BeforeAndAfterEach with Eventually with ScalaFutures with DockerKit with DockerTestKit with DockerKitSpotify with MockitoSugar {
 
+  def instance: String
+
   val useEsDocker = Properties.envOrElse("USE_DOCKER_FOR_TESTS", "true").toBoolean
   val esTestUrl = Properties.envOrElse("ES6_TEST_URL", "http://localhost:9200")
 
@@ -31,7 +33,8 @@ trait ElasticSearchTestBase extends AnyFreeSpec with Matchers with Fixtures with
   val fiveSeconds = Duration(5, SECONDS)
   val tenSeconds = Duration(10, SECONDS)
 
-  val migrationIndexName = "migration-index"
+  def currentIndexName(instance: String) = instance + "_" + "index"
+  def migrationIndexName(instance: String) = instance + "_" + "migration-index"
 
   override implicit val patienceConfig: PatienceConfig = PatienceConfig(tenSeconds, oneHundredMilliseconds)
 
@@ -57,8 +60,8 @@ trait ElasticSearchTestBase extends AnyFreeSpec with Matchers with Fixtures with
 
   override def beforeAll {
     super.beforeAll()
-    ES.ensureIndexExistsAndAliasAssigned()
-    ES.createIndexIfMissing(migrationIndexName)
+    ES.ensureIndexExistsAndAliasAssigned(alias = ES.imagesCurrentAlias(instance), index = currentIndexName(instance))
+    ES.createIndexIfMissing(migrationIndexName(instance))
   }
 
   override protected def beforeEach(): Unit = {
@@ -69,12 +72,12 @@ trait ElasticSearchTestBase extends AnyFreeSpec with Matchers with Fixtures with
       val eventualCount = for {
         // Ensure to reset the state of ES between tests by deleting all documents...
         _ <- ES.client.execute(
-          ElasticDsl.deleteByQuery(ES.initialImagesIndex, ElasticDsl.matchAllQuery())
+          ElasticDsl.deleteByQuery(currentIndexName(instance), ElasticDsl.matchAllQuery())
         )
         // ...and then forcing a refresh. These operations need to be done in series
-        _ <- ES.client.execute(ElasticDsl.refreshIndex(ES.initialImagesIndex))
+        _ <- ES.client.execute(ElasticDsl.refreshIndex(currentIndexName(instance)))
         // count the remaining documents
-        count <- ES.client.execute(ElasticDsl.count(ES.initialImagesIndex))
+        count <- ES.client.execute(ElasticDsl.count(currentIndexName(instance)))
       } yield count
       eventualCount.futureValue.result.count shouldBe 0
     }
@@ -92,13 +95,13 @@ trait ElasticSearchTestBase extends AnyFreeSpec with Matchers with Fixtures with
 
   def reloadedImage(id: String) = {
     implicit val logMarker: LogMarker = MarkerMap()
-    Await.result(ES.getImage(id), fiveSeconds)
+    Await.result(ES.getImage(id, instance), fiveSeconds)
   }
 
   def indexedImage(id: String) = {
     implicit val logMarker: LogMarker = MarkerMap()
     Thread.sleep(1000) // TODO use eventually clause
-    Await.result(ES.getImage(id), fiveSeconds)
+    Await.result(ES.getImage(id, instance), fiveSeconds)
   }
 
   def asJsLookup(d: DateTime): JsLookupResult = JsDefined(Json.toJson(d.toString))
