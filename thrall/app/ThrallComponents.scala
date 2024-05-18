@@ -1,9 +1,6 @@
-import org.apache.pekko.Done
-import org.apache.pekko.stream.scaladsl.Source
 import com.gu.kinesis.{KinesisRecord, KinesisSource, ConsumerConfig => KclPekkoStreamConfig}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{S3Ops, S3Vectors, ThrallMessageSender}
-import com.gu.mediaservice.lib.aws.{S3Ops, ThrallMessageSender}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
 import com.typesafe.scalalogging.StrictLogging
@@ -11,6 +8,8 @@ import controllers.{AssetsComponents, HealthCheck, ReaperController, ThrallContr
 import lib._
 import lib.elasticsearch._
 import lib.kinesis.{KinesisConfig, ThrallEventConsumer}
+import org.apache.pekko.Done
+import org.apache.pekko.stream.scaladsl.Source
 import play.api.ApplicationLoader.Context
 import router.Routes
 
@@ -73,13 +72,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   val s3 = S3Ops.buildS3Client(config)
   val s3Vectors = new S3Vectors(config)
-  val syncChecker = new SyncChecker(
-    s3,
-    es,
-    config.imageBucket,
-    actorSystem
-  )
-  val syncCheckerStream: Future[Done] = syncChecker.run()
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
   val maybeCustomReapableEligibility = config.maybeReapableEligibilityClass(applicationLifecycle)
