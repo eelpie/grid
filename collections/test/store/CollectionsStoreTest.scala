@@ -1,6 +1,6 @@
 package store
 
-import com.gu.mediaservice.model.{ActionData, Collection}
+import com.gu.mediaservice.model.{ActionData, Collection, Instance}
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
@@ -33,6 +33,8 @@ class CollectionsStoreTest extends AnyFunSpec with Matchers with ScalaFutures wi
     region(Region.of(dynamoContainer.getRegion)).
     credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(dynamoContainer.getAccessKey, dynamoContainer.getSecretKey))).build()
 
+  private implicit val instance: Instance = Instance("an-instance")
+
   private val collectionsTable = "test-collections-table-" + UUID.randomUUID().toString
   private val collectionsTableForAllTest = "test-collections-table-" + UUID.randomUUID().toString
   private val store = new CollectionsStore(collectionsTable, dynamoClient)
@@ -41,10 +43,12 @@ class CollectionsStoreTest extends AnyFunSpec with Matchers with ScalaFutures wi
   override def beforeAll(): Unit = {
     def createTableRequestFor(tableName: String): CreateTableRequest = {
       val attributeDefinitions = List(
-        AttributeDefinition.builder.attributeName("id").attributeType(ScalarAttributeType.S).build()
+        AttributeDefinition.builder.attributeName("id").attributeType(ScalarAttributeType.S).build(),
+        AttributeDefinition.builder.attributeName("instance").attributeType(ScalarAttributeType.S).build()
       )
       val keySchema = List(
-        KeySchemaElement.builder.attributeName("id").keyType(KeyType.HASH).build()
+        KeySchemaElement.builder.attributeName("instance").keyType(KeyType.HASH).build(),
+        KeySchemaElement.builder.attributeName("id").keyType(KeyType.RANGE).build()
       )
       val provisionedThroughput = ProvisionedThroughput.builder.readCapacityUnits(1L).writeCapacityUnits(1L).build()
       val request = CreateTableRequest.builder
