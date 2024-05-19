@@ -1,6 +1,7 @@
 package lib
 
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
+import com.gu.mediaservice.model.Instance
 import play.api.mvc.RequestHeader
 
 
@@ -11,5 +12,5 @@ class EditsConfig(resources: GridConfigResources) extends CommonConfig(resources
 
   val queueUrl = string("indexed.images.sqs.queue.url")
 
-  val rootUri: RequestHeader => String = services.metadataBaseUri
+  val rootUri: Instance => String = services.metadataBaseUri
 }

@@ -7,7 +7,6 @@ import play.api.libs.json._
 import play.api.libs.json.JodaReads._
 import play.api.libs.json.JodaWrites._
 import play.api.libs.functional.syntax._
-import play.api.mvc.{Request, RequestHeader}
 
 
 case class Edits(
@@ -56,7 +55,7 @@ object Edits {
 }
 
 trait EditsResponse {
-  val metadataBaseUri: RequestHeader => String
+  val metadataBaseUri: Instance => String
 
   type ArchivedEntity = EmbeddedEntity[Boolean]
   type SetEntity = EmbeddedEntity[Seq[EmbeddedEntity[String]]]
@@ -64,44 +63,44 @@ trait EditsResponse {
   type UsageRightsEntity = EmbeddedEntity[UsageRights]
   type PhotoshootEntity = EmbeddedEntity[Photoshoot]
 
-  def editsEmbeddedEntity(id: String, edits: Edits)(request: Request[Any]) =
-    EmbeddedEntity(entityUri(id)(request), Some(Json.toJson(edits)(editsEntity(id)(request))))
+  def editsEmbeddedEntity(id: String, edits: Edits)(instance: Instance) =
+    EmbeddedEntity(entityUri(id)(instance), Some(Json.toJson(edits)(editsEntity(id)(instance))))
 
   // the types are in the arguments because of a whining scala compiler
-  def editsEntity(id: String)(request: Request[Any]): Writes[Edits] = (
-      (__ \ Edits.Archived).write[ArchivedEntity].contramap(archivedEntity(id, _: Boolean)(request)) ~
-      (__ \ Edits.Labels).write[SetEntity].contramap(setEntity(id, "labels", _: List[String])(request)) ~
-      (__ \ Edits.Metadata).write[MetadataEntity].contramap(metadataEntity(id, _: ImageMetadata)(request)) ~
-      (__ \ Edits.UsageRights).write[UsageRightsEntity].contramap(usageRightsEntity(id, _: Option[UsageRights])(request)) ~
-      (__ \ Edits.Photoshoot).write[PhotoshootEntity].contramap(photoshootEntity(id, _: Option[Photoshoot])(request)) ~
+  def editsEntity(id: String)(instance: Instance): Writes[Edits] = (
+      (__ \ Edits.Archived).write[ArchivedEntity].contramap(archivedEntity(id, _: Boolean)(instance)) ~
+      (__ \ Edits.Labels).write[SetEntity].contramap(setEntity(id, "labels", _: List[String])(instance)) ~
+      (__ \ Edits.Metadata).write[MetadataEntity].contramap(metadataEntity(id, _: ImageMetadata)(instance)) ~
+      (__ \ Edits.UsageRights).write[UsageRightsEntity].contramap(usageRightsEntity(id, _: Option[UsageRights])(instance)) ~
+      (__ \ Edits.Photoshoot).write[PhotoshootEntity].contramap(photoshootEntity(id, _: Option[Photoshoot])(instance)) ~
       (__ \ Edits.LastModified).writeNullable[DateTime]
     )(unlift(Edits.unapply))
 
-  def photoshootEntity(id: String, photoshoot: Option[Photoshoot])(request: Request[Any]): PhotoshootEntity =
-    EmbeddedEntity(entityUri(id, "/photoshoot")(request), photoshoot)
+  def photoshootEntity(id: String, photoshoot: Option[Photoshoot])(instance: Instance): PhotoshootEntity =
+    EmbeddedEntity(entityUri(id, "/photoshoot")(instance), photoshoot)
 
-  def archivedEntity(id: String, a: Boolean)(request: Request[Any]): ArchivedEntity =
-    EmbeddedEntity(entityUri(id, "/archived")(request), Some(a))
+  def archivedEntity(id: String, a: Boolean)(instance: Instance): ArchivedEntity =
+    EmbeddedEntity(entityUri(id, "/archived")(instance), Some(a))
 
-  def metadataEntity(id: String, m: ImageMetadata)(request: Request[Any]): MetadataEntity =
-    EmbeddedEntity(entityUri(id, "/metadata")(request), Some(m), actions = List(
-      Action("set-from-usage-rights", entityUri(id, "/metadata/set-from-usage-rights")(request), "POST")
+  def metadataEntity(id: String, m: ImageMetadata)(instance: Instance): MetadataEntity =
+    EmbeddedEntity(entityUri(id, "/metadata")(instance), Some(m), actions = List(
+      Action("set-from-usage-rights", entityUri(id, "/metadata/set-from-usage-rights")(instance), "POST")
     ))
 
-  def usageRightsEntity(id: String, u: Option[UsageRights])(request: Request[Any]): UsageRightsEntity =
-    u.map(i => EmbeddedEntity(entityUri(id, "/usage-rights")(request), Some(i)))
-     .getOrElse(EmbeddedEntity(entityUri(id, "/usage-rights")(request), None))
+  def usageRightsEntity(id: String, u: Option[UsageRights])(instance: Instance): UsageRightsEntity =
+    u.map(i => EmbeddedEntity(entityUri(id, "/usage-rights")(instance), Some(i)))
+     .getOrElse(EmbeddedEntity(entityUri(id, "/usage-rights")(instance), None))
 
-  def setEntity(id: String, setName: String, labels: List[String])(request: Request[Any]): SetEntity =
-    EmbeddedEntity(entityUri(id, s"/$setName")(request), Some(labels.map(setUnitEntity(id, setName, _)(request))))
+  def setEntity(id: String, setName: String, labels: List[String])(instance: Instance): SetEntity =
+    EmbeddedEntity(entityUri(id, s"/$setName")(instance), Some(labels.map(setUnitEntity(id, setName, _)(instance))))
 
-  def setUnitEntity(id: String, setName: String, name: String)(request: Request[Any]): EmbeddedEntity[String] =
-    EmbeddedEntity(entityUri(id, s"/$setName/${URLEncoder.encode(name, "UTF-8")}")(request), Some(name))
+  def setUnitEntity(id: String, setName: String, name: String)(instance: Instance): EmbeddedEntity[String] =
+    EmbeddedEntity(entityUri(id, s"/$setName/${URLEncoder.encode(name, "UTF-8")}")(instance), Some(name))
 
-  private def entityUri(id: String, endpoint: String = "")(request: Request[Any]): URI =
-    URI.create(s"${metadataBaseUri(request)}/metadata/$id$endpoint")
+  private def entityUri(id: String, endpoint: String = "")(instance: Instance): URI =
+    URI.create(s"${metadataBaseUri(instance)}/metadata/$id$endpoint")
 
-  def labelsUri(id: String)(request: Request[Any]) = entityUri(id, "/labels")(request)
+  def labelsUri(id: String)(instance: Instance) = entityUri(id, "/labels")(instance)
 
-  def metadataUri(id: String)(request: Request[Any]) = entityUri(id, "/metadata")(request)
+  def metadataUri(id: String)(instance: Instance) = entityUri(id, "/metadata")(instance)
 }
