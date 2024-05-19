@@ -1,21 +1,23 @@
 package com.gu.mediaservice.lib.auth
 
-import com.gu.mediaservice.lib.config.Services
+import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
+import com.gu.mediaservice.model.Instance
 import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
 
 import java.net.URLEncoder
 import scala.concurrent.Future
 
-trait BaseControllerWithLoginRedirects extends BaseController {
+trait BaseControllerWithLoginRedirects extends BaseController with InstanceForRequest {
   def auth: Authentication
   def services: Services
 
   private def withLoginRedirectAsync(isLoginOptional: Boolean)(handler: Request[AnyContent] => Future[Result]): Action[AnyContent] = Action.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     auth.authenticationStatus(request) match {
       case Right(principal) =>
         handler(new AuthenticatedRequest(principal, request))
-      case Left(resultFuture) => auth.loginLinks()(request).headOption match {
+      case Left(resultFuture) => auth.loginLinks().headOption match {
         case None if isLoginOptional => handler(request) // if login is not strictly required, then still perform the action (just the user principal won't be available)
         case None => resultFuture // if login is strictly required, then return the auth failure result
         case Some(loginLink) =>

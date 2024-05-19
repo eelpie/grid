@@ -2,8 +2,8 @@ package lib
 
 import com.amazonaws.services.cloudfront.util.SignerUtils
 import com.gu.mediaservice.lib.config.{CommonConfigWithElastic, GridConfigResources}
+import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
-import play.api.mvc.RequestHeader
 
 import java.security.PrivateKey
 import scala.util.Try
@@ -31,16 +31,16 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   val cloudFrontPrivateKeyBucketKey: Option[String] = stringOpt("cloudfront.private-key.key")
   val cloudFrontKeyPairId: Option[String]           = stringOpt("cloudfront.keypair.id")
 
-  val rootUri: RequestHeader => String = services.apiBaseUri
-  val kahunaUri: RequestHeader => String = services.kahunaBaseUri
-  val cropperUri: RequestHeader => String = services.cropperBaseUri
-  val loaderUri: RequestHeader => String = services.loaderBaseUri
-  val metadataUri: RequestHeader => String = services.metadataBaseUri
-  val imgopsUri: RequestHeader => String = services.imgopsBaseUri
-  val usageUri: RequestHeader => String = services.usageBaseUri
-  val leasesUri: RequestHeader => String = services.leasesBaseUri
-  val authUri: RequestHeader => String = services.authBaseUri
-  val collectionsUri: RequestHeader => String = services.collectionsBaseUri
+  val rootUri: Instance => String = services.apiBaseUri
+  val kahunaUri: Instance => String = services.kahunaBaseUri
+  val cropperUri: Instance => String = services.cropperBaseUri
+  val loaderUri: Instance => String = services.loaderBaseUri
+  val metadataUri: Instance => String = services.metadataBaseUri
+  val imgopsUri: Instance => String = services.imgopsBaseUri
+  val usageUri: Instance => String = services.usageBaseUri
+  val leasesUri: Instance => String = services.leasesBaseUri
+  val authUri: Instance => String = services.authBaseUri
+  val collectionsUri: Instance => String = services.collectionsBaseUri
 
   val requiredMetadata = List("credit", "description", "usageRights")
 

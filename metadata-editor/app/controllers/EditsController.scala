@@ -59,11 +59,11 @@ class EditsController(
 
   private val gridClient: GridClient = GridClient(config.services)(ws)
 
-  val metadataBaseUri: RequestHeader => String = config.services.metadataBaseUri
+  val metadataBaseUri: Instance => String = config.services.metadataBaseUri
   private val AuthenticatedAndAuthorised = auth andThen authorisation.CommonActionFilters.authorisedForArchive
 
   private def getUploader(imageId: String, user: Principal, request: RequestHeader): Future[Option[String]] = {
-    implicit val r = request
+    implicit val instance: Instance = instanceOf(request)
     gridClient.getUploadedBy(imageId, auth.getOnBehalfOfPrincipal(user))
   }
 
@@ -73,10 +73,11 @@ class EditsController(
 
   // TODO: Think about calling this `overrides` or something that isn't metadata
   def getAllMetadata(id: String) = auth.async { request =>
-    val emptyResponse = respond(Edits.getEmpty)(editsEntity(id)(request))
+    implicit val instance: Instance = instanceOf(request)
+    val emptyResponse = respond(Edits.getEmpty)(editsEntity(id)(instance))
     editsStore.get(id) map { dynamoEntry =>
       dynamoEntry.asOpt[Edits]
-        .map(respond(_)(editsEntity(id)(request)))
+        .map(respond(_)(editsEntity(id)(instance)))
         .getOrElse(emptyResponse)
     } recover { case NoItemFound => emptyResponse }
   }
@@ -117,8 +118,9 @@ class EditsController(
 
 
   def getLabels(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.setGet(id, Edits.Labels)
-      .map(labelsCollection(id, _)(request))
+      .map(labelsCollection(id, _)(instance))
       .map {case (uri, labels) => respondCollection(labels)} recover {
       case NoItemFound => respond(Array[String]())
     }
@@ -133,7 +135,7 @@ class EditsController(
         editsStore
           .setAdd(id, Edits.Labels, labels)
           .map(publish(id, UpdateImageUserMetadata))
-          .map(edits => labelsCollection(id, edits.labels.toSet)(req))
+          .map(edits => labelsCollection(id, edits.labels.toSet)(instance))
           .map { case (uri, l) => respondCollection(l) } recover {
             case _: AmazonServiceException => BadRequest
           }
@@ -144,7 +146,7 @@ class EditsController(
     implicit val instance: Instance = instanceOf(request)
     editsStore.setDelete(id, Edits.Labels, decodeUriParam(label))
       .map(publish(id, UpdateImageUserMetadata))
-      .map(edits => labelsCollection(id, edits.labels.toSet)(request))
+      .map(edits => labelsCollection(id, edits.labels.toSet)(instance))
       .map {case (uri, labels) => respondCollection(labels, uri=Some(uri))}
   }
 
@@ -197,10 +199,10 @@ class EditsController(
 
           editsStore.jsonAdd(id, Edits.Metadata, metadataAsMap(mergedMetadata))
             .map(publish(id, UpdateImageUserMetadata))
-            .map(edits => respond(edits.metadata, uri = Some(metadataUri(id)(req))))
+            .map(edits => respond(edits.metadata, uri = Some(metadataUri(id)(instance))))
         } getOrElse {
           // just return the unmodified
-          Future.successful(respond(edits.metadata, uri = Some(metadataUri(id)(req))))
+          Future.successful(respond(edits.metadata, uri = Some(metadataUri(id)(instance))))
         }
       }
     } recover {
@@ -231,8 +233,8 @@ class EditsController(
     editsStore.removeKey(id, Edits.UsageRights).map(publish(id, UpdateImageUserMetadata)).map(edits => Accepted)
   }
 
-  def labelsCollection(id: String, labels: Set[String])(request: Request[Any]): (URI, Seq[EmbeddedEntity[String]]) =
-    (labelsUri(id)(request), labels.map(setUnitEntity(id, Edits.Labels, _)(request)).toSeq)
+  def labelsCollection(id: String, labels: Set[String])(implicit instance: Instance): (URI, Seq[EmbeddedEntity[String]]) =
+    (labelsUri(id)(instance), labels.map(setUnitEntity(id, Edits.Labels, _)(instance)).toSeq)
 
   def metadataAsMap(metadata: ImageMetadata) = {
     (Json.toJson(metadata).as[JsObject]).as[Map[String, JsValue]]

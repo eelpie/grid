@@ -1,77 +1,77 @@
 package com.gu.mediaservice.lib.config
 
-import play.api.mvc.RequestHeader
+import com.gu.mediaservice.model.Instance
 
 trait Services {
 
-  def kahunaBaseUri(request: RequestHeader): String
+  def kahunaBaseUri(instance: Instance): String
 
-  def apiBaseUri(request: RequestHeader): String
+  def apiBaseUri(instance: Instance): String
 
-  def loaderBaseUri(request: RequestHeader): String
+  def loaderBaseUri(instance: Instance): String
 
-  def projectionBaseUri(request: RequestHeader): String
+  def projectionBaseUri(instance: Instance): String
 
-  def cropperBaseUri(request: RequestHeader): String
+  def cropperBaseUri(instance: Instance): String
 
-  def metadataBaseUri(request: RequestHeader): String
+  def metadataBaseUri(instance: Instance): String
 
-  def imgopsBaseUri(request: RequestHeader): String
+  def imgopsBaseUri(instance: Instance): String
 
-  def usageBaseUri(request: RequestHeader): String
+  def usageBaseUri(instance: Instance): String
 
-  def collectionsBaseUri(request: RequestHeader): String
+  def collectionsBaseUri(instance: Instance): String
 
-  def leasesBaseUri(request: RequestHeader): String
+  def leasesBaseUri(instance: Instance): String
 
-  def authBaseUri(request: RequestHeader): String
+  def authBaseUri(instance: Instance): String
 
   def guardianWitnessBaseUri: String
 
-  def corsAllowedDomains(request: RequestHeader): Set[String]
+  def corsAllowedDomains(instance: Instance): Set[String]
 
   def redirectUriParam: String
 
   def redirectUriPlaceholder: String
 
-  def loginUriTemplate(requestHeader: RequestHeader): String
+  def loginUriTemplate(instance: Instance): String
 }
 
 protected class SingleHostServices(val rootUrl: String) extends Services {
-  override def kahunaBaseUri(request: RequestHeader): String =  vhostServiceName("", request)
+  override def kahunaBaseUri(instance: Instance): String =  vhostServiceName("", instance)
 
-  override def apiBaseUri(request: RequestHeader): String=  vhostServiceName("media-api", request)
+  override def apiBaseUri(instance: Instance): String=  vhostServiceName("media-api", instance)
 
-  override def loaderBaseUri(request: RequestHeader): String = vhostServiceName("image-loader", request)
+  override def loaderBaseUri(instance: Instance): String = vhostServiceName("image-loader", instance)
 
-  override def projectionBaseUri(request: RequestHeader): String = vhostServiceName("projection", request)
+  override def projectionBaseUri(instance: Instance): String = vhostServiceName("projection", instance)
 
-  override def cropperBaseUri(request: RequestHeader): String = vhostServiceName("cropper", request)
+  override def cropperBaseUri(instance: Instance): String = vhostServiceName("cropper", instance)
 
-  override def metadataBaseUri(request: RequestHeader): String = vhostServiceName("metadata-editor", request)
+  override def metadataBaseUri(instance: Instance): String = vhostServiceName("metadata-editor", instance)
 
-  override def imgopsBaseUri(request: RequestHeader): String = vhostServiceName("imgops", request)
+  override def imgopsBaseUri(instance: Instance): String = vhostServiceName("imgops", instance)
 
-  override def usageBaseUri(request: RequestHeader): String = vhostServiceName("usage", request)
+  override def usageBaseUri(instance: Instance): String = vhostServiceName("usage", instance)
 
-  override def collectionsBaseUri(request: RequestHeader): String = vhostServiceName("collections", request)
+  override def collectionsBaseUri(instance: Instance): String = vhostServiceName("collections", instance)
 
-  override def leasesBaseUri(request: RequestHeader): String = vhostServiceName("leases", request)
+  override def leasesBaseUri(instance: Instance): String = vhostServiceName("leases", instance)
 
-  override def authBaseUri(request: RequestHeader): String = vhostServiceName("auth", request)
+  override def authBaseUri(instance: Instance): String = vhostServiceName("auth", instance)
 
-  private def thrallBaseUri(request: RequestHeader): String = vhostServiceName("thrall", request)
+  private def thrallBaseUri(instance: Instance): String = vhostServiceName("thrall", instance)
 
   val guardianWitnessBaseUri: String = "https://n0ticeapis.com"
 
-  override def corsAllowedDomains(request: RequestHeader): Set[String] = Set(kahunaBaseUri(request), apiBaseUri(request), thrallBaseUri(request))
+  override def corsAllowedDomains(instance: Instance): Set[String] = Set(kahunaBaseUri(instance), apiBaseUri(instance), thrallBaseUri(instance))
 
   val redirectUriParam = "redirectUri"
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
-  def loginUriTemplate(request: RequestHeader): String = s"${authBaseUri(request)}/login$redirectUriPlaceholder"
+  def loginUriTemplate(instance: Instance): String = s"${authBaseUri(instance)}/login$redirectUriPlaceholder"
 
-  private def vhostServiceName(serviceName: String, request: RequestHeader): String = {
-    val vhostRootUrl = request.host
+  private def vhostServiceName(serviceName: String, instance: Instance): String = {
+    val vhostRootUrl = instance.id
     s"https://$vhostRootUrl/" + serviceName
   }
 }

@@ -39,7 +39,7 @@ class QuarantineUploader(val store: QuarantineStore,
     )
   }
 
-  def quarantineFile(uploadRequest: UploadRequest)(request: Request[Any]) (
+  def quarantineFile(uploadRequest: UploadRequest)(instance: Instance) (
     implicit ec: ExecutionContext,
     logMarker: LogMarker): Future[JsObject] = {
 
@@ -47,7 +47,7 @@ class QuarantineUploader(val store: QuarantineStore,
 
     for {
       _ <- storeQuarantineFile(uploadRequest)
-      uri = s"${config.rootUri(request)}/uploadStatus/${uploadRequest.imageId}"
+      uri = s"${config.rootUri(instance)}/uploadStatus/${uploadRequest.imageId}"
     } yield {
       Json.obj("uri" -> uri)
     }

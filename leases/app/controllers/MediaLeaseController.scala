@@ -26,11 +26,11 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
 
   private val notFound = respondNotFound("MediaLease not found")
 
-  private def indexResponse()(request: Request[AnyContent]) = {
+  private def indexResponse()(implicit instance: Instance) = {
     val appIndex = AppIndex("media-leases", "Media leases service", Map())
     val indexLinks =  List(
-      Link("leases", s"${config.rootUri(request)}/leases/{id}"),
-      Link("by-media-id", s"${config.rootUri(request)}/leases/media/{id}"))
+      Link("leases", s"${config.rootUri(instance)}/leases/{id}"),
+      Link("by-media-id", s"${config.rootUri(instance)}/leases/media/{id}"))
     respond(appIndex, indexLinks)
   }
 
@@ -78,7 +78,10 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     }
   }
 
-  def index = auth { request => indexResponse()(request) }
+  def index = auth { request =>
+    implicit val instance: Instance = instanceOf(request)
+    indexResponse()
+  }
 
   def reindex = auth.async { request => Future {
     val instance = instanceOf(request)
@@ -116,12 +119,13 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   }
 
   def getLease(id: String) = auth.async { request => Future {
-      val leases = store.get(id)
+    implicit val instance: Instance = instanceOf(request)
+    val leases = store.get(id)
       leases.foldLeft(notFound)((_, lease) => respond[MediaLease](
-          uri = config.leaseUri(id)(request),
+          uri = config.leaseUri(id),
           data = lease,
           links = lease.id
-            .map(id => config.mediaApiLink(id)(request))
+            .map(id => config.mediaApiLink(id))
             .toList
         ))
     }
@@ -151,11 +155,12 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   }}
 
   def getLeasesForMedia(id: String) = auth.async { request => Future {
+      implicit val instance: Instance = instanceOf(request)
       val leases = store.getForMedia(id)
 
       respond[LeasesByMedia](
-        uri = config.leasesMediaUri(id)(request),
-        links = List(config.mediaApiLink(id)(request)),
+        uri = config.leasesMediaUri(id),
+        links = List(config.mediaApiLink(id)),
         data = LeasesByMedia.build(leases)
       )
     }

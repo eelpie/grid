@@ -10,6 +10,7 @@ import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.lib.usage.UsageBuilder
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.usage.{MediaUsage, SyndicatedUsageStatus, Usage, UsageNotice, UsageStatus}
 import com.gu.mediaservice.syntax.MessageSubjects
 import lib._
@@ -38,26 +39,26 @@ class UsageApi(
 
   private val AuthenticatedAndAuthorisedToDelete = auth andThen authorisation.CommonActionFilters.authorisedForDeleteCropsOrUsages
 
-  private def wrapUsage(usage: Usage)(request: Request[AnyContent]): EntityResponse[Usage] = {
+  private def wrapUsage(usage: Usage)(implicit instance: Instance): EntityResponse[Usage] = {
     EntityResponse(
-      uri = usageUri(usage.id)(request),
+      uri = usageUri(usage.id),
       data = usage
     )
   }
 
-  private def usageUri(usageId: String)(request: Request[AnyContent]): Option[URI] = {
+  private def usageUri(usageId: String)(implicit instance: Instance): Option[URI] = {
     val encodedUsageId = UriEncoding.encodePathSegment(usageId, "UTF-8")
-    Try { URI.create(s"${config.usageUri(request)}/usages/$encodedUsageId") }.toOption
+    Try { URI.create(s"${config.usageUri(instance)}/usages/$encodedUsageId") }.toOption
   }
 
-  def indexResponse()(request: Request[AnyContent]) = {
+  def indexResponse()(implicit instance: Instance) = {
     val indexData = Map("description" -> "This is the Usage Recording service")
     val indexLinks = List(
-      Link("usages-by-media", s"${config.usageUri(request)}/usages/media/{id}"),
-      Link("usages-by-id", s"${config.usageUri(request)}/usages/{id}")
+      Link("usages-by-media", s"${config.usageUri(instance)}/usages/media/{id}"),
+      Link("usages-by-id", s"${config.usageUri(instance)}/usages/{id}")
     )
 
-    val printPostUri = URI.create(s"${config.usageUri(request)}/usages/print")
+    val printPostUri = URI.create(s"${config.usageUri(instance)}/usages/print")
     val actions = List(
       ArgoAction("print-usage", printPostUri, "POST")
     )
@@ -65,10 +66,12 @@ class UsageApi(
     respond(indexData, indexLinks, actions)
   }
   def index = auth { request =>
-    indexResponse()(request)
+    implicit val instance: Instance = instanceOf(request)
+    indexResponse()
   }
 
   def forUsage(usageId: String) = auth.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "get-usage",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
@@ -84,10 +87,10 @@ class UsageApi(
         val usage = UsageBuilder.build(mediaUsage)
         val mediaId = mediaUsage.mediaId
 
-        val uri = usageUri(usage.id)(req)
+        val uri = usageUri(usage.id)
         val links = List(
-          Link("media", s"${config.services.apiBaseUri(req)}/images/$mediaId"),
-          Link("media-usage", s"${config.services.usageBaseUri(req)}/usages/media/$mediaId")
+          Link("media", s"${config.services.apiBaseUri(instance)}/images/$mediaId"),
+          Link("media-usage", s"${config.services.usageBaseUri(instance)}/usages/media/$mediaId")
         )
 
         respond[Usage](data = usage, uri = uri, links = links)
@@ -100,6 +103,7 @@ class UsageApi(
   }
 
   def forMedia(mediaId: String) = auth.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "usages-for-media-id",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
@@ -114,15 +118,15 @@ class UsageApi(
       usages match {
         case Nil => respondNotFound("No usages found.")
         case _ =>
-          val uri = Try { URI.create(s"${config.services.usageBaseUri(req)}/usages/media/$mediaId") }.toOption
+          val uri = Try { URI.create(s"${config.services.usageBaseUri(instance)}/usages/media/$mediaId") }.toOption
           val links = List(
-            Link("media", s"${config.services.apiBaseUri(req)}/images/$mediaId")
+            Link("media", s"${config.services.apiBaseUri(instance)}/images/$mediaId")
           )
 
           respondCollection[EntityResponse[Usage]](
             uri = uri,
             links = links,
-            data = usages.map(u => wrapUsage(u)(req))
+            data = usages.map(u => wrapUsage(u))
           )
       }
     }).recover {
