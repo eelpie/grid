@@ -15,7 +15,7 @@ class CollectionsComponents(context: Context) extends GridComponents(context, ne
   val notifications = new Notifications(config)
 
   val collections = new CollectionsController(auth, config, collectionsStore, controllerComponents)
-  val imageCollections = new ImageCollectionsController(auth, config, notifications, imageCollectionsStore, controllerComponents)
+  val imageCollections = new ImageCollectionsController(auth, notifications, imageCollectionsStore, controllerComponents)
 
 
   override val router = new Routes(httpErrorHandler, collections, imageCollections, management)
