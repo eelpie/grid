@@ -50,8 +50,8 @@ class CropStore(config: CropperConfig) extends S3ImageStorage(config) {
     theMap.get(preferredKey).orElse(theMap.get(fallbackKey))
   }
 
-  def listCrops(id: String): Future[List[Crop]] = {
-    list(config.imgPublishingBucket, id).map { crops =>
+  def listCrops(id: String, instance: Instance): Future[List[Crop]] = {
+    list(config.imgPublishingBucket, instance.id + "/" + id).map { crops => // TODO crops layout want to be pull up
       crops.foldLeft(Map[String, Crop]()) {
         case (map, (s3Object)) => {
           val filename::containingFolder::_ = s3Object.uri.getPath.split("/").reverse.toList
