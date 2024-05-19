@@ -10,6 +10,7 @@ import play.api.libs.json._
 import scala.concurrent.ExecutionContext
 import com.gu.mediaservice.lib.config.FieldAlias._
 import com.gu.mediaservice.lib.config.Services
+import com.gu.mediaservice.model.Instance
 import play.api.mvc.Security.AuthenticatedRequest
 import play.twirl.api.Html
 
@@ -27,6 +28,7 @@ class KahunaController(
   override def services: Services = config.services
 
   def index(ignored: String) = withOptionalLoginRedirect { request =>
+    implicit val instance: Instance = instanceOf(request)
 
     val maybeUser: Option[Authentication.Principal] = request match {
       case authedRequest: AuthenticatedRequest[_, _] => authedRequest.user match {
@@ -55,7 +57,7 @@ class KahunaController(
     val metadataTemplates: String = Json.toJson(config.metadataTemplates).toString()
     val announcements: String = Json.toJson(config.announcements).toString()
     val interimFilterOptions: String = Json.toJson(config.interimFilterOptions).toString()
-    val returnUri = config.rootUri(request) + okPath
+    val returnUri = config.rootUri(instance) + okPath
     val costFilterLabel = config.costFilterLabel.getOrElse("Free to use only")
     val costFilterChargeable = config.costFilterChargeable.getOrElse(false)
     val maybeOrgOwnedValue =
@@ -64,16 +66,16 @@ class KahunaController(
       else
         Html("undefined")
 
-    val rootUri = config.rootUri(request)
+    val rootUri = config.rootUri(instance)
 
     val kahunaClientServiceUrls = KahunaClientServiceUrls(
       rootUri = rootUri,
-      mediaApiUri = config.mediaApiUri(request),
-      authUri = config.authUri(request)
+      mediaApiUri = config.mediaApiUri(instance),
+      authUri = config.authUri(instance)
     )
 
     Ok(views.html.main(
-      s"${config.authUri(request)}/login?redirectUri=$returnUri",
+      s"${config.authUri(instance)}/login?redirectUri=$returnUri",
       fieldAliases,
       scriptsToLoad,
       domainMetadataSpecs,
@@ -91,7 +93,8 @@ class KahunaController(
   }
 
   def quotas = authentication { req =>
-    Ok(views.html.quotas(config.mediaApiUri(req)))
+    implicit val instance: Instance = instanceOf(req)
+    Ok(views.html.quotas(config.mediaApiUri(instance)))
   }
 
   def notifications = authentication { req =>

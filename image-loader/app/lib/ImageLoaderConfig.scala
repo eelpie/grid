@@ -24,9 +24,9 @@ class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(res
   val thumbWidth: Int = 256
   val thumbQuality: Double = 85d // out of 100
 
-  val rootUri: RequestHeader => String = services.loaderBaseUri
-  val apiUri: RequestHeader => String = services.apiBaseUri
-  val kahunaUri: RequestHeader => String = services.kahunaBaseUri
+  val rootUri: Instance => String = services.loaderBaseUri
+  val apiUri: Instance => String = services.apiBaseUri
+  val kahunaUri: Instance => String = services.kahunaBaseUri
 
   val transcodedMimeTypes: List[MimeType] = getStringSet("transcoded.mime.types").toList.map(MimeType(_))
   val supportedMimeTypes: List[MimeType] = List(Jpeg, Png) ::: transcodedMimeTypes

@@ -100,24 +100,25 @@ class ImageLoaderController(auth: Authentication,
   }
   */
 
-  private def indexResponse(request: Request[AnyContent]): Result = {
+  private def indexResponse()(implicit instance: Instance): Result = {
     val indexData = Map("description" -> "This is the Loader Service")
     val indexLinks = List(
-      Link("prepare", s"${config.rootUri(request)}/prepare"),
-      Link("uploadStatus", s"${config.rootUri(request)}/uploadStatus/{id}"),
-      Link("uploadStatuses", s"${config.rootUri(request)}/uploadStatuses"),
-      Link("load", s"${config.rootUri(request)}/images{?uploadedBy,identifiers,uploadTime,filename}"),
-      Link("import", s"${config.rootUri(request)}/imports{?uri,uploadedBy,identifiers,uploadTime,filename}")
+      Link("prepare", s"${config.rootUri(instance)}/prepare"),
+      Link("uploadStatus", s"${config.rootUri(instance)}/uploadStatus/{id}"),
+      Link("uploadStatuses", s"${config.rootUri(instance)}/uploadStatuses"),
+      Link("load", s"${config.rootUri(instance)}/images{?uploadedBy,identifiers,uploadTime,filename}"),
+      Link("import", s"${config.rootUri(instance)}/imports{?uri,uploadedBy,identifiers,uploadTime,filename}")
     )
     respond(indexData, indexLinks)
   }
 
   def index: Action[AnyContent] = AuthenticatedAndAuthorised { request =>
-    indexResponse(request)
+    implicit val instance: Instance = instanceOf(request)
+    indexResponse
   }
 
-  private def quarantineOrStoreImage(uploadRequest: UploadRequest)(implicit logMarker: LogMarker, request: Request[Any]) = {
-    quarantineUploader.map(_.quarantineFile(uploadRequest)(request)).getOrElse(for { uploadStatusUri <- uploader.storeFile(uploadRequest)} yield{uploadStatusUri.toJsObject})
+  private def quarantineOrStoreImage(uploadRequest: UploadRequest)(implicit logMarker: LogMarker, instance: Instance) = {
+    quarantineUploader.map(_.quarantineFile(uploadRequest)(instance)).getOrElse(for { uploadStatusUri <- uploader.storeFile(uploadRequest)} yield{uploadStatusUri.toJsObject})
   }
 
   private def handleMessageFromIngestBucket(sqsMessage:SQSMessage)(basicLogMarker: LogMarker, request: Request[AnyContent]): Future[Unit] = Future[Future[Unit]]{
@@ -295,7 +296,7 @@ class ImageLoaderController(auth: Authentication,
         )
         _ <- uploadStatusTable.setStatus(record)
 
-        result <- quarantineOrStoreImage(uploadRequest)(context, req)
+        result <- quarantineOrStoreImage(uploadRequest)(context, instance)
 
       } yield result
       result.onComplete( _ => Try { deleteTempFile(tempFile) } )
@@ -386,7 +387,7 @@ class ImageLoaderController(auth: Authentication,
           uploadTime,
           filename,
           instance,
-      )(context, request)
+      )(context)
 
       // under all circumstances, remove the temp files
       uploadResultFuture.onComplete { _ =>
@@ -414,8 +415,8 @@ class ImageLoaderController(auth: Authentication,
     uploadTime: Option[String],
     filename: Option[String],
     instance: Instance
-  )(implicit logMarker:LogMarker, request: Request[AnyContent]): Future[UploadStatusUri] = {
-
+  )(implicit logMarker:LogMarker): Future[UploadStatusUri] = {
+    implicit val i: Instance = instance
     for {
         digestedFile <- digestedFileFuture
         uploadStatusResult <- uploadStatusTable.getStatus(digestedFile.digest)
@@ -527,7 +528,7 @@ class ImageLoaderController(auth: Authentication,
 
   private case class RestoreFromReplicaForm(imageId: String)
   def restoreFromReplica: Action[AnyContent] = AuthenticatedAndAuthorised.async { implicit request =>
-    val instance = instanceOf(request)
+    implicit val instance: Instance = instanceOf(request)
 
     val imageId = Form(
       mapping(
@@ -587,7 +588,7 @@ class ImageLoaderController(auth: Authentication,
 
           future.map { _ =>
             logger.info(logMarker, s"Restored image $imageId from replica bucket $replicaBucket (key: $s3Key)")
-            Redirect(s"${config.kahunaUri(request)}/images/$imageId")
+            Redirect(s"${config.kahunaUri(instance)}/images/$imageId")
           }
         case _ =>
           Future.successful(NotFound("Image not found in replica bucket"))

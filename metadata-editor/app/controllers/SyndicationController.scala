@@ -22,7 +22,7 @@ class SyndicationController(auth: Authentication,
   extends BaseController with Syndication with MessageSubjects with ArgoHelpers with EditsResponse
     with InstanceForRequest {
 
-  override val metadataBaseUri: RequestHeader => String = config.services.metadataBaseUri
+  override val metadataBaseUri: Instance => String = config.services.metadataBaseUri
 
   def getPhotoshoot(id: String) = auth.async {
     editsStore.jsonGet(id, Edits.Photoshoot).map(dynamoEntry => {
