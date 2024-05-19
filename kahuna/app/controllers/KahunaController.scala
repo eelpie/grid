@@ -68,11 +68,12 @@ class KahunaController(
 
     val kahunaClientServiceUrls = KahunaClientServiceUrls(
       rootUri = rootUri,
-      mediaApiUri = config.mediaApiUri(request)
+      mediaApiUri = config.mediaApiUri(request),
+      authUri = config.authUri(request)
     )
 
     Ok(views.html.main(
-      s"${config.authUri}/login?redirectUri=$returnUri",
+      s"${config.authUri(request)}/login?redirectUri=$returnUri",
       fieldAliases,
       scriptsToLoad,
       domainMetadataSpecs,
