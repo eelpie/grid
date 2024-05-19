@@ -82,15 +82,15 @@ class MediaApi(
     "persisted"
   ).mkString(",")
 
-  private def searchLinkHref()(request: Request[AnyContent]) = {
-    s"${config.rootUri(request)}/images{?$searchParamList}"
+  private def searchLinkHref()(instance: Instance) = {
+    s"${config.rootUri(instance)}/images{?$searchParamList}"
   }
 
-  private def searchLink()(request: Request[AnyContent]) = {
-    Link("search", searchLinkHref()(request))
+  private def searchLink()(instance: Instance) = {
+    Link("search", searchLinkHref()(instance))
   }
 
-  private def indexResponse(user: Principal)(request: Request[AnyContent]) = {
+  private def indexResponse(user: Principal)(implicit instance: Instance) = {
     val indexData = Json.obj(
       "description" -> "This is the Media API"
       // ^ Flatten None away
@@ -99,24 +99,24 @@ class MediaApi(
     val userCanUpload: Boolean = authorisation.hasPermissionTo(UploadImages)(user)
     val userCanArchive: Boolean = authorisation.hasPermissionTo(ArchiveImages)(user)
 
-    val maybeLoaderLink: Option[Link] = Some(Link("loader", config.loaderUri(request))).filter(_ => userCanUpload)
-    val maybeArchiveLink: Option[Link] = Some(Link("archive", s"${config.metadataUri(request)}/metadata/{id}/archived")).filter(_ => userCanArchive)
+    val maybeLoaderLink: Option[Link] = Some(Link("loader", config.loaderUri(instance))).filter(_ => userCanUpload)
+    val maybeArchiveLink: Option[Link] = Some(Link("archive", s"${config.metadataUri(instance)}/metadata/{id}/archived")).filter(_ => userCanArchive)
     val indexLinks = List(
-      searchLink()(request),
-      Link("image",           s"${config.rootUri(request)}/images/{id}"),
+      searchLink()(instance),
+      Link("image",           s"${config.rootUri(instance)}/images/{id}"),
       // FIXME: credit is the only field available for now as it's the only on
       // that we are indexing as a completion suggestion
-      Link("metadata-search", s"${config.rootUri(request)}/suggest/metadata/{field}{?q}"),
-      Link("label-search",    s"${config.rootUri(request)}/images/edits/label{?q}"),
-      Link("cropper",         config.cropperUri(request)),
-      Link("edits",           config.metadataUri(request)),
-      Link("session",         s"${config.authUri(request)}/session"),
+      Link("metadata-search", s"${config.rootUri(instance)}/suggest/metadata/{field}{?q}"),
+      Link("label-search",    s"${config.rootUri(instance)}/images/edits/label{?q}"),
+      Link("cropper",         config.cropperUri(instance)),
+      Link("edits",           config.metadataUri(instance)),
+      Link("session",         s"${config.authUri(instance)}/session"),
       Link("witness-report",  s"${config.services.guardianWitnessBaseUri}/2/report/{id}"),
-      Link("collections",     config.collectionsUri(request)),
-      Link("permissions",     s"${config.rootUri(request)}/permissions"),
-      Link("leases",          config.leasesUri(request)),
+      Link("collections",     config.collectionsUri(instance)),
+      Link("permissions",     s"${config.rootUri(instance)}/permissions"),
+      Link("leases",          config.leasesUri(instance)),
       Link("syndicate-image", s"${config.rootUri}/images/{id}/{partnerName}/{startPending}/syndicateImage"),
-      Link("undelete",        s"${config.rootUri(request)}/images/{id}/undelete")
+      Link("undelete",        s"${config.rootUri(instance)}/images/{id}/undelete")
     ) ++ maybeLoaderLink.toList ++ maybeArchiveLink.toList
     respond(indexData, indexLinks)
   }
@@ -127,7 +127,10 @@ class MediaApi(
   private def ImageNotFound(id: String) = respondError(NotFound, "image-not-found", s"No image found with the given id $id")
   private def ExportNotFound = respondError(NotFound, "export-not-found", "No export found with the given id")
 
-  def index = auth { request => indexResponse(request.user)(request) }
+  def index = auth { request =>
+    implicit val instance: Instance = instanceOf(request)
+    indexResponse(request.user)(instance)
+  }
 
   def getIncludedFromParams(request: AuthenticatedRequest[AnyContent, Principal]): List[String] = {
     val includedQuery: Option[String] = request.getQueryString("include")
@@ -174,6 +177,7 @@ class MediaApi(
   }
 
   def diffProjection(id: String) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     val onBehalfOfFn: OnBehalfOfPrincipal = auth.getOnBehalfOfPrincipal(request.user)
     for {
       maybeEsImage <- getImageResponseFromES(id, request)
@@ -197,7 +201,7 @@ class MediaApi(
     elasticSearch.getImageById(id) map {
       case Some(image) if hasPermission(request.user, image) =>
         val links = List(
-          Link("image", s"${config.rootUri(request)}/images/$id")
+          Link("image", s"${config.rootUri(instance)}/images/$id")
         )
         respond(Json.toJson(image.fileMetadata), links)
       case _ => ImageNotFound(id)
@@ -210,7 +214,7 @@ class MediaApi(
     elasticSearch.getImageById(id) map {
       case Some(image) if hasPermission(request.user, image) =>
         val links = List(
-          Link("image", s"${config.rootUri(request)}/images/$id")
+          Link("image", s"${config.rootUri(instance)}/images/$id")
         )
         respond(Json.toJson(image.exports), links)
       case _ => ImageNotFound(id)
@@ -392,7 +396,6 @@ class MediaApi(
   }
 
   def downloadOptimisedImage(id: String, width: Integer, height: Integer, quality: Integer) = auth.async { request =>
-    implicit val r: Request[AnyContent] = request
     implicit val instance: Instance = instanceOf(request)
 
     elasticSearch.getImageById(id) flatMap {
@@ -408,11 +411,11 @@ class MediaApi(
           }))
 
         if(config.recordDownloadAsUsage) {
-          postToUsages(config.usageUri + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
+          postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
         }
 
         Future.successful(
-          Redirect(config.imgopsUri(request) + List(sourceImageUri.getPath, sourceImageUri.getRawQuery).mkString("?") + s"&w=$width&h=$height&q=$quality")
+          Redirect(config.imgopsUri(instance) + List(sourceImageUri.getPath, sourceImageUri.getRawQuery).mkString("?") + s"&w=$width&h=$height&q=$quality")
         )
       }
       case _ => Future.successful(ImageNotFound(id))
@@ -420,11 +423,11 @@ class MediaApi(
   }
 
   def postToUsages(uri: String, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal, mediaId: String, user: String,
-                   partnerName: Option[String] = None, startPending: Option[String] = None)(implicit r: Request[AnyContent]) = {
+                   partnerName: Option[String] = None, startPending: Option[String] = None)(implicit instance: Instance) = {
 
     val baseRequest = ws.url(uri)
       .withHttpHeaders(Authentication.originalServiceHeaderName -> config.appName,
-        HttpHeaders.ORIGIN -> config.rootUri(r),
+        HttpHeaders.ORIGIN -> config.rootUri(instance),
         HttpHeaders.CONTENT_TYPE -> ContentType.APPLICATION_JSON.getMimeType)
 
     val request = onBehalfOfPrincipal(baseRequest)
@@ -459,15 +462,15 @@ class MediaApi(
 
     val include = getIncludedFromParams(request)
 
-    def hitToImageEntity(elasticId: String, image: SourceWrapper[Image])(implicit request: Request[AnyContent]): EmbeddedEntity[JsValue] = {
+    def hitToImageEntity(elasticId: String, image: SourceWrapper[Image])(implicit instance: Instance): EmbeddedEntity[JsValue] = {
       val writePermission = authorisation.isUploaderOrHasPermission(request.user, image.instance.uploadedBy, EditMetadata)
       val deletePermission = authorisation.isUploaderOrHasPermission(request.user, image.instance.uploadedBy, DeleteImagePermission)
       val deleteCropsOrUsagePermission = canUserDeleteCropsOrUsages(request.user)
 
       val (imageData, imageLinks, imageActions) =
-        imageResponse.create(elasticId, image, writePermission, deletePermission, deleteCropsOrUsagePermission, include, request.user.accessor.tier)(request)
+        imageResponse.create(elasticId, image, writePermission, deletePermission, deleteCropsOrUsagePermission, include, request.user.accessor.tier)
       val id = (imageData \ "id").as[String]
-      val imageUri = URI.create(s"${config.rootUri(request)}/images/$id")
+      val imageUri = URI.create(s"${config.rootUri(instance)}/images/$id")
       EmbeddedEntity(uri = imageUri, data = Some(imageData), imageLinks, imageActions)
     }
 
@@ -492,7 +495,7 @@ class MediaApi(
       // TODO: respondErrorCollection?
       errors => Future.successful(respondError(UnprocessableEntity, InvalidUriParams.errorKey,
         // Annoyingly `NonEmptyList` and `IList` don't have `mkString`
-        errors.map(_.message).list.reduce(_+ ", " +_), List(searchLink()(request)))
+        errors.map(_.message).list.reduce(_+ ", " +_), List(searchLink()(instance)))
       ),
       params => respondSuccess(params)
     )
