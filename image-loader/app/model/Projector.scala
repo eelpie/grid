@@ -132,7 +132,7 @@ class Projector(config: ImageUploadOpsCfg,
                    gridClient: GridClient,
                    onBehalfOfFn: WSRequest => WSRequest,
                    instance: Instance)
-                  (implicit ec: ExecutionContext, logMarker: LogMarker, request: RequestHeader): Future[Image] = {
+                  (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
     val DigestedFile(tempFile_, id_) = srcFileDigest
 
     val identifiers_ = extractedS3Meta.identifiers
@@ -152,6 +152,7 @@ class Projector(config: ImageUploadOpsCfg,
           instance = instance // TODO careful with this one!
         )
 
+        implicit val i: Instance = instance
         imageUploadProjectionOps.projectImageFromUploadRequest(uploadRequest) flatMap (
           image => ImageDataMerger.aggregate(image, gridClient, onBehalfOfFn)
         )

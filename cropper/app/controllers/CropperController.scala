@@ -1,7 +1,7 @@
 package controllers
 
 import _root_.play.api.libs.json._
-import _root_.play.api.mvc.{AnyContent, BaseController, ControllerComponents, Request, RequestHeader}
+import _root_.play.api.mvc.{BaseController, ControllerComponents}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.Link
@@ -40,16 +40,17 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
 
   val AuthenticatedAndAuthorisedToDeleteCrops = auth andThen authorisation.CommonActionFilters.authorisedForDeleteCropsOrUsages
 
-  def indexResponse()(request: Request[AnyContent]) = {
+  def indexResponse()(implicit instance: Instance) = {
     val indexData = Map("description" -> "This is the Cropper Service")
     val indexLinks = List(
-      Link("crop", s"${config.rootUri(request)}/crops")
+      Link("crop", s"${config.rootUri(instance)}/crops")
     )
     respond(indexData, indexLinks)
   }
 
   def index = auth { request =>
-    indexResponse()(request)
+    implicit val instance: Instance = instanceOf(request)
+    indexResponse()
   }
 
   def export = auth.async(parse.json) { httpRequest: Authentication.Request[JsValue] =>
@@ -109,7 +110,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
   private def downloadExportLink(imageId: String, exportId: String, width: Int) = Link(s"crop-download-$exportId-$width", s"${config.apiUri}/images/$imageId/export/$exportId/asset/$width/download")
 
   def getCrops(id: String) = auth.async { httpRequest =>
-
+    implicit val instance: Instance = instanceOf(httpRequest)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "getCrops",
       "requestId" -> RequestLoggingFilter.getRequestId(httpRequest),
@@ -120,7 +121,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
 
     store.listCrops(id) map (_.toList) map { crops =>
       val deleteCropsAction =
-        ArgoAction("delete-crops", URI.create(s"${config.rootUri(httpRequest)}/crops/$id"), "DELETE")
+        ArgoAction("delete-crops", URI.create(s"${config.rootUri(instance)}/crops/$id"), "DELETE")
 
       lazy val cropDownloadLinks = for {
         crop <- crops
@@ -166,9 +167,9 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
     exportRequest: ExportRequest, user: Principal, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal,
     request: Authentication.Request[JsValue]
   )(implicit logMarker: LogMarker): Future[(String, Crop)] = {
-    implicit val r: Authentication.Request[JsValue] = request
+    implicit val instance = instanceOf(request)
     for {
-      _ <- verify(isMediaApiImageUri(exportRequest.uri, config.apiUri(request)), InvalidSource)
+      _ <- verify(isMediaApiImageUri(exportRequest.uri, config.apiUri(instance)), InvalidSource)
       apiImage <- fetchSourceFromApi(exportRequest.uri, onBehalfOfPrincipal)
       _ <- verify(apiImage.valid, InvalidImage)
       // Image should always have dimensions, but we want to safely extract the Option
@@ -186,7 +187,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
     } yield (id, finalCrop)
   }
 
-  private def fetchSourceFromApi(uri: String, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal)(implicit request: RequestHeader): Future[SourceImage] = {
+  private def fetchSourceFromApi(uri: String, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal)(implicit instance: Instance): Future[SourceImage] = {
     gridClient.getSourceImage(imageIdFrom(uri), onBehalfOfPrincipal)
   }
 

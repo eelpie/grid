@@ -70,6 +70,7 @@ class ThrallController(
   }
 
   def upsertProjectPage(imageId: Option[String]) = withLoginRedirectAsync { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     imageId match {
       case Some(id) if store.doesOriginalExist(id) =>
         gridClient.getProjectionDiff(id, auth.innerServiceCall).map {
@@ -88,8 +89,8 @@ class ThrallController(
         es.getMigrationFailuresOverview(es.imagesCurrentAlias(instance), running.migrationIndexName).map(failuresOverview =>
           Ok(views.html.migrationFailuresOverview(
             failuresOverview,
-            apiBaseUrl = services.apiBaseUri(request),
-            uiBaseUrl = services.kahunaBaseUri(request),
+            apiBaseUrl = services.apiBaseUri(instance),
+            uiBaseUrl = services.kahunaBaseUri(instance),
           ))
         )
       case _ => for {
@@ -98,8 +99,8 @@ class ThrallController(
         failuresOverview <- es.getMigrationFailuresOverview(currentIndexName, es.imagesMigrationAlias(instance))
         response = Ok(views.html.migrationFailuresOverview(
           failuresOverview,
-          apiBaseUrl = services.apiBaseUri(request),
-          uiBaseUrl = services.kahunaBaseUri(request),
+          apiBaseUrl = services.apiBaseUri(instance),
+          uiBaseUrl = services.kahunaBaseUri(instance),
         ))
       } yield response
     }
@@ -113,8 +114,8 @@ class ThrallController(
           es.getMigrationFailures(es.imagesCurrentAlias(instance), running.migrationIndexName, paging.from, paging.pageSize, filter).map(failures =>
             Ok(views.html.migrationFailures(
               failures,
-              apiBaseUrl = services.apiBaseUri(request),
-              uiBaseUrl = services.kahunaBaseUri(request),
+              apiBaseUrl = services.apiBaseUri(instance),
+              uiBaseUrl = services.kahunaBaseUri(instance),
               filter,
               paging.page,
               shouldAllowReattempts = true
@@ -126,8 +127,8 @@ class ThrallController(
           failures <- es.getMigrationFailures(es.imagesHistoricalAlias(instance), currentIndexName, paging.from, paging.pageSize, filter)
           response = Ok(views.html.migrationFailures(
             failures,
-            apiBaseUrl = services.apiBaseUri(request),
-            uiBaseUrl = services.kahunaBaseUri(request),
+            apiBaseUrl = services.apiBaseUri(instance),
+            uiBaseUrl = services.kahunaBaseUri(instance),
             filter,
             paging.page,
             shouldAllowReattempts = false
@@ -244,6 +245,7 @@ class ThrallController(
   }
 
   def upsertFromProjectionSingleImage: Action[AnyContent] = withLoginRedirectAsync { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     val imageId = migrateSingleImageFormReader.bindFromRequest.get.id
 
     for {
@@ -258,7 +260,8 @@ class ThrallController(
   }
 
   def restoreFromReplica: Action[AnyContent] = withLoginRedirect {implicit request =>
-    Ok(views.html.restoreFromReplica(s"${services.loaderBaseUri(request)}/images/restore")) //FIXME figure out imageId bit
+    implicit val instance: Instance = instanceOf(request)
+    Ok(views.html.restoreFromReplica(s"${services.loaderBaseUri(instance)}/images/restore")) //FIXME figure out imageId bit
   }
 
   def reattemptMigrationFailures(filter: String, page: Int): Action[AnyContent] = withLoginRedirectAsync { implicit request =>

@@ -1,9 +1,9 @@
 package auth
 
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
-import play.api.mvc.RequestHeader
+import com.gu.mediaservice.model.Instance
 
 class AuthConfig(resources: GridConfigResources) extends CommonConfig(resources) {
-  val rootUri: RequestHeader => String = services.authBaseUri
-  val mediaApiUri: RequestHeader => String = services.apiBaseUri
+  val rootUri: Instance => String = services.authBaseUri
+  val mediaApiUri: Instance => String = services.apiBaseUri
 }
