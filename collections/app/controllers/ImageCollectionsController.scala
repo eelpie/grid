@@ -9,7 +9,7 @@ import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.net.{URI => UriOps}
 import com.gu.mediaservice.model.{ActionData, Collection, Instance}
 import com.gu.mediaservice.syntax.MessageSubjects
-import lib.{CollectionsConfig, Notifications}
+import lib.Notifications
 import org.joda.time.DateTime
 import play.api.mvc.{BaseController, ControllerComponents}
 import store.ImageCollectionsStore
@@ -18,7 +18,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-class ImageCollectionsController(authenticated: Authentication, config: CollectionsConfig, notifications: Notifications,
+class ImageCollectionsController(authenticated: Authentication, notifications: Notifications,
                                  imageCollectionsStore: ImageCollectionsStore,
                                  override val controllerComponents: ControllerComponents)
   extends BaseController with MessageSubjects with ArgoHelpers with InstanceForRequest {
@@ -26,6 +26,7 @@ class ImageCollectionsController(authenticated: Authentication, config: Collecti
   import CollectionsManager.onlyLatest
 
   def getCollections(id: String) = authenticated.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     imageCollectionsStore.get(id).map { collections =>
       respond(onlyLatest(collections))
     } recover {
