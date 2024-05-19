@@ -81,6 +81,7 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
   }
 
   def correctedCollections = authenticated.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     store.getAll flatMap { collections =>
       val tree = Node.fromList[Collection](
         collections,
@@ -102,7 +103,7 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
     }
   }
 
-  def allCollections = store.getAll.map { collections =>
+  def allCollections()(implicit instance: Instance)= store.getAll.map { collections =>
     Node.fromList[Collection](
       collections,
       (collection) => collection.path,
@@ -134,7 +135,7 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
         (__ \ "cssColour").writeNullable[String]
       )(node => (node.basename, node.children, node.fullPath, node.data, getCssColour(node.fullPath)))
 
-    allCollections.map { tree =>
+    allCollections().map { tree =>
       respond(
         Json.toJson(tree)(asArgo),
         actions = List(addChildAction()).flatten
@@ -168,8 +169,8 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
   }
 
   type MaybeTree = Option[Node[Collection]]
-  def hasChildren(path: List[String]): Future[Boolean] =
-    allCollections.map { tree =>
+  private def hasChildren(path: List[String])(implicit instance: Instance) =
+    allCollections().map { tree =>
 
       // Traverse the tree using the path
       val maybeTree = path
@@ -183,6 +184,7 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
     }
 
   def removeCollection(collectionPath: String) = authenticated.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     val path = CollectionsManager.uriToPath(UriOps.encodePlus(collectionPath))
 
     hasChildren(path).flatMap { noRemove =>
