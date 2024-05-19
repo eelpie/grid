@@ -81,6 +81,7 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
   }
 
   def correctedCollections = authenticated.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     store.getAll flatMap { collections =>
       val tree = Node.fromList[Collection](
         collections,
@@ -183,6 +184,7 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
     }
 
   def removeCollection(collectionPath: String) = authenticated.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     val path = CollectionsManager.uriToPath(UriOps.encodePlus(collectionPath))
 
     hasChildren(path).flatMap { noRemove =>
