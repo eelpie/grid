@@ -103,7 +103,7 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
     }
   }
 
-  def allCollections = store.getAll.map { collections =>
+  def allCollections()(implicit instance: Instance) = store.getAll.map { collections =>
     Node.fromList[Collection](
       collections,
       (collection) => collection.path,
@@ -169,7 +169,7 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
   }
 
   type MaybeTree = Option[Node[Collection]]
-  def hasChildren(path: List[String]): Future[Boolean] =
+  def hasChildren(path: List[String])(implicit instance: Instance): Future[Boolean] =
     allCollections.map { tree =>
 
       // Traverse the tree using the path
