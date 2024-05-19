@@ -6,6 +6,7 @@ import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{S3Ops, ThrallMessageSender}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
+import com.gu.mediaservice.model.Instance
 import com.typesafe.scalalogging.StrictLogging
 import controllers.{AssetsComponents, HealthCheck, ReaperController, ThrallController}
 import lib._
@@ -26,8 +27,8 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val thrallMetrics = new ThrallMetrics(config)
 
   val es = new ElasticSearch(config.esConfig, Some(thrallMetrics), actorSystem.scheduler)
-  es.ensureIndexExistsAndAliasAssigned(alias = es.imagesCurrentAlias("a"), index = "a_index")
-  es.ensureIndexExistsAndAliasAssigned(alias = es.imagesCurrentAlias("b"), index = "b_index")
+  es.ensureIndexExistsAndAliasAssigned(alias = es.imagesCurrentAlias(Instance("a")), index = "a_index")
+  es.ensureIndexExistsAndAliasAssigned(alias = es.imagesCurrentAlias(Instance("b")), index = "b_index")
 
   val gridClient: GridClient = GridClient(config.services)(wsClient)
 
@@ -41,7 +42,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   val uiSource: Source[KinesisRecord, Future[Done]] = KinesisSource(highPriorityKinesisConfig)
   val automationSource: Source[KinesisRecord, Future[Done]] = KinesisSource(lowPriorityKinesisConfig)
-  val migrationSourceWithSender: MigrationSourceWithSender = MigrationSourceWithSender(materializer, auth.innerServiceCall, es, gridClient, config.projectionParallelism, "an-instance")  // TODO move to a more multi instance aware place
+  val migrationSourceWithSender: MigrationSourceWithSender = MigrationSourceWithSender(materializer, auth.innerServiceCall, es, gridClient, config.projectionParallelism, Instance("an-instance"))  // TODO move to a more multi instance aware place
 
   val thrallEventConsumer = new ThrallEventConsumer(
     es,
