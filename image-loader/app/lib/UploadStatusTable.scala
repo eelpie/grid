@@ -1,5 +1,6 @@
 package lib
 
+import com.gu.mediaservice.model.Instance
 import model.StatusType.{Prepared, Queued}
 import model.{UploadStatus, UploadStatusRecord}
 import org.scanamo._
@@ -13,15 +14,15 @@ class UploadStatusTable(config: ImageLoaderConfig) {
 
   private val uploadStatusTable = Table[UploadStatusRecord](config.uploadStatusTable)
 
-  def getStatus(imageId: String)(implicit ec: ExecutionContext) = {
-    ScanamoAsync(client).exec(uploadStatusTable.get("id" === imageId))
+  def getStatus(imageId: String)(implicit ec: ExecutionContext, instance: Instance) = {
+    ScanamoAsync(client).exec(uploadStatusTable.get("instance" === instance.id and "id" === imageId))
   }
 
   def setStatus(uploadStatus: UploadStatusRecord)(implicit ec: ExecutionContext) = {
     ScanamoAsync(client).exec(uploadStatusTable.put(uploadStatus))
   }
 
-  def updateStatus(imageId: String, updateRequest: UploadStatus)(implicit ec: ExecutionContext) = {
+  def updateStatus(imageId: String, updateRequest: UploadStatus)(implicit ec: ExecutionContext, instance: Instance) = {
     val updateExpression = updateRequest.errorMessage match {
       case Some(error) => set("status", updateRequest.status) and set("errorMessages", error)
       case None => set("status", updateRequest.status)
@@ -34,14 +35,14 @@ class UploadStatusTable(config: ImageLoaderConfig) {
 
     ScanamoAsync(client).exec(
       uploadStatusTableWithCondition.update(
-          "id" -> imageId,
+          "id" === imageId and "instance" === instance.id,
           update = updateExpression
         )
     )
   }
 
-  def queryByUser(user: String)(implicit ec: ExecutionContext): Future[List[UploadStatusRecord]] = {
-    ScanamoAsync(client).exec(uploadStatusTable.scan()).map {
+  def queryByUser(user: String)(implicit ec: ExecutionContext, instance: Instance): Future[List[UploadStatusRecord]] = {
+    ScanamoAsync(client).exec(uploadStatusTable.query("instance" === instance.id)).map {
       case Nil => List.empty[UploadStatusRecord]
       case recordsAndErrors => {
         recordsAndErrors
