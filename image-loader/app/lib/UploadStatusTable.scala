@@ -5,12 +5,11 @@ import model.{UploadStatus, UploadStatusRecord}
 import org.scanamo._
 import org.scanamo.generic.auto._
 import org.scanamo.syntax._
-import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
 import scala.concurrent.{ExecutionContext, Future}
 class UploadStatusTable(config: ImageLoaderConfig) {
 
-  private val client = DynamoDbAsyncClient.builder.build() // TODO region and auth!
+  private val client = config.dynamoDBAsyncV2Builder().build()
 
   private val uploadStatusTable = Table[UploadStatusRecord](config.uploadStatusTable)
 
