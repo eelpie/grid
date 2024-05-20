@@ -1,44 +1,66 @@
 package lib
 
-import com.gu.mediaservice.lib.aws.DynamoDB
 import com.gu.mediaservice.model.leases.{MediaLease, MediaLeaseType}
-import com.gu.scanamo._
-import com.gu.scanamo.syntax._
 import org.joda.time.DateTime
+import org.scanamo._
+import org.scanamo.generic.semiauto.deriveDynamoFormat
+import org.scanamo.syntax._
+import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbClient}
 
 import scala.concurrent.ExecutionContext
 
-class LeaseStore(config: LeasesConfig) extends DynamoDB(config, config.leasesTable) {
-  implicit val dateTimeFormat =
-    DynamoFormat.coercedXmap[DateTime, String, IllegalArgumentException](DateTime.parse)(_.toString)
-  implicit val enumFormat =
-    DynamoFormat.coercedXmap[MediaLeaseType, String, IllegalArgumentException](MediaLeaseType(_))(_.toString)
+class LeaseStore(config: LeasesConfig) {
+
+  implicit val dateTimeFormat: DynamoFormat[DateTime] = {
+    new DynamoFormat[DateTime] {
+      // TODO hard fail but I'm done with this! Far too many snow flake DSLs in use...
+      override def read(av: DynamoValue): Either[DynamoReadError, DateTime] = {
+        Right(DateTime.parse(av.toAttributeValue.s()))
+      }
+      override def write(t: DateTime): DynamoValue = DynamoValue.fromString(t.toString)
+    }
+  }
+
+  implicit val enumFormat: DynamoFormat[com.gu.mediaservice.model.leases.MediaLeaseType] = {
+    new DynamoFormat[com.gu.mediaservice.model.leases.MediaLeaseType] {
+      // TODO hard fail but I'm done with this! Far too many snow flake DSLs in use...
+      override def read(av: DynamoValue): Either[DynamoReadError, MediaLeaseType] = Right(MediaLeaseType(av.toAttributeValue.s()))
+      override def write(t: MediaLeaseType): DynamoValue = DynamoValue.fromString(t.name)
+    }
+  }
+
+  implicit val formatLeases: DynamoFormat[com.gu.mediaservice.model.leases.MediaLease] = deriveDynamoFormat[com.gu.mediaservice.model.leases.MediaLease]
+
+  private val client = DynamoDbClient.builder.build() // TODO region and auth!
+  private val asyncClient = DynamoDbAsyncClient.builder.build() // TODO region and auth!
 
   private val leasesTable = Table[MediaLease](config.leasesTable)
 
   def get(id: String): Option[MediaLease] = {
-    Scanamo.exec(client)(leasesTable.get('id -> id)).flatMap(_.toOption)
+    Scanamo(client).exec(leasesTable.get("id" === id)).flatMap(_.toOption)
   }
 
   def getForMedia(id: String): List[MediaLease] = {
-    Scanamo.exec(client)(leasesTable.index("mediaId").query('mediaId -> id)).flatMap(_.toOption)
+    Scanamo(client).exec(leasesTable.index("mediaId").query("mediaId" === id)).flatMap(_.toOption)
   }
 
   def put(lease: MediaLease)(implicit ec: ExecutionContext) = {
-    ScanamoAsync.exec(client)(leasesTable.put(lease))
+    ScanamoAsync(asyncClient).exec(leasesTable.put(lease))
   }
 
   def putAll(leases: List[MediaLease])(implicit ec: ExecutionContext) = {
-    ScanamoAsync.exec(client)(leasesTable.putAll(leases.toSet))
+    ScanamoAsync(asyncClient).exec(leasesTable.putAll(leases.toSet))
   }
 
   def delete(id: String)(implicit ec: ExecutionContext) = {
-    ScanamoAsync.exec(client)(leasesTable.delete('id -> id))
+    ScanamoAsync(asyncClient).exec(leasesTable.delete("id" === id))
   }
 
-  def forEach(run: List[MediaLease] => Unit)(implicit ec: ExecutionContext) = ScanamoAsync.exec(client)(
-    leasesTable.scan
-      .map(ops => ops.flatMap(_.toOption))
-      .map(run)
-  )
+  def forEach(run: List[MediaLease] => Unit)(implicit ec: ExecutionContext) = {
+    val scanOperation = leasesTable.scan
+    val eventualOutcomes = ScanamoAsync(asyncClient).exec(scanOperation)
+    eventualOutcomes.map(ops => ops.flatMap((t: Either[DynamoReadError, MediaLease]) => t.toOption))
+      .map((a: Seq[MediaLease]) => run(a.toList)
+      )
+  }
 }
