@@ -1,12 +1,16 @@
 package lib
 
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.leases.{MediaLease, MediaLeaseType}
 import org.joda.time.DateTime
 import org.scanamo._
 import org.scanamo.generic.semiauto.deriveDynamoFormat
 import org.scanamo.syntax._
+import software.amazon.awssdk.services.dynamodb.model.{AttributeValue, PutItemRequest}
 
-import scala.concurrent.ExecutionContext
+import java.util
+import scala.concurrent.{ExecutionContext, Future}
+import collection.JavaConverters._
 
 class LeaseStore(config: LeasesConfig) {
 
@@ -35,28 +39,40 @@ class LeaseStore(config: LeasesConfig) {
 
   private val leasesTable = Table[MediaLease](config.leasesTable)
 
-  def get(id: String): Option[MediaLease] = {
-    Scanamo(client).exec(leasesTable.get("id" === id)).flatMap(_.toOption)
+  def get(id: String)(implicit instance: Instance): Option[MediaLease] = {
+    Scanamo(client).exec(leasesTable.get("id" === id and "instance" === instance.id)).flatMap(_.toOption)
   }
 
-  def getForMedia(id: String): List[MediaLease] = {
-    Scanamo(client).exec(leasesTable.index("mediaId").query("mediaId" === id)).flatMap(_.toOption)
+  def getForMedia(id: String)(implicit instance: Instance): List[MediaLease] = {
+    Scanamo(client).exec(leasesTable.index("mediaId").query( "instance" === instance.id and "mediaId" === id)).flatMap(_.toOption)
   }
 
-  def put(lease: MediaLease)(implicit ec: ExecutionContext) = {
-    ScanamoAsync(asyncClient).exec(leasesTable.put(lease))
+  def put(lease: MediaLease)(implicit instance: Instance) = {
+    // TODO bypass scanomo to put on composite key
+    val map: util.Map[String, AttributeValue] = formatLeases.write(lease).asObject.get.toJavaMap
+    map.put("instance", AttributeValue.fromS(instance.id))
+    val putRequest = PutItemRequest.builder().
+      tableName(config.leasesTable)
+      .item(map)
+      .build()
+    client.putItem(putRequest)
+    Future.successful(true)
   }
 
-  def putAll(leases: List[MediaLease])(implicit ec: ExecutionContext) = {
-    ScanamoAsync(asyncClient).exec(leasesTable.putAll(leases.toSet))
+  def putAll(leases: List[MediaLease])(implicit ec: ExecutionContext, instance: Instance) = {
+    // TODO BATCH
+    leases.foreach { l =>
+      put(l)
+    }
+    Future.successful(true)
   }
 
-  def delete(id: String)(implicit ec: ExecutionContext) = {
-    ScanamoAsync(asyncClient).exec(leasesTable.delete("id" === id))
+  def delete(id: String)(implicit ec: ExecutionContext, instance: Instance) = {
+    ScanamoAsync(asyncClient).exec(leasesTable.delete("id" === id and "instance" === instance.id))
   }
 
-  def forEach(run: List[MediaLease] => Unit)(implicit ec: ExecutionContext) = {
-    val scanOperation = leasesTable.scan
+  def forEach(run: List[MediaLease] => Unit)(implicit ec: ExecutionContext, instance: Instance) = {
+    val scanOperation = leasesTable.query("instance" === instance.id)
     val eventualOutcomes = ScanamoAsync(asyncClient).exec(scanOperation)
     eventualOutcomes.map(ops => ops.flatMap((t: Either[DynamoReadError, MediaLease]) => t.toOption))
       .map((a: Seq[MediaLease]) => run(a.toList)
