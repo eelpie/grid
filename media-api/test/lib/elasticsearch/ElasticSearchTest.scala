@@ -33,7 +33,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
 
   implicit val request = mock[AuthenticatedRequest[AnyContent, Principal]]
 
-  private val index = "images"
+  private val index = instance + "_index"
 
   private val mediaApiConfig = new MediaApiConfig(GridConfigResources(
     Configuration.from(USED_CONFIGS_IN_TEST ++ MOCK_CONFIG_KEYS.map(_ -> NOT_USED_IN_TEST).toMap),
