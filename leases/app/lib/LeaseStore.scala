@@ -5,7 +5,6 @@ import org.joda.time.DateTime
 import org.scanamo._
 import org.scanamo.generic.semiauto.deriveDynamoFormat
 import org.scanamo.syntax._
-import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbClient}
 
 import scala.concurrent.ExecutionContext
 
@@ -31,8 +30,8 @@ class LeaseStore(config: LeasesConfig) {
 
   implicit val formatLeases: DynamoFormat[com.gu.mediaservice.model.leases.MediaLease] = deriveDynamoFormat[com.gu.mediaservice.model.leases.MediaLease]
 
-  private val client = DynamoDbClient.builder.build() // TODO region and auth!
-  private val asyncClient = DynamoDbAsyncClient.builder.build() // TODO region and auth!
+  private val client = config.dynamoDBV2Builder().build()
+  private val asyncClient = config.dynamoDBAsyncV2Builder().build()
 
   private val leasesTable = Table[MediaLease](config.leasesTable)
 
