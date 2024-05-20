@@ -124,7 +124,8 @@ class ReaperController(
           _,
           deletedBy,
           deleteTime = deleteTime.toString,
-          isDeleted = true
+          isDeleted = true,
+          instance = instance.id
         )
       ))
     } yield {
