@@ -7,7 +7,7 @@ import com.gu.mediaservice.lib.auth.Permissions.UploadImages
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.model.Instance
-import com.gu.scanamo.error.{ConditionNotMet, DynamoReadError, ScanamoError}
+import org.scanamo.{ConditionNotMet, ScanamoError}
 import lib._
 import model.{StatusType, UploadStatus}
 import play.api.libs.json.Json
