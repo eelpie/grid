@@ -7,13 +7,12 @@ import org.scanamo.DeleteReturn.Nothing
 import org.scanamo._
 import org.scanamo.generic.auto._
 import org.scanamo.syntax._
-import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class SoftDeletedMetadataTable(config: CommonConfig) {
 
-  private val client = DynamoDbAsyncClient.builder.build()  // TODO region and auth!
+  private val client = config.dynamoDBAsyncV2Builder().build()
 
   private val softDeletedMetadataTable = Table[ImageStatusRecord](config.softDeletedMetadataTable)
 
