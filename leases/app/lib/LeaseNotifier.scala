@@ -7,7 +7,7 @@ import com.gu.mediaservice.syntax.MessageSubjects
 import org.joda.time.DateTime
 
 class LeaseNotifier(config: LeasesConfig, store: LeaseStore) extends ThrallMessageSender(config.thrallKinesisStreamConfig) with MessageSubjects {
-  def sendReindexLeases(mediaId: String, instance: Instance) = {
+  def sendReindexLeases(mediaId: String)(implicit instance: Instance) = {
     val leases = store.getForMedia(mediaId)
     val updateMessage = UpdateMessage(subject = ReplaceImageLeases, leases = Some(leases), id = Some(mediaId), instance = instance)
     publish(updateMessage)
