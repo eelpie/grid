@@ -1,7 +1,7 @@
 package lib
 
 import com.gu.mediaservice.model.Instance
-import com.gu.mediaservice.model.leases.{MediaLease, MediaLeaseType}
+import com.gu.mediaservice.model.leases.{AllowSyndicationLease, AllowUseLease, DenySyndicationLease, DenyUseLease, MediaLease, MediaLeaseType}
 import org.joda.time.DateTime
 import org.scanamo._
 import org.scanamo.generic.semiauto.deriveDynamoFormat
@@ -27,7 +27,16 @@ class LeaseStore(config: LeasesConfig) {
   implicit val enumFormat: DynamoFormat[com.gu.mediaservice.model.leases.MediaLeaseType] = {
     new DynamoFormat[com.gu.mediaservice.model.leases.MediaLeaseType] {
       // TODO hard fail but I'm done with this! Far too many snow flake DSLs in use...
-      override def read(av: DynamoValue): Either[DynamoReadError, MediaLeaseType] = Right(MediaLeaseType(av.toAttributeValue.s()))
+      override def read(av: DynamoValue): Either[DynamoReadError, MediaLeaseType] = {
+        val name = av.toAttributeValue.s()
+        val x = name match {
+          case "allow-use" => AllowUseLease
+          case "deny-use" => DenyUseLease
+          case "allow-syndication" => AllowSyndicationLease
+          case "deny-syndication" => DenySyndicationLease
+        }
+        Right(x)
+      }
       override def write(t: MediaLeaseType): DynamoValue = DynamoValue.fromString(t.name)
     }
   }
