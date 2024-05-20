@@ -34,13 +34,13 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     respond(appIndex, indexLinks)
   }
 
-  private def clearLease(id: String, instance: Instance) = store.get(id).map { lease =>
+  private def clearLease(id: String)(implicit instance: Instance) = store.get(id).map { lease =>
     store.delete(id).map { _ => notifications.sendRemoveLease(lease.mediaId, id, instance)}
   }
 
-  private def clearLeases(id: String, instance: Instance) = Future.sequence(store.getForMedia(id)
+  private def clearLeases(id: String)(implicit instance: Instance) = Future.sequence(store.getForMedia(id)
     .flatMap(_.id)
-    .flatten(id => clearLease(id, instance)))
+    .flatten(id => clearLease(id)))
 
   private def badRequest(e:  Seq[(JsPath, Seq[JsonValidationError])]) =
     respondError(BadRequest, "media-leases-parse-failed", JsError.toJson(e).toString)
@@ -48,12 +48,12 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   private def prepareLeaseForSave(mediaLease: MediaLease, userId: Option[String]): MediaLease =
     mediaLease.prepareForSave.copy(id = Some(UUID.randomUUID().toString), leasedBy = userId)
 
-  private def addLease(mediaLease: MediaLease, userId: Option[String], instance: Instance) = {
+  private def addLease(mediaLease: MediaLease, userId: Option[String])(implicit instance: Instance) = {
     val lease = prepareLeaseForSave(mediaLease, userId)
     if (lease.isSyndication) {
       val leasesForMedia = store.getForMedia(mediaLease.mediaId)
       val leasesWithoutSyndication = leasesForMedia.filter(!_.isSyndication)
-      replaceLeases(leasesWithoutSyndication :+ lease, mediaLease.mediaId, userId, instance)
+      replaceLeases(leasesWithoutSyndication :+ lease, mediaLease.mediaId, userId)
     } else {
       store.put(lease).map { _ =>
         notifications.sendAddLease(lease, instance)
@@ -61,17 +61,17 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     }
   }
 
-  private def addLeases(mediaLeases: List[MediaLease], userId: Option[String], instance: Instance) = {
+  private def addLeases(mediaLeases: List[MediaLease], userId: Option[String])(implicit instance: Instance) = {
     val preparedMediaLeases = mediaLeases.map(prepareLeaseForSave(_, userId))
     store.putAll(preparedMediaLeases).map { _ =>
       preparedMediaLeases.map(lease => notifications.sendAddLease(lease, instance))
     }
   }
 
-  private def replaceLeases(mediaLeases: List[MediaLease], imageId: String, userId: Option[String], instance: Instance) = {
+  private def replaceLeases(mediaLeases: List[MediaLease], imageId: String, userId: Option[String])(implicit instance: Instance) = {
     val preparedMediaLeases = mediaLeases.map(prepareLeaseForSave(_, userId))
     for {
-      _ <- clearLeases(imageId, instance)
+      _ <- clearLeases(imageId)
       _ <- store.putAll(preparedMediaLeases)
     } yield {
       notifications.sendAddLeases(preparedMediaLeases, imageId, instance)
@@ -84,19 +84,20 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   }
 
   def reindex = auth.async { request => Future {
-    val instance = instanceOf(request)
+    implicit val instance: Instance = instanceOf(request)
     store.forEach { leases =>
       leases
         .foldLeft(Set[String]())((ids, lease) =>  ids + lease.mediaId)
-        .foreach(mediaId => notifications.sendReindexLeases(mediaId, instance))
+        .foreach(mediaId => notifications.sendReindexLeases(mediaId))
     }
     Accepted
   }}
 
   def postLease = auth.async(parse.json) { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     request.body.validate[MediaLease] match {
       case JsSuccess(mediaLease, _) =>
-        addLease(mediaLease, Some(Authentication.getIdentity(request.user)), instanceOf(request)).map(_ => Accepted)
+        addLease(mediaLease, Some(Authentication.getIdentity(request.user))).map(_ => Accepted)
 
       case JsError(errors) =>
         Future.successful(badRequest(errors))
@@ -104,16 +105,18 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   }
 
   def addLeasesForMedia(id: String) = auth.async(parse.json) { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     request.body.validate[List[MediaLease]] match {
       case JsSuccess(mediaLeases, _) =>
-        addLeases(mediaLeases, Some(Authentication.getIdentity(request.user)), instanceOf(request)).map(_ => Accepted)
+        addLeases(mediaLeases, Some(Authentication.getIdentity(request.user))).map(_ => Accepted)
       case JsError(errors) =>
         Future.successful(badRequest(errors))
     }
   }
 
   def deleteLease(id: String) = auth.async { request => Future {
-      clearLease(id, instanceOf(request))
+    implicit val instance: Instance = instanceOf(request)
+    clearLease(id)
       Accepted
     }
   }
@@ -132,8 +135,10 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   }
 
 
-  def deleteLeasesForMedia(id: String) = auth.async { request => Future {
-      clearLeases(id, instanceOf(request))
+  def deleteLeasesForMedia(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
+    Future {
+      clearLeases(id)
       Accepted
     }
   }
@@ -141,11 +146,12 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   def validateLeases(leases: List[MediaLease]) = leases.count { _.isSyndication } <= 1
 
   def replaceLeasesForMedia(id: String) = auth.async(parse.json) { implicit request => Future {
+    implicit val instance: Instance = instanceOf(request)
     request.body.validate[List[MediaLease]].fold(
       badRequest,
       mediaLeases => {
         if (validateLeases(mediaLeases)) {
-          replaceLeases(mediaLeases, id, Some(Authentication.getIdentity(request.user)), instanceOf(request))
+          replaceLeases(mediaLeases, id, Some(Authentication.getIdentity(request.user)))
           Accepted
         } else {
           respondError(BadRequest, "validation-error", "No more than one syndication lease per image")
