@@ -25,6 +25,8 @@ class KindeAuthenticationProvider(
   private val clientId = providerConfiguration.get[String]("clientId")
   private val clientSecret = providerConfiguration.get[String]("clientSecret")
 
+  val state = UUID.randomUUID().toString  // TODO!!!
+
   /**
    * Establish the authentication status of the given request header. This can return an authenticated user or a number
    * of reasons why a user is not authenticated.
@@ -48,7 +50,7 @@ class KindeAuthenticationProvider(
       logger.info(s"Requesting Kinde redirect URI for redirectUri: $redirectUrl")
 
       val oauthRedirectUrl = providerConfiguration.get[String]("domain") +
-        s"/oauth2/auth?response_type=code&client_id=$clientId&redirect_uri=$redirectUrl&scope=openid%20profile%20email&state=" + "abcde"
+        s"/oauth2/auth?response_type=code&client_id=$clientId&redirect_uri=$redirectUrl&scope=openid%20profile%20email&state=" + state
       logger.info(s"Redirecting to Kinde OAuth URL: $oauthRedirectUrl")
       Future.successful(Redirect(oauthRedirectUrl))
     }
@@ -78,7 +80,7 @@ class KindeAuthenticationProvider(
           "grant_type" -> "authorization_code",
           "redirect_uri" -> redirectUrl,
           "code" -> code,
-          "state" -> "abcde",
+          "state" -> state,
       )
         val self: WSRequest = wsClient.url(url)
         self.post(parameters).map { r =>
