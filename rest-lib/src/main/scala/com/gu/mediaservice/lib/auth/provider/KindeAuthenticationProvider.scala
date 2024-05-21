@@ -38,8 +38,9 @@ class KindeAuthenticationProvider(
    */
   override def authenticateRequest(request: RequestHeader): AuthenticationStatus = {
     // Look for our cookie with we set in the auth app
+    logger.info("Looking at play session for logged in user: " + request.session.data)
     request.session.get(loggedInUserSessionAttribute).map { id =>
-      logger.info("Foudn user on session: " + id)
+      logger.info("Found user on session: " + id)
       Authenticated(authedUser = UserPrincipal(id, id, id))
     }.getOrElse {
       NotAuthenticated
