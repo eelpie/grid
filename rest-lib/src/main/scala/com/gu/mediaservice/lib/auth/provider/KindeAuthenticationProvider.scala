@@ -71,7 +71,7 @@ class KindeAuthenticationProvider(
       code.map { code =>
         logger.info(s"Got callback code: $code")
         val url = providerConfiguration.get[String]("domain") + "/oauth2/token"
-        KindeClientSDK
+
         val parameters = Map (
           "client_id" -> clientId,
           "client_secret" -> clientSecret,
@@ -79,10 +79,9 @@ class KindeAuthenticationProvider(
           "redirect_uri" -> redirectUrl,
           "code" -> code,
           "state" -> "abcde",
-      ).toSeq
-        val self: WSRequest = wsClient.url(url).withQueryStringParameters(parameters: _*)
-        logger.info("Q: " + self.queryString)
-        self.post(EmptyBody).map { r =>
+      )
+        val self: WSRequest = wsClient.url(url)
+        self.post(parameters).map { r =>
           logger.info(s"Got post response from $url: " + r.status + " / " + r.body)
           play.api.mvc.Results.Ok("TODO")
         }
