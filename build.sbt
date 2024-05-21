@@ -1,10 +1,10 @@
-import play.sbt.PlayImport.PlayKeys._
+import play.sbt.PlayImport.PlayKeys.*
 import sbt.Package.FixedTimestamp
 
-import scala.sys.process._
+import scala.sys.process.*
 import scala.util.control.NonFatal
-import scala.collection.JavaConverters._
-import com.typesafe.sbt.packager.docker._
+import scala.collection.JavaConverters.*
+import com.typesafe.sbt.packager.docker.*
 
 // We need to keep the timestamps to allow caching headers to work as expected on assets.
 // The below should work, but some problem in one of the plugins (possible the play plugin? or sbt-web?) causes
@@ -243,7 +243,8 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
         "-Dpidfile.path=/dev/null",
         s"-Dconfig.file=/opt/docker/conf/application.conf",
         s"-Dlogger.file=/opt/docker/conf/logback.xml"
-      )))
+      ))
+    )
 }
 
 def playImageLoaderProject(projectName: String, port: Int, path: Option[String] = None): Project = {
