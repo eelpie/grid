@@ -3,9 +3,9 @@ package com.gu.mediaservice.lib.auth.provider
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
 import com.typesafe.scalalogging.StrictLogging
-import org.openapitools.sdk.KindeClientSDK
 import play.api.Configuration
-import play.api.libs.ws.{EmptyBody, WSClient, WSRequest}
+import play.api.libs.json.{Json, Reads}
+import play.api.libs.ws.{WSClient, WSRequest}
 import play.api.mvc.{RequestHeader, Result}
 import play.api.mvc.Results._
 
@@ -82,10 +82,18 @@ class KindeAuthenticationProvider(
           "code" -> code,
           "state" -> state,
       )
-        val self: WSRequest = wsClient.url(url)
-        self.post(parameters).map { r =>
+        wsClient.url(url).post(parameters).flatMap { r =>
           logger.info(s"Got post response from $url: " + r.status + " / " + r.body)
-          play.api.mvc.Results.Ok("TODO")
+
+          case class TokenResponse(access_token : String)
+          implicit val trr: Reads[TokenResponse] = Json.reads[TokenResponse]
+          val token = Json.parse(r.body).as[TokenResponse]
+
+          val userProfileUrl = providerConfiguration.get[String]("domain") + "/oauth2/user_profile"
+          wsClient.url(url).withHttpHeaders(("Authorization", "Bearer " + token.access_token)).get().map { r =>
+            logger.info("Got user profile response " + r.status + ": " + r.body)
+            play.api.mvc.Results.Ok("TODO")
+          }
         }
 
       }.getOrElse {
