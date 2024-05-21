@@ -246,7 +246,8 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
         "-Dpidfile.path=/dev/null",
         s"-Dconfig.file=/opt/docker/conf/application.conf",
         s"-Dlogger.file=/opt/docker/conf/logback.xml"
-      )))
+      ))
+    )
 }
 
 def playImageLoaderProject(projectName: String, port: Int, path: Option[String] = None): Project = {
