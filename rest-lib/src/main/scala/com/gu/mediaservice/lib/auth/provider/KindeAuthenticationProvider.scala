@@ -1,6 +1,7 @@
 package com.gu.mediaservice.lib.auth.provider
 
 import com.gu.mediaservice.lib.auth.Authentication
+import com.gu.mediaservice.lib.auth.Authentication.UserPrincipal
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
 import com.typesafe.scalalogging.StrictLogging
 import play.api.Configuration
@@ -37,7 +38,12 @@ class KindeAuthenticationProvider(
    */
   override def authenticateRequest(request: RequestHeader): AuthenticationStatus = {
     // Look for our cookie with we set in the auth app
-    NotAuthenticated // TODO
+    request.session.get(loggedInUserSessionAttribute).map { id =>
+      logger.info("Foudn user on session: " + id)
+      Authenticated(authedUser = UserPrincipal(id, id, id))
+    }.getOrElse{
+      NotAuthenticated
+    }
   }
 
   /**
@@ -56,6 +62,8 @@ class KindeAuthenticationProvider(
     }
   }
 
+
+  val loggedInUserSessionAttribute = "loggedInUser"
 
   /**
    * If this provider supports sending a user that is not authorised to a federated auth provider then it should
@@ -85,14 +93,15 @@ class KindeAuthenticationProvider(
         wsClient.url(url).post(parameters).flatMap { r =>
           logger.info(s"Got post response from $url: " + r.status + " / " + r.body)
 
-          case class TokenResponse(access_token : String)
           implicit val trr: Reads[TokenResponse] = Json.reads[TokenResponse]
           val token = Json.parse(r.body).as[TokenResponse]
 
           val userProfileUrl = providerConfiguration.get[String]("domain") + "/oauth2/user_profile"
-          wsClient.url(url).withHttpHeaders(("Authorization", "Bearer " + token.access_token)).get().map { r =>
+          wsClient.url(userProfileUrl).withHttpHeaders(("Authorization", "Bearer " + token.access_token)).get().map { r =>
             logger.info("Got user profile response " + r.status + ": " + r.body)
-            play.api.mvc.Results.Ok("TODO")
+            implicit val upr = Json.reads[UserProfile]
+            val userProfile = Json.parse(r.body).as[UserProfile]
+            play.api.mvc.Results.Ok("Authed").addingToSession((loggedInUserSessionAttribute, userProfile.id))(requestHeader)
           }
         }
 
@@ -120,3 +129,6 @@ class KindeAuthenticationProvider(
    */
   override def onBehalfOf(principal: Authentication.Principal): Either[String, WSRequest => WSRequest] = ???
 }
+
+case class TokenResponse(access_token: String)
+case class UserProfile(id: String)
