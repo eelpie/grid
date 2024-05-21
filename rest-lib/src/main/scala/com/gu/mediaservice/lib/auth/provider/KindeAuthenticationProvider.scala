@@ -4,16 +4,27 @@ import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
 import com.typesafe.scalalogging.StrictLogging
 import org.openapitools.sdk.KindeClientSDK
-import org.openapitools.sdk.enums.GrantType
 import play.api.Configuration
-import play.api.libs.ws.WSRequest
+import play.api.libs.ws.{EmptyBody, WSClient, WSRequest}
 import play.api.mvc.{RequestHeader, Result}
 import play.api.mvc.Results._
 
 import java.util.UUID
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-class KindeAuthenticationProvider(config: Configuration) extends UserAuthenticationProvider with StrictLogging {
+class KindeAuthenticationProvider(
+                                   resources: AuthenticationProviderResources,
+                                   providerConfiguration: Configuration
+
+                                 ) extends UserAuthenticationProvider with StrictLogging {
+
+  private val wsClient: WSClient = resources.wsClient
+  implicit val ec: ExecutionContext = resources.controllerComponents.executionContext
+
+  private val redirectUrl = providerConfiguration.get[String]("redirectUri")
+  private val clientId = providerConfiguration.get[String]("clientId")
+  private val clientSecret = providerConfiguration.get[String]("clientSecret")
+
   /**
    * Establish the authentication status of the given request header. This can return an authenticated user or a number
    * of reasons why a user is not authenticated.
@@ -34,16 +45,15 @@ class KindeAuthenticationProvider(config: Configuration) extends UserAuthenticat
    */
   override def sendForAuthentication: Option[RequestHeader => Future[Result]] = Some {
     { requestHeader: RequestHeader =>
-      val redirectUrl = config.get[String]("redirectUri")
       logger.info(s"Requesting Kinde redirect URI for redirectUri: $redirectUrl")
 
-      val clientId = config.get[String]("clientId")
-      val oauthRedirectUrl = config.get[String]("domain") +
+      val oauthRedirectUrl = providerConfiguration.get[String]("domain") +
         s"/oauth2/auth?response_type=code&client_id=$clientId&redirect_uri=$redirectUrl&scope=openid%20profile%20email&state=" + UUID.randomUUID().toString
       logger.info(s"Redirecting to Kinde OAuth URL: $oauthRedirectUrl")
       Future.successful(Redirect(oauthRedirectUrl))
     }
   }
+
 
   /**
    * If this provider supports sending a user that is not authorised to a federated auth provider then it should
@@ -56,7 +66,29 @@ class KindeAuthenticationProvider(config: Configuration) extends UserAuthenticat
   override def sendForAuthenticationCallback: Option[(RequestHeader, Option[RedirectUri]) => Future[Result]] = Some {
     { (requestHeader, _) =>
       logger.info("Got auth callback request header: " + requestHeader)
-      Future.successful(play.api.mvc.Results.Ok("TODO"))
+
+      val code = requestHeader.getQueryString("code")
+      code.map { code =>
+        logger.info(s"Got callback code: $code")
+        val url = providerConfiguration.get[String]("domain") + "/oauth2/token"
+
+        val parameters = Map (
+          "client_id" -> clientId,
+          "client_secret" -> clientSecret,
+          "grant_type" -> "authorization_code",
+          "redirect_uri" -> redirectUrl,
+          "code" -> code,
+      ).toSeq
+        val self: WSRequest = wsClient.url(url).withQueryStringParameters(parameters: _*)
+        logger.info("Q: " + self.queryString)
+        self.post(EmptyBody).map { r =>
+          logger.info(s"Got post response from $url: " + r.status + " / " + r.body)
+          play.api.mvc.Results.Ok("TODO")
+        }
+
+      }.getOrElse {
+        Future.successful(BadRequest)
+      }
     }
   }
 
