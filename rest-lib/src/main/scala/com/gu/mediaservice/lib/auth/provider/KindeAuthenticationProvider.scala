@@ -48,7 +48,7 @@ class KindeAuthenticationProvider(
       logger.info(s"Requesting Kinde redirect URI for redirectUri: $redirectUrl")
 
       val oauthRedirectUrl = providerConfiguration.get[String]("domain") +
-        s"/oauth2/auth?response_type=code&client_id=$clientId&redirect_uri=$redirectUrl&scope=openid%20profile%20email&state=" + UUID.randomUUID().toString
+        s"/oauth2/auth?response_type=code&client_id=$clientId&redirect_uri=$redirectUrl&scope=openid%20profile%20email&state=" + "abcde"
       logger.info(s"Redirecting to Kinde OAuth URL: $oauthRedirectUrl")
       Future.successful(Redirect(oauthRedirectUrl))
     }
@@ -71,13 +71,14 @@ class KindeAuthenticationProvider(
       code.map { code =>
         logger.info(s"Got callback code: $code")
         val url = providerConfiguration.get[String]("domain") + "/oauth2/token"
-
+        KindeClientSDK
         val parameters = Map (
           "client_id" -> clientId,
           "client_secret" -> clientSecret,
           "grant_type" -> "authorization_code",
           "redirect_uri" -> redirectUrl,
           "code" -> code,
+          "state" -> "abcde",
       ).toSeq
         val self: WSRequest = wsClient.url(url).withQueryStringParameters(parameters: _*)
         logger.info("Q: " + self.queryString)
