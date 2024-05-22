@@ -70,7 +70,7 @@ class SingleHostServices(val domain: String) extends Services {
 
   private def vhostServiceName(serviceName: String, instance: Instance): String = {
     val vhost = instance.id
-    s"https://$vhost.$domain/" + serviceName
+    s"https://$vhost.$domain" + (if (serviceName.nonEmpty) "/" + serviceName else "")
   }
 }
 
