@@ -143,7 +143,7 @@ class MediaApi(
       Link("label-search",    s"${config.rootUri(instance)}/images/edits/label{?q}"),
       Link("cropper",         config.cropperUri(instance)),
       Link("edits",           config.metadataUri(instance)),
-      Link("session",         s"${config.authUri(instance)}/session"),
+      Link("session",         s"${config.authInstanceUri(instance)}/session"),
       Link("collections",     config.collectionsUri(instance)),
       Link("permissions",     s"${config.rootUri(instance)}/permissions"),
       Link("leases",          config.leasesUri(instance)),
