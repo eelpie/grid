@@ -100,8 +100,12 @@ class AuthController(auth: Authentication, providers: AuthenticationProviders, v
 
 
   def isOwnDomainAndSecure(uri: URI): Boolean = {
-    uri.getHost.endsWith(config.domainRoot) && uri.getScheme == "https"
+    val endsWith = uri.getHost.endsWith(config.domainRoot)
+    val isHttps = uri.getScheme == "https"
+    logger.info(s"isOwnDomainAndSecure: ${config.domainRoot} $endsWith $isHttps")
+    endsWith && isHttps
   }
+
   def isValidDomain(inputUri: String): Boolean = {
     val success = Try(URI.create(inputUri)).filter(isOwnDomainAndSecure).isSuccess
     if (!success) logger.warn(s"Provided login redirect URI is invalid: $inputUri")
@@ -115,7 +119,7 @@ class AuthController(auth: Authentication, providers: AuthenticationProviders, v
   // If a redirectUri is provided, redirect the browser there once auth'd,
   // else return a dummy page (e.g. for automatically re-auth'ing in the background)
   def doLogin(redirectUri: Option[String] = None) = Action.async { implicit req =>
-    val checkedRedirectUri = redirectUri collect {
+    val checkedRedirectUri: Option[String] = redirectUri collect {
       case uri if isValidDomain(uri) => uri
     }
     providers.userProvider.sendForAuthentication match {
