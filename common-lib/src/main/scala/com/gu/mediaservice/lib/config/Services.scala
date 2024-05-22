@@ -26,6 +26,7 @@ trait Services {
   def leasesBaseUri(instance: Instance): String
 
   def authBaseUri(instance: Instance): String
+  def authBaseInstanceUri(instance: Instance): String
 
   def guardianWitnessBaseUri: String
 
@@ -98,6 +99,7 @@ protected class SingleHostServices(val domain: String) extends Services {
   override def leasesBaseUri(instance: Instance): String = vhostServiceName("leases", instance)
 
   override def authBaseUri(instance: Instance): String = s"https://$domain/auth"
+  override def authBaseInstanceUri(instance: Instance): String = s"https://$domain/auth"
 
   private def thrallBaseUri(instance: Instance): String = vhostServiceName("thrall", instance)
 
@@ -140,6 +142,8 @@ protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHost
   override def collectionsBaseUri(instance: Instance) = baseUri(collectionsHost)
   override def leasesBaseUri(instance: Instance) = baseUri(leasesHost)
   override def authBaseUri(instance: Instance) = baseUri(authHost)
+  override def authBaseInstanceUri(instance: Instance) = baseUri(authHost)
+
   def thrallBaseUri(instance: Instance) = baseUri(thrallHost)
 
   val guardianWitnessBaseUri: String = "https://n0ticeapis.com"
@@ -151,4 +155,5 @@ protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHost
   override def loginUriTemplate(instance: Instance) = s"${authBaseUri(instance)}/login$redirectUriPlaceholder"
 
   private def baseUri(host: String) = s"https://$host"
+
 }
