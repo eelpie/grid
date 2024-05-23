@@ -2,8 +2,6 @@ package com.gu.mediaservice.lib.auth
 
 import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, Request, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider.AuthorisationProvider
-import org.openapitools.sdk.KindeClientSDK
-import org.openapitools.sdk.enums.GrantType
 import org.scalamock.scalatest.AsyncMockFactory
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
