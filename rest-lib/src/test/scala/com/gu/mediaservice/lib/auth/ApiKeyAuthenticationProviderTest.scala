@@ -10,6 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.{BeforeAndAfterAll, EitherValues}
 import org.scalatestplus.mockito.MockitoSugar.mock
 import play.api.inject.ApplicationLifecycle
+import play.api.libs.crypto.CookieSigner
 import play.api.mvc.DefaultControllerComponents
 import play.api.test.{FakeRequest, WsTestClient}
 import play.api.{Configuration, Environment}
@@ -17,7 +18,6 @@ import play.api.{Configuration, Environment}
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.Future
 
-//noinspection NotImplementedCode,SpellCheckingInspection
 class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with EitherValues with BeforeAndAfterAll {
 
   private val actorSystem: ActorSystem = ActorSystem()
@@ -32,7 +32,7 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
     applicationLifecycle
   )){}
   private val controllerComponents: DefaultControllerComponents = DefaultControllerComponents(null, null, null, null, null, global)
-  private val resources = AuthenticationProviderResources(config, actorSystem, wsClient, controllerComponents, mock[Authorisation])
+  private val resources = AuthenticationProviderResources(config, actorSystem, wsClient, controllerComponents, mock[Authorisation], mock[CookieSigner])
   private def makeProvider(providerConfig: Configuration): ApiKeyAuthenticationProvider = new ApiKeyAuthenticationProvider(providerConfig, resources) {
     override def initialise(): Unit = { /* do nothing */ }
 
