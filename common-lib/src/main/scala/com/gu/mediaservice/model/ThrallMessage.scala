@@ -87,6 +87,7 @@ object ExternalThrallMessage{
   implicit val createMigrationIndexMessage = Json.format[CreateMigrationIndexMessage]
   implicit val completeMigrationMessage = Json.format[CompleteMigrationMessage]
   implicit val upsertFromProjectionMessage = Json.format[UpsertFromProjectionMessage]
+  implicit val createInstanceMessage = Json.format[CreateInstanceMessage]
 
   implicit val writes = Json.writes[ExternalThrallMessage]
   implicit val reads = Json.reads[ExternalThrallMessage]
@@ -164,4 +165,4 @@ case class CompleteMigrationMessage(lastModified: DateTime, instance: Instance) 
   val id: String = "N/A"
 }
 
-case class CreateInstanceMessage(instance: Instance) extends InternalThrallMessage
+case class CreateInstanceMessage(id: String, lastModified: DateTime, instance: Instance) extends ExternalThrallMessage
