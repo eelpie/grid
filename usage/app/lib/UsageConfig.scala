@@ -16,10 +16,5 @@ class UsageConfig(resources: GridConfigResources) extends CommonConfig(resources
 
   val usageDateLimit: String = stringDefault("usage.dateLimit", defaultDateLimit)
 
-  private val composerBaseUrlProperty: String = string("composer.baseUrl")
-  private val composerBaseUrl = ensureSecure(composerBaseUrlProperty)
-
-  val composerContentBaseUrl: String = s"$composerBaseUrl/content"
-
   val usageRecordTable = string("dynamo.tablename.usageRecordTable")
 }
