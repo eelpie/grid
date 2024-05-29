@@ -1,6 +1,8 @@
 package lib.kinesis
 
 import akka.actor.ActorSystem
+import com.gu.mediaservice.GridClient
+import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws.UpdateMessage
 import com.gu.mediaservice.lib.json.{JsonByteArrayUtil, PlayJsonHelpers}
 import com.gu.mediaservice.lib.logging._
@@ -17,7 +19,9 @@ import scala.util.{Failure, Success, Try}
 class ThrallEventConsumer(es: ElasticSearch,
   thrallMetrics: ThrallMetrics,
   store: ThrallStore,
-  actorSystem: ActorSystem
+  actorSystem: ActorSystem,
+  gridClient: GridClient,
+  auth: Authentication
 ) extends PlayJsonHelpers with GridLogging {
 
   private val attemptTimeout = FiniteDuration(20, SECONDS)
@@ -25,7 +29,7 @@ class ThrallEventConsumer(es: ElasticSearch,
   private val attempts = 2
   private val timeout = attemptTimeout * attempts + delay * (attempts - 1)
 
-  private val messageProcessor = new MessageProcessor(es, store)
+  private val messageProcessor = new MessageProcessor(es, store, gridClient, auth)
 
   private implicit val implicitActorSystem: ActorSystem = actorSystem
 
