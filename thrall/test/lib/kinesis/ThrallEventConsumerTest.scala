@@ -1,14 +1,10 @@
 package lib.kinesis
 
-import com.gu.mediaservice.model.Instance
-import lib.elasticsearch.ElasticSearchTestBase
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 
-import java.util.UUID
-
-class ThrallEventConsumerTest extends ElasticSearchTestBase with MockitoSugar {
-
-  override def instance: Instance = Instance(UUID.randomUUID().toString)
+class ThrallEventConsumerTest extends AnyFreeSpec with Matchers with MockitoSugar {
 
   "parse message" - {
     "parse minimal message" in {
