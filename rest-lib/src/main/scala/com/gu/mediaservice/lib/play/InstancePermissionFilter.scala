@@ -15,7 +15,7 @@ class InstancePermissionFilter(override val mat: Materializer, auth: Authenticat
 
   private val openPaths = Set("/management/healthcheck", "/login", "/oauthCallback", "/logout") // TODO logout should really be expressed as not instance on landing site's auth instance
   override def apply(next: RequestHeader => Future[Result])(rh: RequestHeader): Future[Result] = {
-    val uri = rh.uri
+    val uri = rh.path
     if (openPaths.contains(uri)) {
       next(rh)
 
