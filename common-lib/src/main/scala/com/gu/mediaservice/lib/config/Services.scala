@@ -1,7 +1,6 @@
 package com.gu.mediaservice.lib.config
 
 import com.gu.mediaservice.model.Instance
-import play.api.mvc.RequestHeader
 
 trait Services {
 
@@ -37,44 +36,6 @@ trait Services {
   def redirectUriPlaceholder: String
 
   def loginUriTemplate(instance: Instance): String
-}
-
-case class ServiceHosts(
-                         kahunaPrefix: String,
-                         apiPrefix: String,
-                         loaderPrefix: String,
-                         projectionPrefix: String,
-                         cropperPrefix: String,
-                         metadataPrefix: String,
-                         imgopsPrefix: String,
-                         usagePrefix: String,
-                         collectionsPrefix: String,
-                         leasesPrefix: String,
-                         authPrefix: String,
-                         thrallPrefix: String
-                       )
-
-object ServiceHosts {
-  // this is tightly coupled to the Guardian's deployment.
-  // TODO make more generic but w/out relying on Play config
-  def guardianPrefixes: ServiceHosts = {
-    val rootAppName: String = "media"
-
-    ServiceHosts(
-      kahunaPrefix = s"$rootAppName.",
-      apiPrefix = s"api.$rootAppName.",
-      loaderPrefix = s"loader.$rootAppName.",
-      projectionPrefix = s"loader-projection.$rootAppName",
-      cropperPrefix = s"cropper.$rootAppName.",
-      metadataPrefix = s"$rootAppName-metadata.",
-      imgopsPrefix = s"$rootAppName-imgops.",
-      usagePrefix = s"$rootAppName-usage.",
-      collectionsPrefix = s"$rootAppName-collections.",
-      leasesPrefix = s"$rootAppName-leases.",
-      authPrefix = s"$rootAppName-auth.",
-      thrallPrefix = s"thrall.$rootAppName."
-    )
-  }
 }
 
 protected class SingleHostServices(val domain: String) extends Services {
@@ -117,43 +78,3 @@ protected class SingleHostServices(val domain: String) extends Services {
   }
 }
 
-protected class GuardianUrlSchemeServices(domainRoot: String, hosts: ServiceHosts, corsAllowedOrigins: Set[String], domainRootOverride: Option[String] = None) extends Services {
-  private val kahunaHost: String = s"${hosts.kahunaPrefix}$domainRoot"
-  private val apiHost: String = s"${hosts.apiPrefix}$domainRoot"
-  private val loaderHost: String = s"${hosts.loaderPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  private val cropperHost: String = s"${hosts.cropperPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  private val metadataHost: String = s"${hosts.metadataPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  private val imgopsHost: String = s"${hosts.imgopsPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  private val usageHost: String = s"${hosts.usagePrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  private val collectionsHost: String = s"${hosts.collectionsPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  private val leasesHost: String = s"${hosts.leasesPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  private val authHost: String = s"${hosts.authPrefix}$domainRoot"
-  private val projectionHost: String = s"${hosts.projectionPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  private val thrallHost: String = s"${hosts.thrallPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-
-  override def kahunaBaseUri(instance: Instance) = baseUri(kahunaHost)
-  override def apiBaseUri(instance: Instance): String = baseUri(apiHost)
-  override def loaderBaseUri(instance: Instance) = baseUri(loaderHost)
-  override def projectionBaseUri(instance: Instance) = baseUri(projectionHost)
-  override def cropperBaseUri(instance: Instance): String = baseUri(cropperHost)
-  override def metadataBaseUri(instance: Instance): String = baseUri(metadataHost)
-  override def imgopsBaseUri(instance: Instance): String = baseUri(imgopsHost)
-  override def usageBaseUri(instance: Instance) = baseUri(usageHost)
-  override def collectionsBaseUri(instance: Instance) = baseUri(collectionsHost)
-  override def leasesBaseUri(instance: Instance) = baseUri(leasesHost)
-  override def authBaseUri(instance: Instance) = baseUri(authHost)
-  override def authBaseInstanceUri(instance: Instance) = baseUri(authHost)
-
-  def thrallBaseUri(instance: Instance) = baseUri(thrallHost)
-
-  val guardianWitnessBaseUri: String = "https://n0ticeapis.com"
-
-  override def corsAllowedDomains(instance: Instance): Set[String] = corsAllowedOrigins.map(baseUri) + kahunaBaseUri(instance) + apiBaseUri(instance) + thrallBaseUri(instance)
-
-  val redirectUriParam = "redirectUri"
-  val redirectUriPlaceholder = s"{?$redirectUriParam}"
-  override def loginUriTemplate(instance: Instance) = s"${authBaseUri(instance)}/login$redirectUriPlaceholder"
-
-  private def baseUri(host: String) = s"https://$host"
-
-}
