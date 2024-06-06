@@ -20,10 +20,6 @@ import java.util.UUID
 import scala.concurrent.duration.{Duration, SECONDS}
 import scala.concurrent.{ExecutionContext, Future}
 
-object KindeAuthenticationProvider {
-  val instancesTypedKey: TypedKey[Seq[String]] = TypedKey[Seq[String]]("instances")
-}
-
 class KindeAuthenticationProvider(
                                    resources: AuthenticationProviderResources,
                                    providerConfiguration: Configuration
@@ -33,7 +29,6 @@ class KindeAuthenticationProvider(
   implicit val ec: ExecutionContext = resources.controllerComponents.executionContext
 
   private val asyncClient = dynamoDBAsyncV2Builder().build()
-  private val instancesTable = Table[Instance]("eelpie-grid-instances")
 
   private val kindeDomain = providerConfiguration.get[String]("domain")
   private val callbackUri = providerConfiguration.get[String]("redirectUri")
@@ -67,8 +62,7 @@ class KindeAuthenticationProvider(
           last_name = userData.get("first_name"),
           preferred_email = userData.get("preferred_email")
         )
-        val instances = userData.get("instances").map( ids => ids.split(",").toSeq).getOrElse(Seq.empty)
-        Authenticated(authedUser = gridUserFrom(userProfile, request, instances))
+        Authenticated(authedUser = gridUserFrom(userProfile, request))
       }
     }.getOrElse {
       NotAuthenticated
@@ -134,17 +128,14 @@ class KindeAuthenticationProvider(
               val userProfile = Json.parse(r.body).as[UserProfile]
 
               // Look up users allowed instances
-              val eventualInstances = ScanamoAsync(asyncClient).exec(instancesTable.index("owner-index").query("owner" === userProfile.id)).map { r: Seq[Either[DynamoReadError, Instance]] =>
-                r.flatMap(_.toOption)
-              }.map { r => r.sortBy(_.id) }
+              val eventualInstances = Future.successful(Seq.empty)
               eventualInstances.map { instances =>
                 logger.info("Authenticated user has instances: " + instances)
                 val cookieData = Seq(
                   Some("id" -> userProfile.id),
                   userProfile.first_name.map("first_name" -> _),
                   userProfile.last_name.map("last_name" -> _),
-                  userProfile.preferred_email.map("preferred_email" -> _),
-                  Some("instances" -> instances.map(_.id).mkString(","))
+                  userProfile.preferred_email.map("preferred_email" -> _)
                 ).flatten.toMap
                 logger.info("Encoding logged in user cookie data: " + cookieData)
                 val cookieContents = encode(cookieData)
@@ -194,11 +185,10 @@ class KindeAuthenticationProvider(
     }
   }
 
-  private def gridUserFrom(userProfile: UserProfile, request: RequestHeader, instances: Seq[String]): UserPrincipal = {
-    logger.info(s"Creating gridUserFrom $userProfile with instances $instances")
+  private def gridUserFrom(userProfile: UserProfile, request: RequestHeader): UserPrincipal = {
+    logger.info(s"Creating gridUserFrom $userProfile")
     val maybeLoggedInUserCookie: Option[TypedEntry[Cookie]] = request.cookies.get(loggedInUserCookieName).map(TypedEntry[Cookie](loggedInUserCookieTypedKey, _))
-    val instancesAttribute = TypedEntry[Seq[String]](KindeAuthenticationProvider.instancesTypedKey, instances)
-    val attributes = TypedMap.empty + (maybeLoggedInUserCookie.toSeq: _*) + instancesAttribute
+    val attributes = TypedMap.empty + (maybeLoggedInUserCookie.toSeq: _*)
     logger.info("Principals attributes: " + attributes)
     UserPrincipal(
       firstName = userProfile.first_name.getOrElse(""),
