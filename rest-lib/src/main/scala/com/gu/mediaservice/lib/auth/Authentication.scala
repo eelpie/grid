@@ -74,18 +74,25 @@ class Authentication(config: CommonConfig,
   override def invokeBlock[A](request: Request[A], block: Authentication.Request[A] => Future[Result]): Future[Result] = {
     authenticationStatus(request) match {
       case Right(principal) => {
-        // we have a principal, so process the block if the instance matches
-        val instance = instanceOf(request)
-        logger.info(s"Checking that $principal is allowed to access instanc $instance")
-        // Use the cookie instances for now but we are in a Future so are able to call the instances service for a canonical answer if we need to
-        val principalsInstances = principal.attributes.get(KindeAuthenticationProvider.instancesTypedKey).getOrElse(Seq.empty)
-        if (principalsInstances.contains(instance.id)) {
-          logger.debug("Allowing this request!")
-          block(new AuthenticatedRequest(principal, request))
+        principal match {
+          case innerServicePrincipal: InnerServicePrincipal =>
+            logger.info("Allowing InnerServicePrincipal request for all instances")
+            block(new AuthenticatedRequest(innerServicePrincipal, request))
 
-        } else {
-          logger.warn(s"Blocking request ${request.path} on instance $instance")
-          Future.successful(Forbidden("You do not have permission to use this instance"))
+          case _ =>
+            // we have an end user principal, so only process the block if the instance is allowed
+            val instance = instanceOf(request)
+            logger.info(s"Checking that $principal is allowed to access instanc $instance")
+            // Use the cookie instances for now but we are in a Future so are able to call the instances service for a canonical answer if we need to
+            val principalsInstances = principal.attributes.get(KindeAuthenticationProvider.instancesTypedKey).getOrElse(Seq.empty)
+            if (principalsInstances.contains(instance.id)) {
+              logger.debug("Allowing this request!")
+              block(new AuthenticatedRequest(principal, request))
+
+            } else {
+              logger.warn(s"Blocking request ${request.path} on instance $instance")
+              Future.successful(Forbidden("You do not have permission to use this instance"))
+            }
         }
       }
       // no principal so return a result which will either be an error or a form of redirect
