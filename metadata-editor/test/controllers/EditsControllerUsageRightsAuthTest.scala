@@ -63,7 +63,7 @@ class EditsControllerUsageRightsAuthTest extends AnyFunSpec with Matchers with M
     when(userProvider.loginLink).thenReturn(DisableLoginLink)
     private val providers = AuthenticationProviders(userProvider, mock[MachineAuthenticationProvider], mock[InnerServiceAuthenticationProvider])
 
-    private val auth = new Authentication(mock[CommonConfig], providers, PlayBodyParsers().default, ec) {
+    private val auth = new Authentication(mock[CommonConfig], providers, ws, PlayBodyParsers().default, ec) {
       override def invokeBlock[A](request: Request[A], block: Authentication.Request[A] => Future[Result]): Future[Result] =
         block(new AuthenticatedRequest(user, request))
       override def getOnBehalfOfPrincipal(principal: Principal): OnBehalfOfPrincipal = identity
