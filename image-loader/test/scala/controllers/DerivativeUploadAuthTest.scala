@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.crypto.CookieSigner
-import play.api.libs.ws.WSRequest
+import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.RequestHeader
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{ACCEPTED, BAD_REQUEST, FORBIDDEN, POST, UNSUPPORTED_MEDIA_TYPE, call, status, stubControllerComponents}
@@ -36,6 +36,19 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
   private implicit val actorSystem: ActorSystem = ActorSystem("DerivativeUploadAuthTest")
   private implicit val materializer: Materializer = SystemMaterializer(actorSystem).materializer
   private implicit val timeout: Timeout = Timeout(10.seconds)
+
+  // Authentication calls the landing service for the user's instances; answer with the FakeRequest's "localhost" instance
+  private val wsClient = {
+    val instancesResponse = mock[WSResponse]
+    when(instancesResponse.status).thenReturn(200)
+    when(instancesResponse.body).thenReturn("""[{"id":"localhost"}]""")
+    val instancesRequest = mock[WSRequest]
+    when(instancesRequest.addHttpHeaders(any())).thenReturn(instancesRequest)
+    when(instancesRequest.get()).thenReturn(Future.successful(instancesResponse))
+    val client = mock[WSClient]
+    when(client.url(anyString())).thenReturn(instancesRequest)
+    client
+  }
 
   override protected def afterAll(): Unit = {
     Await.result(actorSystem.terminate(), 10.seconds)
@@ -57,7 +70,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
       override def sendForAuthentication: Option[RequestHeader => Future[play.api.mvc.Result]] = None
       override def sendForAuthenticationCallback: Option[(RequestHeader, Option[AuthenticationProvider.RedirectUri]) => Future[play.api.mvc.Result]] = None
       override def flushToken: Option[(RequestHeader, play.api.mvc.Result) => play.api.mvc.Result] = None
-      override def onBehalfOf(principal: Principal): Either[String, WSRequest => WSRequest] = Left("Not authenticated")
+      override def onBehalfOf(principal: Principal): Either[String, WSRequest => WSRequest] = Right(identity)
     }
 
     val machineProvider = new MachineAuthenticationProvider {
@@ -69,6 +82,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
     val auth = new Authentication(
       commonConfig,
       AuthenticationProviders(userProvider, machineProvider, new InnerServiceAuthenticationProvider(mock[CookieSigner], "test")),
+      wsClient,
       controllerComponents.parsers.default,
       executionContext
     )
