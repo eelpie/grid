@@ -17,6 +17,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 import play.api.http.{DefaultHttpRequestHandler, HttpConfiguration, HttpRequestHandler}
 import play.api.libs.typedmap.TypedMap
+import play.api.libs.ws.WSClient
 import play.api.mvc.{EssentialAction, Handler, PlayBodyParsers, RequestHeader, Result, Results}
 import play.api.routing.{HandlerDef, Router}
 import play.api.test.FakeRequest
@@ -97,6 +98,7 @@ class SentryUserErrorIntegrationTest extends AnyFunSuite with Matchers with Scal
     }
     new Authentication(
       mock(classOf[CommonConfig]), AuthenticationProviders(userProvider, apiProvider, innerProvider),
+      mock(classOf[WSClient]),
       PlayBodyParsers().default, ec
     )
   }

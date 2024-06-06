@@ -49,6 +49,7 @@ class MediaApiTest extends AnyFunSpec with Matchers with MockitoSugar with Scala
         mock[MachineAuthenticationProvider],
         mock[InnerServiceAuthenticationProvider]
       ),
+      mock[WSClient],
       components.parsers.default,
       ec
     ) {
