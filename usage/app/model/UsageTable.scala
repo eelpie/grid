@@ -9,16 +9,17 @@ import com.gu.mediaservice.model.usage.{MediaUsage, PendingUsageStatus, Publishe
 import lib.{BadInputException, WithLogMarker}
 import play.api.libs.json._
 import rx.lang.scala.Observable
+import software.amazon.awssdk.enhanced.dynamodb._
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
 import software.amazon.awssdk.enhanced.dynamodb.model.{DeleteItemEnhancedRequest, QueryConditional, QueryEnhancedRequest}
-import software.amazon.awssdk.enhanced.dynamodb._
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.{AttributeValue, ReturnValue, UpdateItemRequest}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters.{IterableHasAsScala, IteratorHasAsScala, MapHasAsJava}
+import scala.jdk.CollectionConverters.{CollectionHasAsScala, IterableHasAsScala, IteratorHasAsScala, MapHasAsJava}
 
+// TODO Not instance aware!
 class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging {
 
   val hashKeyName = "grouping"
