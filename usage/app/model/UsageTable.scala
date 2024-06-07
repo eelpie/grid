@@ -5,6 +5,7 @@ import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.lib.usage.ItemToMediaUsage
 import com.gu.mediaservice.model.usage.{MediaUsage, PendingUsageStatus, PublishedUsageStatus, UsageTableFullKey}
 import lib.{BadInputException, WithLogMarker}
+import org.apache.pekko.http.impl.util.JavaMapping.Implicits.AddAsJava
 import play.api.libs.json._
 import rx.lang.scala.Observable
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
@@ -13,12 +14,12 @@ import software.amazon.awssdk.services.dynamodb.model.{DeleteItemRequest, QueryR
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 class UsageTable(
                   client2: DynamoDbClient,
                   tableName: String
-                ) extends DynamoDB[MediaUsage](client2, tableName) with GridLogging {
+                ) extends DynamoDB[MediaUsage](client2, tableName) with GridLogging { // TODO Not instane aware!
 
   val hashKeyName = "grouping"
   val rangeKeyName = "usage_id"
