@@ -52,7 +52,7 @@ class CropStore(config: CropperConfig) extends S3ImageStorage(config) with CropS
             dimensions = Dimensions(width, height)
             sizing =
               Asset(
-                translateImgHost(s3Object.uri),
+                signedCropAssetUrl(s3Object.uri),
                 Some(s3Object.size),
                 objectMetadata.contentType,
                 Some(dimensions),
@@ -78,4 +78,9 @@ class CropStore(config: CropperConfig) extends S3ImageStorage(config) with CropS
   // FIXME: this doesn't really belong here
   def translateImgHost(uri: URI): URI =
     new URI("https", config.imgPublishingHost, uri.getPath, uri.getFragment)
+
+  def signedCropAssetUrl(uri: URI): URI = {
+    new URI(signUrlTony(config.imgPublishingBucket, uri))
+  }
+
 }
