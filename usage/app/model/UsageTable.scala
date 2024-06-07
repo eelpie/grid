@@ -13,12 +13,12 @@ import software.amazon.awssdk.services.dynamodb.model.{DeleteItemRequest, QueryR
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.{CollectionHasAsScala, MapHasAsJava}
 
 class UsageTable(
                   client2: DynamoDbClient,
                   tableName: String
-                ) extends DynamoDB[MediaUsage](client2, tableName) with GridLogging {
+                ) extends DynamoDB[MediaUsage](client2, tableName) with GridLogging { // TODO Not instance aware!
 
   val hashKeyName = "grouping"
   val rangeKeyName = "usage_id"
