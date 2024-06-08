@@ -373,7 +373,6 @@ class MediaApi(
 
   def syndicateImage(id: String, partnerName: String, startPending: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
-    implicit val r: Request[AnyContent] = request
 
     elasticSearch.getImageById(id) flatMap {
       case Some(image) if hasPermission(request.user, image) => {
