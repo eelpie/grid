@@ -57,7 +57,6 @@ class KahunaController(
     val metadataTemplates: String = Json.toJson(config.metadataTemplates).toString()
     val announcements: String = Json.toJson(config.announcements).toString()
     val interimFilterOptions: String = Json.toJson(config.interimFilterOptions).toString()
-    val returnUri = config.rootUri + okPath
     val costFilterLabel = config.costFilterLabel.getOrElse("Free to use only")
     val costFilterChargeable = config.costFilterChargeable.getOrElse(false)
     val maybeOrgOwnedValue =
