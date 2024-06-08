@@ -365,7 +365,7 @@ class MediaApi(
         val entity = HttpEntity.Streamed(file, image.source.size, image.source.mimeType.map(_.name))
 
         if(config.recordDownloadAsUsage) {
-          postToUsages(config.usageUri + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
+          postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
         }
 
           Future.successful(
@@ -385,7 +385,7 @@ class MediaApi(
         logger.info(s"Syndicate image: $id from user: ${Authentication.getIdentity(request.user)}", apiKey,
           id, partnerName, startPending)
 
-        postToUsages(config.usageUri + "/usages/syndication", auth.getOnBehalfOfPrincipal(request.user), id,
+        postToUsages(config.usageUri(instance) + "/usages/syndication", auth.getOnBehalfOfPrincipal(request.user), id,
           Authentication.getIdentity(request.user), Option(partnerName), Option(startPending))
 
         Future.successful(Ok)
