@@ -348,7 +348,6 @@ class MediaApi(
   }
 
   def downloadOriginalImage(id: String) = auth.async { request =>
-    implicit val r: Request[AnyContent] = request
     implicit val instance: Instance = instanceOf(request)
 
     elasticSearch.getImageById(id) flatMap {
