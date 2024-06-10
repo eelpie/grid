@@ -29,7 +29,7 @@ class UsageApi(
   usageGroupOps: UsageGroupOps,
   notifications: Notifications,
   config: UsageConfig,
-  usageApiSubject: Subject[WithLogMarker[UsageGroup]],
+  usageApiSubject: Subject[WithLogMarker[(UsageGroup, Instance)]],
   override val controllerComponents: ControllerComponents,
   playBodyParsers: PlayBodyParsers
 )(
@@ -146,7 +146,7 @@ class UsageApi(
   val setDigitalRequestBodyParser: BodyParser[JsValue] = playBodyParsers.json(maxLength = maxDigitalRequestLength)
 
   def setDigitalUsages = auth(setDigitalRequestBodyParser) { req => {
-
+    val instance = instanceOf(req)
     val digitalMediaUsageRequestResult = req.body.validate[DigitalMediaUsageRequest]
     digitalMediaUsageRequestResult.fold(
       e => {
@@ -158,7 +158,7 @@ class UsageApi(
           "requestId" -> RequestLoggingFilter.getRequestId(req),
         )
         val usageGroups = usageGroupOps.buildFromDigitalMediaUsageRecords(digitalMediaUsageRequest.digitalMediaUsageRecords)
-        usageGroups.map(ug => WithLogMarker.includeUsageGroup(ug)).foreach(usageApiSubject.onNext)
+        usageGroups.map(ug => WithLogMarker.includeUsageGroup(ug, instance)).foreach(usageApiSubject.onNext)
 
         Accepted
       }
@@ -169,7 +169,7 @@ class UsageApi(
   val setPrintRequestBodyParser: BodyParser[JsValue] = playBodyParsers.json(maxLength = maxPrintRequestLength)
 
   def setPrintUsages = auth(setPrintRequestBodyParser) { req => {
-
+    val instance = instanceOf(req)
     val printUsageRequestResult = req.body.validate[PrintUsageRequest]
     printUsageRequestResult.fold(
       e => {
@@ -181,7 +181,7 @@ class UsageApi(
           "requestId" -> RequestLoggingFilter.getRequestId(req),
         )
         val usageGroups = usageGroupOps.buildFromPrintUsageRecords(printUsageRequest.printUsageRecords)
-        usageGroups.map(WithLogMarker.includeUsageGroup).foreach(usageApiSubject.onNext)
+        usageGroups.map(ug => WithLogMarker.includeUsageGroup(ug, instance)).foreach(usageApiSubject.onNext)
 
         Accepted
       }
@@ -189,7 +189,7 @@ class UsageApi(
   }}
 
   def setSyndicationUsages() = auth(parse.json) { req => {
-
+    val instance = instanceOf(req)
     val syndicationUsageRequest = (req.body \ "data").validate[SyndicationUsageRequest]
     syndicationUsageRequest.fold(
       e => respondError(
@@ -206,14 +206,14 @@ class UsageApi(
 
         logger.info(logMarker, "recording syndication usage")
         val group = usageGroupOps.build(sur)
-        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group))
+        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group, instance))
         Accepted
       }
     )
   }}
 
   def setFrontUsages() = auth(parse.json) { req => {
-
+    val instance = instanceOf(req)
     val request = (req.body \ "data").validate[FrontUsageRequest]
     request.fold(
       e => respondError(
@@ -229,14 +229,14 @@ class UsageApi(
         ) ++ apiKeyMarkers(req.user.accessor)
         logger.info(logMarker, "recording front usage")
         val group = usageGroupOps.build(fur)
-        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group))
+        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group, instance))
         Accepted
       }
     )
   }}
 
   def setDownloadUsages() = auth(parse.json) { req => {
-
+    val instance = instanceOf(req)
     val request = (req.body \ "data").validate[DownloadUsageRequest]
     request.fold(
       e => respondError(
@@ -252,7 +252,7 @@ class UsageApi(
         ) ++ apiKeyMarkers(req.user.accessor)
         logger.info(logMarker, "recording download usage")
         val group = usageGroupOps.build(usageRequest)
-        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group))
+        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group, instance))
         Accepted
       }
     )
