@@ -53,9 +53,7 @@ class KindeAuthenticationProvider(
    */
   override def authenticateRequest(request: RequestHeader): AuthenticationStatus = {
     // Look for our cookie with we set in the auth app
-    logger.info("Looking at play session for logged in user: " + request.cookies)
     request.cookies.get(loggedInUserCookieName).flatMap { cookie =>
-      logger.info("Found user on cookie: " + cookie)
       val userData = decode(cookie.value)
       userData.get("id").map { id =>
         val userProfile = UserProfile(
