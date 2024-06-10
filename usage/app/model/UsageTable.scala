@@ -4,6 +4,7 @@ import com.gu.mediaservice.lib.AttributeValueConverterProvider
 import com.gu.mediaservice.lib.aws.DynamoDB.jsonWithNullAsEmptyString
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.lib.usage.ItemToMediaUsage
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.usage.{MediaUsage, PendingUsageStatus, PublishedUsageStatus, UsageTableFullKey}
 import lib.{BadInputException, WithLogMarker}
 import play.api.libs.json._
@@ -101,9 +102,10 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
       }
   }.toList
 
-  def matchUsageGroup(usageGroupWithContext: WithLogMarker[UsageGroup]): Observable[WithLogMarker[Set[MediaUsage]]] = {
+  def matchUsageGroup(usageGroupWithContext: WithLogMarker[(UsageGroup, Instance)]): Observable[WithLogMarker[Set[MediaUsage]]] = {
     implicit val logMarker: LogMarker = usageGroupWithContext.logMarker
-    val usageGroup = usageGroupWithContext.value
+    val usageGroup = usageGroupWithContext.value._1
+    val instance = usageGroupWithContext.value._2
 
     logger.info(logMarker, s"Trying to match UsageGroup: ${usageGroup.grouping}")
 
