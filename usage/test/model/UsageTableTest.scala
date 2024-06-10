@@ -1,6 +1,7 @@
 package model
 
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.usage._
 import lib.WithLogMarker
 import org.joda.time.DateTime
@@ -27,6 +28,7 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
 
   implicit val defaultPatience: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds), interval = Span(500, Millis))
   private val tenSeconds = 10.seconds
+  implicit val instance: Instance = Instance(id = UUID.randomUUID().toString)
 
   private val dynamoContainer = new LocalStackContainer(
     DockerImageName.parse("localstack/localstack:1.4.0")
@@ -319,7 +321,7 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
       )
 
       implicit val logMarker: MarkerMap = MarkerMap()
-      val eventualResult = store.matchUsageGroup(WithLogMarker(usageGroup)).toList.toBlocking.toFuture
+      val eventualResult = store.matchUsageGroup(WithLogMarker((usageGroup, instance))).toList.toBlocking.toFuture
 
       whenReady(eventualResult) { result =>
         result.head.value should be(Set(usage))
