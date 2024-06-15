@@ -15,10 +15,9 @@ import lib.kinesis.{KinesisConfig, ThrallEventConsumer}
 import play.api.ApplicationLoader.Context
 import router.Routes
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
 
 class ThrallComponents(context: Context) extends GridComponents(context, new ThrallConfig(_)) with StrictLogging with AssetsComponents {
   final override val buildInfo = utils.buildinfo.BuildInfo
@@ -62,9 +61,9 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   val s3 = S3Ops.buildS3Client(config)
 
-  val instanceUsagePinger = Source.repeat(()).throttle(1, per = 1.minute).map(_ => {
+  Source.repeat(()).throttle(1, per = 10.second).map(_ => {
     logger.info("!!!! ping")
-  })
+  }).run()
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
   val maybeCustomReapableEligibility = config.maybeReapableEligibilityClass(applicationLifecycle)
