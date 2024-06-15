@@ -62,6 +62,10 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   val s3 = S3Ops.buildS3Client(config)
 
+  val instanceUsagePinger = Source.repeat(()).throttle(1, per = 1.minute).map(_ => {
+    logger.info("!!!! ping")
+  })
+
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
   val maybeCustomReapableEligibility = config.maybeReapableEligibilityClass(applicationLifecycle)
 
