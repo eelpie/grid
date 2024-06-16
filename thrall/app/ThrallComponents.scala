@@ -78,16 +78,15 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   val s3 = S3Ops.buildS3Client(config)
 
-  Source.repeat(()).throttle(1, per = 1.minute).map(_ => {
+  Source.repeat(()).throttle(1, per = 5.minute).map(_ => {
     implicit val logMarker: MarkerMap = MarkerMap()
     val instancesRequest: WSRequest = wsClient.url("http://landing.default.svc.cluster.local:9000/instances") // TODO
     val eventualAllInstances = instancesRequest.get().map { r =>
       r.status match {
         case 200 =>
-          logger.info("Got instances response: " + r.body)
           implicit val ir = Json.reads[Instance]
           val instances = Json.parse(r.body).as[Seq[Instance]]
-          logger.info("Got instances: " + instances)
+          logger.info("Got instances: " + instances.map(_.id).mkString(","))
           instances
         case _ =>
           logger.warn("Got non 200 status for instances call: " + r.status)
