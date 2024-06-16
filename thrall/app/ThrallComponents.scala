@@ -108,7 +108,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
         } yield {
           logger.info("Instance " + instance.id + " has " + count + " images / total size: " + totalSize)
 
-          case class InstanceUsageMessage(instance: String, imageCount: Long, totalImageSize: Double)
           val message = InstanceUsageMessage(instance = instance.id, imageCount = count, totalImageSize = totalSize)
           implicit val iumw = Json.writes[InstanceUsageMessage]
           sqsClient.sendMessage(SendMessageRequest.builder.queueUrl(queueUrl).messageBody(Json.toJson(message).toString()).build)
@@ -128,3 +127,5 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   override lazy val router = new Routes(httpErrorHandler, thrallController, reaperController, healthCheckController, management, assets)
 }
+
+case class InstanceUsageMessage(instance: String, imageCount: Long, totalImageSize: Double)
