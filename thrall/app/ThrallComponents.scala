@@ -39,6 +39,13 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
     .region(Region.EU_WEST_1)
     .build()
 
+  private val queueUrl = {
+    val getQueueRequest = GetQueueUrlRequest.builder()
+      .queueName("eelpie-grid-instance-usage")
+      .build();
+    sqsClient.getQueueUrl(getQueueRequest).queueUrl
+  }
+
   // before firing up anything to consume streams or say we are OK let's do the critical good to go check
   // TODO restore a reduced non instance specific version of this private val goodToGoCheckResult = Await.ready(GoodToGoCheck.run(es), 30 seconds)
 
@@ -90,11 +97,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
 
     x.map { instances =>
-      val getQueueRequest = GetQueueUrlRequest.builder()
-        .queueName("eelpie-grid-instance-usage")
-        .build();
-      val queueUrl = sqsClient.getQueueUrl(getQueueRequest).queueUrl
-
       // Foreach instance; query elastic for number image and total file size
       instances.foreach { instance =>
         logger.info("Checking usage for: " + instance)
