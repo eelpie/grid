@@ -41,7 +41,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   private val queueUrl = {
     val getQueueRequest = GetQueueUrlRequest.builder()
-      .queueName("eelpie-grid-instance-usage")
+      .queueName(config.instanceUsageQueueName)
       .build();
     sqsClient.getQueueUrl(getQueueRequest).queueUrl
   }
@@ -107,7 +107,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
           totalSize <- eventualTotalSize
         } yield {
           logger.info("Instance " + instance.id + " has " + count + " images / total size: " + totalSize)
-
           val message = InstanceUsageMessage(instance = instance.id, imageCount = count, totalImageSize = totalSize)
           implicit val iumw = Json.writes[InstanceUsageMessage]
           sqsClient.sendMessage(SendMessageRequest.builder.queueUrl(queueUrl).messageBody(Json.toJson(message).toString()).build)
