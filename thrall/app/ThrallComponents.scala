@@ -71,7 +71,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   val s3 = S3Ops.buildS3Client(config)
 
-  Source.repeat(()).throttle(1, per = 10.second).map(_ => {
+  Source.repeat(()).throttle(1, per = 1.minute).map(_ => {
     implicit val logMarker: MarkerMap = MarkerMap()
     val instancesRequest: WSRequest = wsClient.url("http://landing.default.svc.cluster.local:9000/instances") // TODO
     val x: Future[Seq[Instance]] = instancesRequest.get().map { r =>
