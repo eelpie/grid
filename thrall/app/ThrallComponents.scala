@@ -81,7 +81,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   Source.repeat(()).throttle(1, per = 1.minute).map(_ => {
     implicit val logMarker: MarkerMap = MarkerMap()
     val instancesRequest: WSRequest = wsClient.url("http://landing.default.svc.cluster.local:9000/instances") // TODO
-    val x: Future[Seq[Instance]] = instancesRequest.get().map { r =>
+    val eventualAllInstances = instancesRequest.get().map { r =>
       r.status match {
         case 200 =>
           logger.info("Got instances response: " + r.body)
@@ -95,8 +95,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
       }
     }
 
-
-    x.map { instances =>
+    eventualAllInstances.map { instances =>
       // Foreach instance; query elastic for number image and total file size
       instances.foreach { instance =>
         logger.info("Checking usage for: " + instance)
@@ -107,9 +106,12 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
           count <- eventualLong
           totalSize <- eventualTotalSize
         } yield {
-          val message = "Instance " + instance.id + " has " + count + " images / total size: " + totalSize
-          logger.info(message)
-          sqsClient.sendMessage(SendMessageRequest.builder.queueUrl(queueUrl).messageBody(message).build)
+          logger.info("Instance " + instance.id + " has " + count + " images / total size: " + totalSize)
+
+          case class InstanceUsageMessage(instance: String, imageCount: Long, totalImageSize: Double)
+          val message = InstanceUsageMessage(instance = instance.id, imageCount = count, totalImageSize = totalSize)
+          implicit val iumw = Json.writes[InstanceUsageMessage]
+          sqsClient.sendMessage(SendMessageRequest.builder.queueUrl(queueUrl).messageBody(Json.toJson(message).toString()).build)
         }
       }
     }
