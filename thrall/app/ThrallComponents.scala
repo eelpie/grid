@@ -17,6 +17,9 @@ import play.api.ApplicationLoader.Context
 import play.api.libs.json.Json
 import play.api.libs.ws.WSRequest
 import router.Routes
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.sqs.SqsClient
+import software.amazon.awssdk.services.sqs.model.{GetQueueUrlRequest, SendMessageRequest}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -31,6 +34,10 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val es = new ElasticSearch(config.esConfig, Some(thrallMetrics), actorSystem.scheduler)
 
   val gridClient: GridClient = GridClient(config.services)(wsClient)
+
+  private val sqsClient = SqsClient.builder()
+    .region(Region.EU_WEST_1)
+    .build()
 
   // before firing up anything to consume streams or say we are OK let's do the critical good to go check
   // TODO restore a reduced non instance specific version of this private val goodToGoCheckResult = Await.ready(GoodToGoCheck.run(es), 30 seconds)
@@ -81,7 +88,13 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
       }
     }
 
+
     x.map { instances =>
+      val getQueueRequest = GetQueueUrlRequest.builder()
+        .queueName("eelpie-grid-instance-usage")
+        .build();
+      val queueUrl = sqsClient.getQueueUrl(getQueueRequest).queueUrl
+
       // Foreach instance; query elastic for number image and total file size
       instances.foreach { instance =>
         logger.info("Checking usage for: " + instance)
@@ -92,7 +105,9 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
           count <- eventualLong
           totalSize <- eventualTotalSize
         } yield {
-          logger.info("Instance " + instance.id + " has " + count + " images / total size: " + totalSize)
+          val message = "Instance " + instance.id + " has " + count + " images / total size: " + totalSize
+          logger.info(message)
+          sqsClient.sendMessage(SendMessageRequest.builder.queueUrl(queueUrl).messageBody(message).build)
         }
       }
     }
