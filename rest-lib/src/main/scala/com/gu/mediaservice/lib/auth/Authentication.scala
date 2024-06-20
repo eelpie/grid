@@ -4,9 +4,11 @@ import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.Link
 import com.gu.mediaservice.lib.auth.Authentication.{InnerServicePrincipal, MachinePrincipal, OnBehalfOfPrincipal, Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider._
-import com.gu.mediaservice.lib.config.CommonConfig
+import com.gu.mediaservice.lib.config.{CommonConfig, InstanceForRequest}
+import com.gu.mediaservice.model.Instance
+import play.api.libs.json.Json
 import play.api.libs.typedmap.TypedMap
-import play.api.libs.ws.WSRequest
+import play.api.libs.ws.{WSClient, WSRequest}
 import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
 
@@ -14,35 +16,37 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class Authentication(config: CommonConfig,
                      providers: AuthenticationProviders,
+                     wsClient: WSClient,
                      override val parser: BodyParser[AnyContent],
                      override val executionContext: ExecutionContext)
-  extends ActionBuilder[Authentication.Request, AnyContent] with ArgoHelpers {
+  extends ActionBuilder[Authentication.Request, AnyContent] with ArgoHelpers with InstanceForRequest {
 
   // make the execution context implicit so it will be picked up appropriately
   implicit val ec: ExecutionContext = executionContext
 
-  val loginLinks: List[Link] = providers.userProvider.loginLink match {
+  def loginLinks()(implicit instance: Instance): List[Link] = providers.userProvider.loginLink match {
     case DisableLoginLink => Nil
-    case BuiltInAuthService => List(Link("login", config.services.loginUriTemplate))
+    case BuiltInAuthService => List(Link("login", config.services.loginUriTemplate(instance)))
     case ExternalLoginLink(link) => List(Link("login", link))
   }
 
-  def unauthorised(errorMessage: String, throwable: Option[Throwable] = None): Future[Result] = {
+  def unauthorised(errorMessage: String, throwable: Option[Throwable] = None)(implicit instance: Instance): Future[Result] = {
     logger.info(s"Authentication failure $errorMessage", throwable.orNull)
-    Future.successful(respondError(Unauthorized, "authentication-failure", "Authentication failure", loginLinks))
+    Future.successful(respondError(Unauthorized, "authentication-failure", "Authentication failure", loginLinks()))
   }
 
-  def forbidden(errorMessage: String): Future[Result] = {
+  def forbidden(errorMessage: String)(implicit instance: Instance): Future[Result] = {
     logger.info(s"User not authorised: $errorMessage")
-    Future.successful(respondError(Forbidden, "principal-not-authorised", "Principal not authorised", loginLinks))
+    Future.successful(respondError(Forbidden, "principal-not-authorised", "Principal not authorised", loginLinks()))
   }
 
-  def expired(user: UserPrincipal): Future[Result] = {
+  def expired(user: UserPrincipal)(implicit instance: Instance): Future[Result] = {
     logger.info(s"User token expired for ${user.email}, return 419")
-    Future.successful(respondError(new Status(419), errorKey = "authentication-expired", errorMessage = "User authentication token has expired", loginLinks))
+    Future.successful(respondError(new Status(419), errorKey = "authentication-expired", errorMessage = "User authentication token has expired", loginLinks()))
   }
 
   def authenticationStatus(requestHeader: RequestHeader): Either[Future[Result], Principal] = {
+    implicit val instance: Instance = instanceOf(requestHeader)
     def flushToken(resultWhenAbsent: Result): Result = {
       providers.userProvider.flushToken.fold(resultWhenAbsent)(_(requestHeader, resultWhenAbsent))
     }
@@ -71,8 +75,47 @@ class Authentication(config: CommonConfig,
 
   override def invokeBlock[A](request: Request[A], block: Authentication.Request[A] => Future[Result]): Future[Result] = {
     authenticationStatus(request) match {
-      // we have a principal, so process the block
-      case Right(principal) => block(new AuthenticatedRequest(principal, request))
+      case Right(principal) => {
+        principal match {
+          case innerServicePrincipal: InnerServicePrincipal =>
+            logger.info("Allowing InnerServicePrincipal request for all instances")
+            block(new AuthenticatedRequest(innerServicePrincipal, request))
+
+          case _ =>
+            // we have an end user principal, so only process the block if the instance is allowed
+            val instance = instanceOf(request)
+            logger.info(s"Checking that $principal is allowed to access instanc $instance")
+            // Use the cookie instances for now but we are in a Future so are able to call the instances service for a canonical answer if we need to
+
+            val eventualPrincipalsInstances = {
+              val instancesRequest: WSRequest = wsClient.url("http://landing.default.svc.cluster.local:9000/instances/my")  // TODO
+              val onBehalfOfPrincipal: OnBehalfOfPrincipal = getOnBehalfOfPrincipal(principal)
+              val authedInstancesRequest: WSRequest = onBehalfOfPrincipal(instancesRequest)
+              authedInstancesRequest.get().map { r =>
+                r.status match {
+                  case 200 =>
+                    logger.info("Got instances response: " + r.body)
+                    implicit val ir = Json.reads[Instance]
+                    Json.parse(r.body).as[Seq[Instance]]
+                  case _ =>
+                    logger.warn("Got non 200 status for instances call: " + r.status)
+                    Seq.empty
+                }
+              }
+            }
+
+            eventualPrincipalsInstances.flatMap { principalsInstances: Seq[Instance] =>
+              if (principalsInstances.exists(_.id == instance.id)) {
+                logger.debug("Allowing this request!")
+                block(new AuthenticatedRequest(principal, request))
+
+              } else {
+                logger.warn(s"Blocking request ${request.path} on instance $instance")
+                Future.successful(Forbidden("You do not have permission to use this instance"))
+              }
+            }
+        }
+      }
       // no principal so return a result which will either be an error or a form of redirect
       case Left(result) => result
     }

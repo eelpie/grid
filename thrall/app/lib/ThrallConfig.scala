@@ -19,7 +19,7 @@ case class KinesisReceiverConfig(
   override val isDev: Boolean,
   streamName: String,
   rewindFrom: Option[DateTime],
-  metricsLevel: MetricsLevel = MetricsLevel.DETAILED
+  metricsLevel: MetricsLevel = MetricsLevel.NONE
 ) extends AwsClientBuilderUtils
 
 object KinesisReceiverConfig {
@@ -41,8 +41,6 @@ class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElast
   val maybeReaperBucket: Option[String] = stringOpt("s3.reaper.bucket")
   val maybeReaperCountPerRun: Option[Int] = intOpt("reaper.countPerRun")
 
-  val metadataTopicArn: String = string("indexed.image.sns.topic.arn")
-
   val rewindFrom: Option[DateTime] = stringOpt("thrall.kinesis.stream.rewindFrom").map(ISODateTimeFormat.dateTime.parseDateTime)
   val lowPriorityRewindFrom: Option[DateTime] = stringOpt("thrall.kinesis.lowPriorityStream.rewindFrom").map(ISODateTimeFormat.dateTime.parseDateTime)
 
@@ -60,4 +58,7 @@ class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElast
     val configLoader = ReapableEligibilityLoader.singletonConfigLoader(ReapableEligibiltyResources(this, resources.actorSystem), applicationLifecycle)
     configuration.getOptional[ReapableEligibility]("reaper.provider")(configLoader)
   }
+
+  val instanceUsageQueueName: String = string("instance.usage.queue.name")
+
 }

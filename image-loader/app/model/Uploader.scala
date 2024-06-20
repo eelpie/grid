@@ -30,6 +30,7 @@ import model.upload.{OptimiseOps, OptimiseWithPngQuant, UploadRequest}
 import org.joda.time.DateTime
 import play.api.libs.json.{JsObject, Json}
 import play.api.libs.ws.WSRequest
+import play.api.mvc.{AnyContent, Request, RequestHeader}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -79,7 +80,7 @@ case class ImageUploadOpsDependencies(
   storeOrProjectThumbFile: StorableThumbImage => Future[S3Object],
   storeOrProjectOptimisedImage: StorableOptimisedImage => Future[S3Object],
   tryFetchThumbFile: (String, File) => Future[Option[(File, MimeType)]] = (_, _) => Future.successful(None),
-  tryFetchOptimisedFile: (String, File) => Future[Option[(File, MimeType)]] = (_, _) => Future.successful(None),
+  tryFetchOptimisedFile: (String, File, String) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
 )
 
 case class UploadStatusUri (uri: String) extends AnyVal {
@@ -149,7 +150,8 @@ object Uploader extends GridLogging {
       uploadRequest.tempFile,
       originalMimeType,
       uploadRequest.uploadTime,
-      toMetaMap(uploadRequest)
+      toMetaMap(uploadRequest),
+      uploadRequest.instance
     )
     val sourceStoreFuture = storeOrProjectOriginalFile(storableOriginalImage)
     val eventualBrowserViewableImage = createBrowserViewableFileFuture(uploadRequest, tempDirForRequest, deps)
@@ -162,7 +164,7 @@ object Uploader extends GridLogging {
       thumbViewableImage <- createThumbFuture(optimisedFileMetadata, colourModelFuture, browserViewableImage, deps, tempDirForRequest)
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
-        tempDirForRequest, optimiseOps, browserViewableImage, optimisedFileMetadata, deps.tryFetchOptimisedFile)
+        tempDirForRequest, optimiseOps, browserViewableImage, optimisedFileMetadata, deps.tryFetchOptimisedFile, uploadRequest.instance.id)
       s3PngOption <- maybeStorableOptimisedImage match {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
@@ -201,12 +203,13 @@ object Uploader extends GridLogging {
                                          optimiseOps: OptimiseOps,
                                          browserViewableImage: BrowserViewableImage,
                                          optimisedFileMetadata: FileMetadata,
-                                         tryFetchOptimisedFile: (String, File) => Future[Option[(File, MimeType)]]
+                                         tryFetchOptimisedFile: (String, File, String) => Future[Option[(File, MimeType)]],
+                                         instance: String
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
     if (optimiseOps.shouldOptimise(Some(browserViewableImage.mimeType), optimisedFileMetadata)) {
       for {
         tempFile <- createTempFile("optimisedpng-", optimisedMimeType.fileExtension, tempDir)
-        maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, tempFile)
+        maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, tempFile, instance)
         (optimisedFile, optimisedMimeType) <- {
           maybeDownloadedOptimisedFile match {
             case Some(optData) => Future.successful(optData)
@@ -294,14 +297,16 @@ object Uploader extends GridLogging {
           uploadRequest.imageId,
           file = file,
           mimeType = mimeType,
-          isTransformedFromSource = true
+          isTransformedFromSource = true,
+          instance = uploadRequest.instance
         )
       case Some(mimeType) =>
         Future.successful(
           BrowserViewableImage(
             uploadRequest.imageId,
             file = uploadRequest.tempFile,
-            mimeType = mimeType)
+            mimeType = mimeType,
+            instance = uploadRequest.instance)
         )
       case None => Future.failed(new Exception("This file is not an image with an identifiable mime type"))
     }
@@ -346,7 +351,8 @@ class Uploader(val store: ImageLoaderStore,
                uploadedBy: String,
                identifiers: Option[String],
                uploadTime: DateTime,
-               filename: Option[String])
+               filename: Option[String],
+               instance: Instance)
               (implicit ec:ExecutionContext,
                logMarker: LogMarker): Future[UploadRequest] = Future {
     val DigestedFile(tempFile, id) = digestedFile
@@ -370,23 +376,24 @@ class Uploader(val store: ImageLoaderStore,
           uploadTime = uploadTime,
           uploadedBy = uploadedBy,
           identifiers = identifiersMap,
-          uploadInfo = UploadInfo(filename)
+          uploadInfo = UploadInfo(filename),
+          instance = instance
         )
     }
   }
 
   def storeFile(uploadRequest: UploadRequest)
                (implicit ec:ExecutionContext,
-                logMarker: LogMarker): Future[UploadStatusUri] = {
+                logMarker: LogMarker, instance: Instance): Future[UploadStatusUri] = {
 
     logger.info(logMarker, "Storing file")
 
     for {
       imageUpload <- fromUploadRequest(uploadRequest)
-      updateMessage = UpdateMessage(subject = Image, image = Some(imageUpload.image))
+      updateMessage = UpdateMessage(subject = Image, image = Some(imageUpload.image), instance = uploadRequest.instance)
       _ <- Future { notifications.publish(updateMessage) }
       // TODO: centralise where all these URLs are constructed
-    } yield UploadStatusUri(s"${config.rootUri}/uploadStatus/${uploadRequest.imageId}")
+    } yield UploadStatusUri(s"${config.rootUri(instance)}/uploadStatus/${uploadRequest.imageId}")
 
   }
 
@@ -394,13 +401,13 @@ class Uploader(val store: ImageLoaderStore,
                   gridClient: GridClient,
                   onBehalfOfFn: WSRequest => WSRequest)
                  (implicit ec: ExecutionContext,
-                  logMarker: LogMarker): Future[Unit] = for {
+                  logMarker: LogMarker, instance: Instance): Future[Unit] = for {
     imageUpload <- fromUploadRequest(uploadRequest)
     imageWithoutUserEdits = imageUpload.image
     imageWithUserEditsApplied <- ImageDataMerger.aggregate(imageWithoutUserEdits, gridClient, onBehalfOfFn)
     _ <- Future {
       notifications.publish(
-        UpdateMessage(subject = Image, image = Some(imageWithUserEditsApplied))
+        UpdateMessage(subject = Image, image = Some(imageWithUserEditsApplied), instance = uploadRequest.instance)
       )
     }
   } yield ()

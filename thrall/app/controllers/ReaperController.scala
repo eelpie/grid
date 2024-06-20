@@ -4,11 +4,11 @@ import akka.actor.Scheduler
 import com.gu.mediaservice.lib.{DateTimeUtils, ImageIngestOperations}
 import com.gu.mediaservice.lib.auth.Permissions.DeleteImage
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, BaseControllerWithLoginRedirects}
-import com.gu.mediaservice.lib.config.Services
+import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
 import com.gu.mediaservice.lib.elasticsearch.ReapableEligibility
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
-import com.gu.mediaservice.model.{ImageStatusRecord, SoftDeletedMetadata}
+import com.gu.mediaservice.model.{ImageStatusRecord, Instance, SoftDeletedMetadata}
 import lib.{BatchDeletionIds, ThrallConfig, ThrallMetrics, ThrallStore}
 import lib.elasticsearch.ElasticSearch
 import org.joda.time.{DateTime, DateTimeZone}
@@ -33,7 +33,7 @@ class ReaperController(
   override val auth: Authentication,
   override val services: Services,
   override val controllerComponents: ControllerComponents,
-)(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging {
+)(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging with InstanceForRequest {
 
   private val CONTROL_FILE_NAME = "PAUSED"
 
@@ -48,6 +48,7 @@ class ReaperController(
     }
   }
 
+  /* TODO restore as controller triggered
   (config.maybeReaperBucket, config.maybeReaperCountPerRun) match {
     case (Some(reaperBucket), Some(countOfImagesToReap)) =>
       scheduler.scheduleAtFixedRate(
@@ -57,13 +58,13 @@ class ReaperController(
         try {
           if (store.client.doesObjectExist(reaperBucket, CONTROL_FILE_NAME)) {
             logger.info("Reaper is paused")
-            es.countTotalSoftReapable(isReapable).map(metrics.softReapable.increment(Nil, _).run)
-            es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.increment(Nil, _).run)
+            es.countTotalSoftReapable(isReapable, instance).map(metrics.softReapable.increment(Nil, _).run)
+            es.countTotalHardReapable(isReapable, config.hardReapImagesAge, instance).map(metrics.hardReapable.increment(Nil, _).run)
           } else {
             val deletedBy = "reaper"
             Future.sequence(Seq(
-              doBatchSoftReap(countOfImagesToReap, deletedBy),
-              doBatchHardReap(countOfImagesToReap, deletedBy)
+              doBatchSoftReap(countOfImagesToReap, deletedBy, instance),
+              doBatchHardReap(countOfImagesToReap, deletedBy, instance)
             )).onComplete {
               case Success(_) => logger.info("Reap completed")
               case Failure(e) => logger.error("Reap failed", e)
@@ -75,8 +76,10 @@ class ReaperController(
       }
     case _ => logger.info("scheduled reaper will not run since 's3.reaper.bucket' and 'reaper.countPerRun' need to be configured in thrall.conf")
   }
+  */
 
-  private def batchDeleteWrapper(count: Int)(func: (Int, String) => Future[JsValue]) = auth.async { request =>
+  private def batchDeleteWrapper(count: Int)(func: (Int, String, Instance) => Future[JsValue]) = auth.async { request =>
+    val instance = instanceOf(request)
     if (!authorisation.hasPermissionTo(DeleteImage)(request.user)) {
       Future.successful(Forbidden)
     }
@@ -86,7 +89,8 @@ class ReaperController(
     else {
       func(
         count,
-        request.user.accessor.identity
+        request.user.accessor.identity,
+        instance
       ).map(Ok(_))
     }
   }
@@ -105,8 +109,8 @@ class ReaperController(
 
   def doBatchSoftReap(count: Int): Action[AnyContent] = batchDeleteWrapper(count)(doBatchSoftReap)
 
-  def doBatchSoftReap(count: Int, deletedBy: String): Future[JsValue] = persistedBatchDeleteOperation("soft"){
-
+  def doBatchSoftReap(count: Int, deletedBy: String, instance: Instance): Future[JsValue] = persistedBatchDeleteOperation("soft"){
+    implicit val i: Instance = instance
     es.countTotalSoftReapable(isReapable).map(metrics.softReapable.increment(Nil, _).run)
 
     logger.info(s"Soft deleting next $count images...")
@@ -120,7 +124,8 @@ class ReaperController(
           _,
           deletedBy,
           deleteTime = deleteTime.toString,
-          isDeleted = true
+          isDeleted = true,
+          instance = instance.id
         )
       ))
     } yield {
@@ -141,8 +146,8 @@ class ReaperController(
 
   def doBatchHardReap(count: Int): Action[AnyContent] = batchDeleteWrapper(count)(doBatchHardReap)
 
-  def doBatchHardReap(count: Int, deletedBy: String): Future[JsValue] = persistedBatchDeleteOperation("hard"){
-
+  def doBatchHardReap(count: Int, deletedBy: String, instance: Instance): Future[JsValue] = persistedBatchDeleteOperation("hard"){
+    implicit val i: Instance = instance
     es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.increment(Nil, _).run)
 
     logger.info(s"Hard deleting next $count images...")
@@ -161,7 +166,7 @@ class ReaperController(
           "ES" -> Some(wasHardDeletedFromES),
           "mainImage" -> mainImagesS3Deletions.get(ImageIngestOperations.fileKeyFromId(id)),
           "thumb" -> thumbsS3Deletions.get(ImageIngestOperations.fileKeyFromId(id)),
-          "optimisedPng" -> pngsS3Deletions.get(ImageIngestOperations.optimisedPngKeyFromId(id)),
+          "optimisedPng" -> pngsS3Deletions.get(ImageIngestOperations.optimisedPngKeyFromId(id, instance.id)),
           "dynamo.table.softDelete.metadata" -> (if(wasHardDeletedFromES) Some(!idsNotProcessedInDynamo.contains(id)) else None)
         )
         logger.info(s"Hard deleted image $id : $detail")

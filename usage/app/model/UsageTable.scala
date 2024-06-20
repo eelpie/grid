@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.model.ReturnValue
 import com.gu.mediaservice.lib.aws.DynamoDB
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.lib.usage.ItemToMediaUsage
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.usage.{MediaUsage, PendingUsageStatus, PublishedUsageStatus, UsageTableFullKey}
 import lib.{BadInputException, UsageConfig, WithLogMarker}
 import play.api.libs.json._
@@ -21,7 +22,7 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
   val rangeKeyName = "usage_id"
   val imageIndexName = "media_id"
 
-  def queryByUsageId(id: String): Future[Option[MediaUsage]] = Future {
+  def queryByUsageId(id: String, instance: Instance): Future[Option[MediaUsage]] = Future {
     UsageTableFullKey.build(id).flatMap((tableFullKey: UsageTableFullKey) => {
       val keyAttribute: KeyAttribute = new KeyAttribute(hashKeyName, tableFullKey.hashKey)
       val rangeKeyCondition: RangeKeyCondition = new RangeKeyCondition(rangeKeyName).eq(tableFullKey.rangeKey)
@@ -32,7 +33,7 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
     })
   }
 
-  def queryByImageId(id: String)(implicit logMarkerWithId: LogMarker): Future[List[MediaUsage]] = Future {
+  def queryByImageId(id: String, instance: Instance)(implicit logMarkerWithId: LogMarker): Future[List[MediaUsage]] = Future {
 
     if (id.trim.isEmpty)
       throw new BadInputException("Empty string received for image id")
@@ -55,14 +56,14 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
     )
   }
 
-  def hidePendingIfRemoved(usages: List[MediaUsage]): List[MediaUsage] = usages.filterNot((mediaUsage: MediaUsage) => {
+  private def hidePendingIfRemoved(usages: List[MediaUsage]): List[MediaUsage] = usages.filterNot((mediaUsage: MediaUsage) => {
     mediaUsage.status match {
       case PendingUsageStatus => mediaUsage.isRemoved
       case _ => false
     }
   })
 
-  def hidePendingIfPublished(usages: List[MediaUsage]): List[MediaUsage] = usages.groupBy(_.grouping).flatMap {
+  private def hidePendingIfPublished(usages: List[MediaUsage]): List[MediaUsage] = usages.groupBy(_.grouping).flatMap {
     case (_, groupedUsages) =>
       val publishedUsage = groupedUsages.find(_.status match {
         case PublishedUsageStatus => true
@@ -76,9 +77,10 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
       }
   }.toList
 
-  def matchUsageGroup(usageGroupWithContext: WithLogMarker[UsageGroup]): Observable[WithLogMarker[Set[MediaUsage]]] = {
+  def matchUsageGroup(usageGroupWithContext: WithLogMarker[(UsageGroup, Instance)]): Observable[WithLogMarker[Set[MediaUsage]]] = {
     implicit val logMarker: LogMarker = usageGroupWithContext.logMarker
-    val usageGroup = usageGroupWithContext.value
+    val usageGroup = usageGroupWithContext.value._1
+    val instance = usageGroupWithContext.value._2
 
     logger.info(logMarker, s"Trying to match UsageGroup: ${usageGroup.grouping}")
 
@@ -102,14 +104,14 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
     })
   }
 
-  def create(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
-    upsertFromRecord(UsageRecord.buildCreateRecord(mediaUsage))
+  def create(mediaUsage: MediaUsage, instance: Instance)(implicit logMarker: LogMarker): Observable[JsObject] =
+    upsertFromRecord(UsageRecord.buildCreateRecord(mediaUsage), instance)
 
-  def update(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
-    upsertFromRecord(UsageRecord.buildUpdateRecord(mediaUsage))
+  def update(mediaUsage: MediaUsage, instance: Instance)(implicit logMarker: LogMarker): Observable[JsObject] =
+    upsertFromRecord(UsageRecord.buildUpdateRecord(mediaUsage), instance)
 
-  def markAsRemoved(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
-    upsertFromRecord(UsageRecord.buildMarkAsRemovedRecord(mediaUsage))
+  def markAsRemoved(mediaUsage: MediaUsage, instance: Instance)(implicit logMarker: LogMarker): Observable[JsObject] =
+    upsertFromRecord(UsageRecord.buildMarkAsRemovedRecord(mediaUsage), instance)
 
   def deleteRecord(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): DeleteItemOutcome = {
     logger.info(logMarker, s"deleting usage ${mediaUsage.usageId} for media id ${mediaUsage.mediaId}")
@@ -123,7 +125,7 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
     table.deleteItem(deleteSpec)
   }
 
-  def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker): Observable[JsObject] = Observable.from(Future {
+  def upsertFromRecord(record: UsageRecord, instance: Instance)(implicit logMarker: LogMarker): Observable[JsObject] = Observable.from(Future {
 
      val updateSpec = new UpdateItemSpec()
       .withPrimaryKey(

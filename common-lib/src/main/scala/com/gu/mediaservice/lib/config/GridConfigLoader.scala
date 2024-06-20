@@ -47,7 +47,6 @@ object GridConfigLoader extends StrictLogging {
         loadConfiguration(deployedConfigFiles)
       }
     }
-
     fileConfiguration.withFallback(baseConfig)
   }
 
@@ -57,7 +56,10 @@ object GridConfigLoader extends StrictLogging {
       if (file.getPath.endsWith(".properties")) {
         logger.warn(s"Configuring the Grid with Java properties files is deprecated as of #3011, please switch to .conf files. See #3037 for a conversion utility.")
       }
-      Configuration(ConfigFactory.parseFile(file))
+      val raw = ConfigFactory.parseFile(file)
+      logger.info(s"Resolving config from file: $file")
+      val resolved = raw.resolve()
+      Configuration(resolved)
     } else {
       logger.info(s"Skipping config file $file as it doesn't exist")
       Configuration.empty

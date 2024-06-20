@@ -2,6 +2,7 @@ package com.gu.mediaservice.lib.auth
 
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.config.Services
+import com.gu.mediaservice.model.Instance
 import play.api.mvc.{RequestHeader, Result}
 
 sealed trait Tier
@@ -26,9 +27,12 @@ object ApiAccessor extends ArgoHelpers {
     ApiAccessor(name, tier)
   }
 
-  def hasAccess(apiKey: ApiAccessor, request: RequestHeader, services: Services): Boolean = apiKey.tier match {
+  def hasAccess(apiKey: ApiAccessor, request: RequestHeader, services: Services)(implicit instance: Instance): Boolean = apiKey.tier match {
     case Internal => true
     case ReadOnly => request.method == "GET"
-    case Syndication => request.method == "GET" && request.host == services.apiHost && request.path.startsWith("/images")
+    case Syndication => {
+      val isMediaApiRequest = request.uri.startsWith(services.apiBaseUri(instance)) // TODO check this!
+      request.method == "GET" && isMediaApiRequest && request.path.startsWith("/images")
+    }
   }
 }

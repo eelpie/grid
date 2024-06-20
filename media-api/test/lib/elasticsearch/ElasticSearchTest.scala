@@ -23,14 +23,17 @@ import play.api.libs.json.{JsString, Json}
 import play.api.mvc.AnyContent
 import play.api.mvc.Security.AuthenticatedRequest
 
+import java.util.UUID
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 class ElasticSearchTest extends ElasticSearchTestBase with Eventually with ElasticSearchExecutions with MockitoSugar {
 
+  implicit val instance = Instance(UUID.randomUUID().toString)
+
   implicit val request = mock[AuthenticatedRequest[AnyContent, Principal]]
 
-  private val index = "images"
+  private val index = instance + "_index"
 
   private val mediaApiConfig = new MediaApiConfig(GridConfigResources(
     Configuration.from(USED_CONFIGS_IN_TEST ++ MOCK_CONFIG_KEYS.map(_ -> NOT_USED_IN_TEST).toMap),
@@ -72,12 +75,12 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
   override def beforeAll {
     super.beforeAll()
 
-    ES.ensureIndexExistsAndAliasAssigned()
+    ES.ensureIndexExistsAndAliasAssigned(alias = ES.imagesCurrentAlias(instance), instance + "_index")
     purgeTestImages
 
     Await.ready(saveImages(images), 1.minute)
     // allow the cluster to distribute documents... eventual consistency!
-    eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages shouldBe expectedNumberOfImages)
+    eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages(instance) shouldBe expectedNumberOfImages)
   }
 
   override def afterAll = purgeTestImages
@@ -454,7 +457,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
     })
   }
 
-  private def totalImages: Long = Await.result(ES.client.execute(ElasticDsl.search(ES.imagesCurrentAlias)).map {
+  private def totalImages(instance: Instance): Long = Await.result(ES.client.execute(ElasticDsl.search(ES.imagesCurrentAlias(instance))).map {
     _.result.totalHits
   }, oneHundredMilliseconds)
 
@@ -464,7 +467,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
     def deleteImages = executeAndLog(deleteByQuery(index, matchAllQuery()), s"Deleting images")
 
     Await.result(deleteImages, fiveSeconds)
-    eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages shouldBe 0)
+    eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages(instance) shouldBe 0)
   }
 
 }
