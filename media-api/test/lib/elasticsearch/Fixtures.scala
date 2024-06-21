@@ -48,6 +48,7 @@ trait Fixtures {
     "s3.thumb.bucket",
     "grid.stage",
     "grid.appName",
+    "instance.service.my",
     "capi.live.url",
     "capi.apiKey",
     "capi.preview.role",
