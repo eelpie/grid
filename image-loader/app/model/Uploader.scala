@@ -79,8 +79,8 @@ case class ImageUploadOpsDependencies(
   storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object],
   storeOrProjectThumbFile: StorableThumbImage => Future[S3Object],
   storeOrProjectOptimisedImage: StorableOptimisedImage => Future[S3Object],
-  tryFetchThumbFile: (String, File) => Future[Option[(File, MimeType)]] = (_, _) => Future.successful(None),
-  tryFetchOptimisedFile: (String, File, String) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
+  tryFetchThumbFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
+  tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
 )
 
 case class UploadStatusUri (uri: String) extends AnyVal {
@@ -161,10 +161,10 @@ object Uploader extends GridLogging {
       s3Source <- sourceStoreFuture
       mergedUploadRequest = patchUploadRequestWithS3Metadata(uploadRequest, s3Source)
       optimisedFileMetadata <- FileMetadataReader.fromIPTCHeadersWithColorInfo(browserViewableImage)
-      thumbViewableImage <- createThumbFuture(optimisedFileMetadata, colourModelFuture, browserViewableImage, deps, tempDirForRequest)
+      thumbViewableImage <- createThumbFuture(optimisedFileMetadata, colourModelFuture, browserViewableImage, deps, tempDirForRequest, uploadRequest.instance)
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
-        tempDirForRequest, optimiseOps, browserViewableImage, optimisedFileMetadata, deps.tryFetchOptimisedFile, uploadRequest.instance.id)
+        tempDirForRequest, optimiseOps, browserViewableImage, optimisedFileMetadata, deps.tryFetchOptimisedFile, uploadRequest.instance)
       s3PngOption <- maybeStorableOptimisedImage match {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
@@ -203,8 +203,8 @@ object Uploader extends GridLogging {
                                          optimiseOps: OptimiseOps,
                                          browserViewableImage: BrowserViewableImage,
                                          optimisedFileMetadata: FileMetadata,
-                                         tryFetchOptimisedFile: (String, File, String) => Future[Option[(File, MimeType)]],
-                                         instance: String
+                                         tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]],
+                                         instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
     if (optimiseOps.shouldOptimise(Some(browserViewableImage.mimeType), optimisedFileMetadata)) {
       for {
@@ -251,6 +251,7 @@ object Uploader extends GridLogging {
                                 browserViewableImage: BrowserViewableImage,
                                 deps: ImageUploadOpsDependencies,
                                 tempDir: File,
+                                instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker) = {
     import deps._
 
@@ -271,7 +272,7 @@ object Uploader extends GridLogging {
 
     for {
       tempFile <- createTempFile(s"thumb-", thumbMimeType.fileExtension, tempDir)
-      maybeThumbFile <- deps.tryFetchThumbFile(browserViewableImage.id, tempFile)
+      maybeThumbFile <- deps.tryFetchThumbFile(browserViewableImage.id, tempFile, instance)
       (thumb, thumbMimeType) <- {
         maybeThumbFile match {
           case Some(thumbData) => Future.successful(thumbData)
