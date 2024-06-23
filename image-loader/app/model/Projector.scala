@@ -11,6 +11,7 @@ import com.gu.mediaservice.lib.{ImageIngestOperations, ImageStorageProps, Storab
 import com.gu.mediaservice.lib.aws.S3Ops
 import com.gu.mediaservice.lib.aws.S3Object
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
@@ -86,15 +87,16 @@ class Projector(config: ImageUploadOpsCfg,
                 s3: AmazonS3,
                 imageOps: ImageOperations,
                 processor: ImageProcessor,
-                auth: Authentication) extends GridLogging {
+                auth: Authentication) extends GridLogging with InstanceForRequest {
 
   private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3)
 
   def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest, instance: Instance)
                         (implicit ec: ExecutionContext, logMarker: LogMarker, request: RequestHeader): Future[Option[Image]] = {
+    val instance = instanceOf(request)
     Future {
       import ImageIngestOperations.fileKeyFromId
-      val s3Key = fileKeyFromId(imageId)
+      val s3Key = fileKeyFromId(imageId, instance)
 
       if (!s3.doesObjectExist(config.originalFileBucket, s3Key))
         throw new NoSuchImageExistsInS3(config.originalFileBucket, s3Key)
@@ -194,15 +196,13 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
     Future.successful(storableOptimisedImage.toProjectedS3Object(config.originalFileBucket))
 
   private def fetchThumbFile(
-    imageId: String, outFile: File
-  )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
-    val key = fileKeyFromId(imageId)
-
+    imageId: String, outFile: File, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
+    val key = fileKeyFromId(imageId, instance)
     fetchFile(config.thumbBucket, key, outFile)
   }
 
   private def fetchOptimisedFile(
-    imageId: String, outFile: File, instance: String
+    imageId: String, outFile: File, instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
     val key = optimisedPngKeyFromId(imageId, instance)
 
