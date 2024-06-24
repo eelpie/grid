@@ -10,12 +10,12 @@ import com.gu.mediaservice.lib.play.GridComponents
 import com.gu.mediaservice.model.Instance
 import com.typesafe.scalalogging.StrictLogging
 import controllers.{AssetsComponents, HealthCheck, ReaperController, ThrallController}
+import instances.Instances
 import lib._
 import lib.elasticsearch._
 import lib.kinesis.{KinesisConfig, ThrallEventConsumer}
 import play.api.ApplicationLoader.Context
 import play.api.libs.json.Json
-import play.api.libs.ws.WSRequest
 import router.Routes
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
@@ -25,7 +25,8 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class ThrallComponents(context: Context) extends GridComponents(context, new ThrallConfig(_)) with StrictLogging with AssetsComponents {
+class ThrallComponents(context: Context) extends GridComponents(context, new ThrallConfig(_)) with StrictLogging with AssetsComponents
+  with Instances {
   final override val buildInfo = utils.buildinfo.BuildInfo
 
   val store = new ThrallStore(config)
@@ -116,27 +117,10 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val maybeCustomReapableEligibility = config.maybeReapableEligibilityClass(applicationLifecycle)
 
   val thrallController = new ThrallController(es, store, migrationSourceWithSender.send, messageSender, actorSystem, auth, config.services, controllerComponents, gridClient)
-  val reaperController = new ReaperController(es, store, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents)
+  val reaperController = new ReaperController(es, store, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents, wsClient)
   val healthCheckController = new HealthCheck(es, streamRunning.isCompleted, config, controllerComponents)
 
   override lazy val router = new Routes(httpErrorHandler, thrallController, reaperController, healthCheckController, management, assets)
-
-  private def getInstances: Future[Seq[Instance]] = {
-    val instancesRequest: WSRequest = wsClient.url(config.instancesEndpoint)
-    val eventualAllInstances = instancesRequest.get().map { r =>
-      r.status match {
-        case 200 =>
-          implicit val ir = Json.reads[Instance]
-          val instances = Json.parse(r.body).as[Seq[Instance]]
-          logger.info("Got instances: " + instances.map(_.id).mkString(","))
-          instances
-        case _ =>
-          logger.warn("Got non 200 status for instances call: " + r.status)
-          Seq.empty
-      }
-    }
-    eventualAllInstances
-  }
 }
 
 case class InstanceUsageMessage(instance: String, imageCount: Long, totalImageSize: Double)
