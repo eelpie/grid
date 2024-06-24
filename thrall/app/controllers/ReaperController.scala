@@ -66,6 +66,7 @@ class ReaperController(
                 es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.increment(Nil, _).run)
               } else {
                 val deletedBy = "reaper"
+                logger.info(s"Reaper running for instance: ${instance.id}")
                 Future.sequence(Seq(
                   doBatchSoftReap(countOfImagesToReap, deletedBy, instance),
                   doBatchHardReap(countOfImagesToReap, deletedBy, instance)
