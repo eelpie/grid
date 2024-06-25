@@ -9,7 +9,7 @@ import com.contxt.kinesis.KinesisRecord
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.UpdateMessage
 import com.gu.mediaservice.lib.json.JsonByteArrayUtil
-import com.gu.mediaservice.model.{MigrateImageMessage, StaffPhotographer, ThrallMessage}
+import com.gu.mediaservice.model.{Instance, MigrateImageMessage, StaffPhotographer, ThrallMessage}
 import helpers.Fixtures
 import lib.elasticsearch.{ElasticSearch, ScrolledSearchResults}
 import lib.kinesis.ThrallEventConsumer
@@ -32,7 +32,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
 
   describe("Stream merging strategy") {
     def createKinesisRecord: KinesisRecord = KinesisRecord(
-      data = ByteString(JsonByteArrayUtil.toByteArray(UpdateMessage(subject = "delete-image", id = Some("my-id"), instance = "an-instance"))),
+      data = ByteString(JsonByteArrayUtil.toByteArray(UpdateMessage(subject = "delete-image", id = Some("my-id"), instance = Instance("an-instance")))),
       partitionKey = "",
       explicitHashKey = None,
       sequenceNumber = "",
@@ -42,7 +42,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
     )
 
     def createMigrationRecord: MigrationRecord = MigrationRecord(
-      payload = MigrateImageMessage("id", Right((createImage("batman", StaffPhotographer("Bruce Wayne", "Wayne Enterprises")), 1L)), instance = "an-instance"),
+      payload = MigrateImageMessage("id", Right((createImage("batman", StaffPhotographer("Bruce Wayne", "Wayne Enterprises")), 1L)), instance = Instance("an-instance")),
       approximateArrivalTimestamp = OffsetDateTime.now().toInstant
     )
 
@@ -109,7 +109,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
     lazy val mockEs = mock[ElasticSearch]
     when(mockEs.continueScrollingImageIdsToMigrate(any())(any(), any()))
       .thenReturn(Future.successful(ScrolledSearchResults(List.empty, None)))
-    when(mockEs.startScrollingImageIdsToMigrate(any(),any())(any(), any()))
+    when(mockEs.startScrollingImageIdsToMigrate(any())(any(), any(), any()))
     .thenReturn(Future.successful(ScrolledSearchResults(List.empty, None)))
 
     val uiPrioritySource: Source[KinesisRecord, Future[Done.type]] =
@@ -122,7 +122,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
       mockEs,
       mockGrid,
       projectionParallelism = 1,
-      "an-instance"
+      Instance("an-instance")
     )
 
     lazy val mockConsumer: ThrallEventConsumer = mock[ThrallEventConsumer]
@@ -142,7 +142,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
 
       val request = MigrationRequest("id", 1L)
 
-      val expectedMigrationMessage = MigrateImageMessage("id", Right(projectedImage, 1L), "an-instance")
+      val expectedMigrationMessage = MigrateImageMessage("id", Right(projectedImage, 1L), Instance("an-instance"))
 
       migrationSourceWithSender.send(request)
 
