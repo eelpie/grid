@@ -29,7 +29,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class ElasticSearchTest extends ElasticSearchTestBase with Eventually with ElasticSearchExecutions with MockitoSugar {
 
-  val instance = UUID.randomUUID().toString
+  implicit val instance = Instance(UUID.randomUUID().toString)
 
   implicit val request = mock[AuthenticatedRequest[AnyContent, Principal]]
 
@@ -449,7 +449,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
     })
   }
 
-  private def totalImages(instance: String): Long = Await.result(ES.client.execute(ElasticDsl.search(ES.imagesCurrentAlias(instance))).map {
+  private def totalImages(instance: Instance): Long = Await.result(ES.client.execute(ElasticDsl.search(ES.imagesCurrentAlias(instance))).map {
     _.result.totalHits
   }, oneHundredMilliseconds)
 

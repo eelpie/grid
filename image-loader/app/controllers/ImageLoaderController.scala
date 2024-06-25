@@ -21,7 +21,7 @@ import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{FALLBACK, LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.lib.{DateTimeUtils, ImageIngestOperations}
-import com.gu.mediaservice.model.{UnsupportedMimeTypeException, UploadInfo}
+import com.gu.mediaservice.model.{Instance, UnsupportedMimeTypeException, UploadInfo}
 import com.gu.scanamo.error.{ConditionNotMet, ScanamoError}
 import lib.FailureResponse.Response
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3, UserImageLoaderException}
@@ -179,7 +179,7 @@ class ImageLoaderController(auth: Authentication,
     }
   }.flatten
 
-  private def attemptToProcessIngestedFile(s3IngestObject:S3IngestObject, isUiUpload: Boolean, instance: String)(initialLogMarker:LogMarker, request: Request[AnyContent]): Future[DigestedFile] = {
+  private def attemptToProcessIngestedFile(s3IngestObject:S3IngestObject, isUiUpload: Boolean, instance: Instance)(initialLogMarker:LogMarker, request: Request[AnyContent]): Future[DigestedFile] = {
 
     logger.info(initialLogMarker, "Attempting to process file")
     val tempFile = createTempFile("s3IngestBucketFile")(initialLogMarker)
@@ -240,7 +240,7 @@ class ImageLoaderController(auth: Authentication,
           StatusType.Prepared,
           errorMessage = None,
           expires = expiration.toEpochSecond, // TTL in case upload is never completed by client
-          instance = instance
+          instance = instance.id
         )).map(_ =>
           mediaId -> preSignedUrl
         )
@@ -281,8 +281,8 @@ class ImageLoaderController(auth: Authentication,
 
       val uploadStatus = if(config.uploadToQuarantineEnabled) StatusType.Pending else StatusType.Completed
       val uploadExpiry = Instant.now.getEpochSecond + config.uploadStatusExpiry.toSeconds
-      val record = UploadStatusRecord(req.body.digest, filename, uploadedByToRecord, printDateTime(uploadTimeToRecord), identifiers, uploadStatus, None, uploadExpiry, instance)
-      logger.info(s"Loading image for instance $instance: record ${record.id} / $filename")
+      val record = UploadStatusRecord(req.body.digest, filename, uploadedByToRecord, printDateTime(uploadTimeToRecord), identifiers, uploadStatus, None, uploadExpiry, instance.id)
+      logger.info(s"Loading image for instance ${instance.id}: record ${record.id} / $filename")
 
       val result = for {
         uploadRequest <- uploader.loadFile(
@@ -413,7 +413,7 @@ class ImageLoaderController(auth: Authentication,
     identifiers: Option[String],
     uploadTime: Option[String],
     filename: Option[String],
-    instance: String
+    instance: Instance
   )(implicit logMarker:LogMarker, request: Request[AnyContent]): Future[UploadStatusUri] = {
 
     for {
