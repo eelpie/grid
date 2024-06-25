@@ -8,7 +8,7 @@ import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
 import com.gu.mediaservice.lib.elasticsearch.ReapableEligibility
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
-import com.gu.mediaservice.model.{ImageStatusRecord, SoftDeletedMetadata}
+import com.gu.mediaservice.model.{ImageStatusRecord, Instance, SoftDeletedMetadata}
 import lib.{BatchDeletionIds, ThrallConfig, ThrallMetrics, ThrallStore}
 import lib.elasticsearch.ElasticSearch
 import org.joda.time.{DateTime, DateTimeZone}
@@ -77,7 +77,7 @@ class ReaperController(
   }
   */
 
-  private def batchDeleteWrapper(count: Int)(func: (Int, String, String) => Future[JsValue]) = auth.async { request =>
+  private def batchDeleteWrapper(count: Int)(func: (Int, String, Instance) => Future[JsValue]) = auth.async { request =>
     val instance = instanceOf(request)
     if (!authorisation.hasPermissionTo(DeleteImage)(request.user)) {
       Future.successful(Forbidden)
@@ -108,15 +108,16 @@ class ReaperController(
 
   def doBatchSoftReap(count: Int): Action[AnyContent] = batchDeleteWrapper(count)(doBatchSoftReap)
 
-  def doBatchSoftReap(count: Int, deletedBy: String, instance: String): Future[JsValue] = persistedBatchDeleteOperation("soft"){
-    es.countTotalSoftReapable(isReapable, instance).map(metrics.softReapable.increment(Nil, _).run)
+  def doBatchSoftReap(count: Int, deletedBy: String, instance: Instance): Future[JsValue] = persistedBatchDeleteOperation("soft"){
+    implicit val i: Instance = instance
+    es.countTotalSoftReapable(isReapable).map(metrics.softReapable.increment(Nil, _).run)
 
     logger.info(s"Soft deleting next $count images...")
 
     val deleteTime = DateTime.now(DateTimeZone.UTC)
 
     (for {
-      BatchDeletionIds(esIds, esIdsActuallySoftDeleted) <- es.softDeleteNextBatchOfImages(isReapable, count, SoftDeletedMetadata(deleteTime, deletedBy), instance)
+      BatchDeletionIds(esIds, esIdsActuallySoftDeleted) <- es.softDeleteNextBatchOfImages(isReapable, count, SoftDeletedMetadata(deleteTime, deletedBy))
       idsNotProcessedInDynamo <- softDeletedMetadataTable.setStatuses(esIdsActuallySoftDeleted.map(
         ImageStatusRecord(
           _,
@@ -143,13 +144,14 @@ class ReaperController(
 
   def doBatchHardReap(count: Int): Action[AnyContent] = batchDeleteWrapper(count)(doBatchHardReap)
 
-  def doBatchHardReap(count: Int, deletedBy: String, instance: String): Future[JsValue] = persistedBatchDeleteOperation("hard"){
-    es.countTotalHardReapable(isReapable, config.hardReapImagesAge, instance).map(metrics.hardReapable.increment(Nil, _).run)
+  def doBatchHardReap(count: Int, deletedBy: String, instance: Instance): Future[JsValue] = persistedBatchDeleteOperation("hard"){
+    implicit val i: Instance = instance
+    es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.increment(Nil, _).run)
 
     logger.info(s"Hard deleting next $count images...")
 
     (for {
-      BatchDeletionIds(esIds, esIdsActuallyDeleted) <- es.hardDeleteNextBatchOfImages(isReapable, count, config.hardReapImagesAge, instance)
+      BatchDeletionIds(esIds, esIdsActuallyDeleted) <- es.hardDeleteNextBatchOfImages(isReapable, count, config.hardReapImagesAge)
       mainImagesS3Deletions <- store.deleteOriginals(esIdsActuallyDeleted)
       thumbsS3Deletions <- store.deleteThumbnails(esIdsActuallyDeleted)
       pngsS3Deletions <- store.deletePNGs(esIdsActuallyDeleted)
@@ -162,7 +164,7 @@ class ReaperController(
           "ES" -> Some(wasHardDeletedFromES),
           "mainImage" -> mainImagesS3Deletions.get(ImageIngestOperations.fileKeyFromId(id)),
           "thumb" -> thumbsS3Deletions.get(ImageIngestOperations.fileKeyFromId(id)),
-          "optimisedPng" -> pngsS3Deletions.get(ImageIngestOperations.optimisedPngKeyFromId(id, instance)),
+          "optimisedPng" -> pngsS3Deletions.get(ImageIngestOperations.optimisedPngKeyFromId(id, instance.id)),
           "dynamo.table.softDelete.metadata" -> (if(wasHardDeletedFromES) Some(!idsNotProcessedInDynamo.contains(id)) else None)
         )
         logger.info(s"Hard deleted image $id : $detail")

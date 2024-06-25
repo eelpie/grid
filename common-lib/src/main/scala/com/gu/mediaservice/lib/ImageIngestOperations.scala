@@ -6,12 +6,11 @@ import java.io.File
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.aws.S3Object
 import com.gu.mediaservice.lib.logging.LogMarker
-import com.gu.mediaservice.model.{MimeType, Png}
+import com.gu.mediaservice.model.{Instance, MimeType, Png}
 import com.typesafe.scalalogging.StrictLogging
 import org.joda.time.DateTime
 
 import scala.concurrent.Future
-
 import scala.jdk.CollectionConverters.iterableAsScalaIterableConverter
 
 object ImageIngestOperations {
@@ -50,7 +49,7 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
 
   private def storeOptimisedImage(storableImage: StorableOptimisedImage)
                                  (implicit logMarker: LogMarker): Future[S3Object] = {
-    val instanceSpecificKey = optimisedPngKeyFromId(storableImage.id, storableImage.instance)
+    val instanceSpecificKey = optimisedPngKeyFromId(storableImage.id, storableImage.instance.id)
     logger.info(s"Storing optimised image to instance specific key: $thumbnailBucket / $instanceSpecificKey")
     storeImage(imageBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
       overwrite = true)
@@ -88,11 +87,11 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
     client.doesObjectExist(imageBucket, fileKeyFromId(id))
 
   private def instanceAwareOriginalImageKey(storableImage: StorableOriginalImage) = {
-    storableImage.instance + "/" + fileKeyFromId(storableImage.id)
+    storableImage.instance.id + "/" + fileKeyFromId(storableImage.id)
   }
 
   private def instanceAwareThumbnailImageKey(storableImage: StorableThumbImage) = {
-    storableImage.instance + "/" + fileKeyFromId(storableImage.id)
+    storableImage.instance.id + "/" + fileKeyFromId(storableImage.id)
   }
 
 }
@@ -102,7 +101,7 @@ sealed trait ImageWrapper {
   val file: File
   val mimeType: MimeType
   val meta: Map[String, String]
-  val instance: String
+  val instance: Instance
 }
 sealed trait StorableImage extends ImageWrapper {
   def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
@@ -115,8 +114,8 @@ sealed trait StorableImage extends ImageWrapper {
   )
 }
 
-case class StorableThumbImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: String) extends StorableImage
-case class StorableOriginalImage(id: String, file: File, mimeType: MimeType, lastModified: DateTime, meta: Map[String, String] = Map.empty, instance: String) extends StorableImage {
+case class StorableThumbImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage
+case class StorableOriginalImage(id: String, file: File, mimeType: MimeType, lastModified: DateTime, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage {
   override def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
     thumbBucket,
     ImageIngestOperations.fileKeyFromId(id),
@@ -126,10 +125,10 @@ case class StorableOriginalImage(id: String, file: File, mimeType: MimeType, las
     meta
   )
 }
-case class StorableOptimisedImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: String) extends StorableImage {
+case class StorableOptimisedImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage {
   override def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
     thumbBucket,
-    ImageIngestOperations.optimisedPngKeyFromId(id, instance),
+    ImageIngestOperations.optimisedPngKeyFromId(id, instance.id),
     file,
     Some(mimeType),
     lastModified = None,
@@ -147,7 +146,7 @@ case class StorableOptimisedImage(id: String, file: File, mimeType: MimeType, me
   *                                Can be used in order to skip e.g. the stripping of incorrect colour profiles,
   *                                as in this case we have already inferred the profile upstream.
   */
-case class BrowserViewableImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, isTransformedFromSource: Boolean = false, instance: String) extends ImageWrapper {
+case class BrowserViewableImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, isTransformedFromSource: Boolean = false, instance: Instance) extends ImageWrapper {
   def asStorableOptimisedImage = StorableOptimisedImage(id, file, mimeType, meta, instance)
   def asStorableThumbImage = StorableThumbImage(id, file, mimeType, meta, instance)
 }
