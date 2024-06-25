@@ -5,6 +5,7 @@ import com.gu.mediaservice.lib.argo._
 import com.gu.mediaservice.lib.argo.model._
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.config.InstanceForRequest
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.leases.{LeasesByMedia, MediaLease}
 import lib.{LeaseNotifier, LeaseStore, LeasesConfig}
 import play.api.libs.json._
@@ -33,11 +34,11 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     respond(appIndex, indexLinks)
   }
 
-  private def clearLease(id: String, instance: String) = store.get(id).map { lease =>
+  private def clearLease(id: String, instance: Instance) = store.get(id).map { lease =>
     store.delete(id).map { _ => notifications.sendRemoveLease(lease.mediaId, id, instance)}
   }
 
-  private def clearLeases(id: String, instance: String) = Future.sequence(store.getForMedia(id)
+  private def clearLeases(id: String, instance: Instance) = Future.sequence(store.getForMedia(id)
     .flatMap(_.id)
     .flatten(id => clearLease(id, instance)))
 
@@ -47,7 +48,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   private def prepareLeaseForSave(mediaLease: MediaLease, userId: Option[String]): MediaLease =
     mediaLease.prepareForSave.copy(id = Some(UUID.randomUUID().toString), leasedBy = userId)
 
-  private def addLease(mediaLease: MediaLease, userId: Option[String], instance: String) = {
+  private def addLease(mediaLease: MediaLease, userId: Option[String], instance: Instance) = {
     val lease = prepareLeaseForSave(mediaLease, userId)
     if (lease.isSyndication) {
       val leasesForMedia = store.getForMedia(mediaLease.mediaId)
@@ -60,14 +61,14 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     }
   }
 
-  private def addLeases(mediaLeases: List[MediaLease], userId: Option[String], instance: String) = {
+  private def addLeases(mediaLeases: List[MediaLease], userId: Option[String], instance: Instance) = {
     val preparedMediaLeases = mediaLeases.map(prepareLeaseForSave(_, userId))
     store.putAll(preparedMediaLeases).map { _ =>
       preparedMediaLeases.map(lease => notifications.sendAddLease(lease, instance))
     }
   }
 
-  private def replaceLeases(mediaLeases: List[MediaLease], imageId: String, userId: Option[String], instance: String) = {
+  private def replaceLeases(mediaLeases: List[MediaLease], imageId: String, userId: Option[String], instance: Instance) = {
     val preparedMediaLeases = mediaLeases.map(prepareLeaseForSave(_, userId))
     for {
       _ <- clearLeases(imageId, instance)
