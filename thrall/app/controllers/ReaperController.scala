@@ -1,6 +1,5 @@
 package controllers
 
-import com.gu.mediaservice.lib.ImageIngestOperations
 import com.gu.mediaservice.lib.auth.Permissions.DeleteImage
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, BaseControllerWithLoginRedirects}
 import com.gu.mediaservice.lib.aws.S3Vectors
@@ -8,25 +7,32 @@ import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
 import com.gu.mediaservice.lib.elasticsearch.ReapableEligibility
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
+import com.gu.mediaservice.lib.{DateTimeUtils, ImageIngestOperations}
 import com.gu.mediaservice.model.{ImageStatusRecord, Instance, SoftDeletedMetadata}
+import instances.Instances
 import lib.elasticsearch.ElasticSearch
 import lib.{BatchDeletionIds, ThrallConfig, ThrallMetrics, ThrallStore}
 import org.apache.pekko.actor.Scheduler
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json.{JsValue, Json}
+import play.api.libs.ws.WSClient
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import scalaz.NonEmptyList
 
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
+
 
 class ReaperController(
   es: ElasticSearch,
   store: ThrallStore,
   s3Vectors: S3Vectors,
   authorisation: Authorisation,
-  config: ThrallConfig,
+  val config: ThrallConfig,
   scheduler: Scheduler,
   maybeCustomReapableEligibility: Option[ReapableEligibility],
   softDeletedMetadataTable: SoftDeletedMetadataTable,
@@ -34,7 +40,8 @@ class ReaperController(
   override val auth: Authentication,
   override val services: Services,
   override val controllerComponents: ControllerComponents,
-)(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging with InstanceForRequest {
+  val wsClient: WSClient
+)(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging with InstanceForRequest with Instances {
 
   private val INTERVAL = config.reaperInterval //default 15 minutes, based on max of 1000 per reap, this interval will max out at 96,000 images per day
   private val isPaused = config.reaperPaused
@@ -48,7 +55,6 @@ class ReaperController(
     }
   }
 
-  /* TODO restore as controller triggered
   config.maybeReaperCountPerRun match {
     case Some(countOfImagesToReap) =>
       // We always want the reaps to occur at predictable times (e.g. on the hour, then 15, 30, 45 minutes past)
@@ -61,20 +67,26 @@ class ReaperController(
       scheduler.scheduleAtFixedRate(
         initialDelay = delayUntilFirstReap,
         interval = INTERVAL,
-      ){ () =>
+      ) { () =>
         try {
-          if (isPaused) {
-            logger.info("Reaper is paused")
-            es.countTotalSoftReapable(isReapable, instance).map(metrics.softReapable.increment(Nil, _))
-            es.countTotalHardReapable(isReapable, config.hardReapImagesAge, instance).map(metrics.hardReapable.increment(Nil, _))
-          } else {
-            val deletedBy = "reaper"
-            Future.sequence(Seq(
-              doBatchSoftReap(countOfImagesToReap, deletedBy, instance),
-              doBatchHardReap(countOfImagesToReap, deletedBy, instance)
-            )).onComplete {
-              case Success(_) => logger.info("Reap completed")
-              case Failure(e) => logger.error("Reap failed", e)
+          getInstances().map { instances =>
+            instances.foreach { instance =>
+              implicit val i: Instance = instance
+              if (isPaused) {
+                logger.info("Reaper is paused")
+                es.countTotalSoftReapable(isReapable).map(metrics.softReapable.increment(Nil, _))
+                es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.increment(Nil, _))
+              } else {
+                val deletedBy = "reaper"
+                logger.info(s"Reaper running for instance: ${instance.id}")
+                Future.sequence(Seq(
+                  doBatchSoftReap(countOfImagesToReap, deletedBy, instance),
+                  doBatchHardReap(countOfImagesToReap, deletedBy, instance)
+                )).onComplete {
+                  case Success(_) => logger.info("Reap completed")
+                  case Failure(e) => logger.error("Reap failed", e)
+                }
+              }
             }
           }
         } catch {
@@ -83,7 +95,6 @@ class ReaperController(
       }
     case _ => logger.info("scheduled reaper will not run because 'reaper.countPerRun' needs to be configured in thrall.conf")
   }
-  */
 
   private def batchDeleteWrapper(count: Int)(func: (Int, String, Instance) => Future[JsValue]) = auth.async { request =>
     val instance = instanceOf(request)
