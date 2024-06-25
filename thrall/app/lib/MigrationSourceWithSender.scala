@@ -6,7 +6,7 @@ import akka.{Done, NotUsed}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.elasticsearch.{InProgress, Paused}
 import com.gu.mediaservice.lib.logging.GridLogging
-import com.gu.mediaservice.model.{MigrateImageMessage, MigrationMessage}
+import com.gu.mediaservice.model.{Instance, MigrateImageMessage, MigrationMessage}
 import lib.elasticsearch.{ElasticSearch, ScrolledSearchResults}
 import play.api.libs.ws.WSRequest
 
@@ -29,9 +29,9 @@ object MigrationSourceWithSender extends GridLogging {
     es: ElasticSearch,
     gridClient: GridClient,
     projectionParallelism: Int,
-    instance: String
+    instance: Instance
   )(implicit ec: ExecutionContext): MigrationSourceWithSender = {
-
+    implicit val i: Instance = instance
     // scroll through elasticsearch, finding image ids and versions to migrate
     // emits MigrationRequest
     val scrollingIdsSource =
@@ -63,10 +63,10 @@ object MigrationSourceWithSender extends GridLogging {
           }
 
           _ => {
-            val nextIdsToMigrate = ((es.migrationStatus(instance), maybeScrollId) match {
+            val nextIdsToMigrate = ((es.migrationStatus(), maybeScrollId) match {
               case (Paused(_), _) => Future.successful(List.empty)
               case (InProgress(migrationIndexName), None) =>
-                es.startScrollingImageIdsToMigrate(migrationIndexName, instance).map(handleScrollResponse)
+                es.startScrollingImageIdsToMigrate(migrationIndexName).map(handleScrollResponse)
               case (InProgress(_), Some(scrollId)) =>
                 es.continueScrollingImageIdsToMigrate(scrollId).map(handleScrollResponse)
               case _ => Future.successful(List.empty)
@@ -88,7 +88,7 @@ object MigrationSourceWithSender extends GridLogging {
           }
           searchHits.map(hit => MigrationRequest(hit.id, hit.version))
         })
-        .filter(_ => es.migrationIsInProgress(instance))
+        .filter(_ => es.migrationIsInProgress())
 
     // receive MigrationRequests to migrate from a manual source (failures retry page, single image migration form, etc.)
     val manualIdsSourceDeclaration = Source.queue[MigrationRequest](bufferSize = 2000)
@@ -111,7 +111,7 @@ object MigrationSourceWithSender extends GridLogging {
     val idsSource = manualIdsSource.mergePreferred(scrollingIdsSource, preferred =  true)
 
     // project image from MigrationRequest, produce the MigrateImageMessage
-    def projectedImageSource(instance: String): Source[MigrationRecord, NotUsed] = idsSource.mapAsyncUnordered(projectionParallelism) {
+    def projectedImageSource(instance: Instance): Source[MigrationRecord, NotUsed] = idsSource.mapAsyncUnordered(projectionParallelism) {
       case MigrationRequest(imageId, version) =>
         val migrateImageMessageFuture = (
           for {

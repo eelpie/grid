@@ -7,7 +7,7 @@ import com.gu.mediaservice.lib.aws.{DynamoDB, NoItemFound, UpdateMessage}
 import com.gu.mediaservice.lib.collections.CollectionsManager
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.net.{URI => UriOps}
-import com.gu.mediaservice.model.{ActionData, Collection}
+import com.gu.mediaservice.model.{ActionData, Collection, Instance}
 import com.gu.mediaservice.syntax.MessageSubjects
 import lib.{CollectionsConfig, Notifications}
 import org.joda.time.DateTime
@@ -63,7 +63,7 @@ class ImageCollectionsController(authenticated: Authentication, config: Collecti
     }
   }
 
-  def publish(id: String, instance: String)(collections: List[Collection]): List[Collection] = {
+  def publish(id: String, instance: Instance)(collections: List[Collection]): List[Collection] = {
     val onlyLatestCollections = onlyLatest(collections)
     val updateMessage = UpdateMessage(subject = SetImageCollections, id = Some(id), collections = Some(onlyLatestCollections), instance = instance)
     notifications.publish(updateMessage)
