@@ -160,6 +160,7 @@ lazy val thrall = playProject("thrall", 9002)
       "org.codehaus.groovy" % "groovy-json" % "3.0.7",
       "com.yakaz.elasticsearch.plugins" % "elasticsearch-action-updatebyquery" % "2.2.0",
       "com.amazonaws" % "amazon-kinesis-client" % "1.8.10",
+      "software.amazon.awssdk" % "sqs" % awsSdkVersionV2,
       "org.testcontainers" % "elasticsearch" % "1.19.2" % Test,
       "com.google.protobuf" % "protobuf-java" % "3.19.6"
     )
