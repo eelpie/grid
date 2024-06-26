@@ -51,7 +51,7 @@ protected class SingleHostServices(val domain: String) extends Services {
 
   override def metadataBaseUri(instance: Instance): String = vhostServiceName("metadata-editor", instance)
 
-  override def imgopsBaseUri(instance: Instance): String = vhostServiceName("imgops", instance)
+  override def imgopsBaseUri(instance: Instance): String = vhostServiceName("imgproxy", instance)
 
   override def usageBaseUri(instance: Instance): String = vhostServiceName("usage", instance)
 
