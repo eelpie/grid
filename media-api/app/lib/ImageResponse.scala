@@ -11,6 +11,7 @@ import com.softwaremill.quicklens._
 import lib.ImageResponse.extractAliasFieldValues
 import lib.elasticsearch.SourceWrapper
 import lib.usagerights.CostCalculator
+import org.apache.commons.codec.binary.Base64
 import org.joda.time.DateTime
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
@@ -248,7 +249,8 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     ))
 
   def makeImgopsUri(uri: URI)(instance: Instance): String = {
-    config.imgopsUri(instance) + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
+    val resizingUrl = Seq(config.imgopsUri(instance),  "no-signature", "auto_rotate:false", "resize:fit:{w}:{h}", "quality:{q}", Base64.encodeBase64String(uri.toString.getBytes)).mkString("/")
+    resizingUrl
   }
 
   import play.api.libs.json.JodaWrites._
