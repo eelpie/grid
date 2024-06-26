@@ -10,6 +10,7 @@ import com.gu.mediaservice.model.usage._
 import lib.ImageResponse.extractAliasFieldValues
 import lib.elasticsearch.SourceWrapper
 import lib.usagerights.CostCalculator
+import org.apache.commons.codec.binary.Base64
 import org.joda.time.DateTime
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
@@ -253,8 +254,14 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
       "aliases" -> JsObject(aliases)
     ))
 
-  def makeImgopsUri(uri: URI): String =
+  private def makeImgopsUri(uri: URI): String = {
     config.imgopsUri + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
+    val base64EncodedSourceURL = new String(Base64.encodeBase64URLSafe(uri.toURL.toExternalForm.getBytes), "UTF-8")
+    val pathComponents = Seq(config.imgopsUri, "no-signature",
+      "auto_rotate:false", "strip_metadata:true", "strip_color_profile:true",
+      "resize:fit:{w}:{h}", "quality:{q}") :+ base64EncodedSourceURL
+    pathComponents.mkString("/")
+  }
 
   private def updateCustomSpecialInstructions(source: JsValue): Reads[JsObject] = {
      (source \ "usageRights" \ "category") match {
