@@ -11,6 +11,7 @@ import com.softwaremill.quicklens._
 import lib.ImageResponse.extractAliasFieldValues
 import lib.elasticsearch.SourceWrapper
 import lib.usagerights.CostCalculator
+import org.apache.commons.codec.binary.Base64
 import org.joda.time.DateTime
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
@@ -256,7 +257,12 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     ))
 
   def makeImgopsUri(uri: URI)(instance: Instance): String = {
-    config.imgopsUri(instance) + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
+    val source = uri.toURL.toExternalForm
+    val signed = new String(Base64.encodeBase64URLSafe(source.getBytes), "UTF-8")
+    val resizingUrl = Seq(config.imgopsUri(instance),  "no-signature",
+      "auto_rotate:false", "strip_metadata:true", "strip_color_profile:true",
+      "resize:fit:{w}:{h}", "quality:{q}", signed).mkString("/")
+    resizingUrl
   }
 
   private def updateCustomSpecialInstructions(source: JsValue): Reads[JsObject] = {
