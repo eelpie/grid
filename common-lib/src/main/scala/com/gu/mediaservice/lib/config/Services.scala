@@ -50,7 +50,8 @@ protected class SingleHostServices(val rootUrl: String) extends Services {
   val cropperBaseUri: String = subpathedServiceBaseUri("cropper")
 
   val metadataBaseUri: String = subpathedServiceBaseUri("metadata-editor")
-  override def imgopsBaseUri(instance: Instance): String=  vhostServiceName("imgops", instance)
+
+  override def imgopsBaseUri(instance: Instance): String = vhostServiceName("imgproxy", instance)
 
   val usageBaseUri: String =subpathedServiceBaseUri("usage")
 
