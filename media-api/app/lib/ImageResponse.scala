@@ -249,7 +249,9 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     ))
 
   def makeImgopsUri(uri: URI)(instance: Instance): String = {
-    val resizingUrl = Seq(config.imgopsUri(instance),  "no-signature", "auto_rotate:false", "resize:fit:{w}:{h}", "quality:{q}", Base64.encodeBase64String(uri.toString.getBytes)).mkString("/")
+    val resizingUrl = Seq(config.imgopsUri(instance),  "no-signature",
+      "auto_rotate:false", "strip_metadata:true", "strip_color_profile:true",
+      "resize:fit:{w}:{h}", "quality:{q}", Base64.encodeBase64String(uri.toString.getBytes)).mkString("/")
     resizingUrl
   }
 
