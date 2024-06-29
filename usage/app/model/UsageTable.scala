@@ -43,11 +43,11 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
     UsageTableFullKey.build(id).flatMap((tableFullKey: UsageTableFullKey) => {
 
       val key = Key.builder()
-        .partitionValue(tableFullKey.hashKey)
+        .partitionValue(instanceAwareHashKey(tableFullKey.hashKey))
         .sortValue(tableFullKey.rangeKey)
         .build()
       val queryResult = table.query(QueryConditional.keyEqualTo(key))
-      queryResult.items().asScala.map(ItemToMediaUsage.transform).headOption
+      queryResult.items().asScala.map(ItemToMediaUsage.transform).map(unwindInstanceAwareHashkey).headOption
     })
   }
 
@@ -68,6 +68,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
       .asScala
       .flatMap(_.items().asScala)
       .map(ItemToMediaUsage.transform)
+      .map(unwindInstanceAwareHashkey)
       .toList
 
     logger.info(logMarkerWithId, s"Query of usages table for $id found ${unsortedUsages.size} results")
@@ -105,7 +106,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
   def matchUsageGroup(usageGroupWithContext: WithLogMarker[(UsageGroup, Instance)]): Observable[WithLogMarker[Set[MediaUsage]]] = {
     implicit val logMarker: LogMarker = usageGroupWithContext.logMarker
     val usageGroup = usageGroupWithContext.value._1
-    val instance = usageGroupWithContext.value._2
+    implicit val instance: Instance = usageGroupWithContext.value._2
 
     logger.info(logMarker, s"Trying to match UsageGroup: ${usageGroup.grouping}")
 
@@ -114,7 +115,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
 
       logger.info(logMarker, s"Querying table for $grouping")
       val key = Key.builder()
-        .partitionValue(grouping)
+        .partitionValue(instanceAwareHashKey(grouping))
         .build()
       val request =
         QueryEnhancedRequest.builder()
@@ -125,6 +126,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
 
       val usages = queryResult.items().asScala
         .map(ItemToMediaUsage.transform)
+        .map(unwindInstanceAwareHashkey)
         .toSet
 
       logger.info(logMarker, s"Built matched UsageGroup ${usageGroup.grouping} (${usages.size})")
@@ -146,7 +148,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
     logger.info(logMarker, s"deleting usage ${mediaUsage.usageId} for media id ${mediaUsage.mediaId}")
 
     val key = Key.builder()
-      .partitionValue(mediaUsage.grouping)
+      .partitionValue(instanceAwareHashKey(mediaUsage.grouping))
       .sortValue(mediaUsage.usageId.toString)
       .build()
 
@@ -155,7 +157,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
 
   private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] = Observable.from(Future {
       val key = Map(
-        hashKeyName -> AttributeValue.builder().s(record.hashKey).build(),
+        hashKeyName -> AttributeValue.builder().s(instanceAwareHashKey(record.hashKey)).build(),
         rangeKeyName -> AttributeValue.builder().s(record.rangeKey).build()
       ).asJava
 
@@ -179,4 +181,15 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
       val doc = EnhancedDocument.fromAttributeValueMap(updateResponse.attributes())
       jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject]
     })
+
+  private def unwindInstanceAwareHashkey(mediaUsage: MediaUsage)(implicit instance: Instance): MediaUsage = {
+    mediaUsage.copy(grouping = mediaUsage.grouping.drop(instance.id.length + 1))
+  }
+  private def instanceAwareHashKey(record: UsageRecord)(implicit instance: Instance) = {
+    instance.id + "/" + record.hashKey
+  }
+
+  private def instanceAwareHashKey(hashKey: String)(implicit instance: Instance) = {
+    instance.id + "/" + hashKey
+  }
 }
