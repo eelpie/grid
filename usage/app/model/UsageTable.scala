@@ -137,7 +137,7 @@ class UsageTable(
   def markAsRemoved(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildMarkAsRemovedRecord(mediaUsage))
 
-  def deleteRecord(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Unit = {
+  def deleteRecord(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Unit = {
     logger.info(logMarker, s"deleting usage ${mediaUsage.usageId} for media id ${mediaUsage.mediaId}")
 
     val request = DeleteItemRequest.builder()
