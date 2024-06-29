@@ -35,14 +35,14 @@ class UsageTable(
           "#rangeKeyName" -> rangeKeyName
         ).asJava)
         .expressionAttributeValues(Map(
-          ":hashKey" -> AttributeValueV2.fromS(tableFullKey.hashKey),
+          ":hashKey" -> AttributeValueV2.fromS(instanceAwareHashKey(tableFullKey.hashKey)),
           ":rangeKey" -> AttributeValueV2.fromS(tableFullKey.rangeKey)
         ).asJava)
         .build()
 
       val queryResult = client2.query(request)
 
-      queryResult.items().asScala.map(ItemToMediaUsage.transformV2).headOption
+      queryResult.items().asScala.map(ItemToMediaUsage.transformV2).map(unwindInstanceAwareHashkey).headOption
     }
   }
 
@@ -61,7 +61,7 @@ class UsageTable(
       ).asJava)
       .build()
 
-    val unsortedUsages = client2.query(request).items().asScala.map(ItemToMediaUsage.transformV2).toList
+    val unsortedUsages = client2.query(request).items().asScala.map(ItemToMediaUsage.transformV2).map(unwindInstanceAwareHashkey).toList
 
     logger.info(logMarkerWithId, s"Query of usages table for $id found ${unsortedUsages.size} results")
 
@@ -98,7 +98,7 @@ class UsageTable(
   def matchUsageGroup(usageGroupWithContext: WithLogMarker[(UsageGroup, Instance)]): Observable[WithLogMarker[Set[MediaUsage]]] = {
     implicit val logMarker: LogMarker = usageGroupWithContext.logMarker
     val usageGroup = usageGroupWithContext.value._1
-    val instance = usageGroupWithContext.value._2
+    implicit val instance: Instance = usageGroupWithContext.value._2
 
     logger.info(logMarker, s"Trying to match UsageGroup: ${usageGroup.grouping}")
 
@@ -114,12 +114,13 @@ class UsageTable(
           "#hashKeyName" -> hashKeyName
         ).asJava)
         .expressionAttributeValues(Map(
-          ":hashKey" -> AttributeValueV2.fromS(grouping)
+          ":hashKey" -> AttributeValueV2.fromS(instanceAwareHashKey(grouping))
         ).asJava)
         .build()
 
       val usages = client2.query(request).items().asScala
         .map(ItemToMediaUsage.transformV2)
+        .map(unwindInstanceAwareHashkey)
         .toSet
 
       logger.info(logMarker, s"Built matched UsageGroup ${usageGroup.grouping} (${usages.size})")
@@ -143,7 +144,7 @@ class UsageTable(
     val request = DeleteItemRequest.builder()
       .tableName(tableName)
       .key(Map(
-        hashKeyName -> AttributeValueV2.fromS(mediaUsage.grouping),
+        hashKeyName -> AttributeValueV2.fromS(instanceAwareHashKey(mediaUsage.grouping)),
         rangeKeyName -> AttributeValueV2.fromS(mediaUsage.usageId.toString)
       ).asJava)
       .build()
@@ -157,7 +158,7 @@ class UsageTable(
     val request = UpdateItemRequest.builder()
       .tableName(tableName)
       .key(Map(
-        hashKeyName -> AttributeValueV2.fromS(record.hashKey),
+        hashKeyName -> AttributeValueV2.fromS(instanceAwareHashKey(record)),
         rangeKeyName -> AttributeValueV2.fromS(record.rangeKey)
       ).asJava)
       .updateExpression(expression)
@@ -173,4 +174,16 @@ class UsageTable(
     Observable.error(e)
   })
   .map(asJsObject)
+
+  private def unwindInstanceAwareHashkey(mediaUsage: MediaUsage)(implicit instance: Instance): MediaUsage = {
+    mediaUsage.copy(grouping = mediaUsage.grouping.drop(instance.id.length + 1))
+  }
+  private def instanceAwareHashKey(record: UsageRecord)(implicit instance: Instance) = {
+    instance.id + "/" + record.hashKey
+  }
+
+  private def instanceAwareHashKey(hashKey: String)(implicit instance: Instance) = {
+    instance.id + "/" + hashKey
+  }
+
 }
