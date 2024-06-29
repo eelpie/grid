@@ -45,7 +45,7 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
 
     val queryResult = imageIndex.query(keyAttribute, rangeKeyCondition)
 
-    val unsortedUsages = queryResult.asScala.map(ItemToMediaUsage.transform).toList
+    val unsortedUsages = queryResult.asScala.map(ItemToMediaUsage.transform).map(unwindInstanceAwareHashkey).toList
 
     logger.info(logMarkerWithId, s"Query of usages table for $id found ${unsortedUsages.size} results")
 
