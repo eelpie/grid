@@ -65,7 +65,6 @@ class UsageRecorder(
     dbMatchStream.flatMap((matchedUsageGroupWithContext: WithLogMarker[MatchedUsageGroup]) => {
       implicit val logMarker: LogMarker = matchedUsageGroupWithContext.logMarker
       val matchedUsageGroup = matchedUsageGroupWithContext.value
-      implicit val instance: Instance = matchedUsageGroup.instance
 
       val usageGroup = matchedUsageGroup.usageGroup
       val dbUsages = usageGroup.maybeStatus.fold(
@@ -98,6 +97,7 @@ class UsageRecorder(
         resultObservable
       }
 
+      implicit val instance: Instance = matchedUsageGroup.instance
       val markAsRemovedOps = dbUsageKeys.diff(streamUsageKeys)
         .flatMap(dbUsageMap.get)
         .map(performAndLogDBOperation(mu => usageTable.markAsRemoved(mu), "markAsRemoved"))
