@@ -1,5 +1,6 @@
 package model
 
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.usage._
 import org.joda.time.DateTime
 import software.amazon.awssdk.services.dynamodb.model.{AttributeValue => AttributeValueV2}
@@ -25,7 +26,8 @@ case class UsageRecord(
   syndicationUsageMetadata: Option[SyndicationUsageMetadata] = None,
   frontUsageMetadata: Option[FrontUsageMetadata] = None,
   downloadUsageMetadata: Option[DownloadUsageMetadata] = None,
-  dateAdded: Option[DateTime] = None
+  dateAdded: Option[DateTime] = None,
+  instance: String
 ) {
   def toUpdateExpressionV2: (String, Map[String, AttributeValueV2]) = {
     val setFields: List[(String, AttributeValueV2)] = List(
@@ -42,8 +44,11 @@ case class UsageRecord(
       dateAdded.map(dateAdded => "date_added" -> AttributeValueV2.fromN(dateAdded.getMillis.toString)),
       dateRemovedOperation match {
         case SetDateRemoved(dr) => Some("date_removed" -> AttributeValueV2.fromN(dr.getMillis.toString))
+        case LeaveDateRemovedUntouched => None
+        case SetDateRemoved(dateRemoved) => Some("date_removed" -> AttributeValueV2.fromN(dateRemoved.getMillis.toString))
         case _ => None
-      }
+      },
+      Some("instance" -> AttributeValueV2.fromS(instance))
     ).flatten
 
     val setExpression = if (setFields.nonEmpty)
@@ -76,13 +81,14 @@ case class UsageRecord(
 }
 
 object UsageRecord {
-  def buildMarkAsRemovedRecord(mediaUsage: MediaUsage) = UsageRecord(
+  def buildMarkAsRemovedRecord(mediaUsage: MediaUsage)(implicit instance: Instance) = UsageRecord(
     hashKey = mediaUsage.grouping,
     rangeKey = mediaUsage.usageId.toString,
-    dateRemovedOperation = SetDateRemoved(mediaUsage.lastModified)
+    dateRemovedOperation = SetDateRemoved(mediaUsage.lastModified),
+    instance = instance.id
   )
 
-  def buildUpdateRecord(mediaUsage: MediaUsage) = UsageRecord(
+  def buildUpdateRecord(mediaUsage: MediaUsage)(implicit instance: Instance) = UsageRecord(
     hashKey = mediaUsage.grouping,
     rangeKey = mediaUsage.usageId.toString,
     dateRemovedOperation = LeaveDateRemovedUntouched,
@@ -95,10 +101,11 @@ object UsageRecord {
     digitalUsageMetadata = mediaUsage.digitalUsageMetadata,
     syndicationUsageMetadata = mediaUsage.syndicationUsageMetadata,
     frontUsageMetadata = mediaUsage.frontUsageMetadata,
-    downloadUsageMetadata = mediaUsage.downloadUsageMetadata
+    downloadUsageMetadata = mediaUsage.downloadUsageMetadata,
+    instance = instance.id
   )
 
-  def buildCreateRecord(mediaUsage: MediaUsage) = UsageRecord(
+  def buildCreateRecord(mediaUsage: MediaUsage)(implicit instance: Instance) = UsageRecord(
     hashKey = mediaUsage.grouping,
     rangeKey = mediaUsage.usageId.toString,
     dateRemovedOperation = ClearDateRemoved,
@@ -113,5 +120,6 @@ object UsageRecord {
     frontUsageMetadata = mediaUsage.frontUsageMetadata,
     downloadUsageMetadata = mediaUsage.downloadUsageMetadata,
     dateAdded = Some(mediaUsage.lastModified),
+    instance = instance.id
   )
 }
