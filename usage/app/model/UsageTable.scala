@@ -46,8 +46,10 @@ class UsageTable(
 
     logger.info(logMarkerWithId, s"Querying usages table for $id")
     val imageIndex = table.getIndex(imageIndexName)
-    val keyAttribute = new KeyAttribute(imageIndexName, id)
-    val queryResult = imageIndex.query(keyAttribute)
+    val keyAttribute = new KeyAttribute("instance", instance.id)
+    val rangeKeyCondition: RangeKeyCondition = new RangeKeyCondition("media_id").eq(id)
+
+    val queryResult = imageIndex.query(keyAttribute, rangeKeyCondition)
 
     val unsortedUsages = queryResult.asScala.map(ItemToMediaUsage.transform).map(unwindInstanceAwareHashkey).toList
 
