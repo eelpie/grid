@@ -82,7 +82,7 @@ class UsageApi(
       "usageId" -> usageId,
     )
     logger.info(logMarker, s"Request for single usage $usageId")
-    val usageFuture = usageTable.queryByUsageId(usageId, instance)
+    val usageFuture = usageTable.queryByUsageId(usageId)
 
     usageFuture.map[play.api.mvc.Result]((mediaUsageOption: Option[MediaUsage]) => {
       mediaUsageOption.foldLeft(
@@ -114,7 +114,7 @@ class UsageApi(
       "image-id" -> mediaId,
     )
 
-    val usagesFuture = usageTable.queryByImageId(mediaId, instance)
+    val usagesFuture = usageTable.queryByImageId(mediaId)
 
     usagesFuture.map[play.api.mvc.Result]((mediaUsages: List[MediaUsage]) => {
       val usages = mediaUsages.map(UsageBuilder.build)
@@ -260,7 +260,7 @@ class UsageApi(
   }}
 
   def updateUsageStatus(mediaId: String, usageId: String) = auth.async(parse.json) {req => {
-    val instance = instanceOf(req)
+    implicit val instance: Instance = instanceOf(req)
     val request = (req.body \ "data").validate[UsageStatus]
     request.fold(
       e => Future.successful(
@@ -280,10 +280,10 @@ class UsageApi(
         ) ++ apiKeyMarkers(req.user.accessor)
         logger.info(logMarker, "recording usage status  update")
 
-        usageTable.queryByUsageId(usageId, instance).map {
+        usageTable.queryByUsageId(usageId).map {
           case Some(mediaUsage) =>
             val updatedStatusMediaUsage = mediaUsage.copy(status = usageStatus)
-            usageTable.update(updatedStatusMediaUsage, instance)
+            usageTable.update(updatedStatusMediaUsage)
             val usageNotice = UsageNotice(mediaId,
               JsArray(Seq(Json.toJson(UsageBuilder.build(updatedStatusMediaUsage)))),
               instanceOf(req)
@@ -303,7 +303,7 @@ class UsageApi(
   }}
 
   def deleteSingleUsage(mediaId: String, usageId: String) = AuthenticatedAndAuthorisedToDelete.async { req =>
-    val instane = instanceOf(req)
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "delete-usage",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
@@ -311,7 +311,7 @@ class UsageApi(
       "usage-id" -> usageId,
     )
 
-    usageTable.queryByUsageId(usageId, instane).map {
+    usageTable.queryByUsageId(usageId).map {
       case Some(mediaUsage) =>
         usageTable.deleteRecord(mediaUsage)
         val updateMessage = UpdateMessage(subject = DeleteSingleUsage, id = Some(mediaId), usageId = Some(usageId), instance = instanceOf(req))
@@ -324,13 +324,13 @@ class UsageApi(
   }
 
   def deleteUsages(mediaId: String) = AuthenticatedAndAuthorisedToDelete.async { req =>
-    val instance = instanceOf(req)
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "delete-usages",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
       "image-id" -> mediaId,
     )
-    usageTable.queryByImageId(mediaId, instance).map(usages => {
+    usageTable.queryByImageId(mediaId).map(usages => {
       usages.foreach(usageTable.deleteRecord)
     }).recover {
       case error: BadInputException =>
