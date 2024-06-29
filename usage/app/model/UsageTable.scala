@@ -41,7 +41,7 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
     logger.info(logMarkerWithId, s"Querying usages table for $id")
     val imageIndex = table.getIndex(imageIndexName)
     val keyAttribute = new KeyAttribute("instance", instance.id)
-    val rangeKeyCondition: RangeKeyCondition = new RangeKeyCondition(rangeKeyName).eq(id)
+    val rangeKeyCondition: RangeKeyCondition = new RangeKeyCondition("media_id").eq(id)
 
     val queryResult = imageIndex.query(keyAttribute, rangeKeyCondition)
 
