@@ -55,9 +55,10 @@ class UsageTable(
     val request = QueryRequest.builder()
       .tableName(tableName)
       .indexName(imageIndexName)
-      .keyConditionExpression(s"$imageIndexName = :imageId")
+      .keyConditionExpression(s"$imageIndexName = :imageId AND instance = :instance")
       .expressionAttributeValues(Map(
-        ":imageId" -> AttributeValueV2.fromS(id)
+        ":imageId" -> AttributeValueV2.fromS(id),
+        ":instance" -> AttributeValueV2.fromS(instance.id),
       ).asJava)
       .build()
 
