@@ -33,7 +33,7 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
     })
   }
 
-  def queryByImageId(id: String, instance: Instance)(implicit logMarkerWithId: LogMarker): Future[List[MediaUsage]] = Future {
+  def queryByImageId(id: String)(implicit logMarkerWithId: LogMarker, instance: Instance): Future[List[MediaUsage]] = Future {
 
     if (id.trim.isEmpty)
       throw new BadInputException("Empty string received for image id")

@@ -110,7 +110,7 @@ class UsageApi(
       "image-id" -> mediaId,
     )
 
-    val usagesFuture = usageTable.queryByImageId(mediaId, instance)
+    val usagesFuture = usageTable.queryByImageId(mediaId)
 
     usagesFuture.map[play.api.mvc.Result]((mediaUsages: List[MediaUsage]) => {
       val usages = mediaUsages.map(UsageBuilder.build)
@@ -297,13 +297,13 @@ class UsageApi(
   }
 
   def deleteUsages(mediaId: String) = AuthenticatedAndAuthorisedToDelete.async { req =>
-    val instance = instanceOf(req)
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "delete-usages",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
       "image-id" -> mediaId,
     )
-    usageTable.queryByImageId(mediaId, instance).map(usages => {
+    usageTable.queryByImageId(mediaId).map(usages => {
       usages.foreach(usageTable.deleteRecord)
     }).recover {
       case error: BadInputException =>
