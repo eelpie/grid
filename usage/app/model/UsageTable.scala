@@ -40,8 +40,10 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
 
     logger.info(logMarkerWithId, s"Querying usages table for $id")
     val imageIndex = table.getIndex(imageIndexName)
-    val keyAttribute = new KeyAttribute(imageIndexName, id)
-    val queryResult = imageIndex.query(keyAttribute)
+    val keyAttribute = new KeyAttribute("instance", instance.id)
+    val rangeKeyCondition: RangeKeyCondition = new RangeKeyCondition("media_id").eq(id)
+
+    val queryResult = imageIndex.query(keyAttribute, rangeKeyCondition)
 
     val unsortedUsages = queryResult.asScala.map(ItemToMediaUsage.transform).map(unwindInstanceAwareHashkey).toList
 
@@ -152,11 +154,11 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
     mediaUsage.copy(grouping = mediaUsage.grouping.drop(instance.id.length + 1))
   }
   private def instanceAwareHashKey(record: UsageRecord)(implicit instance: Instance) = {
-    instance + "/" + record.hashKey
+    instance.id + "/" + record.hashKey
   }
 
   private def instanceAwareHashKey(hashKey: String)(implicit instance: Instance) = {
-    instance + "/" + hashKey
+    instance.id+ "/" + hashKey
   }
 
 }
