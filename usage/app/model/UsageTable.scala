@@ -30,11 +30,8 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
   lazy val tableSchema = TableSchema.documentSchemaBuilder()
     .addIndexPartitionKey(TableMetadata.primaryIndexName(), hashKeyName, AttributeValueType.S)
     .addIndexSortKey(TableMetadata.primaryIndexName(), rangeKeyName, AttributeValueType.S)
-    .addIndexPartitionKey(
-      imageIndexName,
-      imageIndexName,
-      AttributeValueType.S
-    )
+    .addIndexPartitionKey(imageIndexName, "instance", AttributeValueType.S)
+    .addIndexSortKey(imageIndexName, imageIndexName, AttributeValueType.S)
     .attributeConverterProviders(AttributeValueConverterProvider, AttributeConverterProvider.defaultProvider())
     .build()
   lazy val table = dynamo.table(tableName, tableSchema)
@@ -59,7 +56,8 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
     logger.info(logMarkerWithId, s"Querying usages table for $id")
 
     val key = Key.builder()
-      .partitionValue(id)
+      .partitionValue(instance.id)
+      .sortValue(id)
       .build()
 
     val queryResult = table.index(imageIndexName).query(QueryConditional.keyEqualTo(key))
