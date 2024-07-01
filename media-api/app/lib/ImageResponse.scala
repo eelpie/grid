@@ -253,7 +253,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     logger.info("Signing: " + source)
     val resizingUrl = Seq(config.imgopsUri(instance),  "no-signature",
       "auto_rotate:false", "strip_metadata:true", "strip_color_profile:true",
-      "resize:fit:{w}:{h}", "quality:{q}", Base64.encodeBase64String(source.getBytes)).mkString("/")
+      "resize:fit:{w}:{h}", "quality:{q}", Base64.encodeBase64URLSafe(source.getBytes)).mkString("/")
     resizingUrl
   }
 
