@@ -13,8 +13,8 @@ class EditsConfig(resources: GridConfigResources) extends CommonConfig(resources
   val queueUrl = string("indexed.images.sqs.queue.url")
 
   val rootUri: Instance => String = services.metadataBaseUri
-  val kahunaUri: Instance = services.kahunaBaseUri
-  val loginUriTemplate: Instance = services.loginUriTemplate
+  val kahunaUri: Instance => String= services.kahunaBaseUri
+  val loginUriTemplate: Instance => String= services.loginUriTemplate
 
   val customSpecialInstructions: Map[String, String] =
     configuration.getOptional[Map[String, String]]("usageInstructions").getOrElse(Map.empty)
