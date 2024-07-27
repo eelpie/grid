@@ -7,7 +7,7 @@ import com.gu.mediaservice.lib.argo.model.{Action, _}
 import com.gu.mediaservice.lib.auth.Authentication.{Request, _}
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, EditMetadata, UploadImages, DeleteImage => DeleteImagePermission}
 import com.gu.mediaservice.lib.auth._
-import com.gu.mediaservice.lib.aws.{S3Metadata, ThrallMessageSender, UpdateMessage}
+import com.gu.mediaservice.lib.aws.{ContentDisposition, S3Metadata, ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.model._
 import lib._
@@ -48,7 +48,9 @@ class MediaApi(
                 ws: WSClient,
                 authorisation: Authorisation
 )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers
-  with InstanceForRequest {
+  with InstanceForRequest with ContentDisposition {
+
+  val shortenDownloadFilename: Boolean = config.shortenDownloadFilename
 
   private val gridClient: GridClient = GridClient(config.services)(ws)
 
@@ -256,7 +258,7 @@ class MediaApi(
           s3Object <- Try(s3Client.getObject(config.imgPublishingBucket, asset.file)).toOption
           file = StreamConverters.fromInputStream(() => s3Object.getObjectContent)
           entity = HttpEntity.Streamed(file, asset.size, asset.mimeType.map(_.name))
-          result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> s3Client.getContentDisposition(source, export, asset))
+          result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset))
         } yield {
           if(config.recordDownloadAsUsage) {
             postToUsages(config.usageUri + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), source.id, Authentication.getIdentity(request.user))
@@ -369,7 +371,7 @@ class MediaApi(
         }
 
           Future.successful(
-            Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> s3Client.getContentDisposition(image, Source))
+            Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(image, Source))
           )
       }
       case _ => Future.successful(ImageNotFound(id))
