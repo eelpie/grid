@@ -6,6 +6,7 @@ import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, ImageP
 import com.gu.mediaservice.model._
 import com.typesafe.scalalogging.StrictLogging
 import play.api.inject.ApplicationLifecycle
+import play.api.mvc.RequestHeader
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -23,9 +24,9 @@ class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(res
   val thumbWidth: Int = 256
   val thumbQuality: Double = 85d // out of 100
 
-  val rootUri: String = services.loaderBaseUri
-  val apiUri: String = services.apiBaseUri
-  val kahunaUri: String = services.kahunaBaseUri
+  val rootUri: Instance => String = services.loaderBaseUri
+  val apiUri: Instance => String = services.apiBaseUri
+  val kahunaUri: Instance => String = services.kahunaBaseUri
 
   val transcodedMimeTypes: List[MimeType] = getStringSet("transcoded.mime.types").toList.map(MimeType(_))
   val supportedMimeTypes: List[MimeType] = List(Jpeg, Png) ::: transcodedMimeTypes

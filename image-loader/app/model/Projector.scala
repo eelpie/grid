@@ -11,10 +11,11 @@ import com.gu.mediaservice.lib.{ImageIngestOperations, ImageStorageProps, Storab
 import com.gu.mediaservice.lib.aws.S3Ops
 import com.gu.mediaservice.lib.aws.S3Object
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
-import com.gu.mediaservice.model.{Image, MimeType, UploadInfo}
+import com.gu.mediaservice.model.{Image, Instance, MimeType, UploadInfo}
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3}
 import lib.{DigestedFile, ImageLoaderConfig}
 import model.upload.UploadRequest
@@ -22,6 +23,7 @@ import org.apache.tika.io.IOUtils
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.Logger
 import play.api.libs.ws.WSRequest
+import play.api.mvc.RequestHeader
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
@@ -85,15 +87,16 @@ class Projector(config: ImageUploadOpsCfg,
                 s3: AmazonS3,
                 imageOps: ImageOperations,
                 processor: ImageProcessor,
-                auth: Authentication) extends GridLogging {
+                auth: Authentication) extends GridLogging with InstanceForRequest {
 
   private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3)
 
-  def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest)
-                        (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[Image]] = {
+  def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest, instance: Instance)
+                        (implicit ec: ExecutionContext, logMarker: LogMarker, request: RequestHeader): Future[Option[Image]] = {
+    val instance = instanceOf(request)
     Future {
       import ImageIngestOperations.fileKeyFromId
-      val s3Key = fileKeyFromId(imageId)
+      val s3Key = fileKeyFromId(imageId, instance)
 
       if (!s3.doesObjectExist(config.originalFileBucket, s3Key))
         throw new NoSuchImageExistsInS3(config.originalFileBucket, s3Key)
@@ -106,7 +109,7 @@ class Projector(config: ImageUploadOpsCfg,
         val digestedFile = getSrcFileDigestForProjection(s3Source, imageId, tempFile)
         val extractedS3Meta = S3FileExtractedMetadata(s3Source.getObjectMetadata)
 
-        val finalImageFuture = projectImage(digestedFile, extractedS3Meta, gridClient, onBehalfOfFn)
+        val finalImageFuture = projectImage(digestedFile, extractedS3Meta, gridClient, onBehalfOfFn, instance)
         val finalImage = Await.result(finalImageFuture, Duration.Inf)
 
         Some(finalImage)
@@ -129,7 +132,8 @@ class Projector(config: ImageUploadOpsCfg,
   def projectImage(srcFileDigest: DigestedFile,
                    extractedS3Meta: S3FileExtractedMetadata,
                    gridClient: GridClient,
-                   onBehalfOfFn: WSRequest => WSRequest)
+                   onBehalfOfFn: WSRequest => WSRequest,
+                   instance: Instance)
                   (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
     val DigestedFile(tempFile_, id_) = srcFileDigest
 
@@ -146,9 +150,11 @@ class Projector(config: ImageUploadOpsCfg,
           uploadTime = extractedS3Meta.uploadTime,
           uploadedBy = extractedS3Meta.uploadedBy,
           identifiers = identifiers_,
-          uploadInfo = uploadInfo_
+          uploadInfo = uploadInfo_,
+          instance = instance // TODO careful with this one!
         )
 
+        implicit val i: Instance = instance
         imageUploadProjectionOps.projectImageFromUploadRequest(uploadRequest) flatMap (
           image => ImageDataMerger.aggregate(image, gridClient, onBehalfOfFn)
         )
@@ -167,7 +173,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
 
   def projectImageFromUploadRequest(uploadRequest: UploadRequest)
                                    (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
-    val dependenciesWithProjectionsOnly = ImageUploadOpsDependencies(
+    val dependenciesWithProjectionsOnly: ImageUploadOpsDependencies = ImageUploadOpsDependencies(
       config,
       imageOps,
       projectOriginalFileAsS3Model,
@@ -190,17 +196,15 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
     Future.successful(storableOptimisedImage.toProjectedS3Object(config.originalFileBucket))
 
   private def fetchThumbFile(
-    imageId: String, outFile: File
-  )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
-    val key = fileKeyFromId(imageId)
-
+    imageId: String, outFile: File, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
+    val key = fileKeyFromId(imageId, instance)
     fetchFile(config.thumbBucket, key, outFile)
   }
 
   private def fetchOptimisedFile(
-    imageId: String, outFile: File
+    imageId: String, outFile: File, instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
-    val key = optimisedPngKeyFromId(imageId)
+    val key = optimisedPngKeyFromId(imageId, instance)
 
     fetchFile(config.originalFileBucket, key, outFile)
   }

@@ -56,24 +56,10 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
   val domainRoot: String = string("domain.root")
   val domainRootOverride: Option[String] = stringOpt("domain.root-override")
   val rootAppName: String = stringDefault("app.name.root", "media")
-  val serviceHosts = ServiceHosts(
-    stringDefault("hosts.kahunaPrefix", s"$rootAppName."),
-    stringDefault("hosts.apiPrefix", s"api.$rootAppName."),
-    stringDefault("hosts.loaderPrefix", s"loader.$rootAppName."),
-    stringDefault("hosts.projectionPrefix", s"loader-projection.$rootAppName."),
-    stringDefault("hosts.cropperPrefix", s"cropper.$rootAppName."),
-    stringDefault("hosts.metadataPrefix", s"$rootAppName-metadata."),
-    stringDefault("hosts.imgopsPrefix", s"$rootAppName-imgops."),
-    stringDefault("hosts.usagePrefix", s"$rootAppName-usage."),
-    stringDefault("hosts.collectionsPrefix", s"$rootAppName-collections."),
-    stringDefault("hosts.leasesPrefix", s"$rootAppName-leases."),
-    stringDefault("hosts.authPrefix", s"$rootAppName-auth."),
-    stringDefault("hosts.thrallPrefix", s"thrall.$rootAppName.")
-  )
 
   val corsAllowedOrigins: Set[String] = getStringSet("security.cors.allowedOrigins")
 
-  val services = new Services(domainRoot, serviceHosts, corsAllowedOrigins, domainRootOverride)
+  val services = new SingleHostServices(domainRoot)
 
   /**
    * Load in a list of domain metadata specifications from configuration. For example:
@@ -116,6 +102,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
 
   val recordDownloadAsUsage: Boolean = boolean("image.record.download")
   val shortenDownloadFilename: Boolean = boolean("image.download.shorten")
+  val myInstancesEndpoint: String = string("instance.service.my")
 
   /**
    * Load in a list of external staff photographers, internal staff photographers, contracted photographers,

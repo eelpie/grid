@@ -26,13 +26,13 @@ sealed trait InternalThrallMessage extends ThrallMessage {}
 
 sealed trait MigrationMessage extends InternalThrallMessage {}
 
-case class MigrateImageMessage(id: String, maybeImageWithVersion: Either[String, (Image, Long)]) extends MigrationMessage
+case class MigrateImageMessage(id: String, maybeImageWithVersion: Either[String, (Image, Long)], instance: Instance) extends MigrationMessage
 
 object MigrateImageMessage {
-  def apply(imageId: String, maybeProjection: Option[Image], maybeVersion: Option[Long]): MigrateImageMessage = (maybeProjection, maybeVersion) match {
-    case (Some(projection), Some(version)) => MigrateImageMessage(imageId, scala.Right((projection, version)))
-    case (None, _) => MigrateImageMessage(imageId, Left("There was no projection returned"))
-    case _ => MigrateImageMessage(imageId, Left("There was no version returned"))
+  def apply(imageId: String, maybeProjection: Option[Image], maybeVersion: Option[Long], instance: Instance): MigrateImageMessage = (maybeProjection, maybeVersion) match {
+    case (Some(projection), Some(version)) => MigrateImageMessage(imageId, scala.Right((projection, version)), instance)
+    case (None, _) => MigrateImageMessage(imageId, Left("There was no projection returned"), instance)
+    case _ => MigrateImageMessage(imageId, Left("There was no version returned"), instance)
   }
 }
 
@@ -46,6 +46,7 @@ sealed trait ExternalThrallMessage extends ThrallMessage {
   implicit val yourJodaDateWrites: json.JodaWrites.JodaDateTimeWrites.type = JodaWrites.JodaDateTimeWrites
   val id: String
   val lastModified: DateTime
+  val instance: Instance
   def toJson: JsValue = Json.toJson(this)(ExternalThrallMessage.writes)
 
   override def markerContents: Map[String, Any] = {
@@ -61,6 +62,7 @@ sealed trait ExternalThrallMessage extends ThrallMessage {
 object ExternalThrallMessage{
   implicit val yourJodaDateReads = JodaReads.DefaultJodaDateTimeReads.map(d => d.withZone(DateTimeZone.UTC))
   implicit val yourJodaDateWrites = JodaWrites.JodaDateTimeWrites
+  implicit val instanceMessageFormat = Json.format[Instance]
 
   implicit val usageNoticeFormat = Json.format[UsageNotice]
 
@@ -85,6 +87,7 @@ object ExternalThrallMessage{
   implicit val createMigrationIndexMessage = Json.format[CreateMigrationIndexMessage]
   implicit val completeMigrationMessage = Json.format[CompleteMigrationMessage]
   implicit val upsertFromProjectionMessage = Json.format[UpsertFromProjectionMessage]
+  implicit val createInstanceMessage = Json.format[CreateInstanceMessage]
 
   implicit val writes = Json.writes[ExternalThrallMessage]
   implicit val reads = Json.reads[ExternalThrallMessage]
@@ -92,50 +95,52 @@ object ExternalThrallMessage{
 }
 
 
-case class ImageMessage(lastModified: DateTime, image: Image) extends ExternalThrallMessage {
+case class ImageMessage(lastModified: DateTime, image: Image, instance: Instance) extends ExternalThrallMessage {
   override def additionalMarkers: () => Map[String, Any] = ()=>
     Map("fileName" -> image.source.file.toString)
 
   override val id: String = image.id
 }
 
-case class DeleteImageMessage(id: String, lastModified: DateTime) extends ExternalThrallMessage
+case class DeleteImageMessage(id: String, lastModified: DateTime, instance: Instance) extends ExternalThrallMessage
 
-case class SoftDeleteImageMessage(id: String, lastModified: DateTime, softDeletedMetadata: SoftDeletedMetadata) extends ExternalThrallMessage
+case class SoftDeleteImageMessage(id: String, lastModified: DateTime, softDeletedMetadata: SoftDeletedMetadata, instance: Instance) extends ExternalThrallMessage
 
-case class UnSoftDeleteImageMessage(id: String, lastModified: DateTime) extends ExternalThrallMessage
+case class UnSoftDeleteImageMessage(id: String, lastModified: DateTime, instance: Instance) extends ExternalThrallMessage
 
-case class DeleteImageExportsMessage(id: String, lastModified: DateTime) extends ExternalThrallMessage
+case class DeleteImageExportsMessage(id: String, lastModified: DateTime, instance: Instance) extends ExternalThrallMessage
 
-case class UpdateImageExportsMessage(id: String, lastModified: DateTime, crops: Seq[Crop]) extends ExternalThrallMessage
+case class UpdateImageExportsMessage(id: String, lastModified: DateTime, crops: Seq[Crop], instance: Instance) extends ExternalThrallMessage
 
-case class UpdateImageUserMetadataMessage(id: String, lastModified: DateTime, edits: Edits) extends ExternalThrallMessage
+case class UpdateImageUserMetadataMessage(id: String, lastModified: DateTime, edits: Edits, instance: Instance) extends ExternalThrallMessage
 
-case class UpdateImageUsagesMessage(id: String, lastModified: DateTime, usageNotice: UsageNotice) extends ExternalThrallMessage
+case class UpdateImageUsagesMessage(id: String, lastModified: DateTime, usageNotice: UsageNotice, instance: Instance) extends ExternalThrallMessage
 
-case class ReplaceImageLeasesMessage(id: String, lastModified: DateTime, leases: Seq[MediaLease]) extends ExternalThrallMessage
+case class ReplaceImageLeasesMessage(id: String, lastModified: DateTime, leases: Seq[MediaLease], instance: Instance) extends ExternalThrallMessage
 
-case class AddImageLeaseMessage(id: String, lastModified: DateTime, lease: MediaLease) extends ExternalThrallMessage
+case class AddImageLeaseMessage(id: String, lastModified: DateTime, lease: MediaLease, instance: Instance) extends ExternalThrallMessage
 
-case class RemoveImageLeaseMessage(id: String, lastModified: DateTime, leaseId: String) extends ExternalThrallMessage
+case class RemoveImageLeaseMessage(id: String, lastModified: DateTime, leaseId: String, instance: Instance) extends ExternalThrallMessage
 
-case class SetImageCollectionsMessage(id: String, lastModified: DateTime, collections: Seq[Collection]) extends ExternalThrallMessage
+case class SetImageCollectionsMessage(id: String, lastModified: DateTime, collections: Seq[Collection], instance: Instance) extends ExternalThrallMessage
 
-case class DeleteSingleUsageMessage(id: String, lastModified: DateTime, usageId: String) extends ExternalThrallMessage
+case class DeleteSingleUsageMessage(id: String, lastModified: DateTime, usageId: String, instance: Instance) extends ExternalThrallMessage
 
-case class DeleteUsagesMessage(id: String, lastModified: DateTime) extends ExternalThrallMessage
+case class DeleteUsagesMessage(id: String, lastModified: DateTime, instance: Instance) extends ExternalThrallMessage
 
-case class UpdateUsageStatusMessage(id: String, usageNotice: UsageNotice, lastModified: DateTime) extends ExternalThrallMessage
+case class UpdateUsageStatusMessage(id: String, usageNotice: UsageNotice, lastModified: DateTime, instance: Instance) extends ExternalThrallMessage
 
 object DeleteUsagesMessage {
   implicit val yourJodaDateReads = JodaReads.DefaultJodaDateTimeReads.map(d => d.withZone(DateTimeZone.UTC))
   implicit val yourJodaDateWrites = JodaWrites.JodaDateTimeWrites
+  implicit val instanceMessageFormat = Json.format[Instance]
+
   implicit val what = Json.format[DeleteUsagesMessage]
 }
 
-case class UpdateImageSyndicationMetadataMessage(id: String, lastModified: DateTime, maybeSyndicationRights: Option[SyndicationRights]) extends ExternalThrallMessage
+case class UpdateImageSyndicationMetadataMessage(id: String, lastModified: DateTime, maybeSyndicationRights: Option[SyndicationRights], instance: Instance) extends ExternalThrallMessage
 
-case class UpdateImagePhotoshootMetadataMessage(id: String, lastModified: DateTime, edits: Edits) extends ExternalThrallMessage
+case class UpdateImagePhotoshootMetadataMessage(id: String, lastModified: DateTime, edits: Edits, instance: Instance) extends ExternalThrallMessage
 
 /**
   * Message to start a new 'migration' (for re-index, re-ingestion etc.)
@@ -144,7 +149,8 @@ case class UpdateImagePhotoshootMetadataMessage(id: String, lastModified: DateTi
   */
 case class CreateMigrationIndexMessage(
   migrationStart: DateTime,
-  gitHash: String
+  gitHash: String,
+  instance: Instance
 ) extends ExternalThrallMessage {
   val id: String = "N/A"
   val lastModified: DateTime = migrationStart
@@ -153,8 +159,10 @@ case class CreateMigrationIndexMessage(
     s"images_${migrationStart.toString(DateTimeFormat.forPattern("yyyy-MM-dd_HH-mm-ss").withZoneUTC())}_${gitHash.take(7)}"
 }
 
-case class UpsertFromProjectionMessage(id: String, image: Image, lastModified: DateTime) extends ExternalThrallMessage
+case class UpsertFromProjectionMessage(id: String, image: Image, lastModified: DateTime, instance: Instance) extends ExternalThrallMessage
 
-case class CompleteMigrationMessage(lastModified: DateTime) extends ExternalThrallMessage {
+case class CompleteMigrationMessage(lastModified: DateTime, instance: Instance) extends ExternalThrallMessage {
   val id: String = "N/A"
 }
+
+case class CreateInstanceMessage(id: String, lastModified: DateTime, instance: Instance) extends ExternalThrallMessage

@@ -1,4 +1,3 @@
-import com.gu.mediaservice.lib.management.InnerServiceStatusCheckController
 import com.gu.mediaservice.lib.net.URI
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.{AssetsComponents, KahunaController}
@@ -14,9 +13,8 @@ class KahunaComponents(context: Context) extends GridComponents(context, new Kah
   final override val buildInfo = utils.buildinfo.BuildInfo
 
   val controller = new KahunaController(auth, config, controllerComponents, authorisation)
-  val InnerServiceStatusCheckController = new InnerServiceStatusCheckController(auth, controllerComponents, config.services, wsClient)
 
-  final override val router = new Routes(httpErrorHandler, controller, assets, management, InnerServiceStatusCheckController)
+  final override val router = new Routes(httpErrorHandler, controller, assets, management)
 
 }
 
@@ -25,26 +23,27 @@ object KahunaSecurityConfig {
     val base = SecurityHeadersConfig.fromConfiguration(playConfig)
 
     val services = List(
-      config.services.apiBaseUri,
-      config.services.loaderBaseUri,
-      config.services.cropperBaseUri,
-      config.services.metadataBaseUri,
-      config.services.imgopsBaseUri,
-      config.services.usageBaseUri,
-      config.services.collectionsBaseUri,
-      config.services.leasesBaseUri,
-      config.services.authBaseUri,
+      // TODO Restore config.services.apiBaseUri,
+      // TODO Restore config.services.loaderBaseUri,
+      // TODO Restore config.services.cropperBaseUri,
+      // TODO Restore config.services.metadataBaseUri,
+      // TODO restore config.services.imgopsBaseUri,
+      // TODO Restore config.services.usageBaseUri,
+      // TODO Restore config.services.collectionsBaseUri,
+      // TODO Restore config.services.leasesBaseUri,
+      // TODO Restore config.services.authBaseUri,
       config.services.guardianWitnessBaseUri
     )
 
-    val frameSources = s"frame-src ${config.services.authBaseUri} ${config.services.kahunaBaseUri} https://accounts.google.com https://www.youtube.com ${config.scriptsToLoad.map(_.host).mkString(" ")}"
+    // TODO restore ${config.services.authBaseUri} ${config.services.kahunaBaseUri}
+    val frameSources = s"frame-src https://accounts.google.com https://www.youtube.com ${config.scriptsToLoad.map(_.host).mkString(" ")}"
     val frameAncestors = s"frame-ancestors ${config.frameAncestors.mkString(" ")}"
     val connectSources = s"connect-src 'self' ${(services :+ config.imageOrigin).mkString(" ")} ${config.connectSources.mkString(" ")}"
 
     val imageSources = s"img-src ${List(
       "data:",
       "blob:",
-      URI.ensureSecure(config.services.imgopsBaseUri).toString,
+      // TODO restore URI.ensureSecure(config.services.imgopsBaseUri).toString,
       URI.ensureSecure(config.fullOrigin).toString,
       URI.ensureSecure(config.thumbOrigin).toString,
       URI.ensureSecure(config.cropOrigin).toString,

@@ -29,18 +29,18 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
   implicit val ec: ExecutionContext = executionContext
 
   final override def httpFilters: Seq[EssentialFilter] = Seq(
-    corsFilter,
-    csrfFilter,
-    securityHeadersFilter,
+    //corsFilter TODO needs to be replemented to be request/instance specfic
+    //csrfFilter TODO no longer gets bypassed thanks to preceding CORS check; CORS filter does not appear to tag the request if it passes for same origin.
+    //securityHeadersFilter, TODO needs to be replemented to be request/instance specfic
     gzipFilter,
     new RequestLoggingFilter(materializer),
     new ConnectionBrokenFilter(materializer),
     new RequestMetricFilter(config, materializer)
   )
 
-  final override lazy val corsConfig: CORSConfig = CORSConfig.fromConfiguration(context.initialConfiguration).copy(
-    allowedOrigins = Origins.Matching(config.services.corsAllowedDomains)
-  )
+  //final override lazy val corsConfig: CORSConfig = CORSConfig.fromConfiguration(context.initialConfiguration).copy(
+  //    allowedOrigins = Origins.Matching(config.services.corsAllowedDomains(request))
+  //  )
 
   lazy val management = new Management(controllerComponents, buildInfo)
 
@@ -53,7 +53,8 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
     actorSystem = actorSystem,
     wsClient = wsClient,
     controllerComponents = controllerComponents,
-    authorisation = authorisation
+    authorisation = authorisation,
+    cookieSigner = cookieSigner
   )
 
   protected val providers: AuthenticationProviders = AuthenticationProviders(
@@ -62,5 +63,5 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
     innerServiceProvider = new InnerServiceAuthenticationProvider(cookieSigner, serviceName=config.appName)
   )
 
-  val auth = new Authentication(config, providers, controllerComponents.parsers.default, executionContext)
+  val auth = new Authentication(config, providers, wsClient, controllerComponents.parsers.default, executionContext)
 }
