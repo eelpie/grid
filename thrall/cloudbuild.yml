@@ -4,6 +4,6 @@ steps:
   - name: 'gcr.io/$PROJECT_ID/scala-sbt'
     args: ['thrall/docker:publishLocal']
   - name: 'gcr.io/cloud-builders/docker'
-    args: [ 'tag', 'thrall:0.1', 'eu.gcr.io/$PROJECT_ID/thrall:$BRANCH_NAME']
+    args: ['buildx', 'create', '--name', 'multiarch', '--driver', 'docker-container', '--use']
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'eu.gcr.io/$PROJECT_ID/thrall:$BRANCH_NAME']
+    args: [ 'buildx', 'build', '--platform=linux/amd64,linux/arm64', 'thrall/target/docker/stage', '-t', 'eu.gcr.io/$PROJECT_ID/thrall:$BRANCH_NAME', '--push']
