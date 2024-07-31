@@ -3,9 +3,7 @@ import akka.stream.scaladsl.Source
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration
 import com.contxt.kinesis.{KinesisRecord, KinesisSource}
 import com.gu.mediaservice.GridClient
-import com.gu.mediaservice.lib.config.Services
 import com.gu.mediaservice.lib.aws.{S3Ops, ThrallMessageSender}
-import com.gu.mediaservice.lib.management.InnerServiceStatusCheckController
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
 import com.typesafe.scalalogging.StrictLogging
@@ -25,14 +23,12 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   final override val buildInfo = utils.buildinfo.BuildInfo
 
   val store = new ThrallStore(config)
-  val metadataEditorNotifications = new MetadataEditorNotifications(config)
   val thrallMetrics = new ThrallMetrics(config)
 
   val es = new ElasticSearch(config.esConfig, Some(thrallMetrics), actorSystem.scheduler)
   es.ensureIndexExistsAndAliasAssigned()
 
-  val services: Services = new Services(config.domainRoot, config.serviceHosts, Set.empty)
-  val gridClient: GridClient = GridClient(services)(wsClient)
+  val gridClient: GridClient = GridClient(config.services)(wsClient)
 
   // before firing up anything to consume streams or say we are OK let's do the critical good to go check
   private val goodToGoCheckResult = Await.ready(GoodToGoCheck.run(es), 30 seconds)
@@ -60,7 +56,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
     es,
     thrallMetrics,
     store,
-    metadataEditorNotifications,
     actorSystem
   )
 
@@ -89,7 +84,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val thrallController = new ThrallController(es, store, migrationSourceWithSender.send, messageSender, actorSystem, auth, config.services, controllerComponents, gridClient)
   val reaperController = new ReaperController(es, store, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents)
   val healthCheckController = new HealthCheck(es, streamRunning.isCompleted, config, controllerComponents)
-  val InnerServiceStatusCheckController = new InnerServiceStatusCheckController(auth, controllerComponents, config.services, wsClient)
 
-  override lazy val router = new Routes(httpErrorHandler, thrallController, reaperController, healthCheckController, management, InnerServiceStatusCheckController, assets)
+  override lazy val router = new Routes(httpErrorHandler, thrallController, reaperController, healthCheckController, management, assets)
 }

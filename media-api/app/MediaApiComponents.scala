@@ -1,6 +1,5 @@
 import com.gu.mediaservice.lib.aws.ThrallMessageSender
-import com.gu.mediaservice.lib.imaging.ImageOperations
-import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, InnerServiceStatusCheckController, Management}
+import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, Management}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers._
@@ -13,8 +12,6 @@ import scala.concurrent.Future
 
 class MediaApiComponents(context: Context) extends GridComponents(context, new MediaApiConfig(_)) {
   final override val buildInfo = utils.buildinfo.BuildInfo
-
-  val imageOperations = new ImageOperations(context.environment.rootPath.getAbsolutePath)
 
   val messageSender = new ThrallMessageSender(config.thrallKinesisStreamConfig)
   val mediaApiMetrics = new MediaApiMetrics(config)
@@ -39,7 +36,6 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   val usageController = new UsageController(auth, config, elasticSearch, usageQuota, controllerComponents)
   val elasticSearchHealthCheck = new ElasticSearchHealthCheck(controllerComponents, elasticSearch)
   val healthcheckController = new Management(controllerComponents, buildInfo)
-  val InnerServiceStatusCheckController = new InnerServiceStatusCheckController(auth, controllerComponents, config.services, wsClient)
 
   override val router = new Routes(
     httpErrorHandler,
@@ -48,7 +44,6 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
     aggController,
     usageController,
     elasticSearchHealthCheck,
-    healthcheckController,
-    InnerServiceStatusCheckController
+    healthcheckController
   )
 }
