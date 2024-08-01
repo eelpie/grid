@@ -91,7 +91,7 @@ class MediaApi(
 
   private def indexResponse(user: Principal) = {
     val indexData = Json.obj(
-      "description" -> "This is the Media API"
+      "description" -> "THIS IS THE MEDIA API"
       // ^ Flatten None away
     )
 
