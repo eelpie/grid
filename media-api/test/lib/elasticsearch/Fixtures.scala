@@ -30,7 +30,6 @@ trait Fixtures {
     "thrall.kinesis.stream.name",
     "thrall.kinesis.lowPriorityStream.name",
     "domain.root",
-    "single.host.url",
     "s3.config.bucket",
     "s3.usagemail.bucket",
     "quota.store.key",
@@ -40,7 +39,8 @@ trait Fixtures {
     "s3.image.bucket",
     "s3.thumb.bucket",
     "grid.stage",
-    "grid.appName"
+    "grid.appName",
+    "instance.service.my"
   )
 
   def createImage(

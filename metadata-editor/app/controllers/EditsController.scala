@@ -3,6 +3,7 @@ package controllers
 
 import java.net.URI
 import java.net.URLDecoder.decode
+
 import com.amazonaws.AmazonServiceException
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.argo.ArgoHelpers
@@ -12,6 +13,7 @@ import com.gu.mediaservice.lib.auth.Authentication.Principal
 import com.gu.mediaservice.lib.auth.Permissions.EditMetadata
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
 import com.gu.mediaservice.lib.aws.NoItemFound
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
 import lib._
@@ -19,7 +21,7 @@ import lib.Edit
 import org.joda.time.DateTime
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
-import play.api.mvc.{BaseController, ControllerComponents}
+import play.api.mvc.{BaseController, ControllerComponents, Request, RequestHeader}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -51,39 +53,45 @@ class EditsController(
                        authorisation: Authorisation,
                        override val controllerComponents: ControllerComponents
                      )(implicit val ec: ExecutionContext)
-  extends BaseController with ArgoHelpers with EditsResponse with MessageSubjects with Edit {
+  extends BaseController with ArgoHelpers with EditsResponse with MessageSubjects with Edit with InstanceForRequest {
 
   import com.gu.mediaservice.lib.metadata.UsageRightsMetadataMapper.usageRightsToMetadata
 
   private val gridClient: GridClient = GridClient(config.services)(ws)
 
-  val metadataBaseUri = config.services.metadataBaseUri
+  val metadataBaseUri: Instance => String = config.services.metadataBaseUri
   private val AuthenticatedAndAuthorised = auth andThen authorisation.CommonActionFilters.authorisedForArchive
 
-  private def getUploader(imageId: String, user: Principal): Future[Option[String]] = gridClient.getUploadedBy(imageId, auth.getOnBehalfOfPrincipal(user))
+  private def getUploader(imageId: String, user: Principal, request: RequestHeader): Future[Option[String]] = {
+    implicit val instance: Instance = instanceOf(request)
+    gridClient.getUploadedBy(imageId, auth.getOnBehalfOfPrincipal(user))
+  }
 
   private def authorisedForEditMetadataOrUploader(imageId: String) = authorisation.actionFilterForUploaderOr(imageId, EditMetadata, getUploader)
 
   def decodeUriParam(param: String): String = decode(param, "UTF-8")
 
   // TODO: Think about calling this `overrides` or something that isn't metadata
-  def getAllMetadata(id: String) = auth.async {
-    val emptyResponse = respond(Edits.getEmpty)(editsEntity(id))
+  def getAllMetadata(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
+    val emptyResponse = respond(Edits.getEmpty)(editsEntity(id)(instance))
     editsStore.get(id) map { dynamoEntry =>
       dynamoEntry.asOpt[Edits]
-        .map(respond(_)(editsEntity(id)))
+        .map(respond(_)(editsEntity(id)(instance)))
         .getOrElse(emptyResponse)
     } recover { case NoItemFound => emptyResponse }
   }
 
-  def getEdits(id: String) = auth.async {
+  def getEdits(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.get(id) map { dynamoEntry =>
       val edits = dynamoEntry.asOpt[Edits]
       respond(data = edits)
     } recover { case NoItemFound => NotFound }
   }
 
-  def getArchived(id: String) = auth.async {
+  def getArchived(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.booleanGet(id, Edits.Archived) map { archived =>
       respond(archived.getOrElse(false))
     } recover {
@@ -91,7 +99,8 @@ class EditsController(
     }
   }
 
-  def setArchived(id: String) = AuthenticatedAndAuthorised.async(parse.json) { implicit req =>
+  def setArchived(id: String) = AuthenticatedAndAuthorised.async(parse.json) { req =>
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").validate[Boolean].fold(
       errors =>
         Future.successful(BadRequest(errors.toString())),
@@ -102,22 +111,25 @@ class EditsController(
     )
   }
 
-  def unsetArchived(id: String) = auth.async {
+  def unsetArchived(id: String) = auth.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     editsStore.removeKey(id, Edits.Archived)
       .map(publish(id, UpdateImageUserMetadata))
       .map(_ => respond(false))
   }
 
 
-  def getLabels(id: String) = auth.async {
+  def getLabels(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.setGet(id, Edits.Labels)
-      .map(labelsCollection(id, _))
+      .map(labelsCollection(id, _)(instance))
       .map {case (uri, labels) => respondCollection(labels)} recover {
       case NoItemFound => respond(Array[String]())
     }
   }
 
   def addLabels(id: String) = auth.async(parse.json) { req =>
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").validate[List[String]].fold(
       errors =>
         Future.successful(BadRequest(errors.toString())),
@@ -125,22 +137,24 @@ class EditsController(
         editsStore
           .setAdd(id, Edits.Labels, labels)
           .map(publish(id, UpdateImageUserMetadata))
-          .map(edits => labelsCollection(id, edits.labels.toSet))
+          .map(edits => labelsCollection(id, edits.labels.toSet)(instance))
           .map { case (uri, l) => respondCollection(l) } recover {
             case _: AmazonServiceException => BadRequest
           }
     )
   }
 
-  def removeLabel(id: String, label: String) = auth.async {
+  def removeLabel(id: String, label: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.setDelete(id, Edits.Labels, decodeUriParam(label))
       .map(publish(id, UpdateImageUserMetadata))
-      .map(edits => labelsCollection(id, edits.labels.toSet))
+      .map(edits => labelsCollection(id, edits.labels.toSet)(instance))
       .map {case (uri, labels) => respondCollection(labels, uri=Some(uri))}
   }
 
 
-  def getMetadata(id: String) = auth.async {
+  def getMetadata(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.jsonGet(id, Edits.Metadata).map { dynamoEntry =>
       val metadata = (dynamoEntry \ Edits.Metadata).as[ImageMetadata]
       respond(metadata)
@@ -150,6 +164,7 @@ class EditsController(
   }
 
   def setMetadata(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async(parse.json) { req =>
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").validate[ImageMetadata].fold(
       errors => Future.successful(BadRequest(errors.toString())),
       metadata => {
@@ -169,7 +184,8 @@ class EditsController(
     )
   }
 
-  def setMetadataFromUsageRights(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async { req =>
+  def setMetadataFromUsageRights(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async { implicit req =>
+    implicit val instance: Instance = instanceOf(req)
     editsStore.get(id) flatMap { dynamoEntry =>
       gridClient.getMetadata(id, auth.getOnBehalfOfPrincipal(req.user)) flatMap { imageMetadata =>
         val edits = dynamoEntry.as[Edits]
@@ -186,10 +202,10 @@ class EditsController(
 
           editsStore.jsonAdd(id, Edits.Metadata, metadataAsMap(mergedMetadata))
             .map(publish(id, UpdateImageUserMetadata))
-            .map(edits => respond(edits.metadata, uri = Some(metadataUri(id))))
+            .map(edits => respond(edits.metadata, uri = Some(metadataUri(id)(instance))))
         } getOrElse {
           // just return the unmodified
-          Future.successful(respond(edits.metadata, uri = Some(metadataUri(id))))
+          Future.successful(respond(edits.metadata, uri = Some(metadataUri(id)(instance))))
         }
       }
     } recover {
@@ -197,7 +213,8 @@ class EditsController(
     }
   }
 
-  def getUsageRights(id: String) = auth.async {
+  def getUsageRights(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.jsonGet(id, Edits.UsageRights).map { dynamoEntry =>
       val usageRights = (dynamoEntry \ Edits.UsageRights).as[UsageRights]
       respond(usageRights)
@@ -207,6 +224,7 @@ class EditsController(
   }
 
   def setUsageRights(id: String) = auth.async(parse.json) { req =>
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").asOpt[UsageRights].map(usageRight => {
       editsStore.jsonAdd(id, Edits.UsageRights, DynamoDB.caseClassToMap(usageRight))
         .map(publish(id, UpdateImageUserMetadata))
@@ -215,11 +233,12 @@ class EditsController(
   }
 
   def deleteUsageRights(id: String) = auth.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     editsStore.removeKey(id, Edits.UsageRights).map(publish(id, UpdateImageUserMetadata)).map(edits => Accepted)
   }
 
-  def labelsCollection(id: String, labels: Set[String]): (URI, Seq[EmbeddedEntity[String]]) =
-    (labelsUri(id), labels.map(setUnitEntity(id, Edits.Labels, _)).toSeq)
+  def labelsCollection(id: String, labels: Set[String])(implicit instance: Instance): (URI, Seq[EmbeddedEntity[String]]) =
+    (labelsUri(id)(instance), labels.map(setUnitEntity(id, Edits.Labels, _)(instance)).toSeq)
 
   def metadataAsMap(metadata: ImageMetadata) = {
     (Json.toJson(metadata).as[JsObject]).as[Map[String, JsValue]]

@@ -1,48 +1,56 @@
 package com.gu.mediaservice.lib.metadata
 
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult
-import com.gu.mediaservice.lib.aws.DynamoDB
 import com.gu.mediaservice.lib.config.CommonConfig
-import com.gu.mediaservice.model.ImageStatusRecord
-import com.gu.scanamo._
-import com.gu.scanamo.syntax._
+import com.gu.mediaservice.model.{ImageStatusRecord, Instance}
+import org.scanamo.DeleteReturn.Nothing
+import org.scanamo._
+import org.scanamo.generic.auto._
+import org.scanamo.syntax._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.jdk.CollectionConverters.collectionAsScalaIterableConverter
 
-class SoftDeletedMetadataTable(config: CommonConfig) extends DynamoDB[ImageStatusRecord](config, config.softDeletedMetadataTable) {
-  private val softDeletedMetadataTable = Table[ImageStatusRecord](table.getTableName)
+class SoftDeletedMetadataTable(config: CommonConfig) {
 
-  def getStatus(imageId: String)(implicit ex: ExecutionContext) = {
-    ScanamoAsync.exec(client)(softDeletedMetadataTable.get('id -> imageId))
+  private val client = config.dynamoDBAsyncV2Builder().build()
+
+  private val softDeletedMetadataTable = Table[ImageStatusRecord](config.softDeletedMetadataTable)
+
+  def getStatus(imageId: String)(implicit ex: ExecutionContext, instance: Instance) = {
+    ScanamoAsync(client).exec(softDeletedMetadataTable.get("id" === imageId and "instance" === instance.id))
   }
 
   def setStatus(imageStatus: ImageStatusRecord)(implicit ex: ExecutionContext) = {
-    ScanamoAsync.exec(client)(softDeletedMetadataTable.put(imageStatus))
+    ScanamoAsync(client).exec(softDeletedMetadataTable.put(imageStatus))
   }
 
-  private def extractUnprocessedIds(results: List[BatchWriteItemResult]): List[String] =
-    results.flatMap(_.getUnprocessedItems.values().asScala.flatMap(_.asScala.map(_.getPutRequest.getItem.get("id").getS)))
-
-  def setStatuses(imageStatuses: Set[ImageStatusRecord])(implicit ex: ExecutionContext) = {
+  def setStatuses(imageStatuses: Set[ImageStatusRecord])(implicit ex: ExecutionContext): Future[List[String]] = {
     if (imageStatuses.isEmpty) Future.successful(List.empty)
-    else ScanamoAsync.exec(client)(softDeletedMetadataTable.putAll(imageStatuses)).map(extractUnprocessedIds)
+    else {
+      ScanamoAsync(client).exec(softDeletedMetadataTable.putAll(imageStatuses)).map(_ => List.empty) // TODO no error returns in v2
+    }
   }
 
-  def clearStatuses(imageIds: Set[String])(implicit ex: ExecutionContext) = {
+  def clearStatuses(imageIds: Set[String])(implicit ex: ExecutionContext, instance: Instance) = {
     if (imageIds.isEmpty) Future.successful(List.empty)
-    else ScanamoAsync.exec(client)(softDeletedMetadataTable.deleteAll('id -> imageIds)).map(extractUnprocessedIds)
+    else {
+      Future.sequence(imageIds.map { id =>
+        // Scanomo batch can't do composite keys? DSL is too confusing
+        ScanamoAsync(client).exec(softDeletedMetadataTable.delete("id" === id and "instance" === instance.id))
+      }).map(_ => List.empty)
+    }
   }
 
-  def updateStatus(imageId: String, isDeleted: Boolean)(implicit ex: ExecutionContext) = {
-    val updateExpression = set('isDeleted -> isDeleted)
-    ScanamoAsync.exec(client)(
+  def updateStatus(imageId: String, isDeleted: Boolean)(implicit ex: ExecutionContext, instance: Instance) = {
+    val updateExpression = set("isDeleted", isDeleted)
+    ScanamoAsync(client).exec(
       softDeletedMetadataTable
-        .given(attributeExists('id))
+        .when(attributeExists("id"))
         .update(
-          'id -> imageId,
+          "id" === imageId and "instance" === instance.id,
           update = updateExpression
         )
     )
+    Future.successful(Nothing)
   }
+
 }
