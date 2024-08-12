@@ -54,7 +54,7 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
     sentryInitialised
     Seq(
       instanceSpecificCorsFilter,
-      //csrfFilter TODO no longer gets bypassed thanks to preceding CORS check; CORS filter does not appear to tag the request if it passes for same origin.
+      csrfFilter,
       securityHeadersFilter,
       gzipFilter,
       new RequestLoggingFilter(materializer),
