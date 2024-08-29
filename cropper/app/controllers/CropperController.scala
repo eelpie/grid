@@ -118,7 +118,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
 
     logger.info(logMarker, s"getting crops for $id")
 
-    store.listCrops(id) map (_.toList) map { crops =>
+    store.listCrops(id, instance) map (_.toList) map { crops =>
       val deleteCropsAction =
         ArgoAction("delete-crops", URI.create(s"${config.rootUri(instance)}/crops/$id"), "DELETE")
 
@@ -166,7 +166,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
     exportRequest: ExportRequest, user: Principal, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal,
     request: Authentication.Request[JsValue]
   )(implicit logMarker: LogMarker): Future[(String, Crop)] = {
-    implicit val instance = instanceOf(request)
+    implicit val instance: Instance = instanceOf(request)
     for {
       _ <- verify(isMediaApiImageUri(exportRequest.uri, config.apiUri(instance)), InvalidSource)
       apiImage <- fetchSourceFromApi(exportRequest.uri, onBehalfOfPrincipal)
@@ -183,7 +183,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
         specification = cropSpec
       )
       markersWithCropDetails = logMarker ++ Map("imageId" -> apiImage.id, "cropId" -> Crop.getCropId(cropSpec.bounds))
-      ExportResult(id, masterSizing, sizings) <- crops.makeExport(apiImage, crop)(markersWithCropDetails)
+      ExportResult(id, masterSizing, sizings) <- crops.makeExport(apiImage, crop)(markersWithCropDetails, instance)
       finalCrop = Crop.createFromCrop(crop, masterSizing, sizings)
     } yield (id, finalCrop)
   }

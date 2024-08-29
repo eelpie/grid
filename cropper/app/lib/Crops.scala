@@ -26,19 +26,19 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   // We don't overly care about output crop file sizes here, but prefer a fast output, so turn it right down.
   private val pngCropQuality = 1d
 
-  def outputFilename(source: SourceImage, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false): String = {
+  def outputFilename(source: SourceImage, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false)(implicit instance: Instance): String = {
     val masterString: String = if (isMaster) "master/" else ""
-    s"${source.id}/${Crop.getCropId(bounds)}/$masterString$outputWidth${fileType.fileExtension}"
+    instance.id + "/" + s"${source.id}/${Crop.getCropId(bounds)}/$masterString$outputWidth${fileType.fileExtension}"
   }
 
-  def createMasterCrop(
+  private def createMasterCrop(
     apiImage: SourceImage,
     sourceFile: File,
     crop: Crop,
     mediaType: MimeType,
     colourModel: Option[String],
     orientationMetadata: Option[OrientationMetadata],
-  )(implicit logMarker: LogMarker): Future[MasterCrop] = {
+  )(implicit logMarker: LogMarker, instance: Instance): Future[MasterCrop] = {
 
     Stopwatch.async(s"creating master crop for ${apiImage.id}") {
       val source = crop.specification
@@ -65,7 +65,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     }
   }
 
-  def createCrops(sourceFile: File, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker): Future[List[Asset]] = {
+  private def createCrops(sourceFile: File, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker, instance: Instance): Future[List[Asset]] = {
     val quality = if (cropType == Png) pngCropQuality else cropQuality
 
     Stopwatch.async(s"creating crops for ${apiImage.id}") {
@@ -106,7 +106,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     positiveCoords && strictlyPositiveSize && withinBounds
   }
 
-  def makeExport(apiImage: SourceImage, crop: Crop)(implicit logMarker: LogMarker): Future[ExportResult] = {
+  def makeExport(apiImage: SourceImage, crop: Crop)(implicit logMarker: LogMarker, instance: Instance): Future[ExportResult] = {
     val source    = crop.specification
     val mimeType = apiImage.source.mimeType.getOrElse(throw MissingMimeType)
     val secureUrl = apiImage.source.secureUrl.getOrElse(throw MissingSecureSourceUrl)
