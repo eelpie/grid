@@ -262,8 +262,9 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
       "auto_rotate:false", "strip_metadata:true", "strip_color_profile:true",
       "resize:fit:{w}:{h}", "quality:{q}")
     val orientationCorrection = orientationMetadata.map(o => Seq("rotate:" + o.orientationCorrection())).getOrElse(Seq.empty)
-    val pathComponents = resizing ++ orientationCorrection :+ base64EncodedSourceURL
-    pathComponents.mkString("/")
+    val withOrientationCorrection = resizingComponents ++ orientationCorrection :+ signed
+    val resizingUrl = withOrientationCorrection.mkString("/")
+    resizingUrl
   }
 
   private def updateCustomSpecialInstructions(source: JsValue): Reads[JsObject] = {
@@ -381,7 +382,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
   def fileMetadataEntity(id: String, expandFileMetaData: Boolean, fileMetadata: FileMetadata)(implicit instance: Instance) = {
     val displayableMetadata = if (expandFileMetaData) Some(fileMetadata) else None
 
-    EmbeddedEntity[FileMetadata](fileMetaDataUri(id)(instance), displayableMetadata)
+    EmbeddedEntity[FileMetadata](fileMetaDataUri(id), displayableMetadata)
   }
 }
 
