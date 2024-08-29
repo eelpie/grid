@@ -161,7 +161,8 @@ class ThrallController(
         case None =>
           messageSender.publish(CreateMigrationIndexMessage(
             migrationStart = DateTime.now(DateTimeZone.UTC),
-            gitHash = utils.buildinfo.BuildInfo.gitCommitId
+            gitHash = utils.buildinfo.BuildInfo.gitCommitId,
+            instanceOf(request).id
           ))
           // poll until images migration alias is created, giving up after 10 seconds
           Await.result(
@@ -196,6 +197,7 @@ class ThrallController(
         case _: Running =>
           messageSender.publish(CompleteMigrationMessage(
             lastModified = DateTime.now(DateTimeZone.UTC),
+            instanceOf(request).id
           ))
           // poll until images migration status is not running or error, giving up after 10 seconds
           Source(1 to 20)
@@ -251,7 +253,8 @@ class ThrallController(
       maybeImage <- gridClient.getImageLoaderProjection(imageId, auth.innerServiceCall)
     } yield { maybeImage match {
       case Some(projectedImage) =>
-        messageSender.publish(UpsertFromProjectionMessage(imageId, projectedImage, DateTime.now))
+        messageSender.publish(UpsertFromProjectionMessage(imageId, projectedImage, DateTime.now,
+          instanceOf(request).id))
         Ok(s"upsert request for $imageId submitted")
       case None => NotFound("")
     }}
