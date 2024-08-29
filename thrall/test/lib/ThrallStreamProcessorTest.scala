@@ -42,7 +42,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
     )
 
     def createMigrationRecord: MigrationRecord = MigrationRecord(
-      payload = MigrateImageMessage("id", Right((createImage("batman", StaffPhotographer("Bruce Wayne", "Wayne Enterprises")), 1L))),
+      payload = MigrateImageMessage("id", Right((createImage("batman", StaffPhotographer("Bruce Wayne", "Wayne Enterprises")), 1L)), instance = "an-instance"),
       approximateArrivalTimestamp = OffsetDateTime.now().toInstant
     )
 
@@ -122,7 +122,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
       mockEs,
       mockGrid,
       projectionParallelism = 1,
-      Instance("TODO")
+      Instance("an-instance")
     )
 
     lazy val mockConsumer: ThrallEventConsumer = mock[ThrallEventConsumer]
@@ -142,7 +142,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
 
       val request = MigrationRequest("id", 1L)
 
-      val expectedMigrationMessage = MigrateImageMessage("id", Right(projectedImage, 1L))
+      val expectedMigrationMessage = MigrateImageMessage("id", Right(projectedImage, 1L), "an-instance")
 
       migrationSourceWithSender.send(request)
 
