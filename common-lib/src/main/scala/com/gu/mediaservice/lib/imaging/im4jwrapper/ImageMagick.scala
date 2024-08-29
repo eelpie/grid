@@ -22,6 +22,7 @@ object ImageMagick extends GridLogging {
   def addDestImage(op: IMOperation)(dest: File) = op <| (_.addImage(dest.getAbsolutePath))
   def crop(op: IMOperation)(b: Bounds): IMOperation = op <| (_.crop(b.width, b.height, b.x, b.y))
   def profile(op: IMOperation)(profileFileLocation: String): IMOperation = op <| (_.profile(profileFileLocation))
+  def rotate(op: IMOperation)(angle: Double): IMOperation = op <| (_.rotate(angle))
   def thumbnail(op: IMOperation)(width: Int): IMOperation = op <| (_.thumbnail(width))
   def resize(op: IMOperation)(maxSize: Int): IMOperation = op <| (_.resize(maxSize, maxSize))
   def scale(op: IMOperation)(dimensions: Dimensions): IMOperation = op <| (_.scale(dimensions.width, dimensions.height))
