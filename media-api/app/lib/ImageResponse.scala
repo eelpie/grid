@@ -256,7 +256,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
   def makeImgopsUri(uri: URI): String =
     config.imgopsUri + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
 
-  private def makeImgProxyUri(uri: URI, orientationMetadata: Option[OrientationMetadata]): String = {
+  def makeImgProxyUri(uri: URI, orientationMetadata: Option[OrientationMetadata])(implicit instance: Instance): String = {
     def normaliseRotation(rotation: Int) = {
       // imgproxy does not accept negative rotations
       if (rotation < 0) {
@@ -265,13 +265,15 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
         rotation
       }
     }
-    val base64EncodedSourceURL = new String(Base64.encodeBase64URLSafe(uri.toURL.toExternalForm.getBytes), "UTF-8")
-    val resizing = Seq(config.imgopsUri, "no-signature",
+    val source = uri.toURL.toExternalForm
+    val signed = new String(Base64.encodeBase64URLSafe(source.getBytes), "UTF-8")
+    val resizingComponents = Seq(config.imgopsUri(instance), "no-signature",
       "auto_rotate:false", "strip_metadata:true", "strip_color_profile:true",
       "resize:fit:{w}:{h}", "quality:{q}")
     val orientationCorrection = orientationMetadata.map(o => Seq("rotate:" + normaliseRotation(o.orientationCorrection()))).getOrElse(Seq.empty)
-    val pathComponents = resizing ++ orientationCorrection :+ base64EncodedSourceURL
-    pathComponents.mkString("/")
+    val withOrientationCorrection = resizingComponents ++ orientationCorrection :+ signed
+    val resizingUrl = withOrientationCorrection.mkString("/")
+    resizingUrl
   }
 
   private def updateCustomSpecialInstructions(source: JsValue): Reads[JsObject] = {
@@ -389,7 +391,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
   def fileMetadataEntity(id: String, expandFileMetaData: Boolean, fileMetadata: FileMetadata)(implicit instance: Instance) = {
     val displayableMetadata = if (expandFileMetaData) Some(fileMetadata) else None
 
-    EmbeddedEntity[FileMetadata](fileMetaDataUri(id)(instance), displayableMetadata)
+    EmbeddedEntity[FileMetadata](fileMetaDataUri(id), displayableMetadata)
   }
 }
 
