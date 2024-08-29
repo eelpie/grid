@@ -57,7 +57,7 @@ class EditsController(
 
   private val gridClient: GridClient = GridClient(config.services)(ws)
 
-  val metadataBaseUri = config.services.metadataBaseUri
+  val metadataBaseUri: Instance => String = config.services.metadataBaseUri
   private val AuthenticatedAndAuthorised = auth andThen authorisation.CommonActionFilters.authorisedForArchive
 
   private def getUploader(imageId: String, user: Principal): Future[Option[String]] = gridClient.getUploadedBy(imageId, auth.getOnBehalfOfPrincipal(user))
@@ -68,6 +68,7 @@ class EditsController(
 
   // TODO: Think about calling this `overrides` or something that isn't metadata
   def getAllMetadata(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     val emptyResponse = respond(Edits.getEmpty)(editsEntity(id))
     editsStore.get(id) map { dynamoEntry =>
       dynamoEntry.asOpt[Edits]
@@ -109,7 +110,8 @@ class EditsController(
   }
 
 
-  def getLabels(id: String) = auth.async {
+  def getLabels(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.setGet(id, Edits.Labels)
       .map(labelsCollection(id, _))
       .map {case (uri, labels) => respondCollection(labels)} recover {
@@ -118,6 +120,7 @@ class EditsController(
   }
 
   def addLabels(id: String) = auth.async(parse.json) { req =>
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").validate[List[String]].fold(
       errors =>
         Future.successful(BadRequest(errors.toString())),
@@ -132,7 +135,8 @@ class EditsController(
     )
   }
 
-  def removeLabel(id: String, label: String) = auth.async {
+  def removeLabel(id: String, label: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.setDelete(id, Edits.Labels, decodeUriParam(label))
       .map(publish(id, UpdateImageUserMetadata))
       .map(edits => labelsCollection(id, edits.labels.toSet))
@@ -170,6 +174,7 @@ class EditsController(
   }
 
   def setMetadataFromUsageRights(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async { req =>
+    implicit val instance: Instance = instanceOf(req)
     editsStore.get(id) flatMap { dynamoEntry =>
       gridClient.getMetadata(id, auth.getOnBehalfOfPrincipal(req.user)) flatMap { imageMetadata =>
         val edits = dynamoEntry.as[Edits]
@@ -219,10 +224,10 @@ class EditsController(
     editsStore.removeKey(id, Edits.UsageRights).map(publish(id, UpdateImageUserMetadata)).map(edits => Accepted)
   }
 
-  def labelsCollection(id: String, labels: Set[String]): (URI, Seq[EmbeddedEntity[String]]) =
+  private def labelsCollection(id: String, labels: Set[String])(implicit instance: Instance): (URI, Seq[EmbeddedEntity[String]]) =
     (labelsUri(id), labels.map(setUnitEntity(id, Edits.Labels, _)).toSeq)
 
-  def metadataAsMap(metadata: ImageMetadata) = {
+  private def metadataAsMap(metadata: ImageMetadata) = {
     (Json.toJson(metadata).as[JsObject]).as[Map[String, JsValue]]
   }
 
