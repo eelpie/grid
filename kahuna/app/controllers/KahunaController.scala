@@ -27,6 +27,7 @@ class KahunaController(
   override def services: Services = config.services
 
   def index(ignored: String) = withOptionalLoginRedirect { request =>
+    val instance = instanceOf(request)
 
     val maybeUser: Option[Authentication.Principal] = request match {
       case authedRequest: AuthenticatedRequest[_, _] => authedRequest.user match {
@@ -62,7 +63,7 @@ class KahunaController(
     val metadataTemplates: String = Json.toJson(config.metadataTemplates).toString()
     val announcements: String = Json.toJson(config.announcements).toString()
     val interimFilterOptions: String = Json.toJson(config.interimFilterOptions).toString()
-    val returnUri = config.rootUri + okPath
+    val returnUri = config.rootUri(instance) + okPath
     val costFilterLabel = config.costFilterLabel.getOrElse("Free to use only")
     val costFilterChargeable = config.costFilterChargeable.getOrElse(false)
     val maybeOrgOwnedValue =
@@ -72,9 +73,11 @@ class KahunaController(
         Html("undefined")
     val imageTypes = Json.toJson(config.imageTypes).toString()
 
+    val rootUri = config.rootUri(instance)
 
     val kahunaClientServiceUrls = KahunaClientServiceUrls(
-      mediaApiUri = config.mediaApiUri(instanceOf(request))
+      rootUri = rootUri,
+      mediaApiUri = config.mediaApiUri(instance)
     )
 
     Ok(views.html.main(
