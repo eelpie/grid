@@ -96,7 +96,7 @@ class MediaApi(
   }
 
   private def searchLink()(implicit instance: Instance) = {
-    Link("search", searchLinkHref()(instance))
+    Link("search", searchLinkHref())
   }
 
   private def indexResponse(user: Principal)(implicit instance: Instance) = {
@@ -478,6 +478,7 @@ class MediaApi(
   }
 
   def downloadOptimisedImage(id: String, width: Integer, height: Integer, quality: Integer) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "download-optimised-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -501,7 +502,7 @@ class MediaApi(
         }
 
         Future.successful(
-          Redirect(config.imgopsUri + List(sourceImageUri.getPath, sourceImageUri.getRawQuery).mkString("?") + s"&w=$width&h=$height&q=$quality")
+          Redirect(config.imgopsUri(instance) + List(sourceImageUri.getPath, sourceImageUri.getRawQuery).mkString("?") + s"&w=$width&h=$height&q=$quality")
         )
       }
       case _ => Future.successful(ImageNotFound(id))
