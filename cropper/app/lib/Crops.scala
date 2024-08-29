@@ -23,18 +23,19 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   private val cropQuality = 75d
   private val masterCropQuality = 95d
 
-  def outputFilename(source: SourceImage, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false): String = {
+  def outputFilename(source: SourceImage, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false, instance: Instance): String = {
     val masterString: String = if (isMaster) "master/" else ""
-    s"${source.id}/${Crop.getCropId(bounds)}/${masterString}$outputWidth${fileType.fileExtension}"
+    instance.id + "/" + s"${source.id}/${Crop.getCropId(bounds)}/${masterString}$outputWidth${fileType.fileExtension}"
   }
 
   def createMasterCrop(
-                        apiImage: SourceImage,
-                        sourceFile: File,
-                        crop: Crop,
-                        mediaType: MimeType,
-                        colourModel: Option[String],
-                        orientationMetadata: Option[OrientationMetadata],
+    apiImage: SourceImage,
+    sourceFile: File,
+    crop: Crop,
+    mediaType: MimeType,
+    colourModel: Option[String],
+    instance: Instance,
+    orientationMetadata: Option[OrientationMetadata]
   )(implicit logMarker: LogMarker): Future[MasterCrop] = {
 
     val source   = crop.specification
@@ -51,7 +52,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       )
       file: File <- imageOperations.appendMetadata(strip, metadata)
       dimensions  = Dimensions(source.bounds.width, source.bounds.height)
-      filename    = outputFilename(apiImage, source.bounds, dimensions.width, mediaType, isMaster = true)
+      filename    = outputFilename(apiImage, source.bounds, dimensions.width, mediaType, isMaster = true, instance = instance)
       sizing      = store.storeCropSizing(file, filename, mediaType, crop, dimensions)
       dirtyAspect = source.bounds.width.toFloat / source.bounds.height
       aspect      = crop.specification.aspectRatio.flatMap(AspectRatio.clean).getOrElse(dirtyAspect)
@@ -59,14 +60,15 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     yield MasterCrop(sizing, file, dimensions, aspect)
   }
 
-  def createCrops(sourceFile: File, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker): Future[List[Asset]] = {
+  def createCrops(sourceFile: File, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType,
+                  instance: Instance)(implicit logMarker: LogMarker): Future[List[Asset]] = {
     logger.info(logMarker, s"creating crops for ${apiImage.id}")
 
     Future.sequence(dimensionList.map { dimensions =>
       for {
         file          <- imageOperations.resizeImage(sourceFile, apiImage.source.mimeType, dimensions, cropQuality, config.tempDir, cropType)
         optimisedFile = imageOperations.optimiseImage(file, cropType)
-        filename      = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
+        filename      = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType, instance = instance)
         sizing        <- store.storeCropSizing(optimisedFile, filename, cropType, crop, dimensions)
         _             <- delete(file)
         _             <- delete(optimisedFile)
@@ -92,7 +94,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     positiveCoords && strictlyPositiveSize && withinBounds
   }
 
-  def makeExport(apiImage: SourceImage, crop: Crop)(implicit logMarker: LogMarker): Future[ExportResult] = {
+  def makeExport(apiImage: SourceImage, crop: Crop, instance: Instance)(implicit logMarker: LogMarker): Future[ExportResult] = {
     val source    = crop.specification
     val mimeType = apiImage.source.mimeType.getOrElse(throw MissingMimeType)
     val secureUrl = apiImage.source.secureUrl.getOrElse(throw MissingSecureSourceUrl)
@@ -104,11 +106,11 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         colourModel <- ImageOperations.identifyColourModel(sourceFile, mimeType)
-        masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, colourModel, apiImage.source.orientationMetadata)
+        masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, colourModel, instance, apiImage.source.orientationMetadata)
 
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
 
-        sizes <- createCrops(masterCrop.file, outputDims, apiImage, crop, cropType)
+        sizes <- createCrops(masterCrop.file, outputDims, apiImage, crop, cropType, instance)
         masterSize <- masterCrop.sizing
 
         _ <- Future.sequence(List(masterCrop.file, sourceFile).map(delete))
