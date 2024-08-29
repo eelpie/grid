@@ -74,7 +74,7 @@ class KahunaController(
 
 
     val kahunaClientServiceUrls = KahunaClientServiceUrls(
-      mediaApiUri = config.mediaApiUri(request)
+      mediaApiUri = config.mediaApiUri(instanceOf(request))
     )
 
     Ok(views.html.main(

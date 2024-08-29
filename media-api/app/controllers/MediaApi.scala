@@ -76,15 +76,15 @@ class MediaApi(
     "persisted"
   ).mkString(",")
 
-  private def searchLinkHref()(request: Request[AnyContent]) = {
-    s"${config.rootUri(request)}/images{?$searchParamList}"
+  private def searchLinkHref()(instance: Instance) = {
+    s"${config.rootUri(instance)}/images{?$searchParamList}"
   }
 
-  private def searchLink()(request: Request[AnyContent]) = {
-    Link("search", searchLinkHref()(request))
+  private def searchLink()(instance: Instance) = {
+    Link("search", searchLinkHref()(instance))
   }
 
-  private def indexResponse(user: Principal)(request: Request[AnyContent]) = {
+  private def indexResponse(user: Principal)(instance: Instance) = {
     val indexData = Json.obj(
       "description" -> "This is the Media API"
       // ^ Flatten None away
@@ -95,22 +95,23 @@ class MediaApi(
 
     val maybeLoaderLink: Option[Link] = Some(Link("loader", config.loaderUri)).filter(_ => userCanUpload)
     val maybeArchiveLink: Option[Link] = Some(Link("archive", s"${config.metadataUri}/metadata/{id}/archived")).filter(_ => userCanArchive)
+
     val indexLinks = List(
-      searchLink()(request),
-      Link("image",           s"${config.rootUri(request)}/images/{id}"),
+      searchLink()(instance),
+      Link("image",           s"${config.rootUri(instance)}/images/{id}"),
       // FIXME: credit is the only field available for now as it's the only on
       // that we are indexing as a completion suggestion
-      Link("metadata-search", s"${config.rootUri(request)}/suggest/metadata/{field}{?q}"),
-      Link("label-search",    s"${config.rootUri(request)}/images/edits/label{?q}"),
+      Link("metadata-search", s"${config.rootUri(instance)}/suggest/metadata/{field}{?q}"),
+      Link("label-search",    s"${config.rootUri(instance)}/images/edits/label{?q}"),
       Link("cropper",         config.cropperUri),
       Link("edits",           config.metadataUri),
       Link("session",         s"${config.authUri}/session"),
       Link("witness-report",  s"${config.services.guardianWitnessBaseUri}/2/report/{id}"),
       Link("collections",     config.collectionsUri),
-      Link("permissions",     s"${config.rootUri(request)}/permissions"),
+      Link("permissions",     s"${config.rootUri(instance)}/permissions"),
       Link("leases",          config.leasesUri),
       Link("syndicate-image", s"${config.rootUri}/images/{id}/{partnerName}/{startPending}/syndicateImage"),
-      Link("undelete",        s"${config.rootUri(request)}/images/{id}/undelete")
+      Link("undelete",        s"${config.rootUri(instance)}/images/{id}/undelete")
     ) ++ maybeLoaderLink.toList ++ maybeArchiveLink.toList
     respond(indexData, indexLinks)
   }
@@ -121,7 +122,7 @@ class MediaApi(
   private def ImageNotFound(id: String) = respondError(NotFound, "image-not-found", s"No image found with the given id $id")
   private def ExportNotFound = respondError(NotFound, "export-not-found", "No export found with the given id")
 
-  def index = auth { request => indexResponse(request.user)(request) }
+  def index = auth { request => indexResponse(request.user)(instanceOf(request)) }
 
   def getIncludedFromParams(request: AuthenticatedRequest[AnyContent, Principal]): List[String] = {
     val includedQuery: Option[String] = request.getQueryString("include")
@@ -187,11 +188,11 @@ class MediaApi(
 
   def getImageFileMetadata(id: String) = auth.async { request =>
     implicit val r = request
-
+    val instance = instanceOf(request)
     elasticSearch.getImageById(id) map {
       case Some(image) if hasPermission(request.user, image) =>
         val links = List(
-          Link("image", s"${config.rootUri(request)}/images/$id")
+          Link("image", s"${config.rootUri(instance)}/images/$id")
         )
         respond(Json.toJson(image.fileMetadata), links)
       case _ => ImageNotFound(id)
@@ -200,11 +201,12 @@ class MediaApi(
 
   def getImageExports(id: String) = auth.async { request =>
     implicit val r = request
+    val instance = instanceOf(request)
 
     elasticSearch.getImageById(id) map {
       case Some(image) if hasPermission(request.user, image) =>
         val links = List(
-          Link("image", s"${config.rootUri(request)}/images/$id")
+          Link("image", s"${config.rootUri(instance)}/images/$id")
         )
         respond(Json.toJson(image.exports), links)
       case _ => ImageNotFound(id)
@@ -383,6 +385,7 @@ class MediaApi(
 
   def downloadOptimisedImage(id: String, width: Integer, height: Integer, quality: Integer) = auth.async { request =>
     implicit val r = request
+    val instance: Instance = instanceOf(request)
 
     elasticSearch.getImageById(id) flatMap {
       case Some(image) if hasPermission(request.user, image) => {
@@ -401,7 +404,7 @@ class MediaApi(
         }
 
         Future.successful(
-          Redirect(config.imgopsUri + List(sourceImageUri.getPath, sourceImageUri.getRawQuery).mkString("?") + s"&w=$width&h=$height&q=$quality")
+          Redirect(config.imgopsUri(instance) + List(sourceImageUri.getPath, sourceImageUri.getRawQuery).mkString("?") + s"&w=$width&h=$height&q=$quality")
         )
       }
       case _ => Future.successful(ImageNotFound(id))
@@ -455,7 +458,7 @@ class MediaApi(
       val (imageData, imageLinks, imageActions) =
         imageResponse.create(elasticId, image, writePermission, deletePermission, deleteCropsOrUsagePermission, include, request.user.accessor.tier)(request)
       val id = (imageData \ "id").as[String]
-      val imageUri = URI.create(s"${config.rootUri(request)}/images/$id")
+      val imageUri = URI.create(s"${config.rootUri(instanceOf(request))}/images/$id")
       EmbeddedEntity(uri = imageUri, data = Some(imageData), imageLinks, imageActions)
     }
 
@@ -480,7 +483,7 @@ class MediaApi(
       // TODO: respondErrorCollection?
       errors => Future.successful(respondError(UnprocessableEntity, InvalidUriParams.errorKey,
         // Annoyingly `NonEmptyList` and `IList` don't have `mkString`
-        errors.map(_.message).list.reduce(_+ ", " +_), List(searchLink()(request)))
+        errors.map(_.message).list.reduce(_+ ", " +_), List(searchLink()(instanceOf(request))))
       ),
       params => respondSuccess(params)
     )
