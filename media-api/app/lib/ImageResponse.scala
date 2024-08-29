@@ -119,7 +119,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
       .get
 
     val links: List[Link] = tier match {
-      case Internal => imageLinks(id, imageUrl, pngUrl, withWritePermission, valid) ++ getDownloadLinks(id, isDownloadable)
+      case Internal => imageLinks(id, imageUrl, pngUrl, withWritePermission, valid, image.source.orientation) ++ getDownloadLinks(id, isDownloadable)
       case _ => List(downloadLink(id), downloadOptimisedLink(id))
     }
 
@@ -141,13 +141,13 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     }
   }
 
-  def imageLinks(id: String, secureUrl: String, securePngUrl: Option[String], withWritePermission: Boolean, valid: Boolean): List[Link] = {
+  def imageLinks(id: String, secureUrl: String, securePngUrl: Option[String], withWritePermission: Boolean, valid: Boolean, orientation: Option[Orientation]): List[Link] = {
     import BoolImplicitMagic.BoolToOption
     val cropLinkMaybe = valid.toOption(Link("crops", s"${config.cropperUri}/crops/$id"))
     val editLinkMaybe = withWritePermission.toOption(Link("edits", s"${config.metadataUri}/metadata/$id"))
-    val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgProxyUri(new URI(secureUrl))) }
+    val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgProxyUri(new URI(secureUrl), orientation)) }
 
-    val optimisedLink = Link("optimised", makeImgProxyUri(new URI(secureUrl)))
+    val optimisedLink = Link("optimised", makeImgProxyUri(new URI(secureUrl), orientation))
     val imageLink = Link("ui:image", s"${config.kahunaUri}/images/$id")
     val usageLink = Link("usages", s"${config.usageUri}/usages/media/$id")
     val leasesLink = Link("leases", s"${config.leasesUri}/leases/media/$id")
@@ -254,12 +254,14 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
       "aliases" -> JsObject(aliases)
     ))
 
-  private def makeImgProxyUri(uri: URI): String = {
+  private def makeImgProxyUri(uri: URI, orientation: Option[Orientation]): String = {
     config.imgopsUri + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
     val base64EncodedSourceURL = new String(Base64.encodeBase64URLSafe(uri.toURL.toExternalForm.getBytes), "UTF-8")
-    val pathComponents = Seq(config.imgopsUri, "no-signature",
+    val resizing = Seq(config.imgopsUri, "no-signature",
       "auto_rotate:false", "strip_metadata:true", "strip_color_profile:true",
-      "resize:fit:{w}:{h}", "quality:{q}") :+ base64EncodedSourceURL
+      "resize:fit:{w}:{h}", "quality:{q}")
+    val orientationCorrection = orientation.map(o => Seq("rotate:" + o.orientationCorrection())).getOrElse(Seq.empty)
+    val pathComponents = resizing ++ orientationCorrection :+ base64EncodedSourceURL
     pathComponents.mkString("/")
   }
 
