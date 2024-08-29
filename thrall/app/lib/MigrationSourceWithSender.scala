@@ -6,7 +6,7 @@ import akka.{Done, NotUsed}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.elasticsearch.{InProgress, Paused}
 import com.gu.mediaservice.lib.logging.GridLogging
-import com.gu.mediaservice.model.{MigrateImageMessage, MigrationMessage}
+import com.gu.mediaservice.model.{Instance, MigrateImageMessage, MigrationMessage}
 import lib.elasticsearch.{ElasticSearch, ScrolledSearchResults}
 import play.api.libs.ws.WSRequest
 
@@ -29,6 +29,7 @@ object MigrationSourceWithSender extends GridLogging {
     es: ElasticSearch,
     gridClient: GridClient,
     projectionParallelism: Int,
+    instance: Instance
   )(implicit ec: ExecutionContext): MigrationSourceWithSender = {
 
     // scroll through elasticsearch, finding image ids and versions to migrate
@@ -110,15 +111,15 @@ object MigrationSourceWithSender extends GridLogging {
     val idsSource = manualIdsSource.mergePreferred(scrollingIdsSource, preferred =  true)
 
     // project image from MigrationRequest, produce the MigrateImageMessage
-    val projectedImageSource: Source[MigrationRecord, NotUsed] = idsSource.mapAsyncUnordered(projectionParallelism) {
+    def projectedImageSource(instance: Instance): Source[MigrationRecord, NotUsed] = idsSource.mapAsyncUnordered(projectionParallelism) {
       case MigrationRequest(imageId, version) =>
         val migrateImageMessageFuture = (
           for {
             maybeProjection <- gridClient.getImageLoaderProjection(mediaId = imageId, innerServiceCall)
             maybeVersion = Some(version)
-          } yield MigrateImageMessage(imageId, maybeProjection, maybeVersion)
+          } yield MigrateImageMessage(imageId, maybeProjection, maybeVersion, instance)
         ).recover {
-          case error => MigrateImageMessage(imageId, Left(error.toString))
+          case error => MigrateImageMessage(imageId, Left(error.toString), instance)
         }
         migrateImageMessageFuture.map(message => MigrationRecord(
           payload = message,
@@ -128,7 +129,7 @@ object MigrationSourceWithSender extends GridLogging {
 
     MigrationSourceWithSender(
       send = submitIdForMigration,
-      source = projectedImageSource.mapMaterializedValue(_ => Future.successful(Done)),
+      source = projectedImageSource(instance).mapMaterializedValue(_ => Future.successful(Done)),
     )
   }
 }
