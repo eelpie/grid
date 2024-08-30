@@ -6,6 +6,7 @@ import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Permissions.UploadImages
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.config.InstanceForRequest
+import com.gu.mediaservice.model.Instance
 import com.gu.scanamo.error.{ConditionNotMet, DynamoReadError, ScanamoError}
 import lib._
 import model.{StatusType, UploadStatus}
@@ -24,10 +25,11 @@ class UploadStatusController(auth: Authentication,
   extends BaseController with ArgoHelpers with InstanceForRequest {
 
   def getUploadStatus(imageId: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     store.getStatus(imageId)
       .map {
         case Some(Right(record)) => respond(UploadStatus(record.status, record.errorMessage),
-          uri = Some(URI.create(s"${config.apiUri(instanceOf(request))}/images/$imageId")))
+          uri = Some(URI.create(s"${config.apiUri(instance)}/images/$imageId")))
         case Some(Left(error)) => respondError(BadRequest, "cannot-get", s"Cannot get upload status ${error}")
         case None => respondNotFound(s"No upload status found for image id: ${imageId}")
       }
