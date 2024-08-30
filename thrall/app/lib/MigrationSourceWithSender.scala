@@ -63,10 +63,10 @@ object MigrationSourceWithSender extends GridLogging {
           }
 
           _ => {
-            val nextIdsToMigrate = ((es.migrationStatus, maybeScrollId) match {
+            val nextIdsToMigrate = ((es.migrationStatus(instance), maybeScrollId) match {
               case (Paused(_), _) => Future.successful(List.empty)
               case (InProgress(migrationIndexName), None) =>
-                es.startScrollingImageIdsToMigrate(migrationIndexName).map(handleScrollResponse)
+                es.startScrollingImageIdsToMigrate(migrationIndexName, instance).map(handleScrollResponse)
               case (InProgress(_), Some(scrollId)) =>
                 es.continueScrollingImageIdsToMigrate(scrollId).map(handleScrollResponse)
               case _ => Future.successful(List.empty)
@@ -88,7 +88,7 @@ object MigrationSourceWithSender extends GridLogging {
           }
           searchHits.map(hit => MigrationRequest(hit.id, hit.version))
         })
-        .filter(_ => es.migrationIsInProgress)
+        .filter(_ => es.migrationIsInProgress(instance))
 
     // receive MigrationRequests to migrate from a manual source (failures retry page, single image migration form, etc.)
     val manualIdsSourceDeclaration = Source.queue[MigrationRequest](bufferSize = 2000)
@@ -117,9 +117,9 @@ object MigrationSourceWithSender extends GridLogging {
           for {
             maybeProjection <- gridClient.getImageLoaderProjection(mediaId = imageId, innerServiceCall)
             maybeVersion = Some(version)
-          } yield MigrateImageMessage(imageId, maybeProjection, maybeVersion, instance)
+          } yield MigrateImageMessage(imageId, maybeProjection, maybeVersion, instance.id)
         ).recover {
-          case error => MigrateImageMessage(imageId, Left(error.toString), instance)
+          case error => MigrateImageMessage(imageId, Left(error.toString), instance.id)
         }
         migrateImageMessageFuture.map(message => MigrationRecord(
           payload = message,
