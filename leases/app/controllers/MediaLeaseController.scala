@@ -35,7 +35,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   }
 
   private def clearLease(id: String, instance: Instance) = store.get(id).map { lease =>
-    store.delete(id).map { _ => notifications.sendRemoveLease(lease.mediaId, id, instance.id)}
+    store.delete(id).map { _ => notifications.sendRemoveLease(lease.mediaId, id, instance)}
   }
 
   private def clearLeases(id: String, instance: Instance) = Future.sequence(store.getForMedia(id)
