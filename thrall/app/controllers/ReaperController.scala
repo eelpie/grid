@@ -153,9 +153,9 @@ class ReaperController(
 
     (for {
       BatchDeletionIds(esIds, esIdsActuallyDeleted) <- es.hardDeleteNextBatchOfImages(isReapable, count, config.hardReapImagesAge)
-      mainImagesS3Deletions <- store.deleteOriginals(esIdsActuallyDeleted)
-      thumbsS3Deletions <- store.deleteThumbnails(esIdsActuallyDeleted)
-      pngsS3Deletions <- store.deletePNGs(esIdsActuallyDeleted)
+      mainImagesS3Deletions <- store.deleteOriginals(esIdsActuallyDeleted, i)
+      thumbsS3Deletions <- store.deleteThumbnails(esIdsActuallyDeleted, i)
+      pngsS3Deletions <- store.deletePNGs(esIdsActuallyDeleted, i)
       idsNotProcessedInDynamo <- softDeletedMetadataTable.clearStatuses(esIdsActuallyDeleted)
     } yield {
       metrics.hardReaped.increment(n = esIdsActuallyDeleted.size)
