@@ -34,6 +34,7 @@ object BulkIndexRequest {
 object UpdateMessage extends GridLogging {
   implicit val yourJodaDateReads = JodaReads.DefaultJodaDateTimeReads.map(d => d.withZone(DateTimeZone.UTC))
   implicit val yourJodaDateWrites = JodaWrites.JodaDateTimeWrites
+  implicit val instanceFormats = Json.format[Instance]
   implicit val unw = Json.writes[UsageNotice]
   implicit val unr = Json.reads[UsageNotice]
   implicit val writes = Json.writes[UpdateMessage]
@@ -61,7 +62,7 @@ object UpdateMessage extends GridLogging {
         (__ \ "syndicationRights").readNullable[SyndicationRights] ~
         (__ \ "bulkIndexRequest").readNullable[BulkIndexRequest] ~
         (__ \ "usageId").readNullable[String] ~
-        (__ \ "instance").read[String]
+        (__ \ "instance").read[Instance]
     )(UpdateMessage.apply _)
 }
 
@@ -82,7 +83,7 @@ case class UpdateMessage(
   syndicationRights: Option[SyndicationRights] = None,
   bulkIndexRequest: Option[BulkIndexRequest] = None,
   usageId: Option[String] = None,
-  instance: String
+  instance: Instance
 ) extends LogMarker {
   override def markerContents = {
     val message = Json.stringify(Json.toJson(this))
