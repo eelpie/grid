@@ -10,6 +10,7 @@ import play.api.libs.json._
 import scala.concurrent.ExecutionContext
 import com.gu.mediaservice.lib.config.FieldAlias._
 import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
+import com.gu.mediaservice.model.Instance
 import play.api.mvc.Security.AuthenticatedRequest
 import play.twirl.api.Html
 
@@ -27,7 +28,7 @@ class KahunaController(
   override def services: Services = config.services
 
   def index(ignored: String) = withOptionalLoginRedirect { request =>
-    val instance = instanceOf(request)
+    implicit val instance: Instance = instanceOf(request)
 
     val maybeUser: Option[Authentication.Principal] = request match {
       case authedRequest: AuthenticatedRequest[_, _] => authedRequest.user match {

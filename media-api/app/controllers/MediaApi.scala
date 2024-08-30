@@ -388,7 +388,6 @@ class MediaApi(
   }
 
   def downloadOptimisedImage(id: String, width: Integer, height: Integer, quality: Integer) = auth.async { request =>
-    implicit val r: Request[AnyContent] = request
     implicit val instance: Instance = instanceOf(request)
 
     elasticSearch.getImageById(id) flatMap {
@@ -404,7 +403,7 @@ class MediaApi(
           }))
 
         if(config.recordDownloadAsUsage) {
-          postToUsages(config.usageUri + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
+          postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
         }
 
         Future.successful(
@@ -416,11 +415,11 @@ class MediaApi(
   }
 
   def postToUsages(uri: String, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal, mediaId: String, user: String,
-                   partnerName: Option[String] = None, startPending: Option[String] = None)(implicit r: Request[AnyContent]) = {
+                   partnerName: Option[String] = None, startPending: Option[String] = None)(implicit instance: Instance) = {
 
     val baseRequest = ws.url(uri)
       .withHttpHeaders(Authentication.originalServiceHeaderName -> config.appName,
-        HttpHeaders.ORIGIN -> config.rootUri(instanceOf(r)),
+        HttpHeaders.ORIGIN -> config.rootUri(instance),
         HttpHeaders.CONTENT_TYPE -> ContentType.APPLICATION_JSON.getMimeType)
 
     val request = onBehalfOfPrincipal(baseRequest)
@@ -455,15 +454,15 @@ class MediaApi(
 
     val include = getIncludedFromParams(request)
 
-    def hitToImageEntity(elasticId: String, image: SourceWrapper[Image])(implicit request: Request[AnyContent]): EmbeddedEntity[JsValue] = {
+    def hitToImageEntity(elasticId: String, image: SourceWrapper[Image])(implicit instance: Instance): EmbeddedEntity[JsValue] = {
       val writePermission = authorisation.isUploaderOrHasPermission(request.user, image.instance.uploadedBy, EditMetadata)
       val deletePermission = authorisation.isUploaderOrHasPermission(request.user, image.instance.uploadedBy, DeleteImagePermission)
       val deleteCropsOrUsagePermission = canUserDeleteCropsOrUsages(request.user)
 
       val (imageData, imageLinks, imageActions) =
-        imageResponse.create(elasticId, image, writePermission, deletePermission, deleteCropsOrUsagePermission, include, request.user.accessor.tier)(request)
+        imageResponse.create(elasticId, image, writePermission, deletePermission, deleteCropsOrUsagePermission, include, request.user.accessor.tier)
       val id = (imageData \ "id").as[String]
-      val imageUri = URI.create(s"${config.rootUri(instanceOf(request))}/images/$id")
+      val imageUri = URI.create(s"${config.rootUri(instance)}/images/$id")
       EmbeddedEntity(uri = imageUri, data = Some(imageData), imageLinks, imageActions)
     }
 
@@ -488,7 +487,7 @@ class MediaApi(
       // TODO: respondErrorCollection?
       errors => Future.successful(respondError(UnprocessableEntity, InvalidUriParams.errorKey,
         // Annoyingly `NonEmptyList` and `IList` don't have `mkString`
-        errors.map(_.message).list.reduce(_+ ", " +_), List(searchLink()(instanceOf(request))))
+        errors.map(_.message).list.reduce(_+ ", " +_), List(searchLink()(instance)))
       ),
       params => respondSuccess(params)
     )
