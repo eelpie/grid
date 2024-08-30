@@ -116,8 +116,8 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   }
 
   def getLease(id: String) = auth.async { request => Future {
-      implicit val instance: Instance = instanceOf(request)
-      val leases = store.get(id)
+    implicit val instance: Instance = instanceOf(request)
+    val leases = store.get(id)
       leases.foldLeft(notFound)((_, lease) => respond[MediaLease](
           uri = config.leaseUri(id),
           data = lease,
