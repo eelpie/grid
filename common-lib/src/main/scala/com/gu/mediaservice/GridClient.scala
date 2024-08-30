@@ -1,19 +1,19 @@
 package com.gu.mediaservice
 
-import java.net.URL
 import com.gu.mediaservice.GridClient.{Error, Found, NotFound, Response}
 import com.gu.mediaservice.lib.config.Services
-import com.gu.mediaservice.model.{Collection, Crop, Edits, Image, ImageMetadata, ImageStatusRecord, Instance, SourceImage, SyndicationRights}
 import com.gu.mediaservice.model.leases.LeasesByMedia
 import com.gu.mediaservice.model.usage.Usage
+import com.gu.mediaservice.model._
 import com.typesafe.scalalogging.LazyLogging
 import play.api.http.HeaderNames
-import play.api.libs.json.{JsArray, JsObject, JsTrue, JsValue, Json, Reads}
+import play.api.libs.json._
+import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 
+import java.net.URL
 import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 
 object ClientResponse {
   case class Message(errorMessage: String, downstreamErrorMessage: String)
@@ -176,6 +176,21 @@ class GridClient(services: Services, originDomain: Instance => String)(implicit 
       case Found(json, _) => (json \ "data").as[List[Collection]]
       case NotFound(_, _) => Nil
       case e@Error(_, _, _) => e.logErrorAndThrowException()
+    }
+  }
+
+  def createCollection(name: String, authFn: WSRequest => WSRequest)(implicit ec: ExecutionContext, instance: Instance): Future[Option[Collection]] = {
+    val url = new URL(s"${services.collectionsBaseUri(instance)}/collections")
+    val request: WSRequest = wsClient.url(url.toString)
+    // TODO sensible timeout!
+    val authorisedRequest = authFn(request)
+    val data = Json.obj("data" -> JsString(name))
+    authorisedRequest.post(data).map { response =>
+      validateResponse(response, url) match {
+        case Found(json, _) => (json \ "data" \ "data").toOption.map(_.as[Collection])
+        case NotFound(_, _) => None
+        case e@Error(_, _, _) => e.logErrorAndThrowException()
+      }
     }
   }
 
