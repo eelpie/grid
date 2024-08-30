@@ -87,11 +87,11 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
     client.doesObjectExist(imageBucket, fileKeyFromId(id))
 
   private def instanceAwareOriginalImageKey(storableImage: StorableOriginalImage) = {
-    storableImage.instance + "/" + fileKeyFromId(storableImage.id)
+    storableImage.instance.id + "/" + fileKeyFromId(storableImage.id)
   }
 
   private def instanceAwareThumbnailImageKey(storableImage: StorableThumbImage) = {
-    storableImage.instance + "/" + fileKeyFromId(storableImage.id)
+    storableImage.instance.id + "/" + fileKeyFromId(storableImage.id)
   }
 
 }
