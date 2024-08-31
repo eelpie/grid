@@ -132,7 +132,8 @@ object MappingTest {
             x = 100, y = 100, width = 500, height = 300
           ),
           aspectRatio = Some("5:3"),
-          `type` = CropExport
+          `type` = CropExport,
+          rotation = Some(90),
         ),
         master = Some(testAsset),
         assets = List(testAsset)
