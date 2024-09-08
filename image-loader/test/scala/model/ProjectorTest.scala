@@ -23,6 +23,7 @@ import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.libs.json.{JsArray, JsString}
 import software.amazon.awssdk.services.s3vectors.model.PutVectorsResponse
+import play.api.mvc.RequestHeader
 import test.lib.ResourceHelpers
 
 import java.nio.file.Path
