@@ -1,7 +1,6 @@
 package model
 
 import java.io.{File, FileOutputStream}
-import java.util.UUID
 import com.amazonaws.services.s3.AmazonS3
 import com.gu.mediaservice.{GridClient, ImageDataMerger}
 import com.gu.mediaservice.lib.auth.Authentication
@@ -9,7 +8,6 @@ import com.amazonaws.services.s3.model.{GetObjectRequest, ObjectMetadata, S3Obje
 import com.gu.mediaservice.lib.ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
 import com.gu.mediaservice.lib.{ImageIngestOperations, ImageStorageProps, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
 import com.gu.mediaservice.lib.aws.S3Ops
-import com.gu.mediaservice.lib.aws.S3Object
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
@@ -20,7 +18,6 @@ import lib.{DigestedFile, ImageLoaderConfig}
 import model.upload.UploadRequest
 import org.apache.tika.io.IOUtils
 import org.joda.time.{DateTime, DateTimeZone}
-import play.api.Logger
 import play.api.libs.ws.WSRequest
 
 import scala.collection.JavaConverters._
@@ -89,8 +86,8 @@ class Projector(config: ImageUploadOpsCfg,
 
   private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3)
 
-  def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest, instance: Instance)
-                        (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[Image]] = {
+  def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest)
+                        (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Option[Image]] = {
     Future {
       import ImageIngestOperations.fileKeyFromId
       val s3Key = fileKeyFromId(imageId)
@@ -106,7 +103,7 @@ class Projector(config: ImageUploadOpsCfg,
         val digestedFile = getSrcFileDigestForProjection(s3Source, imageId, tempFile)
         val extractedS3Meta = S3FileExtractedMetadata(s3Source.getObjectMetadata)
 
-        val finalImageFuture = projectImage(digestedFile, extractedS3Meta, gridClient, onBehalfOfFn, instance)
+        val finalImageFuture = projectImage(digestedFile, extractedS3Meta, gridClient, onBehalfOfFn)
         val finalImage = Await.result(finalImageFuture, Duration.Inf)
 
         Some(finalImage)
@@ -129,9 +126,8 @@ class Projector(config: ImageUploadOpsCfg,
   def projectImage(srcFileDigest: DigestedFile,
                    extractedS3Meta: S3FileExtractedMetadata,
                    gridClient: GridClient,
-                   onBehalfOfFn: WSRequest => WSRequest,
-                   instance: Instance)
-                  (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
+                   onBehalfOfFn: WSRequest => WSRequest)
+                  (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Image] = {
     val DigestedFile(tempFile_, id_) = srcFileDigest
 
     val identifiers_ = extractedS3Meta.identifiers

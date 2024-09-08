@@ -21,6 +21,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.libs.json.{JsArray, JsString}
+import play.api.mvc.RequestHeader
 import test.lib.ResourceHelpers
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -198,6 +199,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
     implicit val logMarker: LogMarker = MarkerMap()
 
+    implicit val request: RequestHeader = ??? // TODO
     val gridClient = mock[GridClient]
     when(gridClient.getUsages(id, identity)).thenReturn(Future.successful(Nil))
     when(gridClient.getCrops(id, identity)).thenReturn(Future.successful(Nil))

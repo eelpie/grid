@@ -69,6 +69,7 @@ class ThrallController(
   }
 
   def upsertProjectPage(imageId: Option[String]) = withLoginRedirectAsync { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     imageId match {
       case Some(id) if store.doesOriginalExist(id) =>
         gridClient.getProjectionDiff(id, auth.innerServiceCall).map {
@@ -243,6 +244,7 @@ class ThrallController(
   }
 
   def upsertFromProjectionSingleImage: Action[AnyContent] = withLoginRedirectAsync { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     val imageId = migrateSingleImageFormReader.bindFromRequest.get.id
 
     for {

@@ -168,6 +168,7 @@ class MediaApi(
   }
 
   def diffProjection(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     val onBehalfOfFn: OnBehalfOfPrincipal = auth.getOnBehalfOfPrincipal(request.user)
     for {
       maybeEsImage <- getImageResponseFromES(id, request)

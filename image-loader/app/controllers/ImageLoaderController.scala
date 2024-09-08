@@ -324,14 +324,14 @@ class ImageLoaderController(auth: Authentication,
       "requestType" -> "image-projection"
     )
     val tempFile = createTempFile(s"projection-$imageId")(initialContext)
-    auth.async { req =>
-      val instance = instanceOf(req)
+    auth.async { implicit req =>
+      implicit val instance: Instance = instanceOf(req)
 
       implicit val context: LogMarker = initialContext ++ Map(
         "requestId" -> RequestLoggingFilter.getRequestId(req)
       )
       val onBehalfOfFn: OnBehalfOfPrincipal = auth.getOnBehalfOfPrincipal(req.user)
-      val result = projector.projectS3ImageById(imageId, tempFile, gridClient, onBehalfOfFn, instance)
+      val result = projector.projectS3ImageById(imageId, tempFile, gridClient, onBehalfOfFn)
 
       result.onComplete( _ => Try { deleteTempFile(tempFile) } )
 
