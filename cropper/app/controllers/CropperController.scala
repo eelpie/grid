@@ -167,6 +167,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
     exportRequest: ExportRequest, user: Principal, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal,
     request: Authentication.Request[JsValue]
   )(implicit logMarker: LogMarker): Future[(String, Crop)] = {
+    implicit val r: Authentication.Request[JsValue] = request
     implicit val instance: Instance = instanceOf(request)
     for {
       _ <- verify(isMediaApiImageUri(exportRequest.uri, config.apiUri(instanceOf(request))), InvalidSource)
