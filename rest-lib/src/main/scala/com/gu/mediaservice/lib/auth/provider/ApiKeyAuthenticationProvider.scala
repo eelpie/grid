@@ -1,12 +1,13 @@
 package com.gu.mediaservice.lib.auth.provider
 import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, Principal}
+import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider.KindeIdKey
 import com.gu.mediaservice.lib.auth.{ApiAccessor, KeyStore}
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.Instance
 import com.typesafe.scalalogging.StrictLogging
 import play.api.Configuration
-import play.api.libs.typedmap.{TypedKey, TypedMap}
+import play.api.libs.typedmap.{TypedEntry, TypedKey, TypedMap}
 import play.api.libs.ws.WSRequest
 import play.api.mvc.RequestHeader
 
@@ -14,6 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object ApiKeyAuthenticationProvider extends ApiKeyAuthentication {
   val ApiKeyHeader: TypedKey[(String, String)] = TypedKey[(String, String)]("ApiKeyHeader")
+  val KindeIdKey: TypedKey[String] = TypedKey[String]("kinde_id")
 }
 
 class ApiKeyAuthenticationProvider(configuration: Configuration, resources: AuthenticationProviderResources) extends MachineAuthenticationProvider with StrictLogging with GridLogging with InstanceForRequest {
@@ -48,17 +50,19 @@ class ApiKeyAuthenticationProvider(configuration: Configuration, resources: Auth
       case Some(key) =>
         keyStore.lookupIdentity(key) match {
           // api key provided
-          case Some(apiKey) =>
+          case Some(apiAccessor) =>
             // valid api key
-            if (ApiAccessor.hasAccess(apiKey, request, resources.commonConfig.services)) {
+            if (ApiAccessor.hasAccess(apiAccessor, request, resources.commonConfig.services)) {
+              val kindeIdAttribute = TypedEntry[String](KindeIdKey, apiAccessor.identity)
+              val attributes = TypedMap(ApiKeyAuthenticationProvider.ApiKeyHeader -> (ApiKeyAuthenticationProvider.apiKeyHeaderName -> key)).updated(kindeIdAttribute)
               // valid api key which has access
               // store the header that was used in the attributes map of the principal for use in onBehalfOf calls
-              val accessor = MachinePrincipal(apiKey, TypedMap(ApiKeyAuthenticationProvider.ApiKeyHeader -> (ApiKeyAuthenticationProvider.apiKeyHeaderName -> key)))
-              logger.info(apiKeyMarkers(apiKey), s"Using api key with name ${apiKey.identity} and tier ${apiKey.tier}")
+              val accessor = MachinePrincipal(apiAccessor, attributes)
+              logger.info(s"Using api key with name ${apiAccessor.identity} and tier ${apiAccessor.tier}", apiAccessor)
               Authenticated(accessor)
             } else {
               // valid api key which doesn't have access
-              NotAuthorised(s"API key ${apiKey.identity} valid but not authorised for this request")
+              NotAuthorised(s"API key ${apiAccessor.identity} valid but not authorised for this request")
             }
           // provided api key not known
           case None => Invalid("API key not valid")
