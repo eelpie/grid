@@ -40,8 +40,8 @@ object ExportRequest {
 
   def boundsFill(dimensions: Dimensions): Bounds = Bounds(0, 0, dimensions.width, dimensions.height)
 
-  def toCropSpec(cropRequest: ExportRequest, dimensions: Dimensions, orientation: Option[Orientation]): CropSpec = {
-    val maybeRotation = orientation.map(_.orientationCorrection())
+  def toCropSpec(cropRequest: ExportRequest, dimensions: Dimensions, orientationMetadata: Option[OrientationMetadata]): CropSpec = {
+    val maybeRotation = orientationMetadata.map(_.orientationCorrection())
     cropRequest match {
       case FullExportRequest(uri)          =>
         CropSpec(
