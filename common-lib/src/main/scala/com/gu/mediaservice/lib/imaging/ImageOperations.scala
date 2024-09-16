@@ -83,12 +83,12 @@ class ImageOperations(playPath: String) extends GridLogging {
     colourModel: Option[String],
     fileType: MimeType,
     isTransformedFromSource: Boolean,
-    orientation: Option[Orientation]
+    orientationMetadata: Option[OrientationMetadata]
   )(implicit logMarker: LogMarker): Future[File] = {
     for {
       outputFile <- createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir)
       cropSource    = addImage(sourceFile)
-      oriented      = orient(cropSource, orientation)
+      oriented      = orient(cropSource, orientationMetadata)
       qualified     = quality(oriented)(qual)
       corrected     = correctColour(qualified)(iccColourSpace, colourModel, isTransformedFromSource)
       converted     = applyOutputProfile(corrected)
@@ -129,9 +129,9 @@ class ImageOperations(playPath: String) extends GridLogging {
     yield outputFile
   }
 
-  private def orient(op: IMOperation, orientation: Option[Orientation]): IMOperation = {
-    logger.info("Correcting for orientation: " + orientation)
-    orientation.map(_.orientationCorrection()) match {
+  private def orient(op: IMOperation, orientationMetadata: Option[OrientationMetadata]): IMOperation = {
+    logger.info("Correcting for orientation: " + orientationMetadata)
+    orientationMetadata.map(_.orientationCorrection()) match {
       case Some(angle) => rotate(op)(angle)
       case _ => op
     }
@@ -180,12 +180,12 @@ class ImageOperations(playPath: String) extends GridLogging {
                       outputFile: File,
                       iccColourSpace: Option[String],
                       colourModel: Option[String],
-                      orientation: Option[Orientation]
+                      orientationMetadata: Option[OrientationMetadata]
   )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
     val stopwatch = Stopwatch.start
 
     val cropSource     = addImage(browserViewableImage.file)
-    val orientated     = orient(cropSource, orientation)
+    val orientated     = orient(cropSource, orientationMetadata)
     val thumbnailed    = thumbnail(orientated)(width)
     val corrected      = correctColour(thumbnailed)(iccColourSpace, colourModel, browserViewableImage.isTransformedFromSource)
     val converted      = applyOutputProfile(corrected, optimised = true)

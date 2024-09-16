@@ -29,12 +29,12 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   }
 
   def createMasterCrop(
-    apiImage: SourceImage,
-    sourceFile: File,
-    crop: Crop,
-    mediaType: MimeType,
-    colourModel: Option[String],
-    orientation: Option[Orientation],
+                        apiImage: SourceImage,
+                        sourceFile: File,
+                        crop: Crop,
+                        mediaType: MimeType,
+                        colourModel: Option[String],
+                        orientationMetadata: Option[OrientationMetadata],
   )(implicit logMarker: LogMarker): Future[MasterCrop] = {
 
     val source   = crop.specification
@@ -47,7 +47,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       strip <- imageOperations.cropImage(
         sourceFile, apiImage.source.mimeType, source.bounds, masterCropQuality, config.tempDir,
         iccColourSpace, colourModel, mediaType, isTransformedFromSource = false,
-        orientation = orientation
+        orientationMetadata
       )
       file: File <- imageOperations.appendMetadata(strip, metadata)
       dimensions  = Dimensions(source.bounds.width, source.bounds.height)
@@ -104,7 +104,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         colourModel <- ImageOperations.identifyColourModel(sourceFile, mimeType)
-        masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, colourModel, apiImage.source.orientation)
+        masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, colourModel, apiImage.source.orientationMetadata)
 
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
 

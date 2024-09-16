@@ -57,7 +57,7 @@ object MappingTest {
     mimeType = Some(Jpeg),
     dimensions = Some(Dimensions(1000, 2000)),
     secureUrl = Some(new URL("http://host/filename.jpg")),
-    orientation = Some(Orientation(exifOrientation = Some(6))),
+    orientationMetadata = Some(OrientationMetadata(exifOrientation = Some(6))),
     orientedDimensions = Some(Dimensions(2000, 1000)),
   )
 
@@ -80,7 +80,7 @@ object MappingTest {
       mimeType = Some(Jpeg),
       dimensions = Some(Dimensions(500, 1000)),
       secureUrl = Some(new URL("http://host/thumb.jpg")),
-      orientation = Some(Orientation(exifOrientation = Some(6))),
+      orientationMetadata = Some(OrientationMetadata(exifOrientation = Some(6))),
       orientedDimensions = Some(Dimensions(2000, 1000))
     )),
     optimisedPng = Some(Asset(
@@ -89,7 +89,7 @@ object MappingTest {
       mimeType = Some(Png),
       dimensions = Some(Dimensions(1000, 2000)),
       secureUrl = Some(new URL("http://host/filename.jpg")),
-      orientation = Some(Orientation(exifOrientation = Some(6))),
+      orientationMetadata = Some(OrientationMetadata(exifOrientation = Some(6))),
       orientedDimensions = Some(Dimensions(2000, 1000))
     )),
     fileMetadata = FileMetadata(
