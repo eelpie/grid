@@ -8,22 +8,22 @@ import com.gu.mediaservice.lib.aws.S3Object
 
 // FIXME: size, mimeType and dimensions not optional (must backfill first)
 case class Asset(file: URI, size: Option[Long], mimeType: Option[MimeType], dimensions: Option[Dimensions], secureUrl: Option[URL] = None,
-                 orientation: Option[Orientation] = None,
+                 orientationMetadata: Option[OrientationMetadata] = None,
                  orientedDimensions: Option[Dimensions] = None,
                 )
 
 object Asset {
 
   def fromS3Object(s3Object: S3Object, dims: Option[Dimensions],
-                   orientation: Option[Orientation] = None): Asset = {
+                   orientationMetadata: Option[OrientationMetadata] = None): Asset = {
     val userMetadata   = s3Object.metadata.userMetadata
     val objectMetadata = s3Object.metadata.objectMetadata
 
     val orientedDimensions = for {
       dimensions <- dims
-      orientation <- orientation
+      orientationMetadata <- orientationMetadata
     } yield {
-      orientation.correctedDimensions(dimensions)
+      orientationMetadata.correctedDimensions(dimensions)
     }
 
     Asset(
@@ -32,7 +32,7 @@ object Asset {
       mimeType   = objectMetadata.contentType,
       dimensions = dims,
       secureUrl  = None,
-      orientation = orientation,
+      orientationMetadata = orientationMetadata,
       orientedDimensions = orientedDimensions,
     )
   }
@@ -43,7 +43,7 @@ object Asset {
       (__ \ "mimeType").readNullable[MimeType] ~
       (__ \ "dimensions").readNullable[Dimensions] ~
       (__ \ "secureUrl").readNullable[String].map(_.map(new URL(_)))  ~
-      (__ \ "orientation").readNullable[Orientation] ~
+      (__ \ "orientationMetadata").readNullable[OrientationMetadata] ~
       (__ \ "orientedDimensions").readNullable[Dimensions]
       )(Asset.apply _)
 
@@ -53,7 +53,7 @@ object Asset {
       (__ \ "mimeType").writeNullable[MimeType] ~
       (__ \ "dimensions").writeNullable[Dimensions] ~
       (__ \ "secureUrl").writeNullable[String].contramap((_: Option[URL]).map(_.toString)) ~
-      (__ \ "orientation").writeNullable[Orientation] ~
+      (__ \ "orientationMetadata").writeNullable[OrientationMetadata] ~
       (__ \ "orientedDimensions").writeNullable[Dimensions]
       )(unlift(Asset.unapply))
 }
@@ -64,9 +64,9 @@ object Dimensions {
   implicit val dimensionsWrites: Writes[Dimensions] = Json.writes[Dimensions]
 }
 
-case class Orientation(exifOrientation: Option[Int]) {
+case class OrientationMetadata(exifOrientation: Option[Int]) {
 
-  def transformsImage(): Boolean = !exifOrientation.exists(Orientation.exifOrientationsWhichDoNotTransformTheImage.contains)
+  def transformsImage(): Boolean = !exifOrientation.exists(OrientationMetadata.exifOrientationsWhichDoNotTransformTheImage.contains)
 
   def orientationCorrection(): Int = {
     exifOrientation match {
@@ -85,12 +85,12 @@ case class Orientation(exifOrientation: Option[Int]) {
     }
   }
 
-  private def flipsDimensions(): Boolean = exifOrientation.exists(Orientation.exifOrientationsWhichFlipWidthAndHeight.contains)
+  private def flipsDimensions(): Boolean = exifOrientation.exists(OrientationMetadata.exifOrientationsWhichFlipWidthAndHeight.contains)
 
 }
 
-object Orientation {
+object OrientationMetadata {
   private val exifOrientationsWhichDoNotTransformTheImage = Set(1)
   private val exifOrientationsWhichFlipWidthAndHeight = Set(6, 8)
-  implicit val orientationFormat: OFormat[Orientation] = Json.format[Orientation]
+  implicit val orientationFormat: OFormat[OrientationMetadata] = Json.format[OrientationMetadata]
 }
