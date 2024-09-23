@@ -17,6 +17,8 @@ POST    /upsertProject                                controllers.ThrallControll
 POST    /completeMigration                            controllers.ThrallController.completeMigration()
 POST    /previewMigrationCompletion                   controllers.ThrallController.previewMigrationCompletion
 POST    /unPreviewMigrationCompletion                 controllers.ThrallController.unPreviewMigrationCompletion
++nocsrf
+GET     /reindex                                      controllers.ThrallController.reindex()
 
 # Config
 GET    /config                                        controllers.ReaperController.conf()
