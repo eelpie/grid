@@ -206,27 +206,6 @@ class ImageOperations(playPath: String) extends GridLogging {
     }
   }
 
-  def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = mediaType match {
-    case Png =>
-      val fileName: String = resizedFile.getAbsolutePath
-
-      val optimisedImageName: String = fileName.split('.')(0) + "optimised.png"
-      Stopwatch("pngquant") {
-        Seq("pngquant", "-s10", "--quality", "1-85", fileName, "--output", optimisedImageName).!
-      }
-
-      new File(optimisedImageName)
-    case Jpeg => resizedFile
-
-    // This should never happen as we only ever crop as PNG or JPEG. See `Crops.cropType` and `CropsTest`
-    // TODO We should create a `CroppingMimeType` to enforce this at the type level.
-    //  However we'd need to change the `Asset` model as source image and crop use this model
-    //  and a source can legally be a `Tiff`. It's not a small change...
-    case Tiff =>
-      logger.error("Attempting to optimize a Tiff crop. Cropping as Tiff is not supported.")
-      throw new UnsupportedCropOutputTypeException
-  }
-
   val interlacedHow = "Line"
   val backgroundColour = "#333333"
 
