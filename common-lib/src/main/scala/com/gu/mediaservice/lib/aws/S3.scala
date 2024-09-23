@@ -18,6 +18,7 @@ import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets
 import java.time.{Duration => JavaDuration}
 import java.util
+import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
@@ -172,6 +173,24 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
       s3Objects.map(s3Object => {
         S3Object(bucket, s3Object.key(), size = s3Object.size(), metadata = getMetadataV2(bucket, s3Object.key()))
       })
+    }
+
+  def listV2Paginating(bucket: S3Bucket, prefixDir: String)
+            (implicit ex: ExecutionContext): Future[List[S3Object]] =
+    Future {
+      @tailrec
+      def pageThrough(continuationToken: Option[String], accumulated: List[S3Object]): List[S3Object] = {
+        val reqBuilder = ListObjectsV2Request.builder().bucket(bucket.bucket).prefix(s"$prefixDir/")
+        continuationToken.foreach(reqBuilder.continuationToken)
+        val listing = clientFor(bucket).listObjectsV2(reqBuilder.build())
+        val s3Objects = listing.contents().asScala.toList.map(s3Object =>
+          S3Object(bucket, s3Object.key(), size = s3Object.size(), metadata = getMetadataV2(bucket, s3Object.key()))
+        )
+        val all = accumulated ++ s3Objects
+        if (listing.isTruncated) pageThrough(Some(listing.nextContinuationToken()), all) else all
+      }
+
+      pageThrough(None, Nil)
     }
 
   def getMetadataV2(bucket: S3Bucket, key: Key): S3Metadata = {
