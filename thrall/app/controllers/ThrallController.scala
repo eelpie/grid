@@ -1,24 +1,26 @@
 package controllers
 
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.Materializer
-import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.{Authentication, BaseControllerWithLoginRedirects}
-import com.gu.mediaservice.lib.aws.ThrallMessageSender
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket, ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
 import com.gu.mediaservice.lib.elasticsearch.{NotRunning, Running}
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.{CompleteMigrationMessage, CreateMigrationIndexMessage, Instance, UpsertFromProjectionMessage}
+import com.gu.mediaservice.syntax.MessageSubjects.Image
 import lib.elasticsearch.ElasticSearch
 import lib.{MigrationRequest, OptionalFutureRunner, Paging, ThrallStore}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 
-import scala.concurrent.duration.DurationInt
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.language.postfixOps
 
@@ -33,7 +35,9 @@ class ThrallController(
   override val auth: Authentication,
   override val services: Services,
   override val controllerComponents: ControllerComponents,
-  gridClient: GridClient
+  gridClient: GridClient,
+  s3: S3,
+  imageBucket: S3Bucket,
 )(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging with InstanceForRequest {
 
   private val numberFormatter: Long => String = java.text.NumberFormat.getIntegerInstance().format
@@ -142,7 +146,7 @@ class ThrallController(
   def startMigration = withLoginRedirectAsync { implicit request =>
     val instance = instanceOf(request)
 
-    if(Form(single("start-confirmation" -> text)).bindFromRequest().get != "start"){
+    if (Form(single("start-confirmation" -> text)).bindFromRequest().get != "start") {
       Future.successful(BadRequest("you did not enter 'start' in the text box"))
     } else {
       val msgFailedToFetchIndex = s"Could not fetch ES index details for alias '${es.imagesMigrationAlias(instance)}'"
@@ -184,7 +188,7 @@ class ThrallController(
 
   def completeMigration(): Action[AnyContent] = withLoginRedirectAsync { implicit request =>
     val instance = instanceOf(request)
-    if(Form(single("complete-confirmation" -> text)).bindFromRequest().get != "complete"){
+    if (Form(single("complete-confirmation" -> text)).bindFromRequest().get != "complete") {
       Future.successful(BadRequest("you did not enter 'complete' in the text box"))
     } else {
       es.refreshAndRetrieveMigrationStatus(instance) match {
@@ -291,4 +295,41 @@ class ThrallController(
       "id" -> text
     )(MigrateSingleImageForm.apply)(MigrateSingleImageForm.unapply)
   )
+
+  def reindex(): Action[AnyContent] = withLoginRedirect { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
+
+    logger.info(s"Reindex requested for instance ${instance.id}")
+    val s3Objects = Await.result(s3.listPaginating(imageBucket, Some(instance.id)), Duration(5, TimeUnit.MINUTES))
+    val mediaIds = s3Objects.flatMap { s3Object =>
+      val key = imageBucket.keyFromURL(s3Object.uri)
+      logger.info("Reindexing s3 key: " + key)
+      key.split("/").lastOption
+    }
+
+    logger.info(s"Reindexing ${mediaIds.size} images for instance ${instance.id}")
+    mediaIds.foreach { mediaId =>
+      Await.result(reindexImage(mediaId), Duration(10, TimeUnit.SECONDS))
+    }
+    Ok("ok")
+  }
+
+  private def reindexImage(mediaId: String)(implicit instance: Instance) = {
+    logger.info(s"Reindexing from s3 ${instance.id} / $mediaId")
+
+    gridClient.getImageLoaderProjection(mediaId, auth.innerServiceCall).map { maybeImage =>
+      logger.info(s"Projected ${instance.id} / $mediaId to $maybeImage}")
+      maybeImage.exists { image =>
+        val updateMessage = UpdateMessage(subject = Image, image = Some(image), instance = instance)
+        logger.info(s"Publishing projected image as a thrall image message: ${updateMessage.id}")
+        messageSender.publish(updateMessage)
+        true
+      }
+    }.recover {
+      case _: Throwable =>
+        logger.warn(s"Error while reindexing ${instance.id} / $mediaId - Image has not been reindexed!")
+        false
+    }
+  }
+
 }
