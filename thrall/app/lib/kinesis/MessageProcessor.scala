@@ -258,8 +258,8 @@ class MessageProcessor(
       gridClient.createCollection("Home", auth.innerServiceCall).map { maybeCreated: Option[Collection] =>
         logger.info(s"Created collection for new instance ${instance.id}: $maybeCreated")
         // Notify instances service that this instance can be marked as ready to use
-        val instanceReadyMessage = InstanceStatusMessage(instance = instance.id, status = "ready")
-        instanceMessageSender.send(Json.toJson(instanceReadyMessage).toString())
+        logger.info(s"Sending instance ready message for ${instance.id}")
+        instanceMessageSender.send(InstanceStatusMessage(instance = instance.id, status = "ready"))
       }
     }
   }
