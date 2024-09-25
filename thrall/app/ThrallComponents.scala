@@ -14,7 +14,7 @@ import lib.kinesis.{KinesisConfig, ThrallEventConsumer}
 import org.apache.pekko.Done
 import org.apache.pekko.stream.scaladsl.Source
 import play.api.ApplicationLoader.Context
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, OWrites}
 import router.Routes
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
@@ -43,7 +43,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
    val instanceUsageQueueUrl: String = {
     val getQueueRequest = GetQueueUrlRequest.builder()
       .queueName(config.instanceUsageQueueName)
-      .build();
+      .build()
     sqsClient.getQueueUrl(getQueueRequest).queueUrl
   }
 
@@ -110,7 +110,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
         } yield {
           logger.info(s"Instance ${instance.id} has $imageCount/$softDeletedCount images with total size: " + totalImageSize)
           val message = InstanceUsageMessage(instance = instance.id, imageCount = imageCount, softDeletedCount = softDeletedCount, totalImageSize = totalImageSize)
-          implicit val iumw = Json.writes[InstanceUsageMessage]
           instanceMessageSender.send(Json.toJson(message).toString())
         }
       }
@@ -131,3 +130,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 }
 
 case class InstanceUsageMessage(instance: String, imageCount: Long, totalImageSize: Long, softDeletedCount: Long)
+object InstanceUsageMessage {
+  implicit val iumw: OWrites[InstanceUsageMessage] = Json.writes[InstanceUsageMessage]
+}
