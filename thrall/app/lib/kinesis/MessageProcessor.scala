@@ -255,6 +255,7 @@ class MessageProcessor(
       implicit val i: Instance = instance
       gridClient.createCollection("Home", auth.innerServiceCall).map { maybeCreated: Option[Collection] =>
         logger.info(s"Created collection for new instance ${instance.id}: $maybeCreated")
+        // TODO Notify instances service that this instance can be marked as ready to use
       }
     }
   }
