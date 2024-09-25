@@ -188,7 +188,9 @@ class GridClient(services: Services)(implicit wsClient: WSClient) extends LazyLo
     authorisedRequest.post(data).map { response =>
       logger.info("Got new collection response: " + response.body)
       validateResponse(response, url) match {
-        case Found(json, _) => Some((json \ "data").as[Collection])
+        case Found(json, _) => {
+          (json \ "data").toOption.map(_.as[Collection])
+        }
         case NotFound(_, _) => None
         case e@Error(_, _, _) => e.logErrorAndThrowException()
       }
