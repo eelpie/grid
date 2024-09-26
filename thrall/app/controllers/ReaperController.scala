@@ -162,7 +162,7 @@ class ReaperController(
     implicit val i: Instance = instance
     es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.increment(Nil, _))
 
-    logger.info(s"Hard deleting next $count images...")
+    logger.info(s"Hard deleting next $count images for instance ${instance.id}...")
 
     (for {
       BatchDeletionIds(esIds, esIdsActuallyDeleted) <- es.hardDeleteNextBatchOfImages(isReapable, count, config.hardReapImagesAge)
