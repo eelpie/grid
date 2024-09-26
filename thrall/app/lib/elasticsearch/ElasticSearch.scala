@@ -304,7 +304,11 @@ class ElasticSearch(
                                 (implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Long] = executeAndLog(
     ElasticDsl.count(imagesCurrentAlias(instance)).query(query),
     s"counting '$deletionType' reapable images"
-  ).map(_.result.count)
+  ).map { r =>
+    val count = r.result.count
+    logger.info(s"Got $deletionType reapable count from query $query: $count")
+    count
+  }
 
   def countTotal(isSoftedDeleted: Boolean)(implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Long] = {
     executeAndLog(
