@@ -1,10 +1,11 @@
 package controllers
 
 import java.util.UUID
-
 import com.gu.mediaservice.lib.argo._
 import com.gu.mediaservice.lib.argo.model._
 import com.gu.mediaservice.lib.auth._
+import com.gu.mediaservice.lib.config.InstanceForRequest
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.leases.{LeasesByMedia, MediaLease}
 import lib.{LeaseNotifier, LeaseStore, LeasesConfig}
 import play.api.libs.json._
@@ -21,25 +22,25 @@ object AppIndex {
 
 class MediaLeaseController(auth: Authentication, store: LeaseStore, config: LeasesConfig, notifications: LeaseNotifier,
                           override val controllerComponents: ControllerComponents)(implicit val ec: ExecutionContext)
-  extends BaseController with ArgoHelpers {
+  extends BaseController with ArgoHelpers with InstanceForRequest {
 
   private val notFound = respondNotFound("MediaLease not found")
 
-  private val indexResponse = {
+  private def indexResponse()(instance: Instance) = {
     val appIndex = AppIndex("media-leases", "Media leases service", Map())
     val indexLinks =  List(
-      Link("leases", s"${config.rootUri}/leases/{id}"),
-      Link("by-media-id", s"${config.rootUri}/leases/media/{id}"))
+      Link("leases", s"${config.rootUri(instance)}/leases/{id}"),
+      Link("by-media-id", s"${config.rootUri(instance)}/leases/media/{id}"))
     respond(appIndex, indexLinks)
   }
 
-  private def clearLease(id: String) = store.get(id).map { lease =>
-    store.delete(id).map { _ => notifications.sendRemoveLease(lease.mediaId, id)}
+  private def clearLease(id: String)(implicit instance: Instance) = store.get(id).map { lease =>
+    store.delete(id).map { _ => notifications.sendRemoveLease(lease.mediaId, id, instance)}
   }
 
-  private def clearLeases(id: String) = Future.sequence(store.getForMedia(id)
+  private def clearLeases(id: String)(implicit instance: Instance) = Future.sequence(store.getForMedia(id)
     .flatMap(_.id)
-    .flatten(clearLease))
+    .flatten(id => clearLease(id)))
 
   private def badRequest(e:  Seq[(JsPath, Seq[JsonValidationError])]) =
     respondError(BadRequest, "media-leases-parse-failed", JsError.toJson(e).toString)
@@ -47,7 +48,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   private def prepareLeaseForSave(mediaLease: MediaLease, userId: Option[String]): MediaLease =
     mediaLease.prepareForSave.copy(id = Some(UUID.randomUUID().toString), leasedBy = userId)
 
-  private def addLease(mediaLease: MediaLease, userId: Option[String]) = {
+  private def addLease(mediaLease: MediaLease, userId: Option[String])(implicit instance: Instance) = {
     val lease = prepareLeaseForSave(mediaLease, userId)
     if (lease.isSyndication) {
       val leasesForMedia = store.getForMedia(mediaLease.mediaId)
@@ -55,40 +56,42 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
       replaceLeases(leasesWithoutSyndication :+ lease, mediaLease.mediaId, userId)
     } else {
       store.put(lease).map { _ =>
-        notifications.sendAddLease(lease)
+        notifications.sendAddLease(lease, instance)
       }
     }
   }
 
-  private def addLeases(mediaLeases: List[MediaLease], userId: Option[String]) = {
+  private def addLeases(mediaLeases: List[MediaLease], userId: Option[String])(implicit instance: Instance) = {
     val preparedMediaLeases = mediaLeases.map(prepareLeaseForSave(_, userId))
     store.putAll(preparedMediaLeases).map { _ =>
-      preparedMediaLeases.map(notifications.sendAddLease)
+      preparedMediaLeases.map(lease => notifications.sendAddLease(lease, instance))
     }
   }
 
-  private def replaceLeases(mediaLeases: List[MediaLease], imageId: String, userId: Option[String]) = {
+  private def replaceLeases(mediaLeases: List[MediaLease], imageId: String, userId: Option[String])(implicit instance: Instance) = {
     val preparedMediaLeases = mediaLeases.map(prepareLeaseForSave(_, userId))
     for {
       _ <- clearLeases(imageId)
       _ <- store.putAll(preparedMediaLeases)
     } yield {
-      notifications.sendAddLeases(preparedMediaLeases, imageId)
+      notifications.sendAddLeases(preparedMediaLeases, imageId, instance)
     }
   }
 
-  def index = auth { _ => indexResponse }
+  def index = auth { request => indexResponse()(instanceOf(request)) }
 
-  def reindex = auth.async { _ => Future {
+  def reindex = auth.async { request => Future {
+    implicit val instance: Instance = instanceOf(request)
     store.forEach { leases =>
       leases
         .foldLeft(Set[String]())((ids, lease) =>  ids + lease.mediaId)
-        .foreach(notifications.sendReindexLeases)
+        .foreach(mediaId => notifications.sendReindexLeases(mediaId))
     }
     Accepted
   }}
 
   def postLease = auth.async(parse.json) { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     request.body.validate[MediaLease] match {
       case JsSuccess(mediaLease, _) =>
         addLease(mediaLease, Some(Authentication.getIdentity(request.user))).map(_ => Accepted)
@@ -99,6 +102,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   }
 
   def addLeasesForMedia(id: String) = auth.async(parse.json) { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     request.body.validate[List[MediaLease]] match {
       case JsSuccess(mediaLeases, _) =>
         addLeases(mediaLeases, Some(Authentication.getIdentity(request.user))).map(_ => Accepted)
@@ -107,27 +111,30 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     }
   }
 
-  def deleteLease(id: String) = auth.async { implicit request => Future {
-      clearLease(id)
+  def deleteLease(id: String) = auth.async { request => Future {
+    implicit val instance: Instance = instanceOf(request)
+    clearLease(id)
       Accepted
     }
   }
 
-  def getLease(id: String) = auth.async { _ => Future {
-      val leases = store.get(id)
-
+  def getLease(id: String) = auth.async { request => Future {
+    implicit val instance: Instance = instanceOf(request)
+    val leases = store.get(id)
       leases.foldLeft(notFound)((_, lease) => respond[MediaLease](
           uri = config.leaseUri(id),
           data = lease,
           links = lease.id
-            .map(config.mediaApiLink)
+            .map(id => config.mediaApiLink(id))
             .toList
         ))
     }
   }
 
 
-  def deleteLeasesForMedia(id: String) = auth.async { _ => Future {
+  def deleteLeasesForMedia(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
+    Future {
       clearLeases(id)
       Accepted
     }
@@ -136,6 +143,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   def validateLeases(leases: List[MediaLease]) = leases.count { _.isSyndication } <= 1
 
   def replaceLeasesForMedia(id: String) = auth.async(parse.json) { implicit request => Future {
+    implicit val instance: Instance = instanceOf(request)
     request.body.validate[List[MediaLease]].fold(
       badRequest,
       mediaLeases => {
@@ -149,7 +157,8 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     )
   }}
 
-  def getLeasesForMedia(id: String) = auth.async { _ => Future {
+  def getLeasesForMedia(id: String) = auth.async { request => Future {
+      implicit val instance: Instance = instanceOf(request)
       val leases = store.getForMedia(id)
 
       respond[LeasesByMedia](
@@ -159,4 +168,5 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
       )
     }
   }
+
 }

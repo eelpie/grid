@@ -55,6 +55,7 @@ Global / concurrentRestrictions := Seq(
 )
 
 val awsSdkVersion = "1.12.470"
+val awsSdkVersionV2 = "2.25.55"
 val elastic4sVersion = "8.3.0"
 val okHttpVersion = "3.12.1"
 
@@ -79,6 +80,7 @@ lazy val commonLib = project("common-lib").settings(
     "com.amazonaws" % "aws-java-sdk-sts" % awsSdkVersion,
     "com.amazonaws" % "aws-java-sdk-dynamodb" % awsSdkVersion,
     "com.amazonaws" % "aws-java-sdk-kinesis" % awsSdkVersion,
+    "software.amazon.awssdk" % "dynamodb" % awsSdkVersionV2,
     "org.elasticsearch" % "elasticsearch" % "1.7.6",
     "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,
     "com.sksamuel.elastic4s" %% "elastic4s-client-esjava" % elastic4sVersion,
@@ -97,7 +99,7 @@ lazy val commonLib = project("common-lib").settings(
     // see: https://logback.qos.ch/setup.html#janino
     "org.codehaus.janino" % "janino" % "3.0.6",
     "com.typesafe.play" %% "play-json-joda" % "2.9.2",
-    "com.gu" %% "scanamo" % "1.0.0-M8",
+    "org.scanamo" %% "scanamo" % "1.1.1",
     // Necessary to have a mix of play library versions due to scala-java8-compat incompatibility
     "com.typesafe.play" %% "play-ahc-ws" % "2.8.9",
     "org.yaml" % "snakeyaml" % "1.31",
@@ -156,6 +158,7 @@ lazy val thrall = playProject("thrall", 9002)
       "org.codehaus.groovy" % "groovy-json" % "3.0.7",
       "com.yakaz.elasticsearch.plugins" % "elasticsearch-action-updatebyquery" % "2.2.0",
       "com.amazonaws" % "amazon-kinesis-client" % "1.8.10",
+      "software.amazon.awssdk" % "sqs" % awsSdkVersionV2,
       "org.testcontainers" % "elasticsearch" % "1.19.2" % Test,
       "com.google.protobuf" % "protobuf-java" % "3.19.6"
     )
@@ -242,8 +245,10 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
       Universal / javaOptions ++= Seq(
         "-Dpidfile.path=/dev/null",
         s"-Dconfig.file=/opt/docker/conf/application.conf",
-        s"-Dlogger.file=/opt/docker/conf/logback.xml"
-      )))
+        s"-Dlogger.file=/opt/docker/conf/logback.xml",
+        "-XX:+PrintCommandLineFlags", "-XX:MaxRAMPercentage=60"
+      ))
+    )
 }
 
 def playImageLoaderProject(projectName: String, port: Int, path: Option[String] = None): Project = {

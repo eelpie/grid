@@ -2,11 +2,12 @@ package controllers
 
 
 import java.net.URI
-
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Permissions.UploadImages
 import com.gu.mediaservice.lib.auth._
-import com.gu.scanamo.error.{ConditionNotMet, DynamoReadError, ScanamoError}
+import com.gu.mediaservice.lib.config.InstanceForRequest
+import com.gu.mediaservice.model.Instance
+import org.scanamo.{ConditionNotMet, ScanamoError}
 import lib._
 import model.{StatusType, UploadStatus}
 import play.api.libs.json.Json
@@ -21,13 +22,14 @@ class UploadStatusController(auth: Authentication,
                              authorisation: Authorisation
                             )
                             (implicit val ec: ExecutionContext)
-  extends BaseController with ArgoHelpers {
+  extends BaseController with ArgoHelpers with InstanceForRequest {
 
-  def getUploadStatus(imageId: String) = auth.async {
+  def getUploadStatus(imageId: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     store.getStatus(imageId)
       .map {
         case Some(Right(record)) => respond(UploadStatus(record.status, record.errorMessage),
-          uri = Some(URI.create(s"${config.apiUri}/images/${imageId}")))
+          uri = Some(URI.create(s"${config.apiUri(instance)}/images/$imageId")))
         case Some(Left(error)) => respondError(BadRequest, "cannot-get", s"Cannot get upload status ${error}")
         case None => respondNotFound(s"No upload status found for image id: ${imageId}")
       }
@@ -35,6 +37,7 @@ class UploadStatusController(auth: Authentication,
   }
 
   def updateUploadStatus(imageId: String) = (auth andThen authorisation.CommonActionFilters.authorisedForUpload).async(parse.json[UploadStatus]) { request =>
+    implicit val instance: Instance = instanceOf(request)
     request.body match {
       case UploadStatus(StatusType.Failed, None) =>
         Future.successful(respondError(
@@ -58,6 +61,7 @@ class UploadStatusController(auth: Authentication,
   def getUploadsBy(user:String): Action[AnyContent] = getUploads(Some(user))
 
   private def getUploads(maybeUser: Option[String]): Action[AnyContent] = auth.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     store.queryByUser(maybeUser.getOrElse(req.user.accessor.identity))
       .map(list => respond(list))
   }
