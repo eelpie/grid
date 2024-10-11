@@ -144,7 +144,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     import BoolImplicitMagic.BoolToOption
     val cropLinkMaybe = valid.toOption(Link("crops", s"${config.cropperUri(instance)}/crops/$id"))
     val editLinkMaybe = withWritePermission.toOption(Link("edits", s"${config.metadataUri(instance)}/metadata/$id"))
-    val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgopsUri(new URI(secureUrl), orientationMetadata)) }
+    val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgProxyUri(new URI(secureUrl), orientationMetadata)) }
 
     val optimisedLink = Link("optimised", makeImgProxyUri(new URI(secureUrl), orientationMetadata))
     val imageLink = Link("ui:image", s"${config.kahunaUri(instance)}/images/$id")
@@ -256,7 +256,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
   def makeImgopsUri(uri: URI): String =
     config.imgopsUri + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
 
-  def makeImgopsUri(uri: URI, orientationMetadata: Option[OrientationMetadata])(implicit instance: Instance): String = {
+  def makeImgProxyUri(uri: URI, orientationMetadata: Option[OrientationMetadata])(implicit instance: Instance): String = {
     val source = uri.toURL.toExternalForm
     val signed = new String(Base64.encodeBase64URLSafe(source.getBytes), "UTF-8")
     val resizingComponents = Seq(config.imgopsUri(instance), "no-signature",
