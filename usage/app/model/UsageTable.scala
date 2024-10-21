@@ -154,11 +154,11 @@ class UsageTable(config: UsageConfig) extends DynamoDB(config, config.usageRecor
     mediaUsage.copy(grouping = mediaUsage.grouping.drop(instance.id.length + 1))
   }
   private def instanceAwareHashKey(record: UsageRecord)(implicit instance: Instance) = {
-    instance + "/" + record.hashKey
+    instance.id + "/" + record.hashKey
   }
 
   private def instanceAwareHashKey(hashKey: String)(implicit instance: Instance) = {
-    instance + "/" + hashKey
+    instance.id+ "/" + hashKey
   }
 
 }
