@@ -54,7 +54,7 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
     sentryInitialised
     Seq(
       instanceSpecificCorsFilter,
-      csrfFilter,
+      // csrfFilter,  TODO Ineffective as gateway is not setting correct hostname headers!
       securityHeadersFilter,
       gzipFilter,
       new RequestLoggingFilter(materializer),
