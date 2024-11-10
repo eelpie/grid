@@ -356,7 +356,7 @@ class ImageLoaderController(auth: Authentication,
         )
         _ <- uploadStatusTable.setStatus(record)
 
-        result <- quarantineOrStoreImage(uploadRequest)(context, instanceOf(req))
+        result <- quarantineOrStoreImage(uploadRequest)(context, instance)
 
       } yield result
       cleanupTempFile(req.body.file, context)(result).map { r =>
@@ -418,6 +418,7 @@ class ImageLoaderController(auth: Authentication,
 
   // Fetch
   def projectImageBy(imageId: String): Action[AnyContent] = {
+
     val initialContext = MarkerMap(
       "imageId" -> imageId,
       "requestType" -> "image-projection"
