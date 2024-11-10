@@ -131,7 +131,8 @@ class ReaperController(
           _,
           deletedBy,
           deleteTime = deleteTime.toString,
-          isDeleted = true
+          isDeleted = true,
+          instance = i.id
         )
       ))
       s3VectorsDeletions <- s3Vectors.deleteEmbeddings(esIdsActuallySoftDeleted)
