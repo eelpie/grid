@@ -46,7 +46,7 @@ class EditsApi(auth: Authentication,
     val usageRights = config.applicableUsageRights.toList
 
     val usageRightsData = usageRights
-      .map(u => CategoryResponse.fromUsageRights(u, config))
+          .map(u => CategoryResponse.fromUsageRights(u, config))
 
     respond(usageRightsData)
   }
