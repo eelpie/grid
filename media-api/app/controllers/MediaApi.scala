@@ -517,11 +517,11 @@ class MediaApi(
     user: String,
     partnerName: Option[String] = None,
     startPending: Option[String] = None,
-  )(implicit logMarker: LogMarker, r: Request[AnyContent]) = {
+  )(implicit logMarker: LogMarker, instance: Instance) = {
 
     val baseRequest = ws.url(uri)
       .withHttpHeaders(Authentication.originalServiceHeaderName -> config.appName,
-        HttpHeaders.ORIGIN -> config.rootUri(instanceOf(r)),
+        HttpHeaders.ORIGIN -> config.rootUri(instance),
         HttpHeaders.CONTENT_TYPE -> ContentType.APPLICATION_JSON.getMimeType)
 
     val request = onBehalfOfPrincipal(baseRequest)
