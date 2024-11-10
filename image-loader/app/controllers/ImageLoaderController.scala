@@ -20,12 +20,11 @@ import com.gu.mediaservice.model.{Instance, UnsupportedMimeTypeException, Upload
 import lib.FailureResponse.Response
 import lib._
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3, UserImageLoaderException}
-import lib.storage.{ImageLoaderStore, S3FileDoesNotExistException}
+import lib.storage.ImageLoaderStore
 import model.upload.UploadRequest
 import model.{Projector, QuarantineUploader, S3FileExtractedMetadata, S3IngestObject, StatusType, UploadStatus, UploadStatusRecord, UploadStatusUri, Uploader}
 import org.apache.pekko.Done
 import org.apache.pekko.stream.Materializer
-import org.apache.pekko.stream.scaladsl.Source
 import org.scanamo.{ConditionNotMet, ScanamoError}
 import play.api.data.Form
 import play.api.data.Forms._
@@ -324,7 +323,7 @@ class ImageLoaderController(auth: Authentication,
         )
         _ <- uploadStatusTable.setStatus(record)
 
-        result <- quarantineOrStoreImage(uploadRequest)(context, instanceOf(req))
+        result <- quarantineOrStoreImage(uploadRequest)(context, instance)
 
       } yield result
       result.onComplete( _ => Try { deleteTempFile(tempFile) } )
@@ -388,6 +387,7 @@ class ImageLoaderController(auth: Authentication,
 
   // Fetch
   def projectImageBy(imageId: String): Action[AnyContent] = {
+
     val initialContext = MarkerMap(
       "imageId" -> imageId,
       "requestType" -> "image-projection"
@@ -428,7 +428,7 @@ class ImageLoaderController(auth: Authentication,
                    filename: Option[String]
                  ): Action[AnyContent] = {
     AuthenticatedAndAuthorised.async { request =>
-      val instance = instanceOf(request)
+      implicit val instance: Instance = instanceOf(request)
 
       implicit val context: MarkerMap = MarkerMap(
         "requestType" -> "import-image",
@@ -451,7 +451,7 @@ class ImageLoaderController(auth: Authentication,
           identifiers.map(Json.parse(_).as[Map[String, String]]).getOrElse(Map.empty),
           uploadTime,
           filename
-      )(context, instance)
+      )
 
       // under all circumstances, remove the temp files
       uploadResultFuture.onComplete { _ =>
