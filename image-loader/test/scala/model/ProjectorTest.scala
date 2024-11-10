@@ -43,6 +43,8 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
   private val auth = mock[Authentication]
   private val projector = new Projector(config, s3, imageOperations, ImageProcessor.identity, auth)
 
+  private implicit val instance: Instance = Instance("an-instance")
+
   // FIXME temporary ignored as test is not executable in CI/CD machine
   // because graphic lib files like srgb.icc, cmyk.icc are in root directory instead of resources
   // this test is passing when running on local machine
