@@ -6,6 +6,7 @@ import com.gu.mediaservice.lib._
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws.{Embedder, S3}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
@@ -79,7 +80,7 @@ class Projector(config: ImageUploadOpsCfg,
                 processor: ImageProcessor,
                 auth: Authentication,
                 maybeEmbedder: Option[Embedder],
-                optimiseOps: OptimiseOps) extends GridLogging {
+                optimiseOps: OptimiseOps) extends GridLogging with InstanceForRequest {
 
   private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3, maybeEmbedder, optimiseOps)
 
@@ -87,7 +88,7 @@ class Projector(config: ImageUploadOpsCfg,
                         (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Option[Image]] = {
     Future {
       import ImageIngestOperations.fileKeyFromId
-      val s3Key = fileKeyFromId(imageId)
+      val s3Key = fileKeyFromId(imageId, instance)
 
         if (!s3.doesObjectExist(config.originalFileBucket, s3Key))
         throw new NoSuchImageExistsInS3(config.originalFileBucket, s3Key)
@@ -187,10 +188,8 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
     Future.successful(storableOptimisedImage.toProjectedS3Object(config.originalFileBucket))
 
   private def fetchThumbFile(
-    imageId: String, outFile: File
-  )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
-    val key = fileKeyFromId(imageId)
-
+    imageId: String, outFile: File, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
+    val key = fileKeyFromId(imageId, instance)
     fetchFile(config.thumbBucket, key, outFile)
   }
 
