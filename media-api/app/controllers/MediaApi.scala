@@ -278,6 +278,7 @@ class MediaApi(
   }
 
   def getSoftDeletedMetadata(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "get-soft-deleted-metadata",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -366,7 +367,7 @@ class MediaApi(
         if (imageCanBeDeleted){
           val canDelete = authorisation.isUploaderOrHasPermission(request.user, image.uploadedBy, DeleteImagePermission)
           if(canDelete){
-            val imageStatusRecord = ImageStatusRecord(id, request.user.accessor.identity, DateTime.now(DateTimeZone.UTC).toString, true)
+            val imageStatusRecord = ImageStatusRecord(id, request.user.accessor.identity, DateTime.now(DateTimeZone.UTC).toString, isDeleted = true, instance.id)
             softDeletedMetadataTable.setStatus(imageStatusRecord)
             .map { _ =>
               messageSender.publish(
