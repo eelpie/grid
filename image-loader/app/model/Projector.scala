@@ -1,30 +1,29 @@
 package model
 
-import software.amazon.awssdk.core.ResponseInputStream
-import software.amazon.awssdk.services.s3.model.GetObjectResponse
-
-import java.io.{File, FileOutputStream}
-import com.gu.mediaservice.{GridClient, ImageDataMerger}
-import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
-import com.gu.mediaservice.lib.{ImageIngestOperations, ImageStorageProps, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
-import com.gu.mediaservice.lib.aws.{Embedder, S3, S3Object}
+import com.gu.mediaservice.lib.auth.Authentication
+import com.gu.mediaservice.lib.aws.{Embedder, S3}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
+import com.gu.mediaservice.lib._
 import com.gu.mediaservice.model.{Image, Instance, MimeType, UploadInfo}
+import com.gu.mediaservice.{GridClient, ImageDataMerger}
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3}
 import lib.{DigestedFile, ImageLoaderConfig}
 import model.upload.UploadRequest
 import org.apache.commons.io.IOUtils
 import org.joda.time.{DateTime, DateTimeZone}
-import play.api.libs.ws.WSRequest
+import _root_.play.api.libs.ws.WSRequest
+import software.amazon.awssdk.core.ResponseInputStream
+import software.amazon.awssdk.services.s3.model.GetObjectResponse
 
-import java.time.Instant
-import scala.jdk.CollectionConverters._
+import java.io.{File, FileOutputStream}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 object Projector {
 
@@ -42,7 +41,7 @@ case class S3FileExtractedMetadata(
 )
 
 object S3FileExtractedMetadata {
-  
+
   def apply(lastModified: DateTime, userMetadata: Map[String, String]): S3FileExtractedMetadata = {
     val fileUserMetadata = userMetadata.map { case (key, value) =>
       // Fix up the contents of the metadata.
@@ -80,7 +79,7 @@ class Projector(config: ImageUploadOpsCfg,
                 imageOps: ImageOperations,
                 processor: ImageProcessor,
                 auth: Authentication,
-                maybeEmbedder: Option[Embedder]) extends GridLogging {
+                maybeEmbedder: Option[Embedder]) extends GridLogging with InstanceForRequest {
 
   private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3, maybeEmbedder)
 
@@ -88,7 +87,7 @@ class Projector(config: ImageUploadOpsCfg,
                         (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Option[Image]] = {
     Future {
       import ImageIngestOperations.fileKeyFromId
-      val s3Key = fileKeyFromId(imageId)
+      val s3Key = fileKeyFromId(imageId, instance)
 
         if (!s3.doesObjectExist(config.originalFileBucket, s3Key))
         throw new NoSuchImageExistsInS3(config.originalFileBucket, s3Key)
@@ -159,7 +158,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
                                maybeEmbedder: Option[Embedder],
 ) extends GridLogging {
 
-  import Uploader.{fromUploadRequestShared, toMetaMap}
+  import Uploader.fromUploadRequestShared
 
 
   def projectImageFromUploadRequest(uploadRequest: UploadRequest)
@@ -187,10 +186,8 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
     Future.successful(storableOptimisedImage.toProjectedS3Object(config.originalFileBucket))
 
   private def fetchThumbFile(
-    imageId: String, outFile: File
-  )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
-    val key = fileKeyFromId(imageId)
-
+    imageId: String, outFile: File, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
+    val key = fileKeyFromId(imageId, instance)
     fetchFile(config.thumbBucket, key, outFile)
   }
 
