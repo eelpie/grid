@@ -3,13 +3,11 @@ package com.gu.mediaservice.lib.auth
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.config.Services
 import com.gu.mediaservice.lib.logging.GridLogging
+import com.gu.mediaservice.model.Instance
 import com.gu.permissions.PermissionDefinition
 import play.api.libs.json.{JsError, JsSuccess, Json}
 import play.api.mvc.RequestHeader
-import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
-import play.api.mvc.{RequestHeader, Result}
 
-import java.net.URI
 import java.time.Instant
 
 sealed trait Tier
@@ -36,7 +34,7 @@ case class ApiAccessor(identity: String, tier: Tier,  expiresAt: Option[Instant]
   def hasExpired: Boolean = expiresAt.exists(_.isBefore(Instant.now()))
 }
 
-object ApiAccessor extends ArgoHelpers with GridLogging with InstanceForRequest {
+object ApiAccessor extends ArgoHelpers with GridLogging {
   def apply(content: String): ApiAccessor = {
     parseContentV2(content) getOrElse parseContentV1(content)
   }
@@ -65,11 +63,11 @@ object ApiAccessor extends ArgoHelpers with GridLogging with InstanceForRequest 
     ApiAccessor(name, tier)
   }
 
-  def hasAccess(apiKey: ApiAccessor, request: RequestHeader, services: Services): Boolean = apiKey.tier match {
+  def hasAccess(apiKey: ApiAccessor, request: RequestHeader, services: Services)(implicit instance: Instance): Boolean = apiKey.tier match {
     case Internal => request.method != "DELETE"
     case ReadOnly => request.method == "GET"
     case Syndication =>
-      val mediaApiBase = services.apiBaseUri(instanceOf(request))
+      val mediaApiBase = services.apiBaseUri(instance)
       val isMediaApiRequest = request.uri.startsWith(mediaApiBase)
       val isImageRequest = isMediaApiRequest && request.uri.startsWith(mediaApiBase + "/images/")
       request.method == "GET" && isImageRequest
