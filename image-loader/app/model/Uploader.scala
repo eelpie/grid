@@ -471,7 +471,8 @@ class Uploader(
                   gridClient: GridClient,
                   onBehalfOfFn: WSRequest => WSRequest)
                  (implicit ec: ExecutionContext,
-                  logMarker: LogMarker): Future[Unit] = for {
+                  logMarker: LogMarker,
+                  instance: Instance): Future[Unit] = for {
     imageUpload <- fromUploadRequest(uploadRequest)
     imageWithoutUserEdits = imageUpload.image
     imageWithUserEditsApplied <- ImageDataMerger.aggregate(imageWithoutUserEdits, gridClient, onBehalfOfFn)

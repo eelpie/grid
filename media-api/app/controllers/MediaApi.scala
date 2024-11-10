@@ -1,23 +1,24 @@
 package controllers
 
-import org.apache.pekko.stream.scaladsl.StreamConverters
 import com.google.common.net.HttpHeaders
-import com.gu.mediaservice.{GridClient, JsonDiff}
 import com.gu.mediaservice.lib.argo._
 import com.gu.mediaservice.lib.argo.model.{Action, _}
 import com.gu.mediaservice.lib.auth.Authentication.{Request, _}
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, EditMetadata, UploadImages, DeleteImage => DeleteImagePermission}
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws.{ContentDisposition, Embedder, ThrallMessageSender, UpdateMessage}
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
+import com.gu.mediaservice.{GridClient, JsonDiff}
 import lib._
 import lib.elasticsearch._
 import org.apache.http.entity.ContentType
+import org.apache.pekko.stream.scaladsl.StreamConverters
 import org.http4s.UriTemplate
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.http.HttpEntity
@@ -26,10 +27,10 @@ import play.api.libs.ws.WSClient
 import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
 import software.amazon.awssdk.services.s3vectors.model.{QueryOutputVector, QueryVectorsResponse}
-import scala.jdk.CollectionConverters._
 
 import java.net.URI
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 class MediaApi(
@@ -45,7 +46,7 @@ class MediaApi(
                 ws: WSClient,
                 authorisation: Authorisation,
                 embedder: Embedder,
-)(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition {
+              )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition with InstanceForRequest {
 
   private val gridClient: GridClient = GridClient(config.services)(ws)
 
@@ -283,7 +284,7 @@ class MediaApi(
       .recover{ case error => respondError(InternalServerError, "cannot-get", s"Cannot get soft-deleted metadata ${error}") }
   }
 
-  def downloadImageExport(imageId: String, exportId: String, width: Int) = auth.async { request =>
+  def downloadImageExport(imageId: String, exportId: String, width: Int) = auth.async { implicit request =>
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "download-image-export",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -407,7 +408,7 @@ class MediaApi(
     }
   }
 
-  def downloadOriginalImage(id: String) = auth.async { request =>
+  def downloadOriginalImage(id: String) = auth.async { implicit request =>
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "download-original-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -435,7 +436,7 @@ class MediaApi(
     }
   }
 
-  def syndicateImage(id: String, partnerName: String, startPending: String) = auth.async { request =>
+  def syndicateImage(id: String, partnerName: String, startPending: String) = auth.async { implicit request =>
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "syndicate-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -458,7 +459,7 @@ class MediaApi(
     }
   }
 
-  def downloadOptimisedImage(id: String, width: Integer, height: Integer, quality: Integer) = auth.async { request =>
+  def downloadOptimisedImage(id: String, width: Integer, height: Integer, quality: Integer) = auth.async { implicit request =>
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "download-optimised-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -496,11 +497,11 @@ class MediaApi(
     user: String,
     partnerName: Option[String] = None,
     startPending: Option[String] = None,
-  )(implicit logMarker: LogMarker) = {
+  )(implicit logMarker: LogMarker, r: Request[AnyContent]) = {
 
     val baseRequest = ws.url(uri)
       .withHttpHeaders(Authentication.originalServiceHeaderName -> config.appName,
-        HttpHeaders.ORIGIN -> config.rootUri,
+        HttpHeaders.ORIGIN -> config.rootUri(instanceOf(r)),
         HttpHeaders.CONTENT_TYPE -> ContentType.APPLICATION_JSON.getMimeType)
 
     val request = onBehalfOfPrincipal(baseRequest)
