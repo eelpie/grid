@@ -9,7 +9,7 @@ import org.scanamo.generic.semiauto.deriveDynamoFormat
 import org.scanamo.syntax._
 import org.scanamo.generic.auto._
 import software.amazon.awssdk.services.dynamodb.model.{AttributeValue, PutItemRequest}
-import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, model}
+import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbClient, model}
 
 import java.util
 import scala.concurrent.{ExecutionContext, Future}
