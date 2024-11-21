@@ -1,7 +1,7 @@
 package com.gu.mediaservice.lib.aws
 
 import com.gu.mediaservice.lib.logging.GridLogging
-import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, DefaultCredentialsProvider}
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, DefaultCredentialsProvider, EnvironmentVariableCredentialsProvider}
 import software.amazon.awssdk.awscore.client.builder.AwsClientBuilder
 import software.amazon.awssdk.regions.Region
 
