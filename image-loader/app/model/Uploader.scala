@@ -67,7 +67,8 @@ case class ImageUploadOpsCfg(
   thumbQuality: Double,
   transcodedMimeTypes: List[MimeType],
   originalFileBucket: String,
-  thumbBucket: String
+  thumbBucket: String,
+  s3Endpoint: String
 )
 
 case class ImageUploadOpsDependencies(
@@ -94,7 +95,8 @@ object Uploader extends GridLogging {
       config.thumbQuality,
       config.transcodedMimeTypes,
       config.imageBucket,
-      config.thumbnailBucket
+      config.thumbnailBucket,
+      config.s3Endpoint
     )
   }
 
