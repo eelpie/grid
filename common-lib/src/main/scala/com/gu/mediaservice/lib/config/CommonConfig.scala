@@ -54,6 +54,8 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val maybeIngestBucket: Option[String] = stringOpt("s3.ingest.bucket")
   val maybeFailBucket: Option[String] = stringOpt("s3.fail.bucket")
 
+  val s3Endpoint: String= "s3.amazonaws.com"
+
   // Note: had to make these lazy to avoid init order problems ;_;
   val domainRoot: String = string("domain.root")
   val domainRootOverride: Option[String] = stringOpt("domain.root-override")
@@ -233,4 +235,5 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   private def missing(key: String, type_ : String): Nothing =
     sys.error(s"Required $type_ configuration property missing: $key")
+
 }
