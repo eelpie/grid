@@ -444,7 +444,7 @@ class Uploader(
 
     for {
       imageUpload <- fromUploadRequest(uploadRequest)
-      updateMessage = UpdateMessage(subject = Image, image = Some(imageUpload.image), instance = uploadRequest.instance.id)
+      updateMessage = UpdateMessage(subject = Image, image = Some(imageUpload.image), instance = uploadRequest.instance)
       _ <- Future { notifications.publish(updateMessage) }
       // Send the optimised PNG to the embedder if there is one (e.g. for TIFFs),
       // otherwise send the original image.
@@ -483,7 +483,7 @@ class Uploader(
     imageWithUserEditsApplied <- ImageDataMerger.aggregate(imageWithoutUserEdits, gridClient, onBehalfOfFn)
     _ <- Future {
       notifications.publish(
-        UpdateMessage(subject = Image, image = Some(imageWithUserEditsApplied), instance = uploadRequest.instance.id)
+        UpdateMessage(subject = Image, image = Some(imageWithUserEditsApplied), instance = uploadRequest.instance)
       )
     }
   } yield ()
