@@ -3,9 +3,10 @@ package controllers
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.auth.Authentication.Principal
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
-import com.gu.mediaservice.model.Agencies
+import com.gu.mediaservice.model.{Agencies, Instance}
 import lib._
 import lib.elasticsearch.ElasticSearch
 import play.api.mvc.Security.AuthenticatedRequest
@@ -16,11 +17,12 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class UsageController(auth: Authentication, config: MediaApiConfig, elasticSearch: ElasticSearch, usageQuota: UsageQuota,
                       override val controllerComponents: ControllerComponents)(implicit val ec: ExecutionContext)
-  extends BaseController with ArgoHelpers {
+  extends BaseController with ArgoHelpers with InstanceForRequest {
 
   val numberOfDayInPeriod = 30
 
   def bySupplier = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "usage-by-supplier",
       "requestId" -> RequestLoggingFilter.getRequestId(request)
@@ -36,6 +38,7 @@ class UsageController(auth: Authentication, config: MediaApiConfig, elasticSearc
   }
 
   def forSupplier(id: String) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "usage-for-supplier",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -50,7 +53,7 @@ class UsageController(auth: Authentication, config: MediaApiConfig, elasticSearc
 
   }
 
-  def usageStatusForImage(id: String)(implicit logMarker: LogMarker): Future[UsageStatus] = for {
+  def usageStatusForImage(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[UsageStatus] = for {
     imageOption <- elasticSearch.getImageById(id)
 
     image <- Future { imageOption.get }
@@ -62,6 +65,7 @@ class UsageController(auth: Authentication, config: MediaApiConfig, elasticSearc
 
 
   def quotaForImage(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "quota-for-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
