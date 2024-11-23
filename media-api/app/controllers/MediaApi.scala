@@ -98,7 +98,7 @@ class MediaApi(
     val userCanUpload: Boolean = authorisation.hasPermissionTo(UploadImages)(user)
     val userCanArchive: Boolean = authorisation.hasPermissionTo(ArchiveImages)(user)
 
-    val maybeLoaderLink: Option[Link] = Some(Link("loader", config.loaderUri)).filter(_ => userCanUpload)
+    val maybeLoaderLink: Option[Link] = Some(Link("loader", config.loaderUri(instance))).filter(_ => userCanUpload)
     val maybeArchiveLink: Option[Link] = Some(Link("archive", s"${config.metadataUri(instance)}/metadata/{id}/archived")).filter(_ => userCanArchive)
     val indexLinks = List(
       searchLink(),
@@ -111,12 +111,12 @@ class MediaApi(
       Link("edits",           config.metadataUri(instance)),
       Link("session",         s"${config.authUri}/session"),
       Link("witness-report",  s"${config.services.guardianWitnessBaseUri}/2/report/{id}"),
-      Link("collections",     config.collectionsUri),
+      Link("collections",     config.collectionsUri(instance)),
       Link("permissions",     s"${config.rootUri(instance)}/permissions"),
-      Link("leases",          config.leasesUri),
+      Link("leases",          config.leasesUri(instance)),
       Link("syndicate-image", s"${config.rootUri(instance)}/images/{id}/{partnerName}/{startPending}/syndicateImage"),
       Link("undelete",        s"${config.rootUri(instance)}/images/{id}/undelete"),
-      Link("usage",           config.usageUri),
+      Link("usage",           config.usageUri(instance)),
     ) ++ maybeLoaderLink.toList ++ maybeArchiveLink.toList
     respond(indexData, indexLinks)
   }
@@ -200,6 +200,7 @@ class MediaApi(
   }
 
   def diffProjection(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "diff-projection",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -293,6 +294,7 @@ class MediaApi(
   }
 
   def downloadImageExport(imageId: String, exportId: String, width: Int) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "download-image-export",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -311,7 +313,7 @@ class MediaApi(
           result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset, config.shortenDownloadFilename))
         } yield {
           if(config.recordDownloadAsUsage) {
-            postToUsages(config.usageUri + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), source.id, Authentication.getIdentity(request.user))
+            postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), source.id, Authentication.getIdentity(request.user))
           }
           result
         }
@@ -417,6 +419,7 @@ class MediaApi(
   }
 
   def downloadOriginalImage(id: String) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "download-original-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -433,7 +436,7 @@ class MediaApi(
         val entity = HttpEntity.Streamed(file, image.source.size, image.source.mimeType.map(_.name))
 
         if(config.recordDownloadAsUsage) {
-          postToUsages(config.usageUri + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
+          postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
         }
 
           Future.successful(
@@ -445,6 +448,7 @@ class MediaApi(
   }
 
   def syndicateImage(id: String, partnerName: String, startPending: String) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "syndicate-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -457,7 +461,7 @@ class MediaApi(
       case Some(image) if isVisibleToAccessor(request.user, image) => {
         logger.info(logMarker, s"Syndicate image: $id from user: ${Authentication.getIdentity(request.user)}")
 
-        postToUsages(config.usageUri + "/usages/syndication", auth.getOnBehalfOfPrincipal(request.user), id,
+        postToUsages(config.usageUri(instance) + "/usages/syndication", auth.getOnBehalfOfPrincipal(request.user), id,
           Authentication.getIdentity(request.user), Option(partnerName), Option(startPending))
 
         Future.successful(Ok)
@@ -488,7 +492,7 @@ class MediaApi(
           }))
 
         if(config.recordDownloadAsUsage) {
-          postToUsages(config.usageUri + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
+          postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
         }
 
         Future.successful(
