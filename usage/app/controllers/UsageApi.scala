@@ -284,10 +284,13 @@ class UsageApi(
             val updatedStatusMediaUsage = mediaUsage.copy(status = usageStatus)
             usageTable.update(updatedStatusMediaUsage)
             val usageNotice = UsageNotice(mediaId,
-              JsArray(Seq(Json.toJson(UsageBuilder.build(updatedStatusMediaUsage)))))
+              JsArray(Seq(Json.toJson(UsageBuilder.build(updatedStatusMediaUsage)))),
+              instanceOf(req).id
+            )
             val updateMessage = UpdateMessage(
               subject = UpdateUsageStatus, id = Some(mediaId),
-              usageNotice = Some(usageNotice)
+              usageNotice = Some(usageNotice),
+              instance = instanceOf(req).id
             )
             notifications.publish(updateMessage)
             Ok
@@ -309,7 +312,7 @@ class UsageApi(
     usageTable.queryByUsageId(usageId).map {
       case Some(mediaUsage) =>
         usageTable.deleteRecord(mediaUsage)
-        val updateMessage = UpdateMessage(subject = DeleteSingleUsage, id = Some(mediaId), usageId = Some(usageId))
+        val updateMessage = UpdateMessage(subject = DeleteSingleUsage, id = Some(mediaId), usageId = Some(usageId), instance = instanceOf(req).id)
         notifications.publish(updateMessage)
         Ok
       case None =>
@@ -335,8 +338,9 @@ class UsageApi(
         respondError(InternalServerError, "image-usage-delete-failed", error.getMessage)
     }
 
-    val updateMessage = UpdateMessage(subject = DeleteUsages, id = Some(mediaId))
+    val updateMessage = UpdateMessage(subject = DeleteUsages, id = Some(mediaId), instance = instanceOf(req).id)
     notifications.publish(updateMessage)
     Future.successful(Ok)
   }
+
 }
