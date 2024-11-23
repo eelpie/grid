@@ -37,7 +37,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
     val image = fileAt("exif-orientated.jpg")
     val orientationFuture = FileMetadataReader.orientation(image)
     whenReady(orientationFuture) { orientationOpt =>
-      orientationOpt should be('defined)
+      orientationOpt should be(defined)
       orientationOpt.get.exifOrientation should be(Some(6))
     }
   }
@@ -54,7 +54,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
     val image = fileAt("exif-orientated.jpg")
     val dimsFuture = FileMetadataReader.dimensions(image, Some(Jpeg))
     whenReady(dimsFuture) { dimOpt =>
-      dimOpt should be('defined)
+      dimOpt should be(defined)
       dimOpt.get.width should be(3456)
       dimOpt.get.height should be(2304)
     }
