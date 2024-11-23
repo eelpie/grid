@@ -4,6 +4,7 @@ import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.leases.{MediaLease, MediaLeaseType}
 import org.joda.time.DateTime
 import org.scanamo._
+import org.scanamo.generic.auto.Typeclass
 import org.scanamo.generic.semiauto.deriveDynamoFormat
 import org.scanamo.syntax._
 import software.amazon.awssdk.services.dynamodb.model.{AttributeValue, PutItemRequest}
