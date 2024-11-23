@@ -1,14 +1,9 @@
 package model
 
-import com.gu.mediaservice.{GridClient, ImageDataMerger}
 import com.gu.mediaservice.lib.Files.createTempFile
-
-import java.io.File
-import java.nio.file.{Files, Path}
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.{BrowserViewableImage, ImageStorageProps, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
-import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, S3Object, S3Vectors, UpdateMessage}
+import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, S3Object, UpdateMessage}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.formatting._
 import com.gu.mediaservice.lib.imaging.ImageOperations
@@ -16,19 +11,21 @@ import com.gu.mediaservice.lib.imaging.ImageOperations.{optimisedMimeType, thumb
 import com.gu.mediaservice.lib.logging._
 import com.gu.mediaservice.lib.metadata.{FileMetadataHelper, ImageMetadataConverter}
 import com.gu.mediaservice.lib.net.URI
+import com.gu.mediaservice.lib._
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
-import lib.{DigestedFile, ImageLoaderConfig, Notifications}
+import com.gu.mediaservice.{GridClient, ImageDataMerger}
 import lib.imaging.{FileMetadataReader, MimeTypeDetection}
 import lib.storage.ImageLoaderStore
+import lib.{DigestedFile, ImageLoaderConfig, Notifications}
 import model.Uploader.{fromUploadRequestShared, toImageUploadOpsCfg}
 import model.upload.{OptimiseOps, OptimiseWithPngQuant, UploadRequest}
 import org.joda.time.DateTime
-import play.api.libs.json.{JsObject, Json}
-import play.api.libs.ws.WSRequest
-import software.amazon.awssdk.services.s3vectors.model.PutVectorsResponse
+import _root_.play.api.libs.json.Json
+import _root_.play.api.libs.ws.WSRequest
 
-import scala.collection.compat._
+import java.io.File
+import java.nio.file.Files
 import scala.concurrent.{ExecutionContext, Future}
 
 case class ImageUpload(uploadRequest: UploadRequest, image: Image)
@@ -347,7 +344,7 @@ class Uploader(
     isReplacement: Boolean
   )(
     mediaIdToAddUsageTo: String
-  ) = {
+  )(implicit instance: Instance) = {
     gridClient.postUsage(
       usageType = "child",
       data = Json.obj(
@@ -364,7 +361,7 @@ class Uploader(
   }
 
   private def fromUploadRequest(uploadRequest: UploadRequest)
-                               (implicit logMarker: LogMarker): Future[ImageUpload] = {
+                               (implicit logMarker: LogMarker, instance: Instance): Future[ImageUpload] = {
     val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps,
       storeSource, storeThumbnail, storeOptimisedImage)
     Stopwatch.async("finalImage") {
@@ -433,7 +430,7 @@ class Uploader(
 
   def storeFile(uploadRequest: UploadRequest)
                (implicit ec:ExecutionContext,
-                logMarker: LogMarker): Future[UploadStatusUri] = {
+                logMarker: LogMarker, instance: Instance): Future[UploadStatusUri] = {
 
     logger.info(logMarker, "Storing file")
 
@@ -464,7 +461,7 @@ class Uploader(
       ))
       // TODO: centralise where all these URLs are constructed
     } yield
-      UploadStatusUri(s"${config.rootUri}/uploadStatus/${uploadRequest.imageId}")
+      UploadStatusUri(s"${config.rootUri(instance)}/uploadStatus/${uploadRequest.imageId}")
   }
 
   def restoreFile(uploadRequest: UploadRequest,
