@@ -13,7 +13,7 @@ import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
-import com.gu.mediaservice.model.{Image, MimeType, UploadInfo}
+import com.gu.mediaservice.model.{Image, Instance, MimeType, UploadInfo}
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3}
 import lib.{DigestedFile, ImageLoaderConfig}
 import model.upload.UploadRequest
@@ -85,7 +85,7 @@ class Projector(config: ImageUploadOpsCfg,
   private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3, maybeEmbedder)
 
   def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest)
-                        (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[Image]] = {
+                        (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Option[Image]] = {
     Future {
       import ImageIngestOperations.fileKeyFromId
       val s3Key = fileKeyFromId(imageId)
@@ -125,7 +125,7 @@ class Projector(config: ImageUploadOpsCfg,
                    extractedS3Meta: S3FileExtractedMetadata,
                    gridClient: GridClient,
                    onBehalfOfFn: WSRequest => WSRequest)
-                  (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
+                  (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Image] = {
     val DigestedFile(tempFile_, id_) = srcFileDigest
 
     val identifiers_ = extractedS3Meta.identifiers

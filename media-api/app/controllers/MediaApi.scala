@@ -4,10 +4,11 @@ import com.github.blemale.scaffeine.{AsyncLoadingCache, Scaffeine}
 import com.google.common.net.HttpHeaders
 import com.gu.mediaservice.lib.argo._
 import com.gu.mediaservice.lib.argo.model.{Action, _}
-import com.gu.mediaservice.lib.auth.Authentication._
+import com.gu.mediaservice.lib.auth.Authentication.{OnBehalfOfPrincipal, Principal}
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, EditMetadata, UploadImages, DeleteImage => DeleteImagePermission}
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -54,7 +55,7 @@ class MediaApi(
                 ws: WSClient,
                 authorisation: Authorisation,
                 embedder: Embedder,
-)(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition {
+              )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition with InstanceForRequest {
 
   private val gridClient: GridClient = GridClient(config.services, config.services.apiBaseUri)(ws)
 
@@ -99,12 +100,15 @@ class MediaApi(
     "vecWeight"
   ).mkString(",")
 
-  private val searchLinkHref = s"${config.rootUri}/images{?$searchParamList}"
+  private def searchLinkHref()(implicit instance: Instance) = {
+    s"${config.rootUri(instance)}/images{?$searchParamList}"
+  }
 
-  private val searchLink = Link("search", searchLinkHref)
+  private def searchLink()(implicit instance: Instance) = {
+    Link("search", searchLinkHref())
+  }
 
-
-  private def indexResponse(user: Principal) = {
+  private def indexResponse(user: Principal)(implicit instance: Instance) = {
     val indexData = Json.obj(
       "description" -> "This is the Media API"
       // ^ Flatten None away
@@ -113,25 +117,25 @@ class MediaApi(
     val userCanUpload: Boolean = authorisation.hasPermissionTo(UploadImages)(user)
     val userCanArchive: Boolean = authorisation.hasPermissionTo(ArchiveImages)(user)
 
-    val maybeLoaderLink: Option[Link] = Some(Link("loader", config.loaderUri)).filter(_ => userCanUpload)
-    val maybeArchiveLink: Option[Link] = Some(Link("archive", s"${config.metadataUri}/metadata/{id}/archived")).filter(_ => userCanArchive)
+    val maybeLoaderLink: Option[Link] = Some(Link("loader", config.loaderUri(instance))).filter(_ => userCanUpload)
+    val maybeArchiveLink: Option[Link] = Some(Link("archive", s"${config.metadataUri(instance)}/metadata/{id}/archived")).filter(_ => userCanArchive)
     val indexLinks = List(
-      searchLink,
-      Link("image",           s"${config.rootUri}/images/{id}"),
+      searchLink(),
+      Link("image",           s"${config.rootUri(instance)}/images/{id}"),
       // FIXME: credit is the only field available for now as it's the only on
       // that we are indexing as a completion suggestion
-      Link("metadata-search", s"${config.rootUri}/suggest/metadata/{field}{?q}"),
-      Link("label-search",    s"${config.rootUri}/images/edits/label{?q}"),
-      Link("cropper",         config.cropperUri),
-      Link("edits",           config.metadataUri),
-      Link("session",         s"${config.authUri}/session"),
+      Link("metadata-search", s"${config.rootUri(instance)}/suggest/metadata/{field}{?q}"),
+      Link("label-search",    s"${config.rootUri(instance)}/images/edits/label{?q}"),
+      Link("cropper",         config.cropperUri(instance)),
+      Link("edits",           config.metadataUri(instance)),
+      Link("session",         s"${config.authUri(instance)}/session"),
       Link("witness-report",  s"${config.services.guardianWitnessBaseUri}/2/report/{id}"),
-      Link("collections",     config.collectionsUri),
-      Link("permissions",     s"${config.rootUri}/permissions"),
-      Link("leases",          config.leasesUri),
-      Link("syndicate-image", s"${config.rootUri}/images/{id}/{partnerName}/{startPending}/syndicateImage"),
-      Link("undelete",        s"${config.rootUri}/images/{id}/undelete"),
-      Link("usage",           config.usageUri),
+      Link("collections",     config.collectionsUri(instance)),
+      Link("permissions",     s"${config.rootUri(instance)}/permissions"),
+      Link("leases",          config.leasesUri(instance)),
+      Link("syndicate-image", s"${config.rootUri(instance)}/images/{id}/{partnerName}/{startPending}/syndicateImage"),
+      Link("undelete",        s"${config.rootUri(instance)}/images/{id}/undelete"),
+      Link("usage",           config.usageUri(instance)),
     ) ++ maybeLoaderLink.toList ++ maybeArchiveLink.toList
     respond(indexData, indexLinks)
   }
@@ -142,7 +146,10 @@ class MediaApi(
   private def ImageNotFound(id: String) = respondError(NotFound, "image-not-found", s"No image found with the given id $id")
   private def ExportNotFound = respondError(NotFound, "export-not-found", "No export found with the given id")
 
-  def index = auth { request => indexResponse(request.user) }
+  def index = auth { request =>
+    implicit val instance: Instance = instanceOf(request)
+    indexResponse(request.user)
+  }
 
   def getIncludedFromParams(request: AuthenticatedRequest[AnyContent, Principal]): List[String] = {
     val includedQuery: Option[String] = request.getQueryString("include")
@@ -212,6 +219,7 @@ class MediaApi(
   }
 
   def diffProjection(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "diff-projection",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -236,6 +244,7 @@ class MediaApi(
   }
 
   def getImageFileMetadata(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "get-image-file-metadata",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -245,7 +254,7 @@ class MediaApi(
     elasticSearch.getImageById(id) map {
       case Some(image) if isVisibleToAccessor(request.user, image) =>
         val links = List(
-          Link("image", s"${config.rootUri}/images/$id")
+          Link("image", s"${config.rootUri(instance)}/images/$id")
         )
         respond(Json.toJson(image.fileMetadata), links)
       case _ => ImageNotFound(id)
@@ -253,6 +262,7 @@ class MediaApi(
   }
 
   def getImageExports(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "get-image-exports",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -262,7 +272,7 @@ class MediaApi(
     elasticSearch.getImageById(id) map {
       case Some(image) if isVisibleToAccessor(request.user, image) =>
         val links = List(
-          Link("image", s"${config.rootUri}/images/$id")
+          Link("image", s"${config.rootUri(instance)}/images/$id")
         )
         respond(Json.toJson(image.exports), links)
       case _ => ImageNotFound(id)
@@ -302,7 +312,8 @@ class MediaApi(
       .recover{ case error => respondError(InternalServerError, "cannot-get", s"Cannot get soft-deleted metadata ${error}") }
   }
 
-  def downloadImageExport(imageId: String, exportId: String, width: Int) = auth.async { request =>
+  def downloadImageExport(imageId: String, exportId: String, width: Int) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "download-image-export",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -325,7 +336,7 @@ class MediaApi(
           result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset, config.shortenDownloadFilename))
         } yield {
           if(config.recordDownloadAsUsage) {
-            postToUsages(config.usageUri + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), source.id, Authentication.getIdentity(request.user))
+            postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), source.id, Authentication.getIdentity(request.user))
           }
           result
         }
@@ -401,7 +412,8 @@ class MediaApi(
     }
   }
 
-  def unSoftDeleteImage(id: String) = auth.async { request =>
+  def unSoftDeleteImage(id: String) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "soft-undelete-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -434,7 +446,8 @@ class MediaApi(
     }
   }
 
-  def downloadOriginalImage(id: String) = auth.async { request =>
+  def downloadOriginalImage(id: String) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "download-original-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -451,7 +464,7 @@ class MediaApi(
         val entity = HttpEntity.Streamed(file, image.source.size, image.source.mimeType.map(_.name))
 
         if(config.recordDownloadAsUsage) {
-          postToUsages(config.usageUri + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
+          postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
         }
 
           Future.successful(
@@ -462,7 +475,8 @@ class MediaApi(
     }
   }
 
-  def syndicateImage(id: String, partnerName: String, startPending: String) = auth.async { request =>
+  def syndicateImage(id: String, partnerName: String, startPending: String) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "syndicate-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -475,7 +489,7 @@ class MediaApi(
       case Some(image) if isVisibleToAccessor(request.user, image) => {
         logger.info(logMarker, s"Syndicate image: $id from user: ${Authentication.getIdentity(request.user)}")
 
-        postToUsages(config.usageUri + "/usages/syndication", auth.getOnBehalfOfPrincipal(request.user), id,
+        postToUsages(config.usageUri(instance) + "/usages/syndication", auth.getOnBehalfOfPrincipal(request.user), id,
           Authentication.getIdentity(request.user), Option(partnerName), Option(startPending))
 
         Future.successful(Ok)
@@ -485,7 +499,8 @@ class MediaApi(
     }
   }
 
-  def downloadOptimisedImage(id: String, width: Integer, height: Integer, quality: Integer) = auth.async { request =>
+  def downloadOptimisedImage(id: String, width: Integer, height: Integer, quality: Integer) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "download-optimised-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -505,32 +520,32 @@ class MediaApi(
           }))
 
         if(config.recordDownloadAsUsage) {
-          postToUsages(config.usageUri + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
+          postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
         }
 
         Future.successful(
-          Redirect(config.imgopsUri + List(sourceImageUri.getPath, sourceImageUri.getRawQuery).mkString("?") + s"&w=$width&h=$height&q=$quality")
+          Redirect(config.imgopsUri(instance) + List(sourceImageUri.getPath, sourceImageUri.getRawQuery).mkString("?") + s"&w=$width&h=$height&q=$quality")
         )
       }
       case _ => Future.successful(ImageNotFound(id))
     }
   }
 
-  def postToUsages(
+  private def postToUsages(
     uri: String,
     onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal,
     mediaId: String,
     user: String,
     partnerName: Option[String] = None,
     startPending: Option[String] = None,
-  )(implicit logMarker: LogMarker): Future[Unit] = {
+  )(implicit logMarker: LogMarker, instance: Instance): Unit = {
     if (MediaApi.shouldSkipUsageRecording(uri, user)) {
       logger.info(logMarker, s"Skipping usages request to $uri for $user")
       Future.successful(())
     } else {
       val baseRequest = ws.url(uri)
         .withHttpHeaders(Authentication.originalServiceHeaderName -> config.appName,
-          HttpHeaders.ORIGIN -> config.rootUri,
+          HttpHeaders.ORIGIN -> config.rootUri(instance),
           HttpHeaders.CONTENT_TYPE -> ContentType.APPLICATION_JSON.getMimeType)
 
       val request = onBehalfOfPrincipal(baseRequest)
@@ -554,6 +569,7 @@ class MediaApi(
 
 
   def imageSearch() = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     val shouldFlagGraphicImages = request.cookies.get("SHOULD_BLUR_GRAPHIC_IMAGES")
       .map(_.value).getOrElse(config.defaultShouldBlurGraphicImages.toString) == "true"
 
@@ -565,7 +581,7 @@ class MediaApi(
 
     val include = getIncludedFromParams(request)
 
-    def hitToImageEntity(elasticId: String, image: SourceWrapper[Image]): EmbeddedEntity[JsValue] = {
+    def hitToImageEntity(elasticId: String, image: SourceWrapper[Image])(implicit instance: Instance): EmbeddedEntity[JsValue] = {
       val writePermission = authorisation.isUploaderOrHasPermission(request.user, image.instance.uploadedBy, EditMetadata)
       val deletePermission = authorisation.isUploaderOrHasPermission(request.user, image.instance.uploadedBy, DeleteImagePermission)
       val deleteCropsOrUsagePermission = canUserDeleteCropsOrUsages(request.user)
@@ -573,11 +589,11 @@ class MediaApi(
       val (imageData, imageLinks, imageActions) =
         imageResponse.create(elasticId, image, writePermission, deletePermission, deleteCropsOrUsagePermission, include, request.user.accessor.tier)
       val id = (imageData \ "id").as[String]
-      val imageUri = URI.create(s"${config.rootUri}/images/$id")
+      val imageUri = URI.create(s"${config.rootUri(instance)}/images/$id")
       EmbeddedEntity(uri = imageUri, data = Some(imageData), imageLinks, imageActions)
     }
 
-    def performSearchAndRespond(searchParams: SearchParams) = for {
+    def performSearchAndRespond(searchParams: SearchParams)(implicit instance: Instance) = for {
       SearchResults(hits, totalCount, extraCounts) <- elasticSearch.search(
         searchParams.copy(
           shouldFlagGraphicImages = shouldFlagGraphicImages,
@@ -783,6 +799,9 @@ class MediaApi(
   private def getImageResponseFromES(
     id: String, request: Authentication.Request[AnyContent]
   )(implicit logMarker: LogMarker): Future[Option[(Image, JsValue, List[Link], List[Action])]] = {
+    implicit val instance: Instance = instanceOf(request)
+    implicit val r: Authentication.Request[AnyContent] = request
+
     val include = getIncludedFromParams(request)
 
     elasticSearch.getImageWithSourceById(id) map {
