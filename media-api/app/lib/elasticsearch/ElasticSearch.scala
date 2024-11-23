@@ -7,7 +7,7 @@ import com.gu.mediaservice.lib.auth.Authentication.Principal
 import com.gu.mediaservice.lib.elasticsearch.{CompletionPreview, ElasticSearchClient, ElasticSearchConfig, MigrationStatusProvider, Running}
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
 import com.gu.mediaservice.lib.metrics.FutureSyntax
-import com.gu.mediaservice.model.{Agencies, Agency, AwaitingReviewForSyndication, Image}
+import com.gu.mediaservice.model.{Agencies, Agency, AwaitingReviewForSyndication, Image, Instance}
 import com.sksamuel.elastic4s.ElasticDsl
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.requests.get.{GetRequest, GetResponse}
@@ -84,6 +84,7 @@ class ElasticSearch(
         case _ => None
       }
     }
+
     migrationStatus match {
       case running: Running => executeAndLog(
         request = requestFromIndexName(running.migrationIndexName),
