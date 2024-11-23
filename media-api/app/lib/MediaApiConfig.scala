@@ -6,6 +6,7 @@ import com.sksamuel.elastic4s.ElasticApi.{matchPhraseQuery, should}
 import com.sksamuel.elastic4s.ElasticDsl.matchQuery
 import com.sksamuel.elastic4s.requests.searches.queries.Query
 import com.sksamuel.elastic4s.requests.searches.queries.matches.MatchQuery
+import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
 import scalaz.NonEmptyList
 
@@ -44,7 +45,7 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   }
   val fuzzyMaxExpansions: Int = intOpt("search.fuzziness.maxExpansions").getOrElse(50)
 
-  val rootUri: String = services.apiBaseUri
+  val rootUri: Instance => String = services.apiBaseUri
   val kahunaUri: String = services.kahunaBaseUri
   val cropperUri: String = services.cropperBaseUri
   val loaderUri: String = services.loaderBaseUri
