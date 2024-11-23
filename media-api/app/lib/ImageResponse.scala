@@ -253,8 +253,8 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
       "aliases" -> JsObject(aliases)
     ))
 
-  def makeImgopsUri(uri: URI): String =
-    config.imgopsUri + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
+  def makeImgopsUri(uri: URI)(implicit instance: Instance): String =
+    config.imgopsUri(instance) + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
 
   def makeImgProxyUri(uri: URI, orientationMetadata: Option[OrientationMetadata])(implicit instance: Instance): String = {
     def normaliseRotation(rotation: Int) = {
