@@ -2,14 +2,12 @@ package controllers
 
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.auth.Authentication.Principal
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.model.{Agencies, Instance}
 import lib._
 import lib.elasticsearch.ElasticSearch
-import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
