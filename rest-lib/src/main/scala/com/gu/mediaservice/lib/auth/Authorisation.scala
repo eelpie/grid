@@ -1,14 +1,16 @@
 package com.gu.mediaservice.lib.auth
 
 import com.gu.mediaservice.lib.argo.ArgoHelpers
-import com.gu.mediaservice.lib.auth.Authentication.{InnerServicePrincipal, MachinePrincipal, Principal, Request, UserPrincipal}
+import com.gu.mediaservice.lib.auth.Authentication._
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, PrincipalFilter, UploadImages}
 import com.gu.mediaservice.lib.auth.provider.AuthorisationProvider
+import com.gu.mediaservice.lib.config.InstanceForRequest
+import com.gu.mediaservice.model.Instance
 import play.api.mvc.{ActionFilter, Result, Results}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class Authorisation(provider: AuthorisationProvider, executionContext: ExecutionContext) extends Results with ArgoHelpers {
+class Authorisation(provider: AuthorisationProvider, executionContext: ExecutionContext) extends Results with ArgoHelpers with InstanceForRequest {
   def forbidden(permission: SimplePermission): Result = respondError(Forbidden, "permission-denied", s"You do not have permission to ${permission.name}")
 
 
@@ -31,7 +33,7 @@ class Authorisation(provider: AuthorisationProvider, executionContext: Execution
   def actionFilterForUploaderOr(
                                           imageId: String,
                                           permission: SimplePermission,
-                                          getUploader: (String, Principal) => Future[Option[String]]
+                                          getUploader: (String, Principal, Instance) => Future[Option[String]]
                                         )(implicit ec: ExecutionContext): ActionFilter[Request] = new ActionFilter[Request] {
 //    implicit val ec = executionContext
     override protected def filter[A](request: Request[A]): Future[Option[Result]] = {
@@ -41,7 +43,7 @@ class Authorisation(provider: AuthorisationProvider, executionContext: Execution
         Future.successful(None)
       } else {
         val result = for {
-          uploadedBy <- getUploader(imageId, request.user)
+          uploadedBy <- getUploader(imageId, request.user, instanceOf(request))
           isAuthorised = isUploaderOrHasPermission(request.user, uploadedBy.getOrElse(""), permission)
           if isAuthorised
         } yield {
