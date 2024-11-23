@@ -53,7 +53,7 @@ class MessageProcessor(
       case message: CompleteMigrationMessage => completeMigration(logMarker, Instance(id = message.instance))
       case _ =>
         logger.info(s"Unmatched ThrallMessage type: ${updateMessage.subject}; ignoring")
-        Future.successful(Unit)
+        Future.successful(())
     }
   }
 
