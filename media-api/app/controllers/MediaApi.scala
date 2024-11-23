@@ -340,7 +340,7 @@ class MediaApi(
           val canDelete = authorisation.isUploaderOrHasPermission(request.user, image.uploadedBy, DeleteImagePermission)
 
           if (canDelete) {
-            val updateMessage = UpdateMessage(subject = DeleteImage, id = Some(id), instance = instanceOf(request).id)
+            val updateMessage = UpdateMessage(subject = DeleteImage, id = Some(id), instance = instanceOf(request))
             messageSender.publish(updateMessage)
             Accepted
           } else {
@@ -379,7 +379,7 @@ class MediaApi(
                     deleteTime = DateTime.now(DateTimeZone.UTC),
                     deletedBy = request.user.accessor.identity
                   )),
-                  instance = instanceOf(request).id
+                  instance = instance
                 )
               )
             }
@@ -414,7 +414,7 @@ class MediaApi(
               UpdateMessage(
                 subject = UnSoftDeleteImage,
                 id = Some(id),
-                instance = instanceOf(request).id
+                instance = instance
               )
             )
           }.map { _ => Accepted }
