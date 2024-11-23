@@ -1,6 +1,7 @@
 package lib
 
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
+import com.gu.mediaservice.model.Instance
 
 import java.io.File
 
@@ -14,8 +15,8 @@ class CropperConfig(resources: GridConfigResources) extends CommonConfig(resourc
   // Note: work around CloudFormation not allowing optional parameters
   val imgPublishingSecureHost = stringOpt("publishing.image.secure.host").filterNot(_.isEmpty)
 
-  val rootUri = services.cropperBaseUri
-  val apiUri = services.apiBaseUri
+  val rootUri: Instance => String = services.cropperBaseUri
+  val apiUri: Instance => String = services.apiBaseUri
 
   val tempDir: File = new File(stringDefault("crop.output.tmp.dir", "/tmp"))
 
