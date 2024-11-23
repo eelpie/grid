@@ -2,8 +2,6 @@ package lib.elasticsearch
 
 import com.gu.mediaservice.lib.ImageFields
 import com.gu.mediaservice.lib.argo.model.{ExtraCount, ExtraCountConfig, ExtraCounts}
-import com.gu.mediaservice.lib.auth.Authentication.Principal
-import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.elasticsearch.{filters, _}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.metrics.FutureSyntax
@@ -26,8 +24,6 @@ import lib.querysyntax.Parser
 import lib.{MediaApiConfig, MediaApiMetrics, SupplierUsageSummary}
 import org.apache.pekko.actor.Scheduler
 import play.api.libs.json.{JsError, JsObject, JsSuccess, Json}
-import play.api.mvc.AnyContent
-import play.api.mvc.Security.AuthenticatedRequest
 import play.mvc.Http.Status
 
 import java.util.concurrent.TimeUnit
@@ -41,8 +37,7 @@ class ElasticSearch(
   val elasticSearchConfig: ElasticSearchConfig,
   overQuotaAgencies: () => List[Agency],
   val scheduler: Scheduler
-) extends ElasticSearchClient with ImageFields with MatchFields with FutureSyntax with GridLogging with MigrationStatusProvider
-    with InstanceForRequest {
+) extends ElasticSearchClient with ImageFields with MatchFields with FutureSyntax with GridLogging with MigrationStatusProvider {
 
   private val maybeOrgOwnedExtraCount: Option[(String, ExtraCountConfig)] =
     if (config.shouldDisplayOrgOwnedCountAndFilterCheckbox)
@@ -97,15 +92,14 @@ class ElasticSearch(
     logMessagePart: String,
     requestFromIndexName: String => GetRequest,
     resultTransformer: GetResponse => Option[T],
-    instance: Instance
-  )(implicit ex: ExecutionContext, logMarker: LogMarker): Future[Option[T]] = {
+  )(implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Option[T]] = {
     val xlogMarker = logMarker
 
     {
 
     implicit val logMarker: LogMarker = xlogMarker + ("image-id" -> id)
 
-    def getFromCurrentIndex(instance: Instance) = executeAndLog(
+    def getFromCurrentIndex()(implicit instance: Instance) = executeAndLog(
       request = requestFromIndexName(imagesCurrentAlias(instance)),
       message = s"get $logMessagePart by id $id from index with alias ${imagesCurrentAlias(instance)}"
     ).map { r =>
@@ -114,17 +108,17 @@ class ElasticSearch(
         case _ => None
       }
     }
-    migrationStatus(instance) match {
+    migrationStatus() match {
       case running: Running => executeAndLog(
         request = requestFromIndexName(running.migrationIndexName),
         message = s"get $logMessagePart by id $id from migration index ${running.migrationIndexName}"
       ).flatMap { r =>
         r.status match {
           case Status.OK => Future.successful(resultTransformer(r.result))
-          case _ => getFromCurrentIndex(instance)
+          case _ => getFromCurrentIndex()
         }
       }
-      case _ => getFromCurrentIndex(instance)
+      case _ => getFromCurrentIndex()
     }
   }}
 
@@ -133,8 +127,7 @@ class ElasticSearch(
       id,
       logMessagePart = "image",
       requestFromIndexName = indexName => get(indexName, id),
-      resultTransformer = (result: GetResponse) => mapImageFrom(result.sourceAsString, id, result.index),
-      instance
+      resultTransformer = (result: GetResponse) => mapImageFrom(result.sourceAsString, id, result.index)
     )
   }
 
@@ -143,8 +136,7 @@ class ElasticSearch(
       id,
       logMessagePart = "image uploader",
       requestFromIndexName = indexName => get(indexName, id).fetchSourceInclude("uploadedBy"),
-      resultTransformer = _.sourceFieldOpt("uploadedBy").collect { case s: String => s },
-      instance
+      resultTransformer = _.sourceFieldOpt("uploadedBy").collect { case s: String => s }
     )
   }
 
@@ -284,8 +276,7 @@ class ElasticSearch(
     }
   }
 
-  def search(params: SearchParams)(implicit ex: ExecutionContext, request: AuthenticatedRequest[AnyContent, Principal], logMarker: LogMarker = MarkerMap()): Future[SearchResults] = {
-    implicit val instance: Instance = instanceOf(request)
+  def search(params: SearchParams)(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
     val query: Query = queryBuilder.makeQuery(params.structuredQuery)
 
     val filterOpt: Option[Query] = queryBuilder.buildFilterOpt(params, searchFilters, syndicationFilter)
@@ -404,8 +395,7 @@ class ElasticSearch(
 
   }
 
-  def metadataSearch(params: AggregateSearchParams)(implicit ex: ExecutionContext, logMarker: LogMarker, request: AuthenticatedRequest[AnyContent, Principal]): Future[AggregateSearchResults] = {
-    implicit val instance: Instance = instanceOf(request)
+  def metadataSearch(params: AggregateSearchParams)(implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[AggregateSearchResults] = {
     aggregateSearch("metadata", params, termsAgg(name = "metadata", field = metadataField(params.field)), fromTermAggregation)
   }
 
@@ -440,11 +430,11 @@ class ElasticSearch(
     AggregateSearchResults(results, results.size)
   }
 
-  def completionSuggestion(name: String, q: String, size: Int)(implicit ex: ExecutionContext, request: AuthenticatedRequest[AnyContent, Principal]): Future[CompletionSuggestionResults] = {
+  def completionSuggestion(name: String, q: String, size: Int)(implicit ex: ExecutionContext, instance: Instance): Future[CompletionSuggestionResults] = {
     implicit val logMarker: MarkerMap = MarkerMap()
     val completionSuggestion =
       ElasticDsl.completionSuggestion(name, name).text(q).skipDuplicates(true)
-    val search = ElasticDsl.search(imagesCurrentAlias(instanceOf(request))) suggestions completionSuggestion
+    val search = ElasticDsl.search(imagesCurrentAlias(instance)) suggestions completionSuggestion
     executeAndLog(search, "completion suggestion query").
       toMetric(Some(mediaApiMetrics.searchQueries), List(mediaApiMetrics.searchTypeDimension("suggestion-completion")))(_.result.took).map { r =>
       logSearchQueryIfTimedOut(search, r.result)
@@ -463,12 +453,12 @@ class ElasticSearch(
   def withSearchQueryTimeout(sr: SearchRequest): SearchRequest = sr timeout SearchQueryTimeout
 
   private def prepareSearch(query: Query)(implicit instance: Instance): SearchRequest = {
-    val indexes = migrationStatus(instance) match {
+    val indexes = migrationStatus() match {
       case completionPreview: CompletionPreview => List(completionPreview.migrationIndexName)
       case running: Running => List(imagesCurrentAlias(instance), running.migrationIndexName)
       case _ => List(imagesCurrentAlias(instance))
     }
-    val migrationAwareQuery = migrationStatus(instance) match {
+    val migrationAwareQuery = migrationStatus() match {
       case running: Running => filters.and(query, filters.mustNot(filters.term("esInfo.migration.migratedTo", running.migrationIndexName)))
       case _ => query
     }
