@@ -162,8 +162,9 @@ lazy val thrall = playProject("thrall", 9002)
       "software.amazon.kinesis" % "amazon-kinesis-client" % "2.4.2",
       "io.github.streetcontxt" %% "kcl-akka-stream" % "4.1.1",
       "org.testcontainers" % "elasticsearch" % "1.19.2" % Test,
-      "com.google.protobuf" % "protobuf-java" % "3.19.6"
-    ),
+      "com.google.protobuf" % "protobuf-java" % "3.19.6",
+      "software.amazon.awssdk" % "sqs" % awsSdkVersionV2
+),
     // amazon-kinesis-client 2.4.2 brings in a critically vulnerable version of apache avro,
     // but we cannot upgrade amazon-kinesis-client further until we move into slf4j v2.
     // TODO when upgrading kinesis-client - can we remove this override?
