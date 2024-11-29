@@ -1,8 +1,9 @@
 package lib
 
-import com.gu.mediaservice.lib.aws.S3Bucket
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.model._
+import org.mockito.Mockito.when
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
@@ -45,13 +46,19 @@ class CropsTest extends AnyFunSpec with Matchers with MockitoSugar {
     Crops.cropType(Tiff, "TrueColor", hasAlpha = false) shouldBe Jpeg
   }
 
-  private val config = mock[CropperConfig]
+  private val config = {
+    val mockConfig = mock[CropperConfig]
+    when(mockConfig.awsRegion).thenReturn("eu-west-1")
+    when(mockConfig.googleS3AccessKey).thenReturn(None)
+    when(mockConfig.googleS3SecretKey).thenReturn(None)
+    mockConfig
+  }
   private val store = mock[CropStore]
   private val imageOperations: ImageOperations = mock[ImageOperations]
   private val source: SourceImage = SourceImage("test", mock[Asset], valid = true, mock[ImageMetadata], mock[FileMetadata])
   private val bounds: Bounds = Bounds(10, 20, 30, 40)
   private val outputWidth = 1234
-  private val imageBucket = S3Bucket("crops-bucket", endpoint = "some-providers-s3-endpoint")
+  private val imageBucket = S3Bucket("crops-bucket", S3.AmazonAwsS3Endpoint)
 
   it("should should construct a correct address for a master jpg") {
     val outputFilename = new Crops(config, store, imageOperations, imageBucket)

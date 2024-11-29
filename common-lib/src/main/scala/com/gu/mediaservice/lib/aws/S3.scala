@@ -1,5 +1,7 @@
 package com.gu.mediaservice.lib.aws
 
+import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.model._
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder, model}
 import com.amazonaws.util.IOUtils
@@ -67,10 +69,17 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   val AmazonAwsS3Endpoint: String = S3.AmazonAwsS3Endpoint
 
   private lazy val amazonS3: AmazonS3 = S3Ops.buildS3Client(config)
+  private val googleS3: Option[AmazonS3] = S3Ops.buildGoogleS3Client(config)
 
   private def clientFor(bucket: S3Bucket): AmazonS3 = {
-    logger.info("Client for: " + bucket.endpoint)
-    amazonS3
+    (bucket.endpoint match {
+      case "storage.googleapis.com" =>
+        googleS3
+      case _ =>
+        Some(amazonS3)
+    }).getOrElse {
+      amazonS3
+    }
   }
 
   def signUrl(bucket: S3Bucket, url: URI, image: Image, expiration: DateTime = cachableExpiration(), imageType: ImageFileType = Source): String = {
@@ -239,9 +248,26 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
 }
 
 object S3Ops {
-  // TODO make this localstack friendly
-  // TODO: Make this region aware - i.e. RegionUtils.getRegion(region).getServiceEndpoint(AmazonS3.ENDPOINT_PREFIX)
-  val s3Endpoint = "s3.amazonaws.com"
+  def buildGoogleS3Client(config: CommonConfig): Option[AmazonS3] = {
+    config.googleS3AccessKey.flatMap { accessKey =>
+      config.googleS3SecretKey.map { secretKey =>
+        val endpointConfig = new EndpointConfiguration("https://storage.googleapis.com", null)
+        // create credentials provider
+        val credentials = new BasicAWSCredentials(accessKey, secretKey)
+        val credentialsProvider = new AWSStaticCredentialsProvider(credentials)
+        // create a client config
+        val clientConfig = new ClientConfiguration()
+
+        val clientBuilder = AmazonS3ClientBuilder.standard()
+        clientBuilder.setEndpointConfiguration(endpointConfig)
+        clientBuilder.withCredentials(credentialsProvider)
+        clientBuilder.withClientConfiguration(clientConfig)
+        clientBuilder.build()
+      }
+    }
+  }
+
+  def buildS3Client(config: CommonConfig, forceV2Sigs: Boolean = false, localstackAware: Boolean = true, maybeRegionOverride: Option[String] = None): AmazonS3 = {
 
   def buildS3Client(config: CommonConfig, localstackAware: Boolean = true, maybeRegionOverride: Option[String] = None): AmazonS3 = {
     val builder = config.awsLocalEndpoint match {
