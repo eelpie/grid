@@ -80,7 +80,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     val pngUrl: Option[String] = pngFileUri
       .map(s3Client.signUrl(config.imageBucket, _, image, imageType = OptimisedPng, s3Endpoint = config.imageBucketS3Endpoint))
 
-    def s3SignedThumbUrl = s3Client.signUrl(config.thumbnailBucket, fileUri, image, imageType = Thumbnail, s3Endpoint = config.imageBucketS3Endpoint)
+    def s3SignedThumbUrl = s3Client.signUrl(config.thumbnailBucket, fileUri, image, imageType = Thumbnail, s3Endpoint = config.thumbnailBucketS3Endpoint)
 
     val thumbUrl = config.cloudFrontDomainThumbBucket
       .flatMap(s3Client.signedCloudFrontUrl(_, fileUri.getPath.drop(1)))
