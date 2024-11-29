@@ -36,7 +36,7 @@ class ReaperController(
   override val services: Services,
   override val controllerComponents: ControllerComponents,
   val wsClient: WSClient
-)(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging with InstanceForRequest with Instances {
+)(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging with InstanceForRequest with Instances with ReapableEligibility {
 
   private val INTERVAL = config.reaperInterval //default 15 minutes, based on max of 1000 per reap, this interval will max out at 96,000 images per day
   private val isPaused = config.reaperPaused

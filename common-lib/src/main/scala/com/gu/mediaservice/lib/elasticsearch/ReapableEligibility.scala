@@ -8,6 +8,8 @@ import scala.concurrent.Future
 
 trait ReapableEligibility extends Provider{
 
+  val ReapableAfterMoreThanDaysOld: Int = 20
+
   def initialise(): Unit = {}
   def shutdown(): Future[Unit] = Future.successful(())
 
