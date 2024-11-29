@@ -4,6 +4,7 @@ import org.apache.pekko.actor.Scheduler
 import com.gu.mediaservice.lib.{DateTimeUtils, ImageIngestOperations}
 import com.gu.mediaservice.lib.auth.Permissions.DeleteImage
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, BaseControllerWithLoginRedirects}
+import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
 import com.gu.mediaservice.lib.elasticsearch.ReapableEligibility
 import com.gu.mediaservice.lib.events.UsageEvents
@@ -114,7 +115,7 @@ class ReaperController(
         case Some(reaperBucket) =>
           val now = DateTime.now(DateTimeZone.UTC)
           val key = s"$deleteType/${s3DirNameFromDate(now)}/$deleteType-${now.toString()}.json"
-          store.putObject(reaperBucket, key, json.toString())
+          store.putObject(reaperBucket, key, json.toString(), S3.AmazonAwsS3Endpoint)
           json
         }
       }
@@ -214,7 +215,7 @@ class ReaperController(
   def reaperRecord(key: String) = auth { config.maybeReaperBucket match {
     case None => NotImplemented("Reaper bucket not configured")
     case Some(reaperBucket) =>
-      store.getObjectAsString(reaperBucket, key).map { record =>
+      store.getObjectAsString(reaperBucket, key, S3.AmazonAwsS3Endpoint).map { record =>
         Ok(record).as(JSON)
       }.getOrElse{
         NotFound

@@ -39,5 +39,5 @@ trait ImageStorage {
                  meta: Map[String, String] = Map.empty, overwrite: Boolean, s3Endpoint: String)
                 (implicit logMarker: LogMarker): Future[S3Object]
 
-  def deleteImage(bucket: String, id: String)(implicit logMarker: LogMarker): Future[Unit]
+  def deleteImage(bucket: String, id: String, s3Endpoint: String)(implicit logMarker: LogMarker): Future[Unit]
 }

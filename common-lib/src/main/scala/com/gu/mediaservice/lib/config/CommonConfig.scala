@@ -1,6 +1,6 @@
 package com.gu.mediaservice.lib.config
 
-import com.gu.mediaservice.lib.aws.{AwsClientV1BuilderUtils, AwsClientV2BuilderUtils, KinesisSenderConfig}
+import com.gu.mediaservice.lib.aws.{AwsClientV1BuilderUtils, AwsClientV2BuilderUtils, KinesisSenderConfig, S3}
 import com.gu.mediaservice.model.UsageRightsSpec
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
@@ -70,9 +70,9 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val services = new SingleHostServices(domainRoot)
 
   val imageBucket: String = string("s3.image.bucket")
-  val imageBucketS3Endpoint: String = "s3.amazonaws.com"
+  val imageBucketS3Endpoint: String = S3.AmazonAwsS3Endpoint
   val thumbnailBucket: String = string("s3.thumb.bucket")
-  val thumbnailBucketS3Endpoint: String = "s3.amazonaws.com"
+  val thumbnailBucketS3Endpoint: String = S3.AmazonAwsS3Endpoint
 
   /**
    * Load in a list of domain metadata specifications from configuration. For example:
