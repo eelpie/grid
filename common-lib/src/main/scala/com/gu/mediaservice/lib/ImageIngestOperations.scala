@@ -57,11 +57,11 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
       overwrite = true, s3Endpoint = imageBucketS3Endpoint)
   }
 
-  private def bulkDelete(bucket: String, keys: List[String]): Future[Map[String, Boolean]] = keys match {
+  private def bulkDelete(bucket: String, keys: List[String], s3Endpoint: String): Future[Map[String, Boolean]] = keys match {
     case Nil => Future.successful(Map.empty)
     case _ => Future {
       try {
-        client.deleteObjects(
+        clientFor(s3Endpoint).deleteObjects(
           new DeleteObjectsRequest(bucket).withKeys(keys: _*)
         )
         keys.map { key =>
@@ -78,15 +78,15 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
     }
   }
 
-  def deleteOriginal(id: String, instance: Instance)(implicit logMarker: LogMarker): Future[Unit] = if(isVersionedS3) deleteVersionedImage(imageBucket, fileKeyFromId(id, instance)) else deleteImage(imageBucket, fileKeyFromId(id, instance), imageBucketS3Endpoint)
-  def deleteOriginals(ids: Set[String], instance: Instance) = bulkDelete(imageBucket, ids.map(id => fileKeyFromId(id, instance)).toList)
+  def deleteOriginal(id: String, instance: Instance)(implicit logMarker: LogMarker): Future[Unit] = if(isVersionedS3) deleteVersionedImage(imageBucket, fileKeyFromId(id, instance), imageBucketS3Endpoint) else deleteImage(imageBucket, fileKeyFromId(id, instance), imageBucketS3Endpoint)
+  def deleteOriginals(ids: Set[String], instance: Instance) = bulkDelete(imageBucket, ids.map(id => fileKeyFromId(id, instance)).toList, imageBucketS3Endpoint)
   def deleteThumbnail(id: String, instance: Instance)(implicit logMarker: LogMarker): Future[Unit] = deleteImage(thumbnailBucket, fileKeyFromId(id, instance), thumbnailBucketS3Endpoint)
-  def deleteThumbnails(ids: Set[String], instance: Instance) = bulkDelete(thumbnailBucket, ids.map(id => fileKeyFromId(id, instance)).toList)
+  def deleteThumbnails(ids: Set[String], instance: Instance) = bulkDelete(thumbnailBucket, ids.map(id => fileKeyFromId(id, instance)).toList, thumbnailBucketS3Endpoint)
   def deletePNG(id: String, instance: Instance)(implicit logMarker: LogMarker): Future[Unit] = deleteImage(imageBucket, optimisedPngKeyFromId(id, instance), imageBucketS3Endpoint)
-  def deletePNGs(ids: Set[String], instance: Instance) = bulkDelete(imageBucket, ids.map(id => optimisedPngKeyFromId(id, instance)).toList)
+  def deletePNGs(ids: Set[String], instance: Instance) = bulkDelete(imageBucket, ids.map(id => optimisedPngKeyFromId(id, instance)).toList, imageBucketS3Endpoint)
 
   def doesOriginalExist(id: String, instance: Instance): Boolean =
-    client.doesObjectExist(imageBucket, fileKeyFromId(id, instance))
+    clientFor(imageBucketS3Endpoint).doesObjectExist(imageBucket, fileKeyFromId(id, instance))
 
   private def instanceAwareOriginalImageKey(storableImage: StorableOriginalImage) = {
     fileKeyFromId(storableImage.id, storableImage.instance)
