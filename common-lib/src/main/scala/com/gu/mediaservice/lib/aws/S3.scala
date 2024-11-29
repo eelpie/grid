@@ -19,16 +19,16 @@ import scala.jdk.CollectionConverters._
 case class S3Object(uri: URI, size: Long, metadata: S3Metadata)
 
 object S3Object {
-  def objectUrl(bucket: String, key: String): URI = {
-    val bucketUrl = s"$bucket.${S3Ops.s3Endpoint}"
+  private def objectUrl(bucket: String, key: String, s3Endpoint: String): URI = {
+    val bucketUrl = s"$bucket.$s3Endpoint"
     new URI("http", bucketUrl, s"/$key", null)
   }
 
-  def apply(bucket: String, key: String, size: Long, metadata: S3Metadata): S3Object =
-    apply(objectUrl(bucket, key), size, metadata)
+  def apply(bucket: String, key: String, size: Long, metadata: S3Metadata, s3Endpoint: String): S3Object =
+    apply(objectUrl(bucket, key, s3Endpoint), size, metadata)
 
   def apply(bucket: String, key: String, file: File, mimeType: Option[MimeType], lastModified: Option[DateTime],
-            meta: Map[String, String] = Map.empty, cacheControl: Option[String] = None): S3Object = {
+            meta: Map[String, String] = Map.empty, cacheControl: Option[String] = None, s3Endpoint: String): S3Object = {
     S3Object(
       bucket,
       key,
@@ -40,7 +40,8 @@ object S3Object {
           cacheControl,
           lastModified
         )
-      )
+      ),
+      s3Endpoint
     )
   }
 }
@@ -115,7 +116,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     client.doesObjectExist(bucket, key)
   }
 
-  def getObject(bucket: Bucket, url: URI): model.S3Object = {
+  def getObject(bucket: Bucket, url: URI): model.S3Object = { // TODO why can't this just be by bucket + key to remove end point knowledge
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)
     client.getObject(new GetObjectRequest(bucket, key))
@@ -164,7 +165,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     client.putObject(bucket, key, content)
   }
 
-  def store(bucket: Bucket, id: Key, file: File, mimeType: Option[MimeType], meta: UserMetadata = Map.empty, cacheControl: Option[String] = None)
+  def store(bucket: Bucket, id: Key, file: File, mimeType: Option[MimeType], meta: UserMetadata = Map.empty, cacheControl: Option[String] = None, s3Endpoint: String)
            (implicit ex: ExecutionContext, logMarker: LogMarker): Future[S3Object] =
     Future {
       val metadata = new ObjectMetadata
@@ -184,11 +185,11 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
         client.putObject(req)
         // once we've completed the PUT read back to ensure that we are returning reality
         val metadata = client.getObjectMetadata(bucket, id)
-        S3Object(bucket, id, metadata.getContentLength, S3Metadata(metadata))
+        S3Object(bucket, id, metadata.getContentLength, S3Metadata(metadata), s3Endpoint)
       }(markers)
     }
 
-  def storeIfNotPresent(bucket: Bucket, id: Key, file: File, mimeType: Option[MimeType], meta: UserMetadata = Map.empty, cacheControl: Option[String] = None)
+  def storeIfNotPresent(bucket: Bucket, id: Key, file: File, mimeType: Option[MimeType], meta: UserMetadata = Map.empty, cacheControl: Option[String] = None, s3Endpoint: String)
                        (implicit ex: ExecutionContext, logMarker: LogMarker): Future[S3Object] = {
     Future{
       Some(client.getObjectMetadata(bucket, id))
@@ -198,13 +199,13 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     }.flatMap {
       case Some(objectMetadata) =>
         logger.info(logMarker, s"Skipping storing of S3 file $id as key is already present in bucket $bucket")
-        Future.successful(S3Object(bucket, id, objectMetadata.getContentLength, S3Metadata(objectMetadata)))
+        Future.successful(S3Object(bucket, id, objectMetadata.getContentLength, S3Metadata(objectMetadata), s3Endpoint))
       case None =>
-        store(bucket, id, file, mimeType, meta, cacheControl)
+        store(bucket, id, file, mimeType, meta, cacheControl, s3Endpoint)
     }
   }
 
-  def list(bucket: Bucket, prefixDir: String)
+  def list(bucket: Bucket, prefixDir: String, s3Endpoint: String)
           (implicit ex: ExecutionContext): Future[List[S3Object]] =
     Future {
       val req = new ListObjectsRequest().withBucketName(bucket).withPrefix(s"$prefixDir/")
@@ -212,7 +213,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
       val summaries = listing.getObjectSummaries.asScala
       summaries.map(summary => (summary.getKey, summary)).foldLeft(List[S3Object]()) {
         case (memo: List[S3Object], (key: String, summary: S3ObjectSummary)) =>
-          S3Object(bucket, key, summary.getSize, getMetadata(bucket, key)) :: memo
+          S3Object(bucket, key, summary.getSize, getMetadata(bucket, key), s3Endpoint) :: memo
       }
     }
 
