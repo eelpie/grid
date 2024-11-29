@@ -13,6 +13,8 @@ class S3FileDoesNotExistException extends Exception()
 
 class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config, imageBucketS3Endpoint = config.imageBucketS3Endpoint, thumbnailBucketS3Endpoint = config.thumbnailBucketS3Endpoint) with GridLogging {
 
+  private val imageIngestS3Endpoint = AmazonAwsS3Endpoint
+
   private def handleNotFound[T](key: String)(doWork: => T)(loggingIfNotFound: => Unit): T = {
     try {
       doWork
@@ -29,7 +31,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   def getS3Object(key: String)(implicit logMarker: LogMarker): S3Object = handleNotFound(key) {
     val bucket = config.maybeIngestBucket.get
     logger.info(s"getS3Object $key from $bucket")
-    getObject(bucket, key)
+    getObject(bucket, key, imageIngestS3Endpoint)
   } {
     logger.error(logMarker, s"Attempted to read $key from ingest bucket, but it does not exist.")
   }
@@ -45,18 +47,18 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
     // sent by the client in manager.js
     request.putCustomRequestHeader("x-amz-meta-media-id", mediaId)
 
-    generatePresignedRequest(request).toString
+    generatePresignedRequest(request, imageIngestS3Endpoint).toString
   }
 
   def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key){
-    copyObject(config.maybeIngestBucket.get, config.maybeFailBucket.get, key) // TODO Naked get - make optional
+    copyObject(config.maybeIngestBucket.get, config.maybeFailBucket.get, key, imageIngestS3Endpoint) // TODO Naked get - make optional
     deleteObjectFromIngestBucket(key)
   } {
     logger.warn(logMarker, s"Attempted to copy $key from ingest bucket to fail bucket, but it does not exist.")
   }
 
   def deleteObjectFromIngestBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key) {
-    deleteObject(config.maybeIngestBucket.get, key)
+    deleteObject(config.maybeIngestBucket.get, key, imageIngestS3Endpoint)
   } {
     logger.warn(logMarker, s"Attempted to delete $key from ingest bucket, but it does not exist.")
   }
