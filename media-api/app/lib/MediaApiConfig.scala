@@ -1,6 +1,7 @@
 package lib
 
 import com.amazonaws.services.cloudfront.util.SignerUtils
+import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.config.{CommonConfigWithElastic, GridConfigResources}
 import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
@@ -20,7 +21,7 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   val usageMailBucket: String = string("s3.usagemail.bucket")
 
   val quotaStoreKey: String = string("quota.store.key")
-  val quotaStoreConfig: StoreConfig = StoreConfig(configBucket, quotaStoreKey, "s3.amazonaws.com")
+  val quotaStoreConfig: StoreConfig = StoreConfig(configBucket, quotaStoreKey, S3.AmazonAwsS3Endpoint)
 
   //Lazy allows this to be empty and not break things unless used somewhere
   lazy val imgPublishingBucket = string("publishing.image.bucket")
