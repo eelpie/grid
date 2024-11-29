@@ -17,7 +17,7 @@ class CropStore(config: CropperConfig) extends S3ImageStorage(config) with CropS
 
   def storeCropSizing(file: File, filename: String, mimeType: MimeType, crop: Crop, dimensions: Dimensions)(implicit logMarker: LogMarker): Future[Asset] = {
     val metadata = metadataForCrop(crop, dimensions)
-    storeImage(config.imgPublishingBucket, filename, file, Some(mimeType), metadata, overwrite = true, config.imageBucketS3Endpoint) map { s3Object =>
+    storeImage(config.imgPublishingBucket, filename, file, Some(mimeType), metadata, overwrite = true, config.imgPublishingBucketS3Endpoint) map { s3Object =>
       Asset(
         translateImgHost(s3Object.uri),
         Some(s3Object.size),
