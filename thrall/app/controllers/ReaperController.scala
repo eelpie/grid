@@ -223,4 +223,11 @@ class ReaperController(
       ).as(JSON)
   }}
 
+  def conf() = auth {
+    val userVisibleConfig = {
+      "hardReapImagesAge" -> config.hardReapImagesAge
+    }
+    Ok(Json.toJson(userVisibleConfig))
+  }
+
 }
