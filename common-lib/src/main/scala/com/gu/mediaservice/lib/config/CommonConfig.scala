@@ -1,6 +1,6 @@
 package com.gu.mediaservice.lib.config
 
-import com.gu.mediaservice.lib.aws.{AwsClientV1BuilderUtils, AwsClientV2BuilderUtils, KinesisSenderConfig}
+import com.gu.mediaservice.lib.aws.{AwsClientV1BuilderUtils, AwsClientV2BuilderUtils, KinesisSenderConfig, S3Ops}
 import com.gu.mediaservice.model.UsageRightsSpec
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
@@ -55,6 +55,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
   val maybeIngestBucket: Option[String] = stringOpt("s3.ingest.bucket")
+  val maybeIngestBucketEndpoint: Option[String] = stringOpt("s3.ingest.bucket").map(_ => S3Ops.s3Endpoint)
   val maybeFailBucket: Option[String] = stringOpt("s3.fail.bucket")
 
   val maybeQuarantineBucket: Option[String] = stringOpt("s3.quarantine.bucket")
@@ -73,6 +74,11 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val corsAllowedOrigins: Set[String] = getStringSet("security.cors.allowedOrigins")
 
   val services = new SingleHostServices(domainRoot)
+
+  val imageBucket: String = string("s3.image.bucket")
+  val imageBucketS3Endpoint: String = "s3.amazonaws.com"
+  val thumbnailBucket: String = string("s3.thumb.bucket")
+  val thumbnailBucketS3Endpoint: String = "s3.amazonaws.com"
 
   /**
    * Load in a list of domain metadata specifications from configuration. For example:
