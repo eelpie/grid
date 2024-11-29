@@ -54,8 +54,6 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val maybeIngestBucket: Option[String] = stringOpt("s3.ingest.bucket")
   val maybeFailBucket: Option[String] = stringOpt("s3.fail.bucket")
 
-  val s3Endpoint: String= stringOpt("s3.serviceEndpoint").getOrElse("s3.amazonaws.com")
-
   // Note: had to make these lazy to avoid init order problems ;_;
   val domainRoot: String = string("domain.root")
   val domainRootOverride: Option[String] = stringOpt("domain.root-override")
@@ -64,6 +62,11 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val corsAllowedOrigins: Set[String] = getStringSet("security.cors.allowedOrigins")
 
   val services = new SingleHostServices(domainRoot)
+
+  val imageBucket: String = string("s3.image.bucket")
+  val imageBucketS3Endpoint: String = "s3.amazonaws.com"
+  val thumbnailBucket: String = string("s3.thumb.bucket")
+  val thumbnailBucketS3Endpoint: String = "s3.amazonaws.com"
 
   /**
    * Load in a list of domain metadata specifications from configuration. For example:
