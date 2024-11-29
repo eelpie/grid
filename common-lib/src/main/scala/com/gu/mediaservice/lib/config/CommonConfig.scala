@@ -64,7 +64,9 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val services = new SingleHostServices(domainRoot)
 
   val imageBucket: String = string("s3.image.bucket")
-  val imageBucketS3Endpoint: String = "s3.amazonaws.com"
+  val imageBucketS3Endpoint: String =  stringOpt("s3.image.bucket.endpoint").getOrElse("s3.amazonaws.com")
+  val googleS3AccessKey = stringOpt("s3.accessKey")
+  val googleS3SecretKey = stringOpt("s3.secretKey")
   val thumbnailBucket: String = string("s3.thumb.bucket")
   val thumbnailBucketS3Endpoint: String = "s3.amazonaws.com"
 
