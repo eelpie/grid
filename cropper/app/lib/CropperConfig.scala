@@ -10,6 +10,7 @@ class CropperConfig(resources: GridConfigResources) extends CommonConfig(resourc
   val imageBucket: String = string("s3.image.bucket")
 
   val imgPublishingBucket = string("publishing.image.bucket")
+  val imgPublishingBucketS3Endpoint: String = "s3.amazonaws.com"
 
   val canDownloadCrop: Boolean = boolean("canDownloadCrop")
 
