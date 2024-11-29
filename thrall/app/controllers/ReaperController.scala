@@ -14,7 +14,7 @@ import lib.elasticsearch.ElasticSearch
 import lib.{BatchDeletionIds, ThrallConfig, ThrallMetrics, ThrallStore}
 import org.apache.pekko.actor.Scheduler
 import org.joda.time.{DateTime, DateTimeZone}
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsValue, Json, OWrites}
 import play.api.libs.ws.WSClient
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import scalaz.NonEmptyList
@@ -229,11 +229,15 @@ class ReaperController(
       ).as(JSON)
   }}
 
-  def conf() = auth {
-    val userVisibleConfig = {
-      "hardReapImagesAge" -> config.hardReapImagesAge
-    }
-    Ok(Json.toJson(userVisibleConfig))
+  def conf() = Action.async {
+    val uvtc = UserVisableThrallConfig(
+      hardReapImagesAge = config.hardReapImagesAge,
+      reapableAfterMoreThanDaysOld = ReapableEligibility.ReapableAfterMoreThanDaysOld
+    )
+    implicit val uvtcw: OWrites[UserVisableThrallConfig] = Json.writes[UserVisableThrallConfig]
+    Future.successful(Ok(Json.toJson(uvtc)))
   }
+
+  case class UserVisableThrallConfig(hardReapImagesAge: Int, reapableAfterMoreThanDaysOld: Int)
 
 }
