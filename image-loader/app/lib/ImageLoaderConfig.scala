@@ -10,11 +10,12 @@ import play.api.inject.ApplicationLifecycle
 import scala.concurrent.duration.FiniteDuration
 
 class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(resources) with StrictLogging {
-  val imageBucket: String = string("s3.image.bucket")
 
   val maybeImageReplicaBucket: Option[String] = stringOpt("s3.image.replicaBucket")
 
-  val thumbnailBucket: String = string("s3.thumb.bucket")
+  val quarantineBucket: Option[String] = stringOpt("s3.quarantine.bucket")
+  val quarantineBucketS3Endpoint: String = "s3.amazonaws.com"
+  val uploadToQuarantineEnabled: Boolean = boolean("upload.quarantine.enabled")
 
   val lowerEnvironmentSamplingPercentageAsDecimal = intOpt("s3.sampling.percentage").getOrElse(1) / 100.0
   val maybeLowerEnvironmentQueueBucketToSampleInto = stringOpt("s3.sampling.targetBucket")

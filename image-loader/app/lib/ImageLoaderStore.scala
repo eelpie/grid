@@ -15,7 +15,7 @@ import scala.concurrent.Future
 
 class S3FileDoesNotExistException extends Exception()
 
-class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config) with GridLogging {
+class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config, imageBucketS3Endpoint = config.imageBucketS3Endpoint, thumbnailBucketS3Endpoint = config.thumbnailBucketS3Endpoint) with GridLogging {
 
   private def handleNotFound[T](key: String)(doWork: => T)(loggingIfNotFound: => Unit): T = {
     try {
