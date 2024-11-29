@@ -2,6 +2,7 @@ package lib
 
 import org.apache.pekko.actor.Scheduler
 import com.gu.mediaservice.lib.FeatureToggle
+import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.model.UsageRights
 
 import scala.concurrent.Await
@@ -24,7 +25,7 @@ class UsageQuota(config: MediaApiConfig, scheduler: Scheduler) {
     config.usageMailBucket,
     config,
     quotaStore,
-    "s3.amazonaws.com"
+    S3.AmazonAwsS3Endpoint
   )
 
   def scheduleUpdates(): Unit = {
