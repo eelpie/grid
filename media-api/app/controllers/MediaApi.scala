@@ -402,7 +402,7 @@ class MediaApi(
           new URI(s3Client.signUrl(config.imageBucket, image.optimisedPng.getOrElse(image.source).file, image, imageType = image.optimisedPng match {
             case Some(_) => OptimisedPng
             case _ => Source
-          }))
+          }, s3Endpoint = config.imageBucketS3Endpoint))
 
         if(config.recordDownloadAsUsage) {
           postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))

@@ -86,7 +86,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     }
   }
 
-  def signUrl(bucket: Bucket, url: URI, image: Image, expiration: DateTime = cachableExpiration(), imageType: ImageFileType = Source): String = {
+  def signUrl(bucket: Bucket, url: URI, image: Image, expiration: DateTime = cachableExpiration(), imageType: ImageFileType = Source, s3Endpoint: String): String = {
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)
 
@@ -95,15 +95,15 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     val headers = new ResponseHeaderOverrides().withContentDisposition(contentDisposition)
 
     val request = new GeneratePresignedUrlRequest(bucket, key).withExpiration(expiration.toDate).withResponseHeaders(headers)
-    legacySigningClient.generatePresignedUrl(request).toExternalForm
+    clientFor(s3Endpoint).generatePresignedUrl(request).toExternalForm
   }
 
-  def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration()): String = {
+  def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration(), s3Endpoint: String): String = {
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)
 
     val request = new GeneratePresignedUrlRequest(bucket, key).withExpiration(expiration.toDate)
-    legacySigningClient.generatePresignedUrl(request).toExternalForm
+    clientFor(s3Endpoint).generatePresignedUrl(request).toExternalForm
   }
 
   def getObject(bucket: Bucket, url: URI, s3Endpoint: String): model.S3Object = { // TODO why can't this just be by bucket + key to remove end point knowledge
