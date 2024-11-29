@@ -42,6 +42,7 @@ class ThrallController(
   gridClient: GridClient,
   s3: AmazonS3,
   imageBucket: String,
+  imageBucketEndPoint: String,
 )(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging with InstanceForRequest {
 
   private val numberFormatter: Long => String = java.text.NumberFormat.getIntegerInstance().format

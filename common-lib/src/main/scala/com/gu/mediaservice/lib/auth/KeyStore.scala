@@ -16,7 +16,6 @@ class KeyStore(bucket: String, config: CommonConfig, val s3Endpoint: String)(imp
   }
 
   private def fetchAll: Map[String, ApiAccessor] = {
-    s3.listObjectKeys(bucket).flatMap(k => getS3Object(k).map(k -> ApiAccessor(_))).toMap
+    s3.listObjectKeys(bucket, s3Endpoint).flatMap(k => getS3Object(k).map(k -> ApiAccessor(_))).toMap
   }
-
 }

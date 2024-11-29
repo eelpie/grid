@@ -1,5 +1,6 @@
 package lib
 
+import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.model.Instance
 
@@ -10,7 +11,7 @@ class CropperConfig(resources: GridConfigResources) extends CommonConfig(resourc
   val imageBucket: String = string("s3.image.bucket")
 
   val imgPublishingBucket = string("publishing.image.bucket")
-  val imgPublishingBucketS3Endpoint: String = "s3.amazonaws.com"
+  val imgPublishingBucketS3Endpoint: String = S3.AmazonAwsS3Endpoint
 
   val canDownloadCrop: Boolean = boolean("canDownloadCrop")
 
