@@ -28,18 +28,20 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
   }
 
   def deleteImage(bucket: String, id: String, s3Endpoint: String)(implicit logMarker: LogMarker) = Future {
-    client.deleteObject(bucket, id)
+    clientFor(s3Endpoint).deleteObject(bucket, id)
     logger.info(logMarker, s"Deleted image $id from bucket $bucket")
   }
 
-  def deleteVersionedImage(bucket: String, id: String)(implicit logMarker: LogMarker) = Future {
+  def deleteVersionedImage(bucket: String, id: String, s3Endpoint: String)(implicit logMarker: LogMarker) = Future {
+    val client = clientFor(s3Endpoint)
     val objectVersion = client.getObjectMetadata(bucket, id).getVersionId
     client.deleteVersion(bucket, id, objectVersion)
     logger.info(logMarker, s"Deleted image $id from bucket $bucket (version: $objectVersion)")
   }
 
-  def deleteFolder(bucket: String, id: String)(implicit logMarker: LogMarker) = Future {
-		val files = client.listObjects(bucket, id).getObjectSummaries.asScala
+  def deleteFolder(bucket: String, id: String, s3Endpoint: String)(implicit logMarker: LogMarker) = Future {
+    val client = clientFor(s3Endpoint)
+    val files = client.listObjects(bucket, id).getObjectSummaries.asScala
     logger.info(s"Found ${files.size} files to delete in folder $id")
     files.foreach(file => client.deleteObject(bucket, file.getKey))
 		logger.info(logMarker, s"Deleting images in folder $id from bucket $bucket")

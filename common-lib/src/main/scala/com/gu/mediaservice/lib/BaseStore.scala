@@ -24,10 +24,11 @@ abstract class BaseStore[TStoreKey, TStoreVal](bucket: String, config: CommonCon
   protected val store: AtomicReference[Map[TStoreKey, TStoreVal]] = new AtomicReference(Map.empty)
   protected val lastUpdated: AtomicReference[DateTime] = new AtomicReference(DateTime.now())
 
-  protected def getS3Object(key: String): Option[String] = s3.getObjectAsString(bucket, key)
+  protected def getS3Object(key: String): Option[String] = s3.getObjectAsString(bucket, key, s3Endpoint)
 
   protected def getLatestS3Stream: Option[InputStream] = {
-    val objects = s3.client
+    val client = s3.clientFor(s3Endpoint)
+    val objects = client
       .listObjects(bucket).getObjectSummaries.asScala
       .filterNot(_.getKey == "AMAZON_SES_SETUP_NOTIFICATION")
 
@@ -35,7 +36,7 @@ abstract class BaseStore[TStoreKey, TStoreVal](bucket: String, config: CommonCon
       val obj = objects.maxBy(_.getLastModified)
       logger.info(s"Latest key ${obj.getKey} in bucket $bucket")
 
-      val stream = s3.client.getObject(bucket, obj.getKey).getObjectContent
+      val stream = client.getObject(bucket, obj.getKey).getObjectContent
       Some(stream)
     } else {
       logger.error(s"Bucket $bucket is empty")
