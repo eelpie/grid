@@ -242,4 +242,11 @@ class ReaperController(
     }
   }
 
+  def conf() = auth {
+    val userVisibleConfig = {
+      "hardReapImagesAge" -> config.hardReapImagesAge
+    }
+    Ok(Json.toJson(userVisibleConfig))
+  }
+
 }
