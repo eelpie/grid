@@ -18,6 +18,9 @@ POST    /completeMigration                            controllers.ThrallControll
 POST    /previewMigrationCompletion                   controllers.ThrallController.previewMigrationCompletion
 POST    /unPreviewMigrationCompletion                 controllers.ThrallController.unPreviewMigrationCompletion
 
+# Config
+GET    /config                                        controllers.ReaperController.conf()
+
 # reaper
 GET    /reaper                                        controllers.ReaperController.index
 GET    /reaper/:key                                   controllers.ReaperController.reaperRecord(key: String)
