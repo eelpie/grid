@@ -68,8 +68,8 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   type Key = String
   type UserMetadata = Map[String, String]
 
-  lazy val amazonS3: AmazonS3 = S3Ops.buildS3Client(config)
-  lazy val googleS3: Option[AmazonS3] = S3Ops.buildGoogleS3Client(config)
+  private lazy val amazonS3: AmazonS3 = S3Ops.buildS3Client(config, forceV2Sigs = true)
+  private lazy val googleS3: Option[AmazonS3] = S3Ops.buildGoogleS3Client(config)
 
   // also create a legacy client that uses v2 signatures for URL signing
   private lazy val legacySigningClient: AmazonS3 = S3Ops.buildS3Client(config, forceV2Sigs = true)
