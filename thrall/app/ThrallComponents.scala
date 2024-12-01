@@ -1,6 +1,6 @@
 import com.gu.kinesis.{KinesisRecord, KinesisSource, ConsumerConfig => KclPekkoStreamConfig}
 import com.gu.mediaservice.GridClient
-import com.gu.mediaservice.lib.aws.{S3Ops, S3Vectors, ThrallMessageSender}
+import com.gu.mediaservice.lib.aws.{S3, S3Vectors, ThrallMessageSender}
 import com.gu.mediaservice.lib.instances.{Instances, InstancesClient}
 import com.gu.mediaservice.lib.logging.MarkerMap
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -19,8 +19,8 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 
 class ThrallComponents(context: Context) extends GridComponents(context, new ThrallConfig(_)) with StrictLogging with AssetsComponents
@@ -91,7 +91,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   val streamRunning: Future[Done] = thrallStreamProcessor.run()
 
-  val s3 = S3Ops.buildS3Client(config)
+  val s3 = new S3(config)
   val s3Vectors = new S3Vectors(config)
 
   Source.repeat(()).throttle(1, per = 5.minute).map(_ => {
