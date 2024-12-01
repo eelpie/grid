@@ -140,6 +140,10 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     bucket.client.listObjects(bucket.bucket, prefix)
   }
 
+  def listObjects(bucket: S3Bucket, request: ListObjectsRequest): ObjectListing = {
+    bucket.client.listObjects(request)
+  }
+
   def listObjectKeys(bucket: S3Bucket): Seq[String] = {
     bucket.client.listObjects(bucket.bucket).getObjectSummaries.asScala.map(_.getKey).toSeq
   }
