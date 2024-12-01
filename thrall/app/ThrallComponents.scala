@@ -93,7 +93,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   val streamRunning: Future[Done] = thrallStreamProcessor.run()
 
-  val s3 = S3Ops.buildS3Client(config)
+  val s3 = new S3(config)
 
   Source.repeat(()).throttle(1, per = 5.minute).map(_ => {
     implicit val logMarker: MarkerMap = MarkerMap()
@@ -153,7 +153,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
   val maybeCustomReapableEligibility = config.maybeReapableEligibilityClass(applicationLifecycle)
 
-  val thrallController = new ThrallController(es, store, migrationSourceWithSender.send, messageSender, actorSystem, auth, config.services, controllerComponents, gridClient, s3, config.imageBucket.bucket)
+  val thrallController = new ThrallController(es, store, migrationSourceWithSender.send, messageSender, actorSystem, auth, config.services, controllerComponents, gridClient, s3, config.imageBucket)
   val reaperController = new ReaperController(es, store, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents, wsClient, usageEvents)
   val healthCheckController = new HealthCheck(es, streamRunning.isCompleted, config, controllerComponents)
 
