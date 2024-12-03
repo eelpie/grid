@@ -6,10 +6,11 @@ import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model.MimeType
 import org.slf4j.LoggerFactory
 import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, HeadObjectRequest, ListObjectsV2Request, NoSuchKeyException}
+import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, HeadObjectRequest, ListObjectsV2Request}
 
 import java.io.File
-import scala.jdk.CollectionConverters._
 import scala.concurrent.Future
+import scala.jdk.CollectionConverters._
 
 // TODO: If deleteObject fails - we should be catching the errors here to avoid them bubbling to the application
 class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage with GridLogging {
@@ -49,6 +50,7 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
     val files = client.listObjectsV2(
       ListObjectsV2Request.builder().bucket(bucket).prefix(id).build()
     ).contents().asScala.toList
+    logger.info(s"Found ${files.size} files to delete in folder $id")
     files.foreach(file => client.deleteObject(
       DeleteObjectRequest.builder().bucket(bucket).key(file.key()).build()
     ))
