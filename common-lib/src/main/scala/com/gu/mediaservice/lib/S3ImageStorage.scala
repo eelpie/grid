@@ -43,7 +43,7 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
     val client = clientFor(s3Endpoint)
     val files = client.listObjects(bucket, id).getObjectSummaries.asScala
     logger.info(s"Found ${files.size} files to delete in folder $id")
-    files.foreach(file => client.deleteObject(bucket, file.getKey))
+		files.foreach(file => client.deleteObject(bucket, file.getKey))
 		logger.info(logMarker, s"Deleting images in folder $id from bucket $bucket")
 	}
 
