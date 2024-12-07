@@ -216,7 +216,7 @@ class ReaperController(
   }}
 
   def conf() = Action.async {
-    val uvtc = UserVisableThrallConfig(
+    val userVisibleConfig = UserVisableThrallConfig(
       hardReapImagesAge = config.hardReapImagesAge,
       reapableAfterMoreThanDaysOld = ReapableEligibility.ReapableAfterMoreThanDaysOld
     )
