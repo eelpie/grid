@@ -61,8 +61,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   val corsAllowedOrigins: Set[String] = getStringSet("security.cors.allowedOrigins")
 
-  private val singleHostUrl: String = string("single.host.url")
-  val services = new SingleHostServices(singleHostUrl)
+  val services = new SingleHostServices(domainRoot)
 
   /**
    * Load in a list of domain metadata specifications from configuration. For example:
@@ -105,6 +104,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   val recordDownloadAsUsage: Boolean = boolean("image.record.download")
   val shortenDownloadFilename: Boolean = boolean("image.download.shorten")
+  val myInstancesEndpoint: String = string("instance.service.my")
 
   /**
    * Load in a list of external staff photographers, internal staff photographers, contracted photographers,
