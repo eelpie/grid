@@ -72,8 +72,29 @@ class UsageStore(
     }
   }
 
-  def getUsageStatus(): Future[StoreAccess] = {
-    Future.successful(StoreAccess(store.get(), lastUpdated.get()))
+  def getUsageStatus: Future[StoreAccess] = {
+    val quota = quotaStore.getQuota
+
+    val results = quota.keys.flatMap { supplier =>
+      val maybeAgency = Agencies.all.get(supplier)
+      maybeAgency.map { agency =>
+        val supplierUsageSummary: SupplierQuotaCount = SupplierQuotaCount(
+          agency = agency, count = 0
+        )
+        val supplierUsageQuota: SupplierUsageQuota = SupplierUsageQuota(
+          agency = agency, count = quota.get(supplier).map(_.count).getOrElse(0)
+        )
+        val supplierUsageStatus = SupplierUsageStatus(
+          exceeded = false,
+          fractionOfQuota = 0.0.toFloat,
+          usage = supplierUsageSummary,
+          quota = Some(supplierUsageQuota)
+        )
+        (supplier, supplierUsageStatus)
+      }
+    }.toMap
+
+    Future.successful(StoreAccess(store = results, lastUpdated = DateTime.now()))
   }
 
   def overQuotaAgencies: List[Agency] = store.get.collect {
