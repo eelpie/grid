@@ -98,7 +98,7 @@ class UsageController(auth: Authentication, config: MediaApiConfig, elasticSearc
       "requestId" -> RequestLoggingFilter.getRequestId(request)
     ) ++ RequestLoggingFilter.loggablePrincipal(request.user)
 
-    usageQuota.usageStore.getUsageStatus()
+    usageQuota.usageStore.getUsageStatus
       .map((s: StoreAccess) => respond(s))
       .recover {
         case e =>
