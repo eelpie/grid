@@ -27,7 +27,7 @@ class CropStore(config: CropperConfig) extends S3ImageStorage(config) with CropS
   }
 
   def listCrops(id: String, instance: Instance): Future[List[Crop]] = {
-    list(config.imgPublishingBucket, folderForImagesCrops(id, instance), config.imgPublishingBucketS3Endpoint).map { crops => // TODO crops layout want to be pull up
+    list(config.imgPublishingBucket, folderForImagesCrops(id, instance)).map { crops => // TODO crops layout want to be pull up
       crops.foldLeft(Map[String, Crop]()) {
         case (map, (s3Object)) => {
           val filename::containingFolder::_ = s3Object.uri.getPath.split("/").reverse.toList
@@ -71,7 +71,7 @@ class CropStore(config: CropperConfig) extends S3ImageStorage(config) with CropS
   }
 
   def deleteCrops(id: String)(implicit logMarker: LogMarker, instance: Instance) = {
-    deleteFolder(config.imgPublishingBucket, folderForImagesCrops(id, instance), config.imgPublishingBucketS3Endpoint)
+    deleteFolder(config.imgPublishingBucket, folderForImagesCrops(id, instance))
   }
 
   // FIXME: this doesn't really belong here
