@@ -1,6 +1,6 @@
 package lib
 
-import com.gu.mediaservice.lib.aws.S3
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 
 import java.io.File
 import com.gu.mediaservice.lib.cleanup.{ComposedImageProcessor, ImageProcessor, ImageProcessorResources}
@@ -15,8 +15,9 @@ class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(res
 
   val maybeImageReplicaBucket: Option[String] = stringOpt("s3.image.replicaBucket")
 
-  val quarantineBucket: Option[String] = stringOpt("s3.quarantine.bucket")
-  val quarantineBucketS3Endpoint: String = S3.AmazonAwsS3Endpoint
+  val quarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map { bucket =>
+    S3Bucket(bucket, S3.AmazonAwsS3Endpoint)
+  }
   val uploadToQuarantineEnabled: Boolean = boolean("upload.quarantine.enabled")
 
   val tempDir: File = new File(stringDefault("upload.tmp.dir", "/tmp"))
