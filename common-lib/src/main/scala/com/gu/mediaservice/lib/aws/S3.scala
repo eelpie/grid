@@ -7,12 +7,12 @@ import com.amazonaws.{AmazonServiceException, ClientConfiguration}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
-import org.joda.time.{DateTime, Duration}
+import org.joda.time.DateTime
 
 import java.io.File
 import java.net.{URI, URL}
-import scala.jdk.CollectionConverters._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 case class S3Object(uri: URI, size: Long, metadata: S3Metadata)
 
@@ -65,7 +65,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   type Key = String
   type UserMetadata = Map[String, String]
 
-  lazy val client: AmazonS3 = S3Ops.buildS3Client(config)
+  private lazy val client: AmazonS3 = S3Ops.buildS3Client(config)
 
   def signUrl(bucket: Bucket, url: URI, image: Image, expiration: DateTime = cachableExpiration(), imageType: ImageFileType = Source): String = {
     // get path and remove leading `/`
@@ -87,10 +87,44 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     client.generatePresignedUrl(request)
   }
 
+  def copyObject(sourceBucket: Bucket, destinationBucket: Bucket, key: String): CopyObjectResult = {
+    client.copyObject(sourceBucket, key, destinationBucket, key)
+  }
+
+  def generatePresignedRequest(request: GeneratePresignedUrlRequest): URL = {
+    client.generatePresignedUrl(request)
+  }
+
+  def deleteObject(bucket: Bucket, key: String): Unit = {
+    client.deleteObject(bucket, key)
+  }
+
+  def deleteObjects(bucket: Bucket, keys: Seq[Bucket]): DeleteObjectsResult = {
+    client.deleteObjects(
+      new DeleteObjectsRequest(bucket).withKeys(keys: _*)
+    )
+  }
+
+  def deleteVersion(bucket: Bucket, id: Bucket, objectVersion: Bucket): Unit = {
+    client.deleteVersion(bucket, id, objectVersion)
+  }
+
+  def doesObjectExist(bucket: Bucket, key: String) = {
+    client.doesObjectExist(bucket, key)
+  }
+
   def getObject(bucket: Bucket, url: URI): model.S3Object = {
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)
     client.getObject(new GetObjectRequest(bucket, key))
+  }
+
+  def getObject(bucket: Bucket, key: String): model.S3Object = {
+    client.getObject(new GetObjectRequest(bucket, key))
+  }
+
+  def getObject(bucket: Bucket, obj: S3ObjectSummary): model.S3Object = {
+    client.getObject(bucket, obj.getKey)
   }
 
   def getObjectAsString(bucket: Bucket, key: String): Option[String] = {
@@ -106,6 +140,26 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     finally {
       stream.close()
     }
+  }
+
+  def getObjectMetadata(bucket: Bucket, id: Bucket): ObjectMetadata = {
+    client.getObjectMetadata(bucket, id)
+  }
+
+  def listObjects(bucket: String): ObjectListing = {
+    client.listObjects(bucket)
+  }
+
+  def listObjects(bucket: String, prefix: String): ObjectListing = {
+    client.listObjects(bucket, prefix)
+  }
+
+  def listObjectKeys(bucket: String): Seq[String] = {
+    client.listObjects(bucket).getObjectSummaries.asScala.map(_.getKey).toSeq
+  }
+
+  def putObject(bucket: String, key: String, content: String): Unit = {
+    client.putObject(bucket, key, content)
   }
 
   def store(bucket: Bucket, id: Key, file: File, mimeType: Option[MimeType], meta: UserMetadata = Map.empty, cacheControl: Option[String] = None)
