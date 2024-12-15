@@ -12,7 +12,7 @@ import java.util.Date
 
 class S3FileDoesNotExistException extends Exception()
 
-class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config, imageBucketS3Endpoint = config.imageBucketS3Endpoint, thumbnailBucketS3Endpoint = config.thumbnailBucketS3Endpoint) with GridLogging {
+class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config) with GridLogging {
 
   private val imageIngestS3Endpoint = AmazonAwsS3Endpoint
 
@@ -30,14 +30,14 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   }
 
   def getS3Object(key: String)(implicit logMarker: LogMarker): S3Object = handleNotFound(key) {
-    getObject(config.maybeIngestBucket.get, key, imageIngestS3Endpoint)
+    getObject(config.maybeIngestBucket.get, key)
   } {
     logger.error(logMarker, s"Attempted to read $key from ingest bucket, but it does not exist.")
   }
 
   def generatePreSignedUploadUrl(filename: String, expiration: ZonedDateTime, uploadedBy: String, mediaId: String)(implicit instance: Instance): String = {
     val request = new GeneratePresignedUrlRequest(
-      config.maybeIngestBucket.get, // bucket
+      config.maybeIngestBucket.get.bucket, // bucket
       s"${instance.id}/$uploadedBy/$filename", // key
     )
       .withMethod(HttpMethod.PUT)
@@ -46,18 +46,18 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
     // sent by the client in manager.js
     request.putCustomRequestHeader("x-amz-meta-media-id", mediaId)
 
-    generatePresignedRequest(request, imageIngestS3Endpoint).toString
+    generatePresignedRequest(request, config.maybeIngestBucket.get).toString
   }
 
   def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key){
-    copyObject(config.maybeIngestBucket.get, config.maybeFailBucket.get, key, imageIngestS3Endpoint) // TODO Naked get - make optional
+    copyObject(config.maybeIngestBucket.get, config.maybeFailBucket.get, key) // TODO Naked get - make optional
     deleteObjectFromIngestBucket(key)
   } {
     logger.warn(logMarker, s"Attempted to copy $key from ingest bucket to fail bucket, but it does not exist.")
   }
 
   def deleteObjectFromIngestBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key) {
-    deleteObject(config.maybeIngestBucket.get, key, imageIngestS3Endpoint)
+    deleteObject(config.maybeIngestBucket.get, key)
   } {
     logger.warn(logMarker, s"Attempted to delete $key from ingest bucket, but it does not exist.")
   }

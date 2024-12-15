@@ -29,7 +29,7 @@ class S3Client(config: MediaApiConfig) extends S3(config) with CloudFrontDistrib
   lazy val keyPairId: Option[String] = config.cloudFrontKeyPairId
   lazy val privateKey: PrivateKey = {
     config.cloudFrontPrivateKeyBucket.flatMap(bucket => config.cloudFrontPrivateKeyBucketKey.map { key =>
-      val privateKeyStream = getObject(bucket, key, S3.AmazonAwsS3Endpoint).getObjectContent
+      val privateKeyStream = getObject(bucket, key).getObjectContent
       try {
         PEM.readPrivateKey(privateKeyStream)
       }
