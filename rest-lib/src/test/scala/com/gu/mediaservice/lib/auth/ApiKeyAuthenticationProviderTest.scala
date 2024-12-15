@@ -3,7 +3,7 @@ package com.gu.mediaservice.lib.auth
 import akka.actor.ActorSystem
 import com.gu.mediaservice.lib.auth.Authentication.MachinePrincipal
 import com.gu.mediaservice.lib.auth.provider.{ApiKeyAuthenticationProvider, Authenticated, AuthenticationProviderResources, Invalid, NotAuthenticated, NotAuthorised}
-import com.gu.mediaservice.lib.aws.S3
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.model.Instance
 import org.scalatest.Inside.inside
@@ -43,7 +43,7 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
       Future.successful(())
     }
 
-    override def keyStore: KeyStore = new KeyStore("not-used", resources.commonConfig, S3.AmazonAwsS3Endpoint) {
+    override def keyStore: KeyStore = new KeyStore(S3Bucket("not-used", S3.AmazonAwsS3Endpoint), resources.commonConfig) {
       override def lookupIdentity(key: String)(implicit instance: Instance): Option[ApiAccessor] = {
         key match {
           case "key-chuckle" => Some(ApiAccessor("brothers", Internal))
