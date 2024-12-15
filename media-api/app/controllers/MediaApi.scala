@@ -250,7 +250,7 @@ class MediaApi(
         val maybeResult = for {
           export <- source.exports.find(_.id.contains(exportId))
           asset <- export.assets.find(_.dimensions.exists(_.width == width))
-          s3Object <- Try(s3Client.getObject(config.imgPublishingBucket, asset.file, S3.AmazonAwsS3Endpoint)).toOption
+          s3Object <- Try(s3Client.getObject(config.imgPublishingBucket, asset.file)).toOption
           file = StreamConverters.fromInputStream(() => s3Object.getObjectContent)
           entity = HttpEntity.Streamed(file, asset.size, asset.mimeType.map(_.name))
           result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset, config.shortenDownloadFilename))
@@ -357,7 +357,7 @@ class MediaApi(
         val apiKey = request.user.accessor
         logger.info(s"Download original image: $id from user: ${Authentication.getIdentity(request.user)}", apiKey, id)
         mediaApiMetrics.incrementImageDownload(apiKey, mediaApiMetrics.OriginalDownloadType)
-        val s3Object = s3Client.getObject(config.imageBucket, image.source.file, config.imageBucketS3Endpoint)
+        val s3Object = s3Client.getObject(config.imageBucket, image.source.file)
         val file = StreamConverters.fromInputStream(() => s3Object.getObjectContent)
         val entity = HttpEntity.Streamed(file, image.source.size, image.source.mimeType.map(_.name))
 
