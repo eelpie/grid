@@ -91,7 +91,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     val headers = new ResponseHeaderOverrides().withContentDisposition(contentDisposition)
 
     val request = new GeneratePresignedUrlRequest(bucket.bucket, key).withExpiration(expiration.toDate).withResponseHeaders(headers)
-    client.generatePresignedUrl(request).toExternalForm
+    clientFor(bucket).generatePresignedUrl(request).toExternalForm
   }
 
   def signUrlTony(bucket: S3Bucket, url: URI, expiration: DateTime = cachableExpiration()): URL = {
@@ -99,7 +99,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     val key: Key = url.getPath.drop(1)
 
     val request = new GeneratePresignedUrlRequest(bucket.bucket, key).withExpiration(expiration.toDate)
-    client.generatePresignedUrl(request)
+    clientFor(bucket).generatePresignedUrl(request)
   }
 
   def copyObject(sourceBucket: S3Bucket, destinationBucket: S3Bucket, key: String): CopyObjectResult = {
