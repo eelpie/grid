@@ -27,7 +27,7 @@ case class KinesisReceiverConfig(
   override val isDev: Boolean,
   streamName: String,
   rewindFrom: Option[DateTime],
-  metricsLevel: MetricsLevel = MetricsLevel.DETAILED
+  metricsLevel: MetricsLevel = MetricsLevel.NONE
 ) extends AwsClientV2BuilderUtils {
   lazy val kinesisClient: KinesisAsyncClient = {
     val clientBuilder = withAWSCredentialsV2(KinesisAsyncClient.builder())
@@ -71,6 +71,7 @@ class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElast
   val projectionParallelism: Int = intDefault("thrall.projection.parallelism", 1)
 
   val reaperInterval: FiniteDuration = intDefault("reaper.interval", 15) minutes
+  val reaperPaused: Boolean = false
   val hardReapImagesAge: Int = intDefault("reaper.hard.daysInSoftDelete", 14) // soft deleted images age to be hard deleted by Reaper Controller
 
   def kinesisConfig: KinesisReceiverConfig = KinesisReceiverConfig(thrallKinesisStream, rewindFrom, this)
