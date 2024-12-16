@@ -21,6 +21,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.libs.json.{JsArray, JsString}
+import play.api.mvc.RequestHeader
 import test.lib.ResourceHelpers
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -47,7 +48,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
   // because graphic lib files like srgb.icc, cmyk.icc are in root directory instead of resources
   // this test is passing when running on local machine
   "projectImage" ignore {
-
+    implicit val instance: Instance = Instance(id = "an-instance")
     val testFile = fileAt("getty.jpg")
     val id = "id123"
     val fileDigest = DigestedFile(testFile, id)

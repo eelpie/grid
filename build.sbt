@@ -62,6 +62,7 @@ Global / concurrentRestrictions := Seq(
 )
 
 val awsSdkVersion = "1.12.470"
+val awsSdkVersionV2 = "2.25.55"
 val elastic4sVersion = "8.3.0"
 val okHttpVersion = "3.12.1"
 
@@ -86,6 +87,7 @@ lazy val commonLib = project("common-lib").settings(
     "com.amazonaws" % "aws-java-sdk-sts" % awsSdkVersion,
     "com.amazonaws" % "aws-java-sdk-dynamodb" % awsSdkVersion,
     "com.amazonaws" % "aws-java-sdk-kinesis" % awsSdkVersion,
+    "software.amazon.awssdk" % "dynamodb" % awsSdkVersionV2,
     "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,
     "com.sksamuel.elastic4s" %% "elastic4s-client-esjava" % elastic4sVersion,
     "com.sksamuel.elastic4s" %% "elastic4s-domain" % elastic4sVersion,
@@ -160,8 +162,9 @@ lazy val thrall = playProject("thrall", 9002)
       "software.amazon.kinesis" % "amazon-kinesis-client" % "2.4.2",
       "io.github.streetcontxt" %% "kcl-akka-stream" % "4.1.1",
       "org.testcontainers" % "elasticsearch" % "1.19.2" % Test,
-      "com.google.protobuf" % "protobuf-java" % "3.19.6"
-    ),
+      "com.google.protobuf" % "protobuf-java" % "3.19.6",
+      "software.amazon.awssdk" % "sqs" % awsSdkVersionV2
+),
     // amazon-kinesis-client 2.4.2 brings in a critically vulnerable version of apache avro,
     // but we cannot upgrade amazon-kinesis-client further until we move into slf4j v2.
     // TODO when upgrading kinesis-client - can we remove this override?
@@ -249,8 +252,10 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
       Universal / javaOptions ++= Seq(
         "-Dpidfile.path=/dev/null",
         s"-Dconfig.file=/opt/docker/conf/application.conf",
-        s"-Dlogger.file=/opt/docker/conf/logback.xml"
-      )))
+        s"-Dlogger.file=/opt/docker/conf/logback.xml",
+        "-XX:+PrintCommandLineFlags", "-XX:MaxRAMPercentage=60"
+      ))
+    )
 }
 
 def playImageLoaderProject(projectName: String, port: Int, path: Option[String] = None): Project = {
