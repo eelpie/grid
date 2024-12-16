@@ -174,7 +174,7 @@ class KindeAuthenticationProvider(
   private def gridUserFrom(userProfile: UserProfile, request: RequestHeader): UserPrincipal = {
     val maybeLoggedInUserCookie: Option[TypedEntry[Cookie]] = request.cookies.get(loggedInUserCookieName).map(TypedEntry[Cookie](loggedInUserCookieTypedKey, _))
     val kindeIdAttribute = TypedEntry[String](ApiKeyAuthenticationProvider.KindeIdKey, userProfile.id)
-    val attributes = TypedMap.empty + (maybeLoggedInUserCookie.toSeq: _*) + kindeIdAttribute
+    val attributes = TypedMap.empty.updated(maybeLoggedInUserCookie.toSeq: _*).updated(kindeIdAttribute)
     UserPrincipal(
       firstName = userProfile.first_name.getOrElse(""),
       lastName = userProfile.last_name.getOrElse(""),

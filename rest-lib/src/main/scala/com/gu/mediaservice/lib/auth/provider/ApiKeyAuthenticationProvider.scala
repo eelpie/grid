@@ -52,7 +52,7 @@ class ApiKeyAuthenticationProvider(configuration: Configuration, resources: Auth
             // valid api key
             if (ApiAccessor.hasAccess(apiAccessor, request, resources.commonConfig.services)) {
               val kindeIdAttribute = TypedEntry[String](KindeIdKey, apiAccessor.identity)
-              val attributes = TypedMap(ApiKeyAuthenticationProvider.ApiKeyHeader -> (ApiKeyAuthenticationProvider.apiKeyHeaderName -> key)) + kindeIdAttribute
+              val attributes = TypedMap(ApiKeyAuthenticationProvider.ApiKeyHeader -> (ApiKeyAuthenticationProvider.apiKeyHeaderName -> key)).updated(kindeIdAttribute)
               // valid api key which has access
               // store the header that was used in the attributes map of the principal for use in onBehalfOf calls
               val accessor = MachinePrincipal(apiAccessor, attributes)
