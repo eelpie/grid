@@ -5,7 +5,8 @@ import com.gu.mediaservice.lib.auth.Authentication.{Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, SimplePermission}
 import com.gu.mediaservice.lib.aws.S3Object
-import com.gu.mediaservice.lib.config.{CommonConfig, SingleHostServices}
+import com.gu.mediaservice.lib.config.{CommonConfig, Services, SingleHostServices}
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model.Instance
 import lib._
@@ -52,7 +53,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
     client
   }
 
-  private val events = mock[ImageLoaderEvents]
+  private val usageEvents = mock[UsageEvents]
 
   override protected def afterAll(): Unit = {
     Await.result(actorSystem.terminate(), 10.seconds)
@@ -112,7 +113,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
       mock[GridClient],
       authorisation,
       mock[ImageLoaderMetrics],
-      events,
+      usageEvents,
       wsClient,
       mock[ApplicationLifecycle]
     )(executionContext, materializer)
