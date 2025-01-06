@@ -9,6 +9,7 @@ import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsa
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.config.InstanceForRequest
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ExifTool
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
@@ -34,9 +35,7 @@ import play.api.mvc._
 
 import java.net.URI
 import java.nio.file.{Files, Path, StandardCopyOption}
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future, blocking}
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 object MediaApi {
@@ -69,6 +68,7 @@ class MediaApi(
                 ws: WSClient,
                 authorisation: Authorisation,
                 embedder: Embedder,
+                events: UsageEvents,
               )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition with InstanceForRequest {
 
   private val gridClient: GridClient = GridClient(config.services, config.services.apiBaseUri)(ws)
@@ -500,8 +500,10 @@ class MediaApi(
         val contentDisposition = getContentDisposition(image, Source, config.shortenDownloadFilename)
 
         if (config.stripDownloadMetadata) {
+          events.downloadOriginal(instance, id, image.source.size)
           streamWithStrippedMetadata(image, contentDisposition)
         } else {
+          events.downloadOriginal(instance, id, image.source.size)
           streamOriginal(image, contentDisposition)
         }
       }
