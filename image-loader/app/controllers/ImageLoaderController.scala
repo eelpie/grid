@@ -10,6 +10,7 @@ import com.gu.mediaservice.lib.auth.Permissions.UploadImages
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws.{S3Ops, SimpleSqsMessageConsumer, SqsHelpers}
 import com.gu.mediaservice.lib.config.InstanceForRequest
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{FALLBACK, LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
@@ -60,7 +61,7 @@ class ImageLoaderController(auth: Authentication,
                             gridClient: GridClient,
                             authorisation: Authorisation,
                             metrics: ImageLoaderMetrics,
-                            events: ImageLoaderEvents,
+                            usageEvents: UsageEvents,
                             val wsClient: WSClient,
                             applicationLifecycle: ApplicationLifecycle)
                            (implicit val ec: ExecutionContext, materializer: Materializer)
@@ -239,7 +240,7 @@ class ImageLoaderController(auth: Authentication,
               } else {
                 attemptToProcessIngestedFile(s3IngestObject, isUiUpload)(logMarker)(instance) map { digestedFile =>
                   metrics.successfulIngestsFromQueue.incrementBothWithAndWithoutDimensions(metricDimensions)
-                  events.successfulIngestFromQueue(instance = instance, s3IngestObject)
+                  usageEvents.successfulIngestFromQueue(instance = instance, filename = s3IngestObject.filename, filesize = s3IngestObject.contentLength)
                   logger.info(logMarker, s"Successfully processed image ${digestedFile.file.getName}")
                   store.deleteObjectFromIngestBucket(s3IngestObject.key)
                 } recover {
@@ -385,7 +386,7 @@ class ImageLoaderController(auth: Authentication,
       cleanupTempFile(req.body.file, context)(result).map { r =>
         val result = Accepted(r).as(ArgoMediaType)
         logger.info(context, "loadImage request end")
-        events.successfulUpload(instance = instance, filename = req.body.digest, filesize = req.body.file.length())
+        usageEvents.successfulUpload(instance = instance, filename = req.body.digest, filesize = req.body.file.length())
         result
       } recover {
         case NonFatal(e) =>
