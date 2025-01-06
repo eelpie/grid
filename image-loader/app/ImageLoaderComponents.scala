@@ -1,8 +1,7 @@
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, SimpleSqsMessageConsumer}
-import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.events.UsageEvents
-import com.gu.mediaservice.lib.imaging.MagickImageOperations
+import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.{ImageLoaderController, ImageLoaderManagement, UploadStatusController}
@@ -12,8 +11,12 @@ import model.upload.OptimiseWithPngQuant
 import model.{Projector, QuarantineUploader, Uploader}
 import play.api.ApplicationLoader.Context
 import router.Routes
-import scala.concurrent.ExecutionContext
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.sqs.SqsClient
+import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest
+
 import java.util.concurrent.Executors
+import scala.concurrent.ExecutionContext
 
 class ImageLoaderComponents(context: Context) extends GridComponents(context, new ImageLoaderConfig(_)) with GridLogging {
   final override val buildInfo = utils.buildinfo.BuildInfo
@@ -48,7 +51,18 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
     new QuarantineUploader(new QuarantineStore(config), config)
   )
 
-  val usageEvents = new UsageEvents(actorSystem, applicationLifecycle)
+  private val sqsClient: SqsClient = SqsClient.builder()
+    .region(Region.EU_WEST_1)
+    .build()
+
+  private val usageEventsQueueUrl: String = {
+    val getQueueRequest = GetQueueUrlRequest.builder()
+      .queueName(config.usageEventsQueueName)
+      .build()
+    sqsClient.getQueueUrl(getQueueRequest).queueUrl
+  }
+
+  val usageEvents = new UsageEvents(actorSystem, applicationLifecycle, sqsClient, usageEventsQueueUrl)
   val metrics = new ImageLoaderMetrics(config, actorSystem, applicationLifecycle)
 
   val controller = new ImageLoaderController(
