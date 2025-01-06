@@ -16,6 +16,7 @@ import com.gu.mediaservice.lib.auth.Authentication.OnBehalfOfPrincipal
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws.{S3Ops, SimpleSqsMessageConsumer, SqsHelpers}
 import com.gu.mediaservice.lib.config.InstanceForRequest
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{FALLBACK, LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
@@ -55,7 +56,7 @@ class ImageLoaderController(auth: Authentication,
                             gridClient: GridClient,
                             authorisation: Authorisation,
                             metrics: ImageLoaderMetrics,
-                            events: ImageLoaderEvents,
+                            events: UsageEvents,
                             val wsClient: WSClient)
                            (implicit val ec: ExecutionContext, materializer: Materializer)
   extends BaseController with ArgoHelpers with SqsHelpers with InstanceForRequest with Instances {
