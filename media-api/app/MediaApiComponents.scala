@@ -1,3 +1,5 @@
+import com.gu.mediaservice.lib.aws.ThrallMessageSender
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, S3Vectors, ThrallMessageSender}
 import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, Management}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -31,7 +33,9 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
   val embedder = new Embedder(new S3Vectors(config), new Bedrock(config))
 
-  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3Client, mediaApiMetrics, wsClient, authorisation, embedder)
+  val events = new UsageEvents(actorSystem, applicationLifecycle)
+
+  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3Client, mediaApiMetrics, wsClient, authorisation, embedder, events)
   val suggestionController = new SuggestionController(auth, elasticSearch, controllerComponents)
   val aggController = new AggregationController(auth, elasticSearch, controllerComponents)
   val usageController = new UsageController(auth, config, elasticSearch, usageQuota, controllerComponents)

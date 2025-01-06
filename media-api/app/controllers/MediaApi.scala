@@ -8,6 +8,7 @@ import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsa
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws.{ContentDisposition, Embedder, ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.config.InstanceForRequest
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -46,6 +47,7 @@ class MediaApi(
                 ws: WSClient,
                 authorisation: Authorisation,
                 embedder: Embedder,
+                events: UsageEvents,
               )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition with InstanceForRequest {
 
   private val gridClient: GridClient = GridClient(config.services)(ws)
@@ -440,9 +442,10 @@ class MediaApi(
           postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), id, Authentication.getIdentity(request.user))
         }
 
-          Future.successful(
+          Future.successful {
+            events.downloadOriginal(instance, id, image.source.size)
             Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(image, Source, config.shortenDownloadFilename))
-          )
+          }
       }
       case _ => Future.successful(ImageNotFound(id))
     }
