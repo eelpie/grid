@@ -5,6 +5,7 @@ import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, SimplePermission}
 import com.gu.mediaservice.lib.aws.{Embedder, S3, ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.config.{CommonConfig, SingleHostServices}
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.model.{Image, ImageStatusRecord, Instance, NoRights}
@@ -69,7 +70,7 @@ class MediaApiTest extends AnyFunSpec with Matchers with MockitoSugar with Scala
 
     val controller = new MediaApi(
       auth, sender, statusTable, es, response, config, mock[PreviewContentApi],
-      components, mock[S3], mock[MediaApiMetrics], mock[WSClient], authorisation, mock[Embedder]
+      components, mock[S3], mock[MediaApiMetrics], mock[WSClient], authorisation, mock[Embedder], mock[UsageEvents]
     )
 
     def delete(): Future[Result] =
