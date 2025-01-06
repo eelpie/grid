@@ -1,5 +1,6 @@
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{Bedrock, S3Vectors, SimpleSqsMessageConsumer, Embedder}
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.play.GridComponents
@@ -45,7 +46,7 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
 
   private val gridClient = GridClient(config.services)(wsClient)
 
-  val events = new ImageLoaderEvents(actorSystem, applicationLifecycle)
+  val events = new UsageEvents(actorSystem, applicationLifecycle)
   val metrics = new ImageLoaderMetrics(config, actorSystem, applicationLifecycle)
 
   val controller = new ImageLoaderController(
