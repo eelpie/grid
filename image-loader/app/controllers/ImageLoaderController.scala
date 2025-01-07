@@ -335,7 +335,7 @@ class ImageLoaderController(auth: Authentication,
       result map { r =>
         val result = Accepted(r).as(ArgoMediaType)
         logger.info(context, "loadImage request end")
-        events.successfulUpload(instance = instance, id = req.body.digest, filesize = req.body.file.length())
+        events.successfulUpload(instance = instance, image = req.body.digest, filesize = req.body.file.length())
         result
       } recover {
         case NonFatal(e) =>
