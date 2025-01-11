@@ -1,5 +1,4 @@
 import com.gu.mediaservice.lib.aws._
-import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, Management}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
@@ -8,9 +7,6 @@ import lib._
 import lib.elasticsearch.ElasticSearch
 import play.api.ApplicationLoader.Context
 import router.Routes
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.sqs.SqsClient
-import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest
 
 import scala.concurrent.Future
 
@@ -35,20 +31,7 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
   val embedder = new Embedder(new S3Vectors(config), new Bedrock(config), new SimpleSqsMessageConsumer(config.queueUrl, config))
 
-  private val sqsClient: SqsClient = SqsClient.builder()
-    .region(Region.EU_WEST_1)
-    .build()
-
-  private val usageEventsQueueUrl: String = {
-    val getQueueRequest = GetQueueUrlRequest.builder()
-      .queueName(config.usageEventsQueueName)
-      .build()
-    sqsClient.getQueueUrl(getQueueRequest).queueUrl
-  }
-
-  val events = new UsageEvents(actorSystem, applicationLifecycle, sqsClient, usageEventsQueueUrl)
-
-  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3Client, mediaApiMetrics, wsClient, authorisation, embedder, events)
+  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3Client, mediaApiMetrics, wsClient, authorisation, embedder, usageEvents)
   val suggestionController = new SuggestionController(auth, elasticSearch, controllerComponents)
   val aggController = new AggregationController(auth, elasticSearch, controllerComponents)
   val usageController = new UsageController(auth, config, elasticSearch, usageQuota, controllerComponents)
