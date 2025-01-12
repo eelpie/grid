@@ -59,7 +59,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   val maybeBucketForUIUploads: Option[String] = maybeQuarantineBucket orElse maybeIngestBucket
 
-  val maybeUploadLimitInBytes: Option[Int] = intOpt("upload.limit.mb").map(_ * 1_000_000)
+  val maybeUploadLimitInBytes: Option[Int] = intOpt("upload.limit.mb").map(_ * 1024 * 1024)
 
   // Note: had to make these lazy to avoid init order problems ;_;
   val domainRoot: String = string("domain.root")
