@@ -57,6 +57,7 @@ class ImageLoaderController(auth: Authentication,
                             gridClient: GridClient,
                             authorisation: Authorisation,
                             metrics: ImageLoaderMetrics,
+                            events: ImageLoaderEvents,
                             val wsClient: WSClient,
                             applicationLifecycle: ApplicationLifecycle)
                            (implicit val ec: ExecutionContext, materializer: Materializer)
@@ -203,6 +204,7 @@ class ImageLoaderController(auth: Authentication,
               } else {
                 attemptToProcessIngestedFile(s3IngestObject, isUiUpload)(logMarker)(instance) map { digestedFile =>
                   metrics.successfulIngestsFromQueue.incrementBothWithAndWithoutDimensions(metricDimensions)
+                  events.successfulIngestFromQueue(instance = instance, s3IngestObject)
                   logger.info(logMarker, s"Successfully processed image ${digestedFile.file.getName}")
                   store.deleteObjectFromIngestBucket(s3IngestObject.key)
                 } recover {
@@ -317,9 +319,8 @@ class ImageLoaderController(auth: Authentication,
     logger.info(initialContext, "body parsed")
     val parsedBody = DigestBodyParser.create(tempFile)
 
-    AuthenticatedAndAuthorised.async(parsedBody) { req =>
+    AuthenticatedAndAuthorised.async(parsedBody) { req: Authentication.Request[DigestedFile] =>
       implicit val instance: Instance = instanceOf(req)
-
       val uploadedByToRecord = uploadedBy.getOrElse(Authentication.getIdentity(req.user))
 
       implicit val context: LogMarker =
@@ -352,6 +353,7 @@ class ImageLoaderController(auth: Authentication,
       result map { r =>
         val result = Accepted(r).as(ArgoMediaType)
         logger.info(context, "loadImage request end")
+        events.successfulUpload(instance = instance, filename = req.body.digest, filesize = req.body.file.length())
         result
       } recover {
         case NonFatal(e) =>
