@@ -60,6 +60,7 @@ class ImageLoaderController(auth: Authentication,
                             gridClient: GridClient,
                             authorisation: Authorisation,
                             metrics: ImageLoaderMetrics,
+                            events: ImageLoaderEvents,
                             val wsClient: WSClient,
                             applicationLifecycle: ApplicationLifecycle)
                            (implicit val ec: ExecutionContext, materializer: Materializer)
@@ -238,6 +239,7 @@ class ImageLoaderController(auth: Authentication,
               } else {
                 attemptToProcessIngestedFile(s3IngestObject, isUiUpload)(logMarker)(instance) map { digestedFile =>
                   metrics.successfulIngestsFromQueue.incrementBothWithAndWithoutDimensions(metricDimensions)
+                  events.successfulIngestFromQueue(instance = instance, s3IngestObject)
                   logger.info(logMarker, s"Successfully processed image ${digestedFile.file.getName}")
                   store.deleteObjectFromIngestBucket(s3IngestObject.key)
                 } recover {
@@ -350,7 +352,7 @@ class ImageLoaderController(auth: Authentication,
 
     val bodyParser = authenticatedDigestBodyParser(initialContext)
 
-    AuthenticatedAndAuthorised.async(bodyParser) { req =>
+    AuthenticatedAndAuthorised.async(bodyParser) { req: Authentication.Request[DigestedFile] =>
       implicit val instance: Instance = instanceOf(req)
       logger.info(initialContext, "body parsed")
       val uploadedByToRecord = uploadedBy.getOrElse(Authentication.getIdentity(req.user))
@@ -383,6 +385,7 @@ class ImageLoaderController(auth: Authentication,
       cleanupTempFile(req.body.file, context)(result).map { r =>
         val result = Accepted(r).as(ArgoMediaType)
         logger.info(context, "loadImage request end")
+        events.successfulUpload(instance = instance, filename = req.body.digest, filesize = req.body.file.length())
         result
       } recover {
         case NonFatal(e) =>
