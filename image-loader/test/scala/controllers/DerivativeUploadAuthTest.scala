@@ -22,6 +22,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.crypto.CookieSigner
+import play.api.libs.typedmap.TypedMap
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.RequestHeader
 import play.api.test.FakeRequest
@@ -44,11 +45,14 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
     when(instancesResponse.body).thenReturn("""[{"id":"localhost"}]""")
     val instancesRequest = mock[WSRequest]
     when(instancesRequest.addHttpHeaders(any())).thenReturn(instancesRequest)
+    when(instancesRequest.withQueryStringParameters(any())).thenReturn(instancesRequest)
     when(instancesRequest.get()).thenReturn(Future.successful(instancesResponse))
     val client = mock[WSClient]
     when(client.url(anyString())).thenReturn(instancesRequest)
     client
   }
+
+  private val events = mock[ImageLoaderEvents]
 
   override protected def afterAll(): Unit = {
     Await.result(actorSystem.terminate(), 10.seconds)
@@ -66,7 +70,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
 
     val userProvider = new UserAuthenticationProvider {
       override def authenticateRequest(request: RequestHeader): AuthenticationStatus =
-        Authenticated(UserPrincipal("Test", "User", "test@example.com"))
+        Authenticated(UserPrincipal("Test", "User", "test@example.com", TypedMap(ApiKeyAuthenticationProvider.KindeIdKey -> "test-kinde-id")))
       override def sendForAuthentication: Option[RequestHeader => Future[play.api.mvc.Result]] = None
       override def sendForAuthenticationCallback: Option[(RequestHeader, Option[AuthenticationProvider.RedirectUri]) => Future[play.api.mvc.Result]] = None
       override def flushToken: Option[(RequestHeader, play.api.mvc.Result) => play.api.mvc.Result] = None
@@ -108,6 +112,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
       mock[GridClient],
       authorisation,
       mock[ImageLoaderMetrics],
+      events,
       wsClient,
       mock[ApplicationLifecycle]
     )(executionContext, materializer)
