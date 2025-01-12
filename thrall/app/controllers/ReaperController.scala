@@ -223,6 +223,7 @@ class ReaperController(
       reapableAfterMoreThanDaysOld = ReapableEligibility.ReapableAfterMoreThanDaysOld,
       maybeUploadLimitInBytes = config.maybeUploadLimitInBytes
     )
+    logger.info("CONF: " + uvtc)
     implicit val uvtcw: OWrites[UserVisableThrallConfig] = Json.writes[UserVisableThrallConfig]
     Future.successful(Ok(Json.toJson(uvtc)))
   }
