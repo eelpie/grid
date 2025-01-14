@@ -260,6 +260,7 @@ class ImageLoaderController(auth: Authentication,
         identifiers =  s3IngestObject.identifiers,
         uploadTime = Some(s3IngestObject.uploadTime.toString) , // upload time as iso string - uploader uses DateTimeUtils.fromValueOrNow
         filename = Some(filename),
+        isFeedUpload = s3IngestObject.isFeedUpload,
     )
 
     // under all circumstances, remove the temp files
@@ -350,7 +351,8 @@ class ImageLoaderController(auth: Authentication,
           identifiers.map(Json.parse(_).as[Map[String, String]]).getOrElse(Map.empty),
           uploadTimeToRecord,
           filename.flatMap(_.trim.nonEmptyOpt),
-          instance
+          instance,
+          isFeedUpload = false,
         )
         _ <- uploadStatusTable.setStatus(record)
 
@@ -457,7 +459,7 @@ class ImageLoaderController(auth: Authentication,
                    uploadedBy: Option[String],
                    identifiers: Option[String],
                    uploadTime: Option[String],
-                   filename: Option[String]
+                   filename: Option[String],
                  ): Action[AnyContent] = {
     AuthenticatedAndAuthorised.async { request =>
       implicit val instance: Instance = instanceOf(request)
@@ -482,7 +484,8 @@ class ImageLoaderController(auth: Authentication,
           uploadedBy.getOrElse(Authentication.getIdentity(request.user)),
           identifiers.map(Json.parse(_).as[Map[String, String]]).getOrElse(Map.empty),
           uploadTime,
-          filename
+          filename,
+          isFeedUpload = false,
       )
 
       // under all circumstances, remove the temp files
@@ -509,7 +512,8 @@ class ImageLoaderController(auth: Authentication,
     uploadedBy: String,
     identifiers: Map[String, String],
     uploadTime: Option[String],
-    filename: Option[String]
+    filename: Option[String],
+    isFeedUpload: Boolean
   )(implicit logMarker:LogMarker, instance: Instance): Future[UploadStatusUri] = {
 
     for {
@@ -524,7 +528,8 @@ class ImageLoaderController(auth: Authentication,
           ).getOrElse(identifiers),
           uploadTime =  DateTimeUtils.fromValueOrNow(maybeStatus.map(_.uploadTime).orElse(uploadTime)),
           filename =  maybeStatus.flatMap(_.fileName).orElse(filename).flatMap(_.trim.nonEmptyOpt),
-          instance
+          instance,
+          isFeedUpload = isFeedUpload
         )
         result <- uploader.storeFile(uploadRequest)
       } yield {
@@ -678,7 +683,8 @@ class ImageLoaderController(auth: Authentication,
               metadata.uploadedBy,
               metadata.identifiers,
               UploadInfo(metadata.uploadFileName),
-              instance
+              instance,
+              isFeedUpload = metadata.isFeedUpload.getOrElse(false),
             ),
             gridClient,
             auth.getOnBehalfOfPrincipal(request.user)
