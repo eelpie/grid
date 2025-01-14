@@ -40,7 +40,8 @@ case class S3FileExtractedMetadata(
   uploadedBy: String,
   uploadTime: DateTime,
   uploadFileName: Option[String],
-  identifiers: Map[String, String]
+  identifiers: Map[String, String],
+  isFeedUpload: Option[Boolean],
 )
 
 object S3FileExtractedMetadata {
@@ -70,6 +71,7 @@ object S3FileExtractedMetadata {
     }.map{ case (key, value) =>
       key.stripPrefix(ImageStorageProps.identifierMetadataKeyPrefix) -> value
     }
+    val isFeedUpload = fileUserMetadata.get(ImageStorageProps.isFeedUploadMetadataKey).map(_.toBoolean)
 
     val uploadFileName = fileUserMetadata.get(ImageStorageProps.filenameMetadataKey)
 
@@ -78,6 +80,7 @@ object S3FileExtractedMetadata {
       uploadTime = uploadTime,
       uploadFileName = uploadFileName,
       identifiers = identifiers,
+      isFeedUpload = isFeedUpload,
     )
   }
 }
@@ -149,7 +152,8 @@ class Projector(config: ImageUploadOpsCfg,
           uploadedBy = extractedS3Meta.uploadedBy,
           identifiers = identifiers_,
           uploadInfo = uploadInfo_,
-          instance = instance // TODO careful with this one!
+          instance = instance, // TODO careful with this one!
+          isFeedUpload = extractedS3Meta.isFeedUpload.getOrElse(false),
         )
 
         imageUploadProjectionOps.projectImageFromUploadRequest(uploadRequest) flatMap (
