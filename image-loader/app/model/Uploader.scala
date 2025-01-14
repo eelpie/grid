@@ -238,7 +238,8 @@ object Uploader extends GridLogging {
   def toMetaMap(uploadRequest: UploadRequest): Map[String, String] = {
     val baseMeta = Map(
       ImageStorageProps.uploadedByMetadataKey -> uploadRequest.uploadedBy,
-      ImageStorageProps.uploadTimeMetadataKey -> printDateTime(uploadRequest.uploadTime)
+      ImageStorageProps.uploadTimeMetadataKey -> printDateTime(uploadRequest.uploadTime),
+      ImageStorageProps.isFeedUploadMetadataKey -> uploadRequest.isFeedUpload.toString
     ) ++
       uploadRequest.identifiersMeta ++
       uploadRequest.uploadInfo.filename.map(ImageStorageProps.filenameMetadataKey -> _)
@@ -408,7 +409,8 @@ class Uploader(
                identifiers: Map[String, String],
                uploadTime: DateTime,
                filename: Option[String],
-               instance: Instance)
+               instance: Instance,
+               isFeedUpload: Boolean)
               (implicit ec:ExecutionContext,
                logMarker: LogMarker): Future[UploadRequest] = Future {
     val DigestedFile(tempFile, id) = digestedFile
@@ -432,7 +434,8 @@ class Uploader(
           uploadedBy = uploadedBy,
           identifiers = identifiersMap,
           uploadInfo = UploadInfo(filename),
-          instance = instance
+          instance = instance,
+          isFeedUpload = isFeedUpload
         )
     }
   }
