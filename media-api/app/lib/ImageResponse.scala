@@ -109,8 +109,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3, usageQuota: UsageQuota
       case _ => None
     }
 
-    val data = source.transform(addSecureSourceUrl(imageUrl))
-      .flatMap(_.transform(wrapUserMetadata(id)))
+    val data = source.transform(wrapUserMetadata(id))
       .flatMap(_.transform(addSecureThumbUrl(thumbUrl)))
       .flatMap(_.transform(
         pngUrl
