@@ -212,7 +212,8 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
         any[Map[String, String]],
         any[org.joda.time.DateTime],
         any[Option[String]],
-        any[Instance]
+        any[Instance],
+        any[Boolean]
       )(any[ExecutionContext], any[LogMarker])).thenReturn(Future.failed(new java.io.IOException("upload failed")))
       val config = mock[ImageLoaderConfig]
       when(config.tempDir).thenReturn(temporaryDirectory.toFile)
