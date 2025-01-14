@@ -19,6 +19,7 @@ object ImageStorageProps {
   val identifierMetadataKeyPrefix: String = "identifier!"
   val derivativeOfMediaIdsIdentifierKey: String = "derivative-of-media-ids"
   val replacesMediaIdIdentifierKey: String = "replaces-media-id"
+  val isFeedUploadMetadataKey = "is-feed-upload"
 }
 
 trait ImageStorage {
