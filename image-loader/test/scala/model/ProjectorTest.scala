@@ -203,6 +203,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
       uploadTime = uploadTime,
       uploadFileName = uploadFileName,
       identifiers = Map.empty,
+      isFeedUpload = Some(true),
     )
 
     implicit val logMarker: LogMarker = MarkerMap()
