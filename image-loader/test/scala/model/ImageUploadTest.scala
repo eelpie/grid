@@ -73,7 +73,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
     )
 
     val tempFile = ResourceHelpers.fileAt(fileName)
-    val ul = UploadInfo(None)
+    val ul = UploadInfo(None, None)
 
     val uploadRequest = UploadRequest(
       randomId,
@@ -84,7 +84,6 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       Map(),
       ul,
       Instance("an-instance"),
-      isFeedUpload = false,
     )
 
     val futureImage = Uploader.uploadAndStoreImage(
