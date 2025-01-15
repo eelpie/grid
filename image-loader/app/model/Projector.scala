@@ -131,7 +131,7 @@ class Projector(config: ImageUploadOpsCfg,
     val DigestedFile(tempFile_, id_) = srcFileDigest
 
     val identifiers_ = extractedS3Meta.identifiers
-    val uploadInfo_ = UploadInfo(filename = extractedS3Meta.uploadFileName)
+    val uploadInfo_ = UploadInfo(filename = extractedS3Meta.uploadFileName, isFeedUpload = extractedS3Meta.isFeedUpload)
 
     MimeTypeDetection.guessMimeType(tempFile_) match {
       case util.Left(unsupported) => Future.failed(unsupported)
@@ -145,7 +145,6 @@ class Projector(config: ImageUploadOpsCfg,
           identifiers = identifiers_,
           uploadInfo = uploadInfo_,
           instance = instance, // TODO careful with this one!
-          isFeedUpload = extractedS3Meta.isFeedUpload.getOrElse(false),
         )
 
         imageUploadProjectionOps.projectImageFromUploadRequest(uploadRequest) flatMap (
