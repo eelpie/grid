@@ -54,8 +54,18 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   lazy val softDeletedMetadataTable: String = string("dynamo.table.softDelete.metadata")
 
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
-  val maybeIngestBucket: Option[S3Bucket] = stringOpt("s3.ingest.bucket").map(S3Bucket(_, S3.AmazonAwsS3Endpoint))
-  val maybeFailBucket: Option[S3Bucket] = stringOpt("s3.fail.bucket").map(S3Bucket(_, S3.AmazonAwsS3Endpoint))
+  val maybeIngestBucket: Option[S3Bucket] = for {
+    ingestBucket <- stringOpt("s3.ingest.bucket.name")
+    ingestBucketEndpoint <- stringOpt("s3.ingest.bucket.endpoint")
+  } yield {
+    S3Bucket(ingestBucket, ingestBucketEndpoint)
+  }
+  val maybeFailBucket: Option[S3Bucket] = for {
+    failBucket <- stringOpt("s3.fail.bucket.name")
+    failBucketEndpoint <- stringOpt("s3.fail.bucket.endpoint")
+  } yield {
+    S3Bucket(failBucket, failBucketEndpoint)
+  }
 
   val maybeQuarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map(S3Bucket(_, S3.AmazonAwsS3Endpoint))
 
@@ -74,7 +84,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   val services = new SingleHostServices(domainRoot)
 
-  val imageBucket: S3Bucket = S3Bucket(string("s3.image.bucket.name") ,stringOpt("s3.image.bucket.endpoint").get)
+  val imageBucket: S3Bucket = S3Bucket(string("s3.image.bucket.name"), string("s3.image.bucket.endpoint"))
   val thumbnailBucket: S3Bucket = S3Bucket(string("s3.thumb.bucket"), S3.AmazonAwsS3Endpoint)
   val thumbnailBucketS3Endpoint: String = S3.AmazonAwsS3Endpoint
 
