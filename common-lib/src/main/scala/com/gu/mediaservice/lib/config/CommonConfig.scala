@@ -54,13 +54,13 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
   val maybeIngestBucket: Option[S3Bucket] = for {
-    ingestBucket <- stringOpt("s3.ingest.bucket")
+    ingestBucket <- stringOpt("s3.ingest.bucket.name")
     ingestBucketEndpoint <- stringOpt("s3.ingest.bucket.endpoint")
   } yield {
     S3Bucket(ingestBucket, ingestBucketEndpoint)
   }
   val maybeFailBucket: Option[S3Bucket] = for {
-    failBucket <- stringOpt("s3.fail.bucket")
+    failBucket <- stringOpt("s3.fail.bucket.name")
     failBucketEndpoint <- stringOpt("s3.fail.bucket.endpoint")
   } yield {
     S3Bucket(failBucket, failBucketEndpoint)
