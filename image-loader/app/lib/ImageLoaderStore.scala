@@ -17,8 +17,6 @@ class S3FileDoesNotExistException extends Exception()
 
 class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config) with GridLogging {
 
-  private val imageIngestS3Endpoint = AmazonAwsS3Endpoint
-
   private def handleNotFound[T](key: String)(doWork: => T)(loggingIfNotFound: => Unit): T = {
     try {
       doWork
