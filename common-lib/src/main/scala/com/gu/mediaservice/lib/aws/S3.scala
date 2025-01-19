@@ -104,6 +104,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   }
 
   def copyObject(sourceBucket: S3Bucket, destinationBucket: S3Bucket, key: String): CopyObjectResult = {
+    logger.info(s"copyObject $sourceBucket / $key -> $destinationBucket")
     clientFor(sourceBucket).copyObject(sourceBucket.bucket, key, destinationBucket.bucket, key)
   }
 
