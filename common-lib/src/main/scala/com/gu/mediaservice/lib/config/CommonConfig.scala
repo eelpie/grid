@@ -237,4 +237,5 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   private def missing(key: String, type_ : String): Nothing =
     sys.error(s"Required $type_ configuration property missing: $key")
+
 }
