@@ -90,22 +90,22 @@ class Authentication(config: CommonConfig,
           case m: MachinePrincipal =>
             logger.info("Authing machine principal: " + m)
             val instance = instanceOf(request)
-            principal.attributes.get(ApiKeyAuthenticationProvider.KindeIdKey).map { owner =>
-              getMyInstances(owner).flatMap { principalsInstances =>
-                // we have an end user principal, and a list of the instances they are allowed to access.
-                // Only process the block if the instance is allowed.
-                val isAllowedToAccessThisInstance = principalsInstances.exists(_.id == instance.id)
-                logger.debug(s"$principal is allowed to access instance ${instance.id}: $isAllowedToAccessThisInstance")
-                if (isAllowedToAccessThisInstance) {
-                  logger.debug("Allowing this request!")
-                  block(new AuthenticatedRequest(principal, request))
+            val maybeApiKeyInstance = m.attributes.get(ApiKeyAuthenticationProvider.ApiKeyInstance)
+            logger.info("Api key instance: " + maybeApiKeyInstance)
+            maybeApiKeyInstance.map { apiKeyInstance =>
+              // we have an end user principal, and a list of the instances they are allowed to access.
+              // Only process the block if the instance is allowed.
+              val isAllowedToAccessThisInstance = instance.id == apiKeyInstance
+              logger.debug(s"$principal is allowed to access instance ${instance.id}: $isAllowedToAccessThisInstance")
+              if (isAllowedToAccessThisInstance) {
+                logger.debug("Allowing this request!")
+                block(new AuthenticatedRequest(principal, request))
 
-                } else {
-                  logger.warn(s"Blocking request ${request.path} on instance ${instance.id} for principal: " + principal)
-                  Future.successful(Forbidden("You do not have permission to use this instance"))
-                }
+              } else {
+                logger.warn(s"Blocking request ${request.path} on instance ${instance.id} for principal: " + principal)
+                Future.successful(Forbidden("You do not have permission to use this instance"))
               }
-            }.getOrElse {
+            }.getOrElse{
               logger.warn(s"Blocking request ${request.path} on instance ${instance.id} for principal: " + principal)
               Future.successful(Forbidden("You do not have permission to use this instance"))
             }
