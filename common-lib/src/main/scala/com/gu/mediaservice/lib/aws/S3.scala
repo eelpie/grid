@@ -23,8 +23,8 @@ object S3Object {
     val bucketUrl = if (s3Endpoint == "10.0.45.121:32090") {
       new URI(s"http://$s3Endpoint/$bucket/$key")
     } else {
-      s"$bucket.$s3Endpoint"
-      new URI("http", bucketUrl, s"/$key", null)
+      val bucketHost = s"$bucket.$s3Endpoint"
+      new URI("http", bucketHost, s"/$key", null)
     }
     bucketUrl
   }
