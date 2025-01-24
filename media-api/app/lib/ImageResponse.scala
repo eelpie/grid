@@ -3,6 +3,7 @@ package lib
 import com.gu.mediaservice.lib.argo.model._
 import com.gu.mediaservice.lib.auth.{Internal, Tier}
 import com.gu.mediaservice.lib.aws.S3
+import com.gu.mediaservice.lib.aws.S3KeyFromURL
 import com.gu.mediaservice.lib.collections.CollectionsManager
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model._
@@ -12,17 +13,15 @@ import lib.ImageResponse.extractAliasFieldValues
 import lib.elasticsearch.SourceWrapper
 import lib.usagerights.CostCalculator
 import org.apache.commons.codec.binary.Base64
-import org.joda.time.DateTime
-import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.utils.UriEncoding
 
-import java.net.{URI, URLEncoder}
+import java.net.URI
 import scala.annotation.tailrec
 import scala.util.{Failure, Try}
 
 class ImageResponse(config: MediaApiConfig, s3Client: S3, usageQuota: UsageQuota)
-  extends EditsResponse with GridLogging {
+  extends EditsResponse with GridLogging with S3KeyFromURL {
 
   implicit val usageQuotas: UsageQuota = usageQuota
 
@@ -79,11 +78,12 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3, usageQuota: UsageQuota
 
     val fileUri = image.source.file
 
-    val imageUrl = s3Client.signUrl(config.imageBucket, fileUri, image, imageType = Source)
+    val key = keyFromS3URL(config.imageBucket, fileUri)
+    val imageUrl = s3Client.signUrl(config.imageBucket, key, image, imageType = Source)
     val pngUrl: Option[String] = pngFileUri
-      .map(s3Client.signUrl(config.imageBucket, _, image, imageType = OptimisedPng))
+      .map(uri => s3Client.signUrl(config.imageBucket, keyFromS3URL(config.imageBucket, uri), image, imageType = OptimisedPng))
 
-    def s3SignedThumbUrl = s3Client.signUrl(config.thumbnailBucket, fileUri, image, imageType = Thumbnail)
+    def s3SignedThumbUrl = s3Client.signUrl(config.thumbnailBucket, key, image, imageType = Thumbnail)
 
     val thumbUrl = config.cloudFrontDomainThumbBucket
       .map(domain => s"https://$domain${fileUri.getPath}")
