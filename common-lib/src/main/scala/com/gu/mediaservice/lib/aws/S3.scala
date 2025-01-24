@@ -9,7 +9,7 @@ import com.amazonaws.{AmazonServiceException, ClientConfiguration}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
-import org.joda.time.{DateTime, Duration}
+import org.joda.time.DateTime
 
 import java.io.File
 import java.net.{URI, URL}
