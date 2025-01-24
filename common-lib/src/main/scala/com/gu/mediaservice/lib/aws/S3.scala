@@ -284,6 +284,7 @@ object S3Ops {
         clientBuilder.setEndpointConfiguration(endpointConfig)
         clientBuilder.withCredentials(credentialsProvider)
         clientBuilder.withClientConfiguration(clientConfig)
+        clientBuilder.withPathStyleAccessEnabled(true)
         clientBuilder.build()
       }
     }
