@@ -93,7 +93,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
 
   def signUrl(bucket: S3Bucket, url: URI, image: Image, expiration: DateTime = cachableExpiration(), imageType: ImageFileType = Source): String = {
     // get path and remove leading `/`
-    val key: Key = url.getPath.drop(1)
+    val key: Key = keyFromS3URL(bucket, url)
 
     val contentDisposition = getContentDisposition(image, imageType, config.shortenDownloadFilename)
 
@@ -105,7 +105,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
 
   def signUrlTony(bucket: S3Bucket, url: URI, expiration: DateTime = cachableExpiration()): URL = {
     // get path and remove leading `/`
-    val key: Key = url.getPath.drop(1)
+    val key: Key = keyFromS3URL(bucket, url)
 
     val request = new GeneratePresignedUrlRequest(bucket.bucket, key).withExpiration(expiration.toDate)
     clientFor(bucket).generatePresignedUrl(request)
@@ -140,7 +140,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
 
   def getObject(bucket: S3Bucket, url: URI): model.S3Object = { // TODO why can't this just be by bucket + key to remove end point knowledge
     // get path and remove leading `/`
-    val key: Key = url.getPath.drop(1)
+    val key: Key = keyFromS3URL(bucket, url)
     clientFor(bucket).getObject(new GetObjectRequest(bucket.bucket, key))
   }
 
@@ -259,6 +259,16 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     summaries.headOption.map(_.getKey)
   }
 
+  private def keyFromS3URL(bucket: S3Bucket, url: URI) = {
+    val key = if (bucket.endpoint == "10.0.45.121:32090") {
+      url.getPath.drop(bucket.bucket.length + 1)
+    } else {
+      url.getPath.drop(1)
+    }
+    logger.info("Key from bucket " + bucket + " URL " + url + ": " + key)
+    key
+  }
+
 }
 
 object S3Ops {
@@ -320,6 +330,7 @@ object S3Ops {
 
     config.withAWSCredentials(builder, localstackAware, maybeRegionOverride).build()
   }
+
 }
 
 object S3 {
