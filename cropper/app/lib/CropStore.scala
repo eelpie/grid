@@ -50,7 +50,7 @@ class CropStore(config: CropperConfig) extends S3ImageStorage(config) with CropS
             date           = userMetadata.get("date").flatMap(parseDateTime)
             dimensions     = Dimensions(width, height)
 
-            key = keyFromS3URL(config.imageBucket, s3Object.uri)
+            key = keyFromS3URL(config.imgPublishingBucket, s3Object.uri)
 
             sizing         =
               Asset(
