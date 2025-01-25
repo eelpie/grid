@@ -17,14 +17,11 @@ class CommonConfigWithElastic(resources: GridConfigResources) extends CommonConf
     includeDenseVectorMappings = booleanOpt("es.includeDenseVectorMappings").getOrElse(true)
   )
 
-  private val persistenceIdentifier = string("persistence.identifier")
   val persistenceIdentifiers = NonEmptyList(
-    persistenceIdentifier,
     ImageStorageProps.derivativeOfMediaIdsIdentifierKey,
     ImageStorageProps.replacesMediaIdIdentifierKey
   )
   val queriableIdentifiers = Seq(
-    persistenceIdentifier,
     ImageStorageProps.derivativeOfMediaIdsIdentifierKey,
   )
 
