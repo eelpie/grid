@@ -1,18 +1,17 @@
 package lib.storage
 
-import software.amazon.awssdk.services.s3.model.{CopyObjectRequest, DeleteObjectRequest, GetObjectRequest, GetObjectResponse, PutObjectRequest, S3Exception}
-
-import java.time.Duration
-import scala.jdk.CollectionConverters.MapHasAsJava
-import software.amazon.awssdk.core.ResponseInputStream
-import software.amazon.awssdk.services.s3.presigner.S3Presigner
-import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
 import lib.ImageLoaderConfig
 import com.gu.mediaservice.lib
-import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.model.Instance
+import software.amazon.awssdk.core.ResponseInputStream
+import software.amazon.awssdk.services.s3.model._
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
 
 import java.io.File
+import java.time.Duration
+import scala.jdk.CollectionConverters.MapHasAsJava
 
 class S3FileDoesNotExistException extends Exception()
 
@@ -39,6 +38,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   }
 
   def queueS3Object(uploader: String, filename: String, s3Meta: Map[String, String], file: File)(implicit logMarker: LogMarker) = {
+    // TODO not instance aware
     storeV2(
         config.maybeIngestBucket.get,
         s"$uploader/$filename",
@@ -48,10 +48,10 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
       )
   }
   val presigner = S3Presigner.create()
-  def generatePreSignedUploadUrl(filename: String, duration: Duration, uploadedBy: String, mediaId: String): String = {
+  def generatePreSignedUploadUrl(filename: String, duration: Duration, uploadedBy: String, mediaId: String)(implicit instance: Instance): String = {
 
     val putObjectRequest = PutObjectRequest.builder()
-      .bucket(config.maybeBucketForUIUploads.get).key(s"$uploadedBy/$filename").metadata(Map(
+      .bucket(config.maybeBucketForUIUploads.get).key(s"${instance.id}/$uploadedBy/$filename").metadata(Map(
         "media-id" -> mediaId).asJava)
       .build()
     val putObjectPresignRequest =
