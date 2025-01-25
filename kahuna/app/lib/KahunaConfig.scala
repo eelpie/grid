@@ -4,7 +4,6 @@ import com.gu.mediaservice.lib.auth.Permissions.Pinboard
 import com.gu.mediaservice.lib.auth.SimplePermission
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.model.Instance
-import play.api.libs.json._
 
 case class ScriptToLoad(
   host: String,
@@ -53,9 +52,9 @@ class KahunaConfig(resources: GridConfigResources) extends CommonConfig(resource
   val frameAncestors: Set[String] = getStringSet("security.frameAncestors")
   // The Sentry ingest origin is derived from the DSN so the policy stays correct without
   // committing the org identifier to this public repository.
-  val connectSources: Set[String] = getStringSet("security.connectSources") ++ maybeBucketForUIUploads.map { bucket =>
+  val connectSources: Set[String] = getStringSet("security.connectSources") ++ maybeBucketForUIUploads.map { bucketForUIUploads =>
     if (isDev) "https://localstack.media.local.dev-gutools.co.uk"
-    else s"https://$bucket.s3.$awsRegion.amazonaws.com"
+    else bucketForUIUploads.bucketURL().toURL.toExternalForm
   } ++ telemetryUri ++ sentryConfig.ingestOrigin
   val fontSources: Set[String] = getStringSet("security.fontSources")
   val styleSources: Set[String] = getStringSet("security.styleSources")
