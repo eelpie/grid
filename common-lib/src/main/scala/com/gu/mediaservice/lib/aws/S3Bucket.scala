@@ -20,7 +20,7 @@ case class S3Bucket(bucket: String, endPoint: String, usesPathStyleURLs: Boolean
     }
   }
 
-  private def bucketURL(): URI = {
+  def bucketURL(): URI = {
     if (usesPathStyleURLs) {
       new URI("https", endPoint, s"/$bucket/", null)
     } else {
