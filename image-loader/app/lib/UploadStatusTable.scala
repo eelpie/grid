@@ -33,9 +33,9 @@ class UploadStatusTable(config: ImageLoaderConfig) extends GridLogging {
     }
     val uploadStatusTableWithCondition =
       if(updateStatus.status == Queued) // can only transition to Queued status from Prepared status
-        uploadStatusTable.when(attributeExists("id") and ("status" === Prepared.toString))
+        uploadStatusTable.when(attributeExists("id") and attributeExists("instance") and "status" === Prepared.toString)
       else
-        uploadStatusTable.when(attributeExists("id"))
+        uploadStatusTable.when(attributeExists("id") and attributeExists("instance"))
 
     scanamo.exec(
       uploadStatusTableWithCondition
