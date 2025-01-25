@@ -6,13 +6,16 @@ import org.scanamo._
 import org.scanamo.syntax._
 import org.scanamo.generic.auto._
 import model.StatusType.{Prepared, Queued}
-import model.{UploadStatus, UploadStatusRecord}
+import model.{StatusType, UploadStatus, UploadStatusRecord}
 import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class UploadStatusTable(config: ImageLoaderConfig) extends GridLogging {
+
+  implicit val statusTypeFormat: Typeclass[StatusType] =
+    DynamoFormat.coercedXmap[StatusType, String, IllegalArgumentException](StatusType.apply, _.name)
 
   val client = config.withAWSCredentialsV2(DynamoDbAsyncClient.builder()).build()
   val scanamo = ScanamoAsync(client)
@@ -33,7 +36,7 @@ class UploadStatusTable(config: ImageLoaderConfig) extends GridLogging {
     }
     val uploadStatusTableWithCondition =
       if(updateStatus.status == Queued) // can only transition to Queued status from Prepared status
-        uploadStatusTable.when(attributeExists("id") and attributeExists("instance")) // and "status" === Prepared)
+        uploadStatusTable.when(attributeExists("id") and attributeExists("instance") and "status" === Prepared.name)
       else
         uploadStatusTable.when(attributeExists("id") and attributeExists("instance"))
 
