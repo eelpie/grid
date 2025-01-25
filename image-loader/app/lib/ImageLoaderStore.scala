@@ -6,6 +6,7 @@ import lib.ImageLoaderConfig
 import com.gu.mediaservice.lib
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.model.Instance
 
 import java.io.File
 import java.time.ZonedDateTime
@@ -35,6 +36,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   }
 
   def queueS3Object(uploader: String, filename: String, s3Meta: Map[String, String], file: File)(implicit logMarker: LogMarker) = {
+    // TODO not instance aware
     store(
         config.maybeIngestBucket.get,
         s"$uploader/$filename",
@@ -44,10 +46,10 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
       )
   }
 
-  def generatePreSignedUploadUrl(filename: String, expiration: ZonedDateTime, uploadedBy: String, mediaId: String): String = {
+  def generatePreSignedUploadUrl(filename: String, expiration: ZonedDateTime, uploadedBy: String, mediaId: String)(implicit instance: Instance): String = {
     val request = new GeneratePresignedUrlRequest(
       config.maybeBucketForUIUploads.get, // bucket
-      s"$uploadedBy/$filename", // key
+      s"${instance.id}/$uploadedBy/$filename", // key
     )
       .withMethod(HttpMethod.PUT)
       .withExpiration(Date.from(expiration.toInstant));
