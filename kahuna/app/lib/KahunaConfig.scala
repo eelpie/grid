@@ -51,7 +51,7 @@ class KahunaConfig(resources: GridConfigResources) extends CommonConfig(resource
   val frameAncestors: Set[String] = getStringSet("security.frameAncestors")
   val connectSources: Set[String] = getStringSet("security.connectSources") ++ maybeBucketForUIUploads.map { bucket =>
     if (isDev) "https://localstack.media.local.dev-gutools.co.uk"
-    else s"https://$bucket.s3.$awsRegion.amazonaws.com"
+    else s"https://$bucket.s3.$awsRegion.amazonaws.com" // TODO push to bucket end point
   } ++ telemetryUri
   val fontSources: Set[String] = getStringSet("security.fontSources")
   val imageSources: Set[String] = getStringSet("security.imageSources")
