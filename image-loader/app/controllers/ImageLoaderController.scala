@@ -298,9 +298,10 @@ class ImageLoaderController(auth: Authentication,
           errorMessage = None,
           expires = expiration.toEpochSecond, // TTL in case upload is never completed by client
           instance = instance.id
-        )).map(_ =>
+        )).map { _ =>
+          usageEvents.prepare(instance = instance, image = mediaId, user = uploadedBy)
           mediaId -> preSignedUrl
-        )
+        }
       }
     )
     .map(_.toMap)
