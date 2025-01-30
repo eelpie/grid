@@ -4,9 +4,10 @@ import com.github.blemale.scaffeine.{AsyncLoadingCache, Scaffeine}
 import com.google.common.net.HttpHeaders
 import com.gu.mediaservice.lib.argo._
 import com.gu.mediaservice.lib.argo.model.{Action, _}
-import com.gu.mediaservice.lib.auth.Authentication.{OnBehalfOfPrincipal, Principal}
+import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, OnBehalfOfPrincipal, Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, EditMetadata, UploadImages, DeleteImage => DeleteImagePermission}
 import com.gu.mediaservice.lib.auth._
+import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.events.UsageEvents
@@ -499,11 +500,20 @@ class MediaApi(
 
         val contentDisposition = getContentDisposition(image, Source, config.shortenDownloadFilename)
 
+        val user = request.user match {
+          case u: UserPrincipal => u.attributes.get(ApiKeyAuthenticationProvider.KindeIdKey)
+          case _ => None
+        }
+        val apiKeyUsed = request.user match {
+          case m: MachinePrincipal => Some(m.accessor.identity)
+          case _ => None
+        }
+
         if (config.stripDownloadMetadata) {
-          events.downloadOriginal(instance, id, image.source.size)
+          events.downloadOriginal(instance, id, image.source.size, apiKey = apiKeyUsed, user = user)
           streamWithStrippedMetadata(image, contentDisposition)
         } else {
-          events.downloadOriginal(instance, id, image.source.size)
+          events.downloadOriginal(instance, id, image.source.size, apiKey = apiKeyUsed, user = user)
           streamOriginal(image, contentDisposition)
         }
       }
