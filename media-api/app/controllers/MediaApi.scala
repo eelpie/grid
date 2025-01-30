@@ -3,9 +3,10 @@ package controllers
 import com.google.common.net.HttpHeaders
 import com.gu.mediaservice.lib.argo._
 import com.gu.mediaservice.lib.argo.model.{Action, _}
-import com.gu.mediaservice.lib.auth.Authentication.{Request, _}
+import com.gu.mediaservice.lib.auth.Authentication._
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, EditMetadata, UploadImages, DeleteImage => DeleteImagePermission}
 import com.gu.mediaservice.lib.auth._
+import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider
 import com.gu.mediaservice.lib.aws.{ContentDisposition, Embedder, ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.events.UsageEvents
@@ -443,7 +444,15 @@ class MediaApi(
         }
 
           Future.successful {
-            events.downloadOriginal(instance, id, image.source.size)
+            val user = request.user match {
+              case u: UserPrincipal => u.attributes.get(ApiKeyAuthenticationProvider.KindeIdKey)
+              case _ => None
+            }
+            val apiKey = request.user match {
+              case m: MachinePrincipal => Some(m.accessor.identity)
+              case _ => None
+            }
+            events.downloadOriginal(instance, id, image.source.size, apiKey = apiKey, user = user)
             Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(image, Source, config.shortenDownloadFilename))
           }
       }
