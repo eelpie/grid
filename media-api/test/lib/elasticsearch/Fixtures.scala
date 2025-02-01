@@ -42,6 +42,7 @@ trait Fixtures {
     "grid.stage",
     "grid.appName",
     "instance.service.my",
+    "instance.service.instances",
     "usageEvents.queue.name",
     "capi.live.url",
     "capi.apiKey",
