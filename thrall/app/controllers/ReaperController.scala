@@ -5,11 +5,11 @@ import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, BaseControll
 import com.gu.mediaservice.lib.aws.S3Vectors
 import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
 import com.gu.mediaservice.lib.elasticsearch.ReapableEligibility
+import com.gu.mediaservice.lib.instances.Instances
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.{DateTimeUtils, ImageIngestOperations}
 import com.gu.mediaservice.model.{ImageStatusRecord, Instance, SoftDeletedMetadata}
-import instances.Instances
 import lib.elasticsearch.ElasticSearch
 import lib.{BatchDeletionIds, ThrallConfig, ThrallMetrics, ThrallStore}
 import org.apache.pekko.actor.Scheduler
