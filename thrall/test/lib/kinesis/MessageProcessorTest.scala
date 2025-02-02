@@ -2,6 +2,7 @@ package lib.kinesis
 
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model.{DeleteImageMessage, Instance, NoRights, SyndicationRights, UpdateImageSyndicationMetadataMessage}
 import helpers.Fixtures
@@ -28,7 +29,7 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
   private class Fixture {
     val es: ElasticSearch = mock[ElasticSearch]
     val store: ThrallStore = mock[ThrallStore]
-    val processor = new MessageProcessor(es, store, mock[MetadataEditorNotifications], mock[GridClient], mock[Authentication], mock[InstanceMessageSender])
+    val processor = new MessageProcessor(es, store, mock[MetadataEditorNotifications], mock[GridClient], mock[Authentication], mock[InstanceMessageSender], mock[UsageEvents])
   }
 
   describe("syndication updates") {

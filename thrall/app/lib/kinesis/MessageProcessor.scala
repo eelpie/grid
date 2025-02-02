@@ -3,8 +3,9 @@ package lib.kinesis
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.elasticsearch.{ElasticNotFoundException, Running}
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, combineMarkers}
-import com.gu.mediaservice.model.{AddImageLeaseMessage, CreateMigrationIndexMessage, DeleteImageExportsMessage, DeleteImageMessage, DeleteUsagesMessage, ImageMessage, MigrateImageMessage, RemoveImageLeaseMessage, ReplaceImageLeasesMessage, SetImageCollectionsMessage, SoftDeleteImageMessage, UnSoftDeleteImageMessage, ThrallMessage, UpdateImageExportsMessage, UpdateImagePhotoshootMetadataMessage, UpdateImageSyndicationMetadataMessage, UpdateImageUsagesMessage, UpdateImageUserMetadataMessage}
+import com.gu.mediaservice.model.{AddImageLeaseMessage, CreateMigrationIndexMessage, DeleteImageExportsMessage, DeleteImageMessage, DeleteUsagesMessage, ImageMessage, MigrateImageMessage, RemoveImageLeaseMessage, ReplaceImageLeasesMessage, SetImageCollectionsMessage, SoftDeleteImageMessage, ThrallMessage, UnSoftDeleteImageMessage, UpdateImageExportsMessage, UpdateImagePhotoshootMetadataMessage, UpdateImageSyndicationMetadataMessage, UpdateImageUsagesMessage, UpdateImageUserMetadataMessage}
 import com.gu.mediaservice.model.usage.{Usage, UsageNotice}
 import instances.{InstanceMessageSender, InstanceStatusMessage}
 // import all except `Right`, which otherwise shadows the type used in `Either`s
@@ -31,6 +32,7 @@ class MessageProcessor(
   gridClient: GridClient,
   auth: Authentication,
   instanceMessageSender: InstanceMessageSender,
+  usageEvents: UsageEvents
 ) extends GridLogging with MessageSubjects {
 
   def process(updateMessage: ThrallMessage, logMarker: LogMarker)(implicit ec: ExecutionContext): Future[Unit] = {
@@ -148,12 +150,18 @@ class MessageProcessor(
 
   private def softDeleteImage(message: SoftDeleteImageMessage, logMarker: LogMarker)(implicit ec: ExecutionContext): Future[Unit] = {
     implicit val instance: Instance = message.instance
-    es.applySoftDelete(message.id, message.softDeletedMetadata, message.lastModified)(ec, logMarker, instance).map(_ => ())
+    es.applySoftDelete(message.id, message.softDeletedMetadata, message.lastModified)(ec, logMarker, instance).map{_ =>
+      usageEvents.softDelete(instance = message.instance, image = message.id)
+      ()
+    }
   }
 
   private def unSoftDeleteImage(message: UnSoftDeleteImageMessage, logMarker: LogMarker)(implicit ec: ExecutionContext): Future[Unit] = {
     implicit val instance: Instance = message.instance
-    es.applyUnSoftDelete(message.id, message.lastModified)(ec, logMarker, instance).map(_ => ())
+    es.applyUnSoftDelete(message.id, message.lastModified)(ec, logMarker, instance).map{_ =>
+      usageEvents.unsoftDelete(instance = message.instance, image = message.id)
+      ()
+    }
   }
 
   private def updateImageUserMetadata(message: UpdateImageUserMetadataMessage, logMarker: LogMarker)(implicit ec: ExecutionContext): Future[Unit] = {
@@ -196,7 +204,10 @@ class MessageProcessor(
         store.deletePNG(message.id)
       ))
       _ <- es.forceDeleteImage(message.id)
-    } yield ()).recover {
+
+    } yield {
+      usageEvents.deleteImage(instance = message.instance, image = message.id)
+    }).recover {
       case ImageNotDeletable =>
         logger.info(marker, "Could not delete image")
     }
