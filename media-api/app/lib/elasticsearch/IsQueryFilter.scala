@@ -71,6 +71,7 @@ case class IsDeleted(isDeleted: Boolean) extends IsQueryFilter {
 
 case class IsReapable(maybePersistOnlyTheseCollections: Option[Set[String]])
   extends IsQueryFilter with ReapableEligibility {
+  override def query: Query = preview
 }
 
 case class IsAgencyPick(query: Query) extends IsQueryFilter
