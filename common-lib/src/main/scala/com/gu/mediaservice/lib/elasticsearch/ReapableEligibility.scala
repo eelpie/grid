@@ -39,6 +39,9 @@ trait ReapableEligibility extends Provider{
     moreThanTwentyDaysOld,
     filters.not(persistedQueries)
   )
+
+  def preview: Query = filters.not(persistedQueries)
+
 }
 
 object ReapableEligibility {
