@@ -84,7 +84,6 @@ class Authentication(config: CommonConfig,
             block(new AuthenticatedRequest(innerServicePrincipal, request))
 
           case m: MachinePrincipal =>
-            logger.info("Authing machine principal: " + m)
             val instance = instanceOf(request)
             val maybeApiKeyInstance = m.attributes.get(ApiKeyAuthenticationProvider.ApiKeyInstance)
             logger.info("Api key instance: " + maybeApiKeyInstance)
@@ -107,7 +106,6 @@ class Authentication(config: CommonConfig,
             }
 
           case _ =>
-            logger.info("Authing user principal")
             val instance = instanceOf(request)
             principal.attributes.get(ApiKeyAuthenticationProvider.KindeIdKey).map { owner =>
               getMyInstances(owner).flatMap { principalsInstances =>
