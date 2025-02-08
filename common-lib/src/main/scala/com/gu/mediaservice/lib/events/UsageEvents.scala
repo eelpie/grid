@@ -1,8 +1,8 @@
 package com.gu.mediaservice.lib.events
 
-import akka.actor.{Actor, ActorSystem, Props}
-import akka.pattern.ask
-import akka.util.Timeout
+import org.apache.pekko.actor.{Actor, ActorSystem, Props}
+import org.apache.pekko.pattern.ask
+import org.apache.pekko.util.Timeout
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
