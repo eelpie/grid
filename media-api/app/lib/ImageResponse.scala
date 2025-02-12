@@ -258,11 +258,19 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     config.imgopsUri + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
 
   private def makeImgProxyUri(uri: URI, orientationMetadata: Option[OrientationMetadata]): String = {
+    def normaliseRotation(rotation: Int) = {
+      // imgproxy does not accept negative rotations
+      if (rotation < 0) {
+        rotation + 360
+      } else {
+        rotation
+      }
+    }
     val base64EncodedSourceURL = new String(Base64.encodeBase64URLSafe(uri.toURL.toExternalForm.getBytes), "UTF-8")
     val resizing = Seq(config.imgopsUri, "no-signature",
       "auto_rotate:false", "strip_metadata:true", "strip_color_profile:true",
       "resize:fit:{w}:{h}", "quality:{q}")
-    val orientationCorrection = orientationMetadata.map(o => Seq("rotate:" + o.orientationCorrection())).getOrElse(Seq.empty)
+    val orientationCorrection = orientationMetadata.map(o => Seq("rotate:" + normaliseRotation(o.orientationCorrection()))).getOrElse(Seq.empty)
     val pathComponents = resizing ++ orientationCorrection :+ base64EncodedSourceURL
     pathComponents.mkString("/")
   }
