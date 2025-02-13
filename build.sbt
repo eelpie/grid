@@ -304,6 +304,7 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
       Universal / mappings ++= Seq(
         file("common-lib/src/main/resources/application.conf") -> "conf/application.conf",
         file("common-lib/src/main/resources/logback.xml") -> "conf/logback.xml",
+        file("image-loader/cmyk.icc") -> "cmyk.icc",
         file("image-loader/facebook-TINYsRGB_c2.icc") -> "facebook-TINYsRGB_c2.icc",
         file("image-loader/grayscale.icc") -> "grayscale.icc",
         file("image-loader/srgb.icc") -> "srgb.icc"
