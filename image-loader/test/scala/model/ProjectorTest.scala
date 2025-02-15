@@ -21,6 +21,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.libs.json.{JsArray, JsString}
+import play.api.mvc.RequestHeader
 import test.lib.ResourceHelpers
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -47,7 +48,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
   // because graphic lib files like srgb.icc, cmyk.icc are in root directory instead of resources
   // this test is passing when running on local machine
   "projectImage" ignore {
-
+    implicit val instance: Instance = Instance(id = "an-instance")
     val testFile = fileAt("getty.jpg")
     val id = "id123"
     val fileDigest = DigestedFile(testFile, id)
@@ -130,7 +131,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
       softDeletedMetadata = None,
       lastModified = Some(new DateTime("2020-01-24T17:36:08.456Z").withZone(DateTimeZone.UTC)),
       identifiers = Map(),
-      uploadInfo = UploadInfo(Some("getty.jpg")),
+      uploadInfo = UploadInfo(Some("getty.jpg"), Some(true)),
       source = Asset(new URI("http://img-bucket.s3.amazonaws.com/i/d/1/2/3/" + id),
         Some(12666),
         Some(Jpeg),
@@ -194,6 +195,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
       uploadTime = uploadTime,
       uploadFileName = uploadFileName,
       identifiers = Map.empty,
+      isFeedUpload = Some(true),
     )
 
     implicit val logMarker: LogMarker = MarkerMap()

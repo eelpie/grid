@@ -93,6 +93,7 @@ object JsonValueCodecJsValue {
             out.writeObjectEnd()
           case JsNull =>
             out.writeNull()
+          case _ =>
         }
       }
 
