@@ -21,6 +21,15 @@ object TortoiseUsageRightsConfig extends UsageRightsConfigProvider {
 
   val contractedPhotographers = List(
     PublicationPhotographers(ObserverPublication, List(
+      "Andy Hall",
+      "Gary Calton",
+      "Suki Dhanda",
+      "Richard Saker",
+      "Karen Robinson",
+      "Sophia Evans",
+      "Katherine Rose",
+      "Antonio Olmos",
+      "Jonathan Lovekin"
     ))
  )
 
