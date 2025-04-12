@@ -39,8 +39,8 @@ class ElasticSearch(
 
   private val maybeOrgOwnedExtraCount: Option[(String, ExtraCountConfig)] =
     if (config.shouldDisplayOrgOwnedCountAndFilterCheckbox)
-      Some(s"${config.staffPhotographerOrganisation}-owned" -> ExtraCountConfig(
-        searchClause = s"is:${config.staffPhotographerOrganisation}-owned",
+      Some(s"owned" -> ExtraCountConfig(
+        searchClause = s"is:owned",
         backgroundColour = "#005689"
       ))
     else
