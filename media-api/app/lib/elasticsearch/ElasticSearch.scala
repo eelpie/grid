@@ -251,7 +251,7 @@ class ElasticSearch(
       .scriptfields(graphicImagesScriptFields)
       .aggregations(if (config.shouldDisplayOrgOwnedCountAndFilterCheckbox) List(filterAgg(
         orgOwnedAggName,
-        queryBuilder.makeQuery(Parser.run(s"is:${config.staffPhotographerOrganisation}-owned"))
+        queryBuilder.makeQuery(Parser.run(s"is:owned"))
       )) else Nil)
       .from(params.offset)
       .size(params.length)
