@@ -506,12 +506,12 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
         try {
           whenReady(tickerSearch.search(searchParams(None, ownedImages)), timeout, interval) { result =>
             result.total shouldBe 9L
-            result.extraCounts.get.tickerCounts("FixtureOrg-owned").value shouldBe 2L
+            result.extraCounts.get.tickerCounts("owned").value shouldBe 2L
           }
           whenReady(tickerSearch.search(searchParams(Some("-usages@platform:print"), ownedImages)), timeout, interval) { result =>
             result.hits.map(_._1) should contain theSameElementsAs Seq("usage-search-none", "usage-search-digital")
             result.total shouldBe 2L
-            result.extraCounts.get.tickerCounts("FixtureOrg-owned").value shouldBe 1L
+            result.extraCounts.get.tickerCounts("owned").value shouldBe 1L
           }
 
           val aiParams = searchParams(Some("sunlight -usages@platform:print"), ownedImages)
@@ -526,7 +526,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
           whenReady(tickerSearch.countMatchingFilterWithExtraCounts(Some(filter)), timeout, interval) {
             case (total, counts) =>
               total shouldBe 2L
-              counts.tickerCounts("FixtureOrg-owned").value shouldBe 1L
+              counts.tickerCounts("owned").value shouldBe 1L
           }
         } finally tickerSearch.client.close()
       }
