@@ -42,6 +42,7 @@ class ThrallController(
   gridClient: GridClient,
   s3: S3,
   imageBucket: S3Bucket,
+  lowPriorityMessageSender: ThrallMessageSender
 )(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging with InstanceForRequest {
 
   private val numberFormatter: Long => String = java.text.NumberFormat.getIntegerInstance().format
@@ -319,7 +320,7 @@ class ThrallController(
 
     logger.info(s"Queuing reindex requests for ${mediaIds.size} images for instance ${instance.id}")
     mediaIds.foreach { mediaId =>
-      messageSender.publish(
+      lowPriorityMessageSender.publish(
         UpdateMessage(
           subject = ReindexImage,
           id = Some(mediaId),
