@@ -307,7 +307,7 @@ class ThrallController(
       key.split("/").lastOption
     }
 
-    logger.info(s"Reindexing ${mediaIds.size} images for instance ${instance.id}")
+    logger.info(s"Queuing reindex requests for ${mediaIds.size} images for instance ${instance.id}")
     mediaIds.foreach { mediaId =>
       messageSender.publish(
         UpdateMessage(
