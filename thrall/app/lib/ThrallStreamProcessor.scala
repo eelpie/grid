@@ -105,7 +105,7 @@ class ThrallStreamProcessor(
   })
 
   def createStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), NotUsed] = {
-    mergedKinesisSource.mapAsync(5) { result =>
+    mergedKinesisSource.mapAsync(1) { result =>
       val stopwatch = Stopwatch.start
       consumer.processMessage(result.payload)
         .recover { case _ => () }
