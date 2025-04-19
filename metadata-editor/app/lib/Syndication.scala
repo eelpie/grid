@@ -132,8 +132,8 @@ trait Syndication extends Edit with MessageSubjects with GridLogging {
     photoshootMaybe.map(photoshoot => getAllImageRightsInPhotoshoot(photoshoot))
       .getOrElse(Future.successful(Map.empty[String, SyndicationRights]))
 
-  def getAllImageRightsInPhotoshoot(photoshoot: Photoshoot)
-                                   (implicit ec: ExecutionContext, instance: Instance): Future[Map[String, SyndicationRights]] = for {
+  private def getAllImageRightsInPhotoshoot(photoshoot: Photoshoot)
+                                           (implicit ec: ExecutionContext, instance: Instance): Future[Map[String, SyndicationRights]] = for {
     imageIds <- getImagesInPhotoshoot(photoshoot)
     allNonInferredRights <- syndicationStore.batchGetV2(imageIds, syndicationRightsFieldName)
   } yield {
