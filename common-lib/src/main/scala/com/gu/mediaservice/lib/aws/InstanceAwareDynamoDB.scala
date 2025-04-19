@@ -131,7 +131,7 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
   def batchGet(ids: List[String], attributeKey: String)
               (implicit ex: ExecutionContext, rjs: Reads[T], instance: Instance): Future[Map[String, T]] = {
     val keyChunkList = ids
-      .map(k => Map(IdKey -> new AttributeValue(k)).asJava)
+      .map(k => Map("instance" -> new AttributeValue(instance.id), IdKey -> new AttributeValue(k)).asJava)
       .grouped(100)
 
     Future.traverse(keyChunkList) { keyChunk => {
