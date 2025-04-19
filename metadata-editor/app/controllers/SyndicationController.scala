@@ -3,12 +3,12 @@ package controllers
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws.{DynamoDB, NoItemFound}
-import play.api.mvc.{Action, AnyContent}
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
 import lib._
 import play.api.libs.json._
-import play.api.mvc.{BaseController, ControllerComponents}
+import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents, RequestHeader}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -19,11 +19,12 @@ class SyndicationController(auth: Authentication,
                             val notifications: Notifications,
                             val config: EditsConfig,
                             override val controllerComponents: ControllerComponents)(implicit val ec: ExecutionContext)
-  extends BaseController with Syndication with MessageSubjects with ArgoHelpers with EditsResponse {
+  extends BaseController with Syndication with MessageSubjects with ArgoHelpers with EditsResponse with InstanceForRequest {
 
-  override val metadataBaseUri: String = config.services.metadataBaseUri
+  override val metadataBaseUri: Instance => String = config.services.metadataBaseUri
 
-  def getPhotoshoot(id: String) = auth.async {
+  def getPhotoshoot(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.jsonGet(id, Edits.Photoshoot).map(dynamoEntry => {
       (dynamoEntry \ Edits.Photoshoot).toOption match {
         case Some(photoshoot) => respond(photoshoot.as[Photoshoot])
@@ -34,7 +35,8 @@ class SyndicationController(auth: Authentication,
     }
   }
 
-  def setPhotoshoot(id: String) = auth.async(parse.json) { req => {
+  def setPhotoshoot(id: String) = auth.async(parse.json) { req =>
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").asOpt[Photoshoot].map(photoshoot =>
       setPhotoshootAndPublish(id, photoshoot)
         .map(photoshoot => respond(photoshoot))
@@ -42,13 +44,15 @@ class SyndicationController(auth: Authentication,
     .getOrElse(
       Future.successful(respondError(BadRequest, "invalid-form-data", "Invalid form data"))
     )
-  }}
+  }
 
-  def deletePhotoshoot(id: String) = auth.async {
+  def deletePhotoshoot(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     deletePhotoshootAndPublish(id).map(_ => Accepted)
   }
 
-  def getSyndication(id: String): Action[AnyContent] = auth.async {
+  def getSyndication(id: String): Action[AnyContent] = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     getSyndicationForImage(id)
     .map {
       case Some(rights) => respond(rights)
@@ -58,13 +62,15 @@ class SyndicationController(auth: Authentication,
   }
 
   def setSyndication(id: String): Action[JsValue] = auth.async(parse.json) { req => {
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").asOpt[SyndicationRights].map(syndicationRight => {
       setSyndicationAndPublish(id, syndicationRight)
         .map(syndicationRight => respond(syndicationRight))
     }).getOrElse(Future.successful(respondError(BadRequest, "invalid-form-data", "Invalid form data")))
   }}
 
-  def deleteSyndication(id: String): Action[AnyContent] = auth.async {
+  def deleteSyndication(id: String): Action[AnyContent] = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     deleteSyndicationAndPublish(id).map(_ => Accepted)
   }
 

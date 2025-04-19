@@ -2,6 +2,7 @@ package lib
 
 import com.amazonaws.services.cloudfront.util.SignerUtils
 import com.gu.mediaservice.lib.config.{CommonConfigWithElastic, GridConfigResources}
+import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
 import scalaz.NonEmptyList
 
@@ -40,16 +41,16 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   }
   val fuzzyMaxExpansions: Int = intOpt("search.fuzziness.maxExpansions").getOrElse(50)
 
-  val rootUri: String = services.apiBaseUri
-  val kahunaUri: String = services.kahunaBaseUri
-  val cropperUri: String = services.cropperBaseUri
-  val loaderUri: String = services.loaderBaseUri
-  val metadataUri: String = services.metadataBaseUri
-  val imgopsUri: String = services.imgopsBaseUri
-  val usageUri: String = services.usageBaseUri
-  val leasesUri: String = services.leasesBaseUri
-  val authUri: String = services.authBaseUri
-  val collectionsUri: String = services.collectionsBaseUri
+  val rootUri: Instance => String = services.apiBaseUri
+  val kahunaUri: Instance => String = services.kahunaBaseUri
+  val cropperUri: Instance => String = services.cropperBaseUri
+  val loaderUri: Instance => String = services.loaderBaseUri
+  val metadataUri: Instance => String = services.metadataBaseUri
+  val imgopsUri: Instance => String = services.imgopsBaseUri
+  val usageUri: Instance => String = services.usageBaseUri
+  val leasesUri: Instance => String = services.leasesBaseUri
+  val authInstanceUri: Instance => String = services.authBaseInstanceUri
+  val collectionsUri: Instance => String = services.collectionsBaseUri
 
   val requiredMetadata = NonEmptyList("credit", "description", "usageRights")
 
