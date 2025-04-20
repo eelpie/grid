@@ -22,15 +22,16 @@ object KinesisConfig extends GridLogging {
     val pollingConfig = new PollingConfig(config.streamName, config.kinesisClient)
       .maxRecords(100)
       .idleTimeBetweenReadsInMillis(250)
-    val retrievalConfig = new RetrievalConfig(config.kinesisClient, config.streamName, config.streamName)
+    val retrievalConfig = new RetrievalConfig(config.kinesisClient, config.streamName, config.appName)
       .retrievalSpecificConfig(pollingConfig)
 
     val metricsConfig = new MetricsConfig(config.cloudwatchClient, config.streamName)
       .metricsLevel(config.metricsLevel)
 
+    logger.info(s"Creating consumer config for appName: ${config.appName}, streamName: ${config.streamName}")
     val clientConfig = ConsumerConfig(
       streamName = config.streamName,
-      appName = config.streamName,
+      appName = config.appName,
       workerId = workerId,
       kinesisClient = config.kinesisClient,
       dynamoClient = config.dynamoClient,
