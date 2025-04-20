@@ -43,7 +43,7 @@ class Kinesis(config: KinesisSenderConfig) extends GridLogging{
     val payload = JsonByteArrayUtil.toByteArray(message)
 
     val markers: LogstashMarker = message.toLogMarker.and(Markers.append("compressed-size", payload.length))
-    logger.info(markers, "Publishing message to kinesis")
+    logger.info(markers, s"Publishing message to kinesis: ${config.streamName}")
 
     val data = ByteBuffer.wrap(payload)
     val request = PutRecordRequest.builder()
