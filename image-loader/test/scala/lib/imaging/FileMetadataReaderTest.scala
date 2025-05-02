@@ -9,6 +9,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 import play.api.libs.json.{JsArray, JsString, JsValue, Json}
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 /**
  * Test that the Reader returns the expected FileMetadata.
  *
@@ -25,7 +27,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
 
   it("should read the correct dimensions for a JPG image") {
     val image = fileAt("getty.jpg")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Jpeg))
+    val dimsFuture = FileMetadataReader.readMetadata(image).map(metadata => FileMetadataReader.dimensions(metadata, Some(Jpeg)))
     whenReady(dimsFuture) { dimOpt =>
       dimOpt should be(Symbol("defined"))
       dimOpt.get.width should be(100)
@@ -35,7 +37,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
 
   it("should capture exif orientation tag in JPG images") {
     val image = fileAt("exif-orientated.jpg")
-    val orientationFuture = FileMetadataReader.orientation(image)
+    val orientationFuture = FileMetadataReader.readMetadata(image).map(metadata => FileMetadataReader.orientation(metadata))
     whenReady(orientationFuture) { orientationOpt =>
       orientationOpt should be(defined)
       orientationOpt.get.exifOrientation should be(Some(6))
@@ -44,7 +46,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
 
   it("should ignore 0 degree exif orientation tag as it has no material effect") {
     val image = fileAt("exif-orientated-no-rotation.jpg")
-    val orientationFuture = FileMetadataReader.orientation(image)
+    val orientationFuture = FileMetadataReader.readMetadata(image).map(metadata => FileMetadataReader.orientation(metadata))
     whenReady(orientationFuture) { orientationOpt =>
       orientationOpt should be(None)
     }
@@ -52,7 +54,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
 
   it("should use uncorrected width and height as dimensions for exif 90 rotations") {
     val image = fileAt("exif-orientated.jpg")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Jpeg))
+    val dimsFuture = FileMetadataReader.readMetadata(image).map(metadata => FileMetadataReader.dimensions(metadata, Some(Jpeg)))
     whenReady(dimsFuture) { dimOpt =>
       dimOpt should be(defined)
       dimOpt.get.width should be(3456)
@@ -62,7 +64,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
 
   it("should read the correct dimensions for a tiff image") {
     val image = fileAt("flower.tif")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Tiff))
+    val dimsFuture =  FileMetadataReader.readMetadata(image).map(metadata => FileMetadataReader.dimensions(metadata, Some(Tiff)))
     whenReady(dimsFuture) { dimOpt =>
       dimOpt should be(Symbol("defined"))
       dimOpt.get.width should be(73)
@@ -72,7 +74,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
 
   it("should read the correct dimensions for a png image") {
     val image = fileAt("schaik.com_pngsuite/basn0g08.png")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Png))
+    val dimsFuture =  FileMetadataReader.readMetadata(image).map(metadata => FileMetadataReader.dimensions(metadata, Some(Png)))
     whenReady(dimsFuture) { dimOpt =>
       dimOpt should be(Symbol("defined"))
       dimOpt.get.width should be(32)

@@ -184,56 +184,43 @@ object FileMetadataReader extends GridLogging {
   private def dateToUTCString(date: DateTime): String = ISODateTimeFormat.dateTime.print(date.withZone(DateTimeZone.UTC))
 
 
-  def orientation(image: File): Future[Option[OrientationMetadata]] = {
+  def orientation(metadata: Metadata): Option[OrientationMetadata] = {
     for {
-      metadata <- readMetadata(image)
+      exifDirectory <- Option(metadata.getFirstDirectoryOfType(classOf[ExifIFD0Directory]))
+      exifOrientation <- Option(exifDirectory.getInteger(ExifDirectoryBase.TAG_ORIENTATION))
+      orientation = OrientationMetadata(exifOrientation = Some(exifOrientation))
+      orientationWhichTransformsImage <- Seq(orientation).find(_.transformsImage())
     } yield {
-
-      for {
-        exifDirectory <- Option(metadata.getFirstDirectoryOfType(classOf[ExifIFD0Directory]))
-        exifOrientation <- Option(exifDirectory.getInteger(ExifDirectoryBase.TAG_ORIENTATION))
-        orientation = OrientationMetadata(exifOrientation = Some(exifOrientation))
-        orientationWhichTransformsImage <- Seq(orientation).find(_.transformsImage())
-      } yield {
-        orientationWhichTransformsImage
-      }
+      orientationWhichTransformsImage
     }
   }
 
-  def dimensions(image: File, mimeType: Option[MimeType]): Future[Option[Dimensions]] =
-    for {
-      metadata <- readMetadata(image)
-    }
-    yield {
+  def dimensions(metadata: Metadata, mimeType: Option[MimeType]): Option[Dimensions] =
+    mimeType match {
+      case Some(Jpeg) => for {
+        jpegDir <- Option(metadata.getFirstDirectoryOfType(classOf[JpegDirectory]))
 
-      mimeType match {
+      } yield Dimensions(jpegDir.getImageWidth, jpegDir.getImageHeight)
 
-        case Some(Jpeg) => for {
-          jpegDir <- Option(metadata.getFirstDirectoryOfType(classOf[JpegDirectory]))
+      case Some(Png) => for {
+        pngDir <- Option(metadata.getFirstDirectoryOfType(classOf[PngDirectory]))
 
-        } yield Dimensions(jpegDir.getImageWidth, jpegDir.getImageHeight)
-
-        case Some(Png) => for {
-          pngDir <- Option(metadata.getFirstDirectoryOfType(classOf[PngDirectory]))
-
-        } yield {
-          val width = pngDir.getInt(PngDirectory.TAG_IMAGE_WIDTH)
-          val height = pngDir.getInt(PngDirectory.TAG_IMAGE_HEIGHT)
-          Dimensions(width, height)
-        }
-
-        case Some(Tiff) => for {
-          exifDir <- Option(metadata.getFirstDirectoryOfType(classOf[ExifIFD0Directory]))
-
-        } yield {
-          val width = exifDir.getInt(ExifDirectoryBase.TAG_IMAGE_WIDTH)
-          val height = exifDir.getInt(ExifDirectoryBase.TAG_IMAGE_HEIGHT)
-          Dimensions(width, height)
-        }
-
-        case _ => None
-
+      } yield {
+        val width = pngDir.getInt(PngDirectory.TAG_IMAGE_WIDTH)
+        val height = pngDir.getInt(PngDirectory.TAG_IMAGE_HEIGHT)
+        Dimensions(width, height)
       }
+
+      case Some(Tiff) => for {
+        exifDir <- Option(metadata.getFirstDirectoryOfType(classOf[ExifIFD0Directory]))
+
+      } yield {
+        val width = exifDir.getInt(ExifDirectoryBase.TAG_IMAGE_WIDTH)
+        val height = exifDir.getInt(ExifDirectoryBase.TAG_IMAGE_HEIGHT)
+        Dimensions(width, height)
+      }
+
+      case _ => None
     }
 
   def getColorModelInformation(image: File, metadata: Metadata, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Map[String, String]] = {
@@ -293,7 +280,7 @@ object FileMetadataReader extends GridLogging {
   private def nonEmptyTrimmed(nullableStr: String): Option[String] =
     Option(nullableStr) map (_.trim) filter (_.nonEmpty)
 
-  private def readMetadata(file: File): Future[Metadata] = Future {
+  def readMetadata(file: File): Future[Metadata] = Future {
     ImageMetadataReader.readMetadata(file)
   }
 

@@ -145,8 +145,6 @@ object Uploader extends GridLogging {
     val tempDirForRequest: File = Files.createTempDirectory(deps.config.tempDir.toPath, "upload").toFile
 
     val colourModelFuture = ImageOperations.identifyColourModel(uploadRequest.tempFile, originalMimeType)
-    val sourceDimensionsFuture = FileMetadataReader.dimensions(uploadRequest.tempFile, Some(originalMimeType))
-    val sourceOrientationMetadataFuture = FileMetadataReader.orientation(uploadRequest.tempFile)
 
     val storableOriginalImage = StorableOriginalImage(
       uploadRequest.imageId,
@@ -164,8 +162,9 @@ object Uploader extends GridLogging {
       s3Source <- sourceStoreFuture
       mergedUploadRequest = patchUploadRequestWithS3Metadata(uploadRequest, s3Source)
       optimisedFileMetadata <- FileMetadataReader.fromIPTCHeadersWithColorInfo(browserViewableImage)
-      sourceDimensions <- sourceDimensionsFuture
-      sourceOrientationMetadata <- sourceOrientationMetadataFuture
+      sourceMetaData <- FileMetadataReader.readMetadata(uploadRequest.tempFile)
+      sourceDimensions = FileMetadataReader.dimensions(sourceMetaData, Some(originalMimeType))
+      sourceOrientationMetadata = FileMetadataReader.orientation(sourceMetaData)
       thumbViewableImage <- createThumbFuture(optimisedFileMetadata, colourModelFuture, browserViewableImage, deps, tempDirForRequest, uploadRequest.instance, orientationMetadata = sourceOrientationMetadata)
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
@@ -174,7 +173,8 @@ object Uploader extends GridLogging {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
       }
-      thumbDimensions <- FileMetadataReader.dimensions(thumbViewableImage.file, Some(thumbViewableImage.mimeType))
+      thumbMetadata <- FileMetadataReader.readMetadata(thumbViewableImage.file)
+      thumbDimensions = FileMetadataReader.dimensions(thumbMetadata, Some(thumbViewableImage.mimeType))
       colourModel <- colourModelFuture
     } yield {
       val fullFileMetadata = fileMetadata.copy(colourModel = colourModel)
