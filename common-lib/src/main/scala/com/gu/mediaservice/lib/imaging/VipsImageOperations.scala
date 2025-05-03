@@ -188,9 +188,17 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     Future {
       Vips.run { arena =>
         val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
-          VipsOption.Boolean("auto-rotate", false), // example of an option,
+          VipsOption.Boolean("auto-rotate", false)
         )
-        saveImageToFile(thumbnail, qual, outputFile)
+
+       val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+          logger.info("Rotating thumbnail: " + angle)
+          thumbnail.rotate(angle)
+        }.getOrElse{
+          thumbnail
+        }
+
+        saveImageToFile(rotated, qual, outputFile)
       }
       (outputFile, thumbMimeType)
     }
