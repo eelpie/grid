@@ -239,7 +239,7 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "openjdk:11-jre",
+      dockerBaseImage := "eclipse-temurin:22",
       dockerExposedPorts in Docker := Seq(port),
       playDefaultPort := port,
       Linux / maintainer := "Guardian Developers <dig.dev.software@theguardian.com>",
@@ -275,7 +275,7 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "openjdk:11-jre",
+      dockerBaseImage := "eclipse-temurin:22",
       dockerExposedPorts in Docker := Seq(port),
       dockerCommands ++= Seq(
         Cmd("USER", "root"), Cmd("RUN", "apt-get", "update"),
