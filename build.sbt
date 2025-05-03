@@ -240,7 +240,7 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "eclipse-temurin:11",
+      dockerBaseImage := "eclipse-temurin:25",
       dockerExposedPorts := Seq(port),
       playDefaultPort := port,
 
