@@ -241,7 +241,6 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
       dockerBaseImage := "eclipse-temurin:22",
       dockerExposedPorts in Docker := Seq(port),
       playDefaultPort := port,
-      debianPackageDependencies := Seq("java11-runtime-headless"),
       Linux / maintainer := "Guardian Developers <dig.dev.software@theguardian.com>",
       Linux / packageSummary := description.value,
       packageDescription := description.value,
@@ -288,7 +287,6 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
         Cmd("RUN", "apt-get", "install", "-y", "libvips-tools")
       ),
       playDefaultPort := port,
-      debianPackageDependencies := Seq("openjdk-8-jre-headless"),
       Linux / maintainer := "Guardian Developers <dig.dev.software@theguardian.com>",
       Linux / packageSummary := description.value,
       packageDescription := description.value,
