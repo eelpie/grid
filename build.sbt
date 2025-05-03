@@ -236,25 +236,11 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "openjdk:11-jre",
+      dockerBaseImage := "eclipse-temurin:11",
       dockerExposedPorts in Docker := Seq(port),
       playDefaultPort := port,
-      debianPackageDependencies := Seq("java11-runtime-headless"),
-      Linux / maintainer := "Guardian Developers <dig.dev.software@theguardian.com>",
-      Linux / packageSummary := description.value,
-      packageDescription := description.value,
 
       bashScriptEnvConfigLocation := Some("/etc/environment"),
-      Debian / makeEtcDefault := None,
-      Debian / packageBin := {
-        val originalFileName = (Debian / packageBin).value
-        val (base, ext) = originalFileName.baseAndExt
-        val newBase = base.replace(s"_${version.value}_all","")
-        val newFileName = file(originalFileName.getParent) / s"$newBase.$ext"
-        IO.move(originalFileName, newFileName)
-        println(s"Renamed $originalFileName to $newFileName")
-        newFileName
-      },
       Universal / mappings ++= Seq(
         file("common-lib/src/main/resources/application.conf") -> "conf/application.conf",
         file("common-lib/src/main/resources/logback.xml") -> "conf/logback.xml"
@@ -271,7 +257,7 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "openjdk:11-jre",
+      dockerBaseImage := "eclipse-temurin:11",
       dockerExposedPorts in Docker := Seq(port),
       dockerCommands ++= Seq(
         Cmd("USER", "root"), Cmd("RUN", "apt-get", "update"),
@@ -282,21 +268,8 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
         Cmd("RUN", "apt-get", "install", "-y", "libimage-exiftool-perl")
       ),
       playDefaultPort := port,
-      debianPackageDependencies := Seq("openjdk-8-jre-headless"),
-      Linux / maintainer := "Guardian Developers <dig.dev.software@theguardian.com>",
-      Linux / packageSummary := description.value,
-      packageDescription := description.value,
+
       bashScriptEnvConfigLocation := Some("/etc/environment"),
-      Debian / makeEtcDefault := None,
-      Debian / packageBin := {
-        val originalFileName = (Debian / packageBin).value
-        val (base, ext) = originalFileName.baseAndExt
-        val newBase = base.replace(s"_${version.value}_all", "")
-        val newFileName = file(originalFileName.getParent) / s"$newBase.$ext"
-        IO.move(originalFileName, newFileName)
-        println(s"Renamed $originalFileName to $newFileName")
-        newFileName
-      },
       Universal / mappings ++= Seq(
         file("common-lib/src/main/resources/application.conf") -> "conf/application.conf",
         file("common-lib/src/main/resources/logback.xml") -> "conf/logback.xml",
