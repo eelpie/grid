@@ -6,6 +6,10 @@ import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model._
 
 import scala.concurrent.{ExecutionContext, Future}
+import app.photofox.vipsffm.Vips
+import app.photofox.vipsffm.VImage
+import app.photofox.vipsffm.VipsOption
+
 
 
 class VipsImageOperations(playPath: String) extends GridLogging with ImageOperations {
@@ -43,9 +47,33 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
                       iccColourSpace: Option[String],
                       colourModel: Option[String],
                       orientationMetadata: Option[OrientationMetadata]
-                     )(implicit logMarker: LogMarker): Future[(File, MimeType)] = ???
+                     )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
+    Future {
+      Vips.run { arena =>
+        val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
+          VipsOption.Boolean("auto-rotate", false), // example of an option,
+        )
+        saveImageToFile(thumbnail, qual, outputFile)
+      }
+      (outputFile, thumbMimeType)
+    }
+  }
 
   def transformImage(sourceFile: File, sourceMimeType: Option[MimeType], tempDir: File)(implicit logMarker: LogMarker): Future[(File, MimeType)] = ???
+
+  private def saveImageToFile(image: VImage, qual: Double, outputFile: File): File = {
+    logger.info(s"Saving image to file: " + outputFile.getAbsolutePath)
+    image.jpegsave(outputFile.getAbsolutePath,
+      VipsOption.Int("Q", qual.toInt),
+      //VipsOption.Boolean("optimize-scans", true),
+      //VipsOption.Boolean("optimize-coding", true),
+      //VipsOption.Boolean("interlace", true),
+      //VipsOption.Boolean("trellis-quant", true),
+      // VipsOption.Int("quant-table", 3),
+      VipsOption.Boolean("strip", true)
+    )
+    outputFile
+  }
 
   def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[String]] = ???
 
