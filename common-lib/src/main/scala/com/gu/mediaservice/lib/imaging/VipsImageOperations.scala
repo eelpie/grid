@@ -12,6 +12,9 @@ import com.gu.mediaservice.model._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
+import app.photofox.vipsffm.Vips
+import app.photofox.vipsffm.VImage
+import app.photofox.vipsffm.VipsOption
 
 
 
@@ -182,25 +185,27 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
                       colourModel: Option[String],
                       orientationMetadata: Option[OrientationMetadata]
                      )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
-    val stopwatch = Stopwatch.start
 
-    val cropSource     = addImage(browserViewableImage.file)
-    val orientated     = orient(cropSource, orientationMetadata)
-    val thumbnailed    = thumbnail(orientated)(width)
-    val corrected      = correctColour(thumbnailed)(iccColourSpace, colourModel, browserViewableImage.isTransformedFromSource)
-    val converted      = applyOutputProfile(corrected, optimised = true)
-    val stripped       = stripMeta(converted)
-    val profiled       = applyOutputProfile(stripped, optimised = true)
-    val withBackground = setBackgroundColour(profiled)(backgroundColour)
-    val flattened      = flatten(withBackground)
-    val unsharpened    = unsharp(flattened)(thumbUnsharpRadius, thumbUnsharpSigma, thumbUnsharpAmount)
-    val qualified      = quality(unsharpened)(qual)
-    val interlaced     = interlace(qualified)(interlacedHow)
-    val addOutput      = {file:File => addDestImage(interlaced)(file)}
-    for {
-      _          <- runConvertCmd(addOutput(outputFile), useImageMagick = browserViewableImage.mimeType == Tiff)
-      _ = logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
-    } yield (outputFile, thumbMimeType)
+
+    Future {
+      Vips.run { arena =>
+        val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
+          VipsOption.Boolean("auto-rotate", false), // example of an option,
+        )
+
+        thumbnail.jpegsave(outputFile.getAbsolutePath,
+          VipsOption.Int("Q", qual.toInt),
+          //VipsOption.Boolean("optimize-scans", true),
+          //VipsOption.Boolean("optimize-coding", true),
+          //VipsOption.Boolean("interlace", true),
+          //VipsOption.Boolean("trellis-quant", true),
+          // VipsOption.Int("quant-table", 3),
+          VipsOption.Boolean("strip", true)
+        )
+      }
+
+      (outputFile, thumbMimeType)
+    }
   }
 
   /**
