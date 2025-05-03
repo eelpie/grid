@@ -94,12 +94,15 @@ object ImageMagick extends GridLogging {
   }
 
   def runIdentifyCmd(op: IMOperation, useImageMagick: Boolean)(implicit logMarker: LogMarker): Future[List[String]] = Future {
+    logger.info("Starting runIdentifyCmd")
     logger.info(logMarker, s"Using ${if(useImageMagick) { "imagemagick" } else { "graphicsmagick" }} for imaging identification operation $op")
 
     val cmd = new IdentifyCmd(!useImageMagick)
     val output = new ArrayListOutputConsumer()
     cmd.setOutputConsumer(output)
     cmd.run(op)
-    output.getOutput.asScala.toList
+    val x = output.getOutput.asScala.toList
+    logger.info("Finished runIdentifyCmd")
+    x
   }
 }
