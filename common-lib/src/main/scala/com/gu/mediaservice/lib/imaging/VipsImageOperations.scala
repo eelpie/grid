@@ -3,7 +3,7 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.{VImage, Vips, VipsOption}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick.ctx
-import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.model._
 
 import java.io._
@@ -46,6 +46,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                       colourModel: Option[String],
                       orientationMetadata: Option[OrientationMetadata]
                      )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
+    val stopwatch = Stopwatch.start
+
     Future {
       Vips.run { arena =>
         val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
@@ -61,6 +63,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
         saveImageToFile(rotated, qual, outputFile)
       }
+      logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
       (outputFile, thumbMimeType)
     }
   }
