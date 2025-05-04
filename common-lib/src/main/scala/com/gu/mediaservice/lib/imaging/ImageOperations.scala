@@ -213,7 +213,7 @@ class ImageOperations(playPath: String) extends GridLogging {
                       colourModel: Option[String],
                       orientationMetadata: Option[OrientationMetadata]
                      )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
-
+    val stopwatch = Stopwatch.start
 
     Future.successful {
       Vips.run { arena =>
@@ -240,6 +240,8 @@ class ImageOperations(playPath: String) extends GridLogging {
           VipsOption.Boolean("strip", true)
         )
       }
+
+      logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
       (outputFile, MimeType("image/jpeg"))
     }
   }
