@@ -230,6 +230,8 @@ class ImageOperations(playPath: String) extends GridLogging {
           thumbnail
         }
 
+        logger.info(s"createThumbnailVips is ignoring iccColourSpace: $iccColourSpace, colourModel: $colourModel")
+
         rotated.jpegsave(outputFile.getAbsolutePath,
           VipsOption.Int("Q", qual.toInt),
           //VipsOption.Boolean("optimize-scans", true),
