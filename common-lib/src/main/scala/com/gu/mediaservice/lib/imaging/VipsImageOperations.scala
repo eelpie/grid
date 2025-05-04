@@ -1,20 +1,18 @@
 package com.gu.mediaservice.lib.imaging
 
-import java.io._
-import org.im4java.core.IMOperation
+import app.photofox.vipsffm.{VImage, Vips, VipsOption}
+import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.Files._
-import com.gu.mediaservice.lib.{BrowserViewableImage, StorableThumbImage}
 import com.gu.mediaservice.lib.imaging.VipsImageOperations.{optimisedMimeType, thumbMimeType}
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick.{addDestImage, addImage, format, runIdentifyCmd}
 import com.gu.mediaservice.lib.imaging.im4jwrapper.{ExifTool, ImageMagick}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.model._
+import org.im4java.core.IMOperation
 
+import java.io._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
-import app.photofox.vipsffm.Vips
-import app.photofox.vipsffm.VImage
-import app.photofox.vipsffm.VipsOption
 
 
 
@@ -188,9 +186,9 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     Future {
       Vips.run { arena =>
         val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
-          VipsOption.Boolean("auto-rotate", false)
+          VipsOption.Boolean("auto-rotate", false),
+          VipsOption.String("export-profile", profilePath("srgb"))
         )
-
        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
           logger.info("Rotating thumbnail: " + angle)
           thumbnail.rotate(angle)
