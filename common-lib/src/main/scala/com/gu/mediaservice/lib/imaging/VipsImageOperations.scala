@@ -47,6 +47,8 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
                       colourModel: Option[String],
                       orientationMetadata: Option[OrientationMetadata]
                      )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
+    val stopwatch = Stopwatch.start
+
     Future {
       Vips.run { arena =>
         val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
@@ -62,6 +64,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
 
         saveImageToFile(rotated, qual, outputFile)
       }
+      logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
       (outputFile, thumbMimeType)
     }
   }
