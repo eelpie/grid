@@ -29,7 +29,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val outputFile = new File("/Users/tony/Desktop/thumbnail.jpg")
       val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty,  Instance("TODO"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 95, outputFile, None, None, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -42,7 +42,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty,  Instance("TODO"))
 
       // Use a large tall thumbnail to expose out of order read which exceeds the line cache
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 2800, 95, outputFile, None, None, Some(OrientationMetadata(exifOrientation = Some(6))))
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 2800, 95, outputFile, Some(OrientationMetadata(exifOrientation = Some(6))))
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -55,7 +55,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val outputFile = new File("/Users/tony/Desktop/out2.jpg")
       val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, Instance("TODO"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -67,7 +67,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val outputFile = new File("/Users/tony/Desktop/out3.jpg")
       val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, Instance("TODO"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -79,7 +79,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val outputFile = new File("/Users/tony/Desktop/thumbnail-png-with-alpha.jpg")
       val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, Instance("TODO"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -91,7 +91,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val outputFile = new File("/Users/tony/Desktop/thumbnail-tif-with-alpha.jpg")
       val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, Instance("TODO"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
