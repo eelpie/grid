@@ -183,8 +183,6 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                       width: Int,
                       qual: Double = 100d,
                       outputFile: File,
-                      iccColourSpace: Option[String],
-                      colourModel: Option[String],
                       orientationMetadata: Option[OrientationMetadata]
                      )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
     val stopwatch = Stopwatch.start

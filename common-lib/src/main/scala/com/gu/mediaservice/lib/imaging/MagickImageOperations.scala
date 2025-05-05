@@ -15,7 +15,7 @@ import scala.sys.process._
 case class ExportResult(id: String, masterCrop: Asset, othersizings: List[Asset])
 class UnsupportedCropOutputTypeException extends Exception
 
-class MagickImageOperations(playPath: String) extends GridLogging with ImageOperations {
+class MagickImageOperations(playPath: String) extends GridLogging {
   import ExifTool._
   import ImageMagick._
 
@@ -200,7 +200,7 @@ class MagickImageOperations(playPath: String) extends GridLogging with ImageOper
     for {
       _          <- runConvertCmd(addOutput(outputFile), useImageMagick = browserViewableImage.mimeType == Tiff)
       _ = logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
-    } yield (outputFile, thumbMimeType)
+    } yield (outputFile, ImageOperations.thumbMimeType)
   }
 
   /**
@@ -216,7 +216,7 @@ class MagickImageOperations(playPath: String) extends GridLogging with ImageOper
     val stopwatch = Stopwatch.start
     for {
       // png suffix is used by imagemagick to infer the required type
-      outputFile      <- createTempFile(s"transformed-", optimisedMimeType.fileExtension, tempDir)
+      outputFile      <- createTempFile(s"transformed-", ImageOperations.optimisedMimeType.fileExtension, tempDir)
       transformSource = addImage(sourceFile)
       converted       = applyOutputProfile(transformSource, optimised = true)
       stripped        = stripMeta(converted)
@@ -226,7 +226,7 @@ class MagickImageOperations(playPath: String) extends GridLogging with ImageOper
       _               <- runConvertCmd(addOutput, useImageMagick = sourceMimeType.contains(Tiff))
       _               <- checkForOutputFileChange(outputFile)
       _ = logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating browser-viewable image")
-    } yield (outputFile, optimisedMimeType)
+    } yield (outputFile, ImageOperations.optimisedMimeType)
   }
 
   def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]] = {
