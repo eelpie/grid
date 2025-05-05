@@ -160,7 +160,7 @@ object Uploader extends GridLogging {
       optimisedFileMetadata <- FileMetadataReader.fromIPTCHeadersWithColorInfo(browserViewableImage)
       sourceDimensions <- sourceDimensionsFuture
       sourceOrientationMetadata <- sourceOrientationMetadataFuture
-      thumbViewableImage <- createThumbFuture(optimisedFileMetadata, colourModelFuture, browserViewableImage, deps, tempDirForRequest, uploadRequest.instance, orientationMetadata = sourceOrientationMetadata)
+      thumbViewableImage <- createThumbFuture(optimisedFileMetadata, browserViewableImage, deps, tempDirForRequest, uploadRequest.instance, orientationMetadata = sourceOrientationMetadata)
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
         tempDirForRequest, optimiseOps, browserViewableImage, optimisedFileMetadata, deps.tryFetchOptimisedFile, uploadRequest.instance)
@@ -250,7 +250,6 @@ object Uploader extends GridLogging {
   }
 
   private def createThumbFuture(fileMetadata: FileMetadata,
-                                colourModelFuture: Future[Option[String]],
                                 browserViewableImage: BrowserViewableImage,
                                 deps: ImageUploadOpsDependencies,
                                 tempDir: File,
@@ -261,15 +260,11 @@ object Uploader extends GridLogging {
 
     def generateThumbnail(tempFile: File) = {
       for {
-        colourModel <- colourModelFuture
-        iccColourSpace = FileMetadataHelper.normalisedIccColourSpace(fileMetadata)
         thumbData <- imageOps.createThumbnail(
           browserViewableImage,
           config.thumbWidth,
           config.thumbQuality,
           tempFile,
-          iccColourSpace,
-          colourModel,
           orientationMetadata,
         )
       } yield thumbData
