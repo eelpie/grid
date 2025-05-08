@@ -34,7 +34,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), S3Bucket("img-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client), S3Bucket("thumb-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client))
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, S3Bucket("img-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client), S3Bucket("thumb-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client))
 
   /**
     * @todo: I flailed about until I found a path that worked, but
