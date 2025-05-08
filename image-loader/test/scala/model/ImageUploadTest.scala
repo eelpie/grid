@@ -3,7 +3,7 @@ package model
 import com.drew.imaging.ImageProcessingException
 import com.gu.mediaservice.lib.aws.{S3Bucket, S3Metadata, S3Object, S3ObjectMetadata}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
-import com.gu.mediaservice.lib.imaging.{ImageOperations, MagickImageOperations}
+import com.gu.mediaservice.lib.imaging.{ImageOperations, VipsImageOperations}
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.lib.{StorableImage, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
 import com.gu.mediaservice.model._
@@ -32,14 +32,14 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), ResourceHelpers.dummyBucket("img-bucket"), ResourceHelpers.dummyBucket("thumb-bucket"))
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, ResourceHelpers.dummyBucket("img-bucket"), ResourceHelpers.dummyBucket("thumb-bucket"))
 
   /**
     * @todo: I flailed about until I found a path that worked, but
     *        what arcane magic System.getProperty relies upon, and exactly
     *        _how_ it will break in CI, I do not know
     */
-  val imageOps: ImageOperations = new MagickImageOperations(System.getProperty("user.dir"))
+  val imageOps: ImageOperations = new VipsImageOperations(System.getProperty("user.dir"))
 
   private def imageUpload(
                    fileName: String,

@@ -67,8 +67,6 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     }
   }
 
-  def transformImage(sourceFile: File, sourceMimeType: Option[MimeType], tempDir: File)(implicit logMarker: LogMarker): Future[(File, MimeType)] = ???
-
   private def saveImageToFile(image: VImage, qual: Double, outputFile: File): File = {
     logger.info(s"Saving image to file: " + outputFile.getAbsolutePath)
     image.jpegsave(outputFile.getAbsolutePath,
