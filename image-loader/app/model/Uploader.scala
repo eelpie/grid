@@ -65,7 +65,6 @@ case class ImageUploadOpsCfg(
   tempDir: File,
   thumbWidth: Int,
   thumbQuality: Double,
-  transcodedMimeTypes: List[MimeType],
   originalFileBucket: S3Bucket,
   thumbBucket: S3Bucket,
 )
@@ -92,7 +91,6 @@ object Uploader extends GridLogging {
       config.tempDir,
       config.thumbWidth,
       config.thumbQuality,
-      config.transcodedMimeTypes,
       config.imageBucket,
       config.thumbnailBucket,
     )
@@ -156,7 +154,7 @@ object Uploader extends GridLogging {
       uploadRequest.instance
     )
     val sourceStoreFuture = storeOrProjectOriginalFile(storableOriginalImage)
-    val eventualBrowserViewableImage = createBrowserViewableFileFuture(uploadRequest, tempDirForRequest, deps)
+    val eventualBrowserViewableImage = createBrowserViewableFileFuture(uploadRequest)
 
     // We are fetching the embedding and storing it in the S3Vectors bucket
     // This should not block the image upload process on failure
@@ -291,22 +289,9 @@ object Uploader extends GridLogging {
   }
 
   private def createBrowserViewableFileFuture(
-    uploadRequest: UploadRequest,
-    tempDir: File,
-    deps: ImageUploadOpsDependencies
+    uploadRequest: UploadRequest
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[BrowserViewableImage] = {
-    import deps._
     uploadRequest.mimeType match {
-      case Some(mime) if config.transcodedMimeTypes.contains(mime) =>
-        for {
-          (file, mimeType) <- imageOps.transformImage(uploadRequest.tempFile, uploadRequest.mimeType, tempDir)
-        } yield BrowserViewableImage(
-          uploadRequest.imageId,
-          file = file,
-          mimeType = mimeType,
-          isTransformedFromSource = true,
-          instance = uploadRequest.instance
-        )
       case Some(mimeType) =>
         Future.successful(
           BrowserViewableImage(
