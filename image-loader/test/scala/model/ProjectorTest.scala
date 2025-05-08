@@ -7,7 +7,7 @@ import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
-import com.gu.mediaservice.lib.imaging.MagickImageOperations
+import com.gu.mediaservice.lib.imaging.VipsImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model.{Instance, _}
 import com.gu.mediaservice.model.leases.LeasesByMedia
@@ -39,9 +39,9 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val ctxPath = new File(".").getAbsolutePath
 
-  private val imageOperations = new MagickImageOperations(ctxPath)
+  private val imageOperations = new VipsImageOperations(ctxPath)
 
-  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, Nil, dummyBucket("img-bucket"), dummyBucket("thumb-bucket"))
+  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, dummyBucket("img-bucket"), dummyBucket("thumb-bucket"))
 
   private val maybeEmbedder = None
 
