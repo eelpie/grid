@@ -1,6 +1,7 @@
+import app.photofox.vipsffm.{Vips, VipsHelper}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, S3, SimpleSqsMessageConsumer}
-import com.gu.mediaservice.lib.imaging.MagickImageOperations
+import com.gu.mediaservice.lib.imaging.VipsImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.{ImageLoaderController, ImageLoaderManagement, UploadStatusController}
@@ -24,7 +25,11 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val store = new ImageLoaderStore(config)
   val maybeIngestQueue = config.maybeIngestSqsQueueUrl.map(queueUrl => new SimpleSqsMessageConsumer(queueUrl, config))
   val uploadStatusTable = new UploadStatusTable(config)
-  val imageOperations = new MagickImageOperations(context.environment.rootPath.getAbsolutePath)
+  val imageOperations = {
+    Vips.init()
+    VipsHelper.cache_set_max(0)
+    new VipsImageOperations()
+  }
   val notifications = new Notifications(config)
   val downloader = new Downloader()(ec,wsClient)
 
