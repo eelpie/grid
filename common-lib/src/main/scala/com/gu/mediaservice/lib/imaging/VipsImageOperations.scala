@@ -1,9 +1,10 @@
 package com.gu.mediaservice.lib.imaging
 
+import app.photofox.vipsffm.enums.VipsInterpretation
+import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VImage, Vips, VipsOption}
 import com.gu.mediaservice.lib.BrowserViewableImage
-import com.gu.mediaservice.lib.imaging.VipsImageOperations.thumbMimeType
-import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.model._
 
 import java.io._
@@ -81,6 +82,28 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     outputFile
   }
 
-  def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[String]] = ???
+  def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[String]] = {
+    val stopWatch = Stopwatch.start
+    Future {
+      var result: Option[String] = None
+      Vips.run { arena =>
+        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+        // TODO better way to go straight from int to enum?
+        val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == VipsRaw.vips_image_get_interpretation(image.getUnsafeStructAddress))
+        result = maybeInterpretation match {
+          case Some(VipsInterpretation.INTERPRETATION_B_W) => Some("Greyscale")
+          case Some(VipsInterpretation.INTERPRETATION_CMYK) => Some("CMYK")
+          case Some(VipsInterpretation.INTERPRETATION_LAB) => Some("LAB")
+          case Some(VipsInterpretation.INTERPRETATION_sRGB) => Some("RGB")
+          case _ => None
+        }
+      }
+      result
+
+    }.map { result =>
+      logger.info(addLogMarkers(stopWatch.elapsed), "Finished identifyColourModel")
+      result
+    }
+  }
 
 }
