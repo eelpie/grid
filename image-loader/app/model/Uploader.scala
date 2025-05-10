@@ -7,15 +7,13 @@ import com.gu.mediaservice.lib.ImageIngestOperations.fileKeyFromId
 import com.gu.mediaservice.lib._
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, S3Object, UpdateMessage}
-import com.gu.mediaservice.lib.{BrowserViewableImage, ImageStorageProps, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
-import com.gu.mediaservice.lib.aws.{Embedder, S3Bucket, S3Object, S3Vectors, UpdateMessage}
+import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.formatting._
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.imaging.ImageOperations.{optimisedMimeType, thumbMimeType}
 import com.gu.mediaservice.lib.logging._
-import com.gu.mediaservice.lib.metadata.{FileMetadataHelper, ImageMetadataConverter}
+import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.lib.net.URI
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
@@ -142,7 +140,9 @@ object Uploader extends GridLogging {
     val tempDirForRequest: File = Files.createTempDirectory(deps.config.tempDir.toPath, "upload").toFile
 
     val colourModelFuture = ImageOperations.identifyColourModel(uploadRequest.tempFile, originalMimeType)
-    val sourceDimensionsFuture = FileMetadataReader.dimensions(uploadRequest.tempFile, Some(originalMimeType))
+    val colorModelInformationFuture = ImageOperations.getColorModelInformation(uploadRequest.tempFile)
+
+      val sourceDimensionsFuture = FileMetadataReader.dimensions(uploadRequest.tempFile, Some(originalMimeType))
     val sourceOrientationMetadataFuture = FileMetadataReader.orientation(uploadRequest.tempFile)
 
     val storableOriginalImage = StorableOriginalImage(
@@ -172,8 +172,9 @@ object Uploader extends GridLogging {
       }
       thumbDimensions <- FileMetadataReader.dimensions(thumbViewableImage.file, Some(thumbViewableImage.mimeType))
       colourModel <- colourModelFuture
+      colourModelInformation <- colorModelInformationFuture
     } yield {
-      val fullFileMetadata = fileMetadata.copy(colourModel = colourModel)
+      val fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
       val metadata = ImageMetadataConverter.fromFileMetadata(fullFileMetadata, s3Source.metadata.objectMetadata.lastModified)
 
       val sourceAsset = Asset.fromS3Object(s3Source, sourceDimensions, sourceOrientationMetadata)
