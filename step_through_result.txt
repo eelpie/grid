@@ -1,0 +1,8 @@
+=== FIRST FAILING COMMIT ===
+Commit 11 of 207
+Hash:    9e3968c90f314177a0248218f94b37410c62e3b2
+Message: Add Instance aware dynamnodb
+Time:    Fri 22 May 2026 21:58:31 BST
+
+Previous commit (last passing):
+01de869cfa ImageCollectionsStore is instance aware.

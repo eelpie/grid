@@ -1,0 +1,2 @@
+FAILED: c2b543bc0c c2b543bc0c Sign cropper assets URLs.
+Logfile: /Users/tony/git/grid/compile_check_20260522_230729.log

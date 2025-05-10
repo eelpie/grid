@@ -8,7 +8,7 @@ import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLo
 import com.gu.mediaservice.model._
 
 import java.io._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 
 
@@ -82,7 +82,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     outputFile
   }
 
-  def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[String]] = {
+  def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]] = {
     val stopWatch = Stopwatch.start
     Future {
       var result: Option[String] = None
@@ -102,6 +102,23 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
 
     }.map { result =>
       logger.info(addLogMarkers(stopWatch.elapsed), "Finished identifyColourModel")
+      result
+    }
+  }
+
+  def getColorModelInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[Map[String, String]] = {
+    val stopWatch = Stopwatch.start
+    Future {
+      var result: Map[String, String] = Map.empty
+      Vips.run { arena =>
+        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+        result = Map {
+          "hasAlpha" -> image.hasAlpha.toString
+        }
+      }
+      result
+    }.map { result =>
+      logger.info(addLogMarkers(stopWatch.elapsed), "Finished getColorModelInformation")
       result
     }
   }
