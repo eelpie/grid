@@ -299,7 +299,7 @@ object ImageOperations extends GridLogging {
       result
 
     }.map { result =>
-      logger.info(addLogMarkers(stopWatch.elapsed), "Finished identifyColourModel")
+      logger.info(addLogMarkers(stopWatch.elapsed), "Finished identifyColourModel vips")
       result
     }
   }
@@ -316,7 +316,7 @@ object ImageOperations extends GridLogging {
       }
       result
     }.map { result =>
-      logger.info(addLogMarkers(stopWatch.elapsed), "Finished getColorModelInformation")
+      logger.info(addLogMarkers(stopWatch.elapsed), "Finished getColorModelInformation vips")
       result
     }
   }
