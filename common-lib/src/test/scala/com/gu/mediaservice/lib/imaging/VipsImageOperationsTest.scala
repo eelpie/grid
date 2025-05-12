@@ -21,10 +21,12 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
   implicit override val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(1000, Millis), interval = Span(25, Millis))
   implicit val logMarker: LogMarker = MarkerMap()
 
+  private val imageOperations = new VipsImageOperations("")
+
   describe("identifyColourModel") {
     it("should return RGB for a JPG image with RGB image data and no embedded profile") {
       val image = fileAt("rgb-wo-profile.jpg")
-      val colourModelFuture = VipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = imageOperations.identifyColourModel(image, Jpeg)
       whenReady(colourModelFuture) { colourModel =>
         colourModel should be (Some("RGB"))
       }
@@ -32,7 +34,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("should return RGB for a JPG image with RGB image data and an RGB embedded profile") {
       val image = fileAt("rgb-with-rgb-profile.jpg")
-      val colourModelFuture = VipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = imageOperations.identifyColourModel(image, Jpeg)
         whenReady(colourModelFuture) { colourModel =>
           colourModel should be(Some("RGB"))
       }
@@ -40,7 +42,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("should return RGB for a PNG image with RGB image data and an embedded profile") {
       val image = fileAt("cs-black-000.png")
-      val colourModelFuture = VipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = imageOperations.identifyColourModel(image, Jpeg)
       whenReady(colourModelFuture) { colourModel =>
         colourModel should be(Some("RGB"))
       }
@@ -48,7 +50,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("should return RGB for a JPG image with RGB image data and an incorrect CMYK embedded profile") {
       val image = fileAt("rgb-with-cmyk-profile.jpg")
-      val colourModelFuture = VipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = imageOperations.identifyColourModel(image, Jpeg)
       whenReady(colourModelFuture) { colourModel =>
         colourModel should be (Some("RGB"))
       }
@@ -56,7 +58,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("should return CMYK for a JPG image with CMYK image data") {
       val image = fileAt("cmyk.jpg")
-      val colourModelFuture = VipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = imageOperations.identifyColourModel(image, Jpeg)
       whenReady(colourModelFuture) { colourModel =>
         colourModel should be (Some("CMYK"))
       }
@@ -64,9 +66,47 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("should return Greyscale for a JPG image with greyscale image data and no embedded profile") {
       val image = fileAt("grayscale-wo-profile.jpg")
-      val colourModelFuture = VipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = imageOperations.identifyColourModel(image, Jpeg)
       whenReady(colourModelFuture) { colourModel =>
         colourModel should be (Some("Greyscale"))
+      }
+    }
+  }
+
+  describe("dimensions") {
+    it("should return dimensions of horizontal image") {
+      val inputFile = fileAt("exif-orientated-no-rotation.jpg")
+      val dimsFuture = imageOperations.dimensions(inputFile)
+      whenReady(dimsFuture) { dims =>
+        dims.get shouldBe new Dimensions(3456, 2304)
+      }
+    }
+
+    it("should return uncorrected dimensions for exif oriented images") {
+      val inputFile = fileAt("exif-orientated.jpg")
+      val dimsFuture = imageOperations.dimensions(inputFile)
+      whenReady(dimsFuture) { dims =>
+        dims.get shouldBe new Dimensions(3456, 2304)
+      }
+    }
+
+    it("should read the correct dimensions for a tiff image") {
+      val inputFile = fileAt("flower.tif")
+      val dimsFuture = imageOperations.dimensions(inputFile)
+      whenReady(dimsFuture) { dimOpt =>
+        dimOpt should be(Symbol("defined"))
+        dimOpt.get.width should be(73)
+        dimOpt.get.height should be(43)
+      }
+    }
+
+    it("should read the correct dimensions for a png image") {
+      val inputFile = fileAt("schaik.com_pngsuite/basn0g08.png")
+      val dimsFuture = imageOperations.dimensions(inputFile)
+      whenReady(dimsFuture) { dimOpt =>
+        dimOpt should be(Symbol("defined"))
+        dimOpt.get.width should be(32)
+        dimOpt.get.height should be(32)
       }
     }
   }
