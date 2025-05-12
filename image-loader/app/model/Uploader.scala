@@ -142,7 +142,7 @@ object Uploader extends GridLogging {
     val colourModelFuture = VipsImageOperations.identifyColourModel(uploadRequest.tempFile, originalMimeType)
     val colorModelInformationFuture = VipsImageOperations.getColorModelInformation(uploadRequest.tempFile)
 
-      val sourceDimensionsFuture = FileMetadataReader.dimensions(uploadRequest.tempFile, Some(originalMimeType))
+    val sourceDimensionsFuture = VipsImageOperations.dimensions(uploadRequest.tempFile)
     val sourceOrientationMetadataFuture = FileMetadataReader.orientation(uploadRequest.tempFile)
 
     val storableOriginalImage = StorableOriginalImage(
@@ -170,7 +170,7 @@ object Uploader extends GridLogging {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
       }
-      thumbDimensions <- FileMetadataReader.dimensions(thumbViewableImage.file, Some(thumbViewableImage.mimeType))
+      thumbDimensions <- VipsImageOperations.dimensions(thumbViewableImage.file)
       colourModel <- colourModelFuture
       colourModelInformation <- colorModelInformationFuture
     } yield {
