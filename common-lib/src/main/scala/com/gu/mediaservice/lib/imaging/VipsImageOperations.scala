@@ -2,7 +2,7 @@ package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.VipsInterpretation
 import app.photofox.vipsffm.jextract.VipsRaw
-import app.photofox.vipsffm.{VImage, Vips, VipsOption}
+import app.photofox.vipsffm.{VImage, Vips, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.model._
@@ -133,6 +133,20 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
         dimensions = Some(Dimensions(width = width, height = height))
       }
       dimensions
+    }
+  }
+
+  def orientation(sourceFile: File): Future[Option[OrientationMetadata]] = {
+    Future {
+      var orientation: Option[OrientationMetadata] = None
+      Vips.run { arena =>
+        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+        val exifOrientation = VipsHelper.image_get_orientation(image.getUnsafeStructAddress)
+        orientation = Some(OrientationMetadata(
+          exifOrientation = Some(exifOrientation)
+        ))
+      }
+      Seq(orientation).flatten.find(_.transformsImage())
     }
   }
 
