@@ -131,6 +131,20 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
+  def orientation(sourceFile: File): Future[Option[OrientationMetadata]] = {
+    Future {
+      var orientation: Option[OrientationMetadata] = None
+      Vips.run { arena =>
+        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+        val exifOrientation = VipsHelper.image_get_orientation(image.getUnsafeStructAddress)
+        orientation = Some(OrientationMetadata(
+          exifOrientation = Some(exifOrientation)
+        ))
+      }
+      Seq(orientation).flatten.find(_.transformsImage())
+    }
+  }
+
   private def saveImageToFile(image: VImage, qual: Double, outputFile: File): File = {
     logger.info(s"Saving image to file: " + outputFile.getAbsolutePath)
     image.jpegsave(outputFile.getAbsolutePath,
