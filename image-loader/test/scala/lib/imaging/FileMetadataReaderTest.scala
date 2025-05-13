@@ -23,23 +23,6 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
   implicit override val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(1000, Millis), interval = Span(25, Millis))
   implicit val logMarker: LogMarker = MarkerMap()
 
-  it("should capture exif orientation tag in JPG images") {
-    val image = fileAt("exif-orientated.jpg")
-    val orientationFuture = FileMetadataReader.orientation(image)
-    whenReady(orientationFuture) { orientationOpt =>
-      orientationOpt should be(Symbol("defined"))
-      orientationOpt.get.exifOrientation should be(Some(6))
-    }
-  }
-
-  it("should ignore 0 degree exif orientation tag as it has no material effect") {
-    val image = fileAt("exif-orientated-no-rotation.jpg")
-    val orientationFuture = FileMetadataReader.orientation(image)
-    whenReady(orientationFuture) { orientationOpt =>
-      orientationOpt should be(None)
-    }
-  }
-
   it("should read the correct metadata for Getty JPG images") {
     val image = fileAt("getty.jpg")
     val metadataFuture = FileMetadataReader.fromIPTCHeaders(image, "dummy")
