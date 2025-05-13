@@ -14,6 +14,7 @@ import org.im4java.core.IMOperation
 import java.io._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
+import app.photofox.vipsffm.{VImage, Vips, VipsHelper, VipsOption}
 
 
 
@@ -305,6 +306,20 @@ object VipsImageOperations extends GridLogging {
         dimensions = Some(Dimensions(width = width, height = height))
       }
       dimensions
+    }
+  }
+
+  def orientation(sourceFile: File)(implicit ec: ExecutionContext): Future[Option[OrientationMetadata]] = {
+    Future {
+      var orientation: Option[OrientationMetadata] = None
+      Vips.run { arena =>
+        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+        val exifOrientation = VipsHelper.image_get_orientation(image.getUnsafeStructAddress)
+        orientation = Some(OrientationMetadata(
+          exifOrientation = Some(exifOrientation)
+        ))
+      }
+      Seq(orientation).flatten.find(_.transformsImage())
     }
   }
 
