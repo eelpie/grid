@@ -123,6 +123,15 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     }
   }
 
+  def dimensionsAndOrientation(sourceFile: File): Future[(Option[Dimensions], Option[OrientationMetadata])] = {
+    for {
+      dims <- dimensions(sourceFile)
+      orient <- orientation(sourceFile)
+    } yield {
+      (dims, orient)
+    }
+  }
+
   def dimensions(sourceFile: File): Future[Option[Dimensions]] = {
     Future {
       var dimensions: Option[Dimensions] = None
