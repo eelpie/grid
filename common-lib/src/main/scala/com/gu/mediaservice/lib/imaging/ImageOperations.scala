@@ -55,6 +55,8 @@ trait ImageOperations {
 
   def getColorModelInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[Map[String, String]]
 
+  def getColourModelAndInformation(sourceFile: File, originalMimeType: MimeType)(implicit logMarker: LogMarker): Future[(Option[String], Map[String, String])]
+
   def dimensionsAndOrientation(sourceFile: File): Future[(Option[Dimensions], Option[OrientationMetadata])]
 
 }

@@ -222,6 +222,15 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
+  def getColourModelAndInformation(sourceFile: File, originalMimeType: MimeType)(implicit logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
+    for {
+      colourModel <- identifyColourModel(sourceFile, originalMimeType)
+      colourModelInformation <- getColorModelInformation(sourceFile)
+    } yield {
+      (colourModel, colourModelInformation)
+    }
+  }
+
   def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]] = {
     val stopWatch = Stopwatch.start
 
