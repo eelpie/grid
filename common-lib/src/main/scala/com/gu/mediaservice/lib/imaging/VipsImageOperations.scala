@@ -224,6 +224,15 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
   def transformImage(sourceFile: File, sourceMimeType: Option[MimeType], tempDir: File)(implicit logMarker: LogMarker): Future[(File, MimeType)] = ???
 
+  def getImageInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[Dimensions], Option[OrientationMetadata], Option[String], Map[String, String])] = {
+    for {
+      dimsAndOrientation <- dimensionsAndOrientation(sourceFile)
+      colourInformation <- getColourModelAndInformation(sourceFile)
+    } yield {
+      (dimsAndOrientation._1, dimsAndOrientation._2, colourInformation._1, colourInformation._2)
+    }
+  }
+
   def getColourModelAndInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
     Future {
       var colourModel: Option[String] = None
