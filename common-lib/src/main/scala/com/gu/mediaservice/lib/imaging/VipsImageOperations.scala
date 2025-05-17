@@ -222,28 +222,19 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def getColourModelAndInformation(sourceFile: File, originalMimeType: MimeType)(implicit logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
-    for {
-      colourModel <- identifyColourModel(sourceFile, originalMimeType)
-      colourModelInformation <- getColorModelInformation(sourceFile)
-    } yield {
-      (colourModel, colourModelInformation)
-    }
-  }
-
-  def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]] = {
-    val stopWatch = Stopwatch.start
-
+  def getColourModelAndInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
     Future {
+      var colourModel: Option[String] = None
+      var colourModelInformation: Map[String, String] = Map.empty
+
       val arena = Arena.ofConfined
-      var result: Option[String] = None
       try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
         val interpretationRawValue = VipsHelper.image_get_interpretation(image.getUnsafeStructAddress)
         // TODO better way to go straight from int to enum?
         val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == interpretationRawValue)
-        result = maybeInterpretation match {
+        colourModel = maybeInterpretation match {
           case Some(VipsInterpretation.INTERPRETATION_B_W) => Some("Greyscale")
           case Some(VipsInterpretation.INTERPRETATION_CMYK) => Some("CMYK")
           case Some(VipsInterpretation.INTERPRETATION_LAB) => Some("LAB")
@@ -252,6 +243,10 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           case Some(VipsInterpretation.INTERPRETATION_sRGB) => Some("RGB")
           case _ => None
         }
+
+        colourModelInformation = Map {
+          "hasAlpha" -> hasAlpha(image).toString
+        }
       } catch {
         case e: Exception =>
           logger.error("Error during createThumbnail", e)
@@ -259,36 +254,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           throw e
       }
       arena.close()
-      result
-
-    }.map { result =>
-      logger.info(addLogMarkers(stopWatch.elapsed), "Finished identifyColourModel")
-      result
-    }
-  }
-
-  def getColorModelInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[Map[String, String]] = {
-    val stopWatch = Stopwatch.start
-    Future {
-      var result: Map[String, String] = Map.empty
-
-      implicit val arena: Arena = Arena.ofConfined
-      try {
-        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-        result = Map {
-          "hasAlpha" -> hasAlpha(image).toString
-        }
-        arena.close()
-        result
-      } catch {
-        case e: Exception =>
-          logger.error("Error during createThumbnail", e)
-          arena.close()
-          throw e
-      }
-    }.map { result =>
-      logger.info(addLogMarkers(stopWatch.elapsed), "Finished getColorModelInformation")
-      result
+      (colourModel, colourModelInformation)
     }
   }
 
