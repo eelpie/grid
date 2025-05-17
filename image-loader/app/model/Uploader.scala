@@ -3,6 +3,7 @@ package model
 import _root_.play.api.libs.json.Json
 import _root_.play.api.libs.ws.WSRequest
 import com.gu.mediaservice.lib.Files.createTempFile
+import com.gu.mediaservice.lib._
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
@@ -12,7 +13,6 @@ import com.gu.mediaservice.lib.imaging.ImageOperations.{optimisedMimeType, thumb
 import com.gu.mediaservice.lib.logging._
 import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.lib.net.URI
-import com.gu.mediaservice.lib._
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
 import com.gu.mediaservice.{GridClient, ImageDataMerger}
@@ -115,7 +115,6 @@ object Uploader extends GridLogging {
         OptimiseWithPngQuant,
         uploadRequest,
         deps,
-        fileMetadata,
         processor)(ec, addLogMarkers(fileMetadata.toLogMarker))
     })
   }
@@ -125,10 +124,8 @@ object Uploader extends GridLogging {
                                          storeOrProjectOptimisedFile: StorableOptimisedImage => Future[S3Object],
                                          queueImageToEmbed: (EmbedderMessage) => Unit,
                                          optimiseOps: OptimiseOps,
-
                                          uploadRequest: UploadRequest,
                                          deps: ImageUploadOpsDependencies,
-                                         fileMetadata: FileMetadata,
                                          processor: ImageProcessor)
                   (implicit ec: ExecutionContext, logMarker: LogMarker) = {
     val originalMimeType = uploadRequest.mimeType
@@ -161,6 +158,7 @@ object Uploader extends GridLogging {
       sourceOrientationMetadata = imageInformation._2
       colourModel = imageInformation._3
       colourModelInformation = imageInformation._4
+      fileMetadata <- toFileMetadata(uploadRequest.tempFile, uploadRequest.imageId, uploadRequest.mimeType)
       thumbViewableImage <- createThumbFuture(browserViewableImage, deps, tempDirForRequest, uploadRequest.instance, orientationMetadata = sourceOrientationMetadata)
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
@@ -188,7 +186,7 @@ object Uploader extends GridLogging {
       )
       val processedImage = processor(baseImage)
 
-      logger.info(logMarker, s"Ending image ops")
+      logger.info(addLogMarkers(fileMetadata.toLogMarker), s"Ending image ops")
       // FIXME: dirty hack to sync the originalUsageRights and originalMetadata as well
       val finalImage = processedImage.copy(
         originalMetadata = processedImage.metadata,
