@@ -119,38 +119,22 @@ class VipsImageOperations extends GridLogging with ImageOperations {
   }
 
   def dimensionsAndOrientation(sourceFile: File): Future[(Option[Dimensions], Option[OrientationMetadata])] = {
-    for {
-      dims <- dimensions(sourceFile)
-      orient <- orientation(sourceFile)
-    } yield {
-      (dims, orient)
-    }
-  }
-
-  def dimensions(sourceFile: File): Future[Option[Dimensions]] = {
     Future {
       var dimensions: Option[Dimensions] = None
+      var maybeExifOrientationWhichTransformsImage: Option[OrientationMetadata] = None
       Vips.run { arena =>
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-        val width = image.getWidth
-        val height = image.getHeight
-        dimensions = Some(Dimensions(width = width, height = height))
-      }
-      dimensions
-    }
-  }
 
-  def orientation(sourceFile: File): Future[Option[OrientationMetadata]] = {
-    Future {
-      var orientation: Option[OrientationMetadata] = None
-      Vips.run { arena =>
-        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+        dimensions = Some(Dimensions(width = image.getWidth, height = image.getHeight))
+
         val exifOrientation = VipsHelper.image_get_orientation(image.getUnsafeStructAddress)
-        orientation = Some(OrientationMetadata(
+        val orientation = Some(OrientationMetadata(
           exifOrientation = Some(exifOrientation)
         ))
+        maybeExifOrientationWhichTransformsImage = Seq(orientation).flatten.find(_.transformsImage())
       }
-      Seq(orientation).flatten.find(_.transformsImage())
+
+      (dimensions, maybeExifOrientationWhichTransformsImage)
     }
   }
 
