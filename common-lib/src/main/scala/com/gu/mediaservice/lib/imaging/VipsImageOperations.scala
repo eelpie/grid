@@ -259,25 +259,19 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def getColourModelAndInformation(sourceFile: File, originalMimeType: MimeType)(implicit logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
-    for {
-      colourModel <- identifyColourModel(sourceFile, originalMimeType)
-      colourModelInformation <- getColorModelInformation(sourceFile)
-    } yield {
-      (colourModel, colourModelInformation)
-    }
-  }
-
-  def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]] = {
+  def getColourModelAndInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
     Future {
-      val arena = Arena.ofConfined()
+      var colourModel: Option[String] = None
+      var colourModelInformation: Map[String, String] = Map.empty
+
+      val arena = Arena.ofConfined
       try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
         val interpretationRawValue = VipsHelper.image_get_interpretation(image.getUnsafeStructAddress)
         // TODO better way to go straight from int to enum?
         val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == interpretationRawValue)
-        maybeInterpretation match {
+        colourModel = maybeInterpretation match {
           case Some(VipsInterpretation.INTERPRETATION_B_W) => Some("Greyscale")
           case Some(VipsInterpretation.INTERPRETATION_CMYK) => Some("CMYK")
           case Some(VipsInterpretation.INTERPRETATION_LAB) => Some("LAB")
@@ -286,30 +280,16 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           case Some(VipsInterpretation.INTERPRETATION_sRGB) => Some("RGB")
           case _ => None
         }
+
+        colourModelInformation = Map {
+          "hasAlpha" -> hasAlpha(image)(arena).toString
+        }
+        (colourModel, colourModelInformation)
+
       } catch {
         case e: Exception =>
           logger.error("Error during identifyColourModel", e)
           arena.close()
-          throw e
-      } finally {
-        arena.close()
-      }
-    }
-  }
-
-  def getColorModelInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[Map[String, String]] = {
-    Future {
-      implicit val arena: Arena = Arena.ofConfined()
-      try {
-        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-        Map {
-          "hasAlpha" -> hasAlpha(image).toString
-        }
-        arena.close()
-        result
-      } catch {
-        case e: Exception =>
-          logger.error(logMarker, "Error during getColorModelInformation", e)
           throw e
       } finally {
         arena.close()
