@@ -156,6 +156,8 @@ object Uploader extends GridLogging {
       mergedUploadRequest = patchUploadRequestWithS3Metadata(uploadRequest, s3Source)
       sourceDimensions <- VipsImageOperations.dimensions(uploadRequest.tempFile)
       sourceOrientationMetadata <- VipsImageOperations.orientation(uploadRequest.tempFile)
+      colourModel <- VipsImageOperations.identifyColourModel(uploadRequest.tempFile, originalMimeType)
+      colourModelInformation <- VipsImageOperations.getColorModelInformation(uploadRequest.tempFile)
       thumbViewableImage <- createThumbFuture(browserViewableImage, deps, tempDirForRequest, uploadRequest.instance, orientationMetadata = sourceOrientationMetadata)
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
@@ -165,8 +167,6 @@ object Uploader extends GridLogging {
         case None => Future.successful(None)
       }
       thumbDimensions <- VipsImageOperations.dimensions(thumbViewableImage.file)
-      colourModel <- VipsImageOperations.identifyColourModel(uploadRequest.tempFile, originalMimeType)
-      colourModelInformation <- VipsImageOperations.getColorModelInformation(uploadRequest.tempFile)
     } yield {
       val fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
       val metadata = ImageMetadataConverter.fromFileMetadata(fullFileMetadata, s3Source.metadata.objectMetadata.lastModified)
