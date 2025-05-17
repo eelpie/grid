@@ -3,7 +3,7 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.Vips
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Dimensions, Instance, Jpeg, Png, Tiff}
+import com.gu.mediaservice.model._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
