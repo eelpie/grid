@@ -2,7 +2,7 @@ package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.VipsInterpretation
 import app.photofox.vipsffm.jextract.VipsRaw
-import app.photofox.vipsffm.{VImage, Vips, VipsOption}
+import app.photofox.vipsffm.{VImage, Vips, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.Files._
 import com.gu.mediaservice.lib.imaging.VipsImageOperations.thumbMimeType
@@ -14,9 +14,6 @@ import org.im4java.core.IMOperation
 import java.io._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
-import app.photofox.vipsffm.{VImage, Vips, VipsHelper, VipsOption}
-
-
 
 class VipsImageOperations(playPath: String) extends GridLogging with ImageOperations {
   import ExifTool._
@@ -256,53 +253,28 @@ object VipsImageOperations extends GridLogging {
   val thumbMimeType = Jpeg
   val optimisedMimeType = Png
 
-  def getColourModelAndInformation(sourceFile: File, originalMimeType: MimeType)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
-    for {
-      colourModel <- identifyColourModel(sourceFile, originalMimeType)
-      colourModelInformation <- getColorModelInformation(sourceFile)
-    } yield {
-      (colourModel, colourModelInformation)
-    }
-  }
-
-  def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[String]] = {
-    val stopWatch = Stopwatch.start
+  def getColourModelAndInformation(sourceFile: File)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
     Future {
-      var result: Option[String] = None
+      var colourModel: Option[String] = None
+      var colourModelInformation: Map[String, String] = Map.empty
       Vips.run { arena =>
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+
         // TODO better way to go straight from int to enum?
         val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == VipsRaw.vips_image_get_interpretation(image.getUnsafeStructAddress))
-        result = maybeInterpretation match {
+        colourModel = maybeInterpretation match {
           case Some(VipsInterpretation.INTERPRETATION_B_W) => Some("Greyscale")
           case Some(VipsInterpretation.INTERPRETATION_CMYK) => Some("CMYK")
           case Some(VipsInterpretation.INTERPRETATION_LAB) => Some("LAB")
           case Some(VipsInterpretation.INTERPRETATION_sRGB) => Some("RGB")
           case _ => None
         }
-      }
-      result
 
-    }.map { result =>
-      logger.info(addLogMarkers(stopWatch.elapsed), "Finished identifyColourModel")
-      result
-    }
-  }
-
-  def getColorModelInformation(sourceFile: File)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Map[String, String]] = {
-    val stopWatch = Stopwatch.start
-    Future {
-      var result: Map[String, String] = Map.empty
-      Vips.run { arena =>
-        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-        result = Map {
+        colourModelInformation = Map {
           "hasAlpha" -> image.hasAlpha.toString
         }
       }
-      result
-    }.map { result =>
-      logger.info(addLogMarkers(stopWatch.elapsed), "Finished getColorModelInformation")
-      result
+      (colourModel, colourModelInformation)
     }
   }
 
