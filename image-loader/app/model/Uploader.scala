@@ -154,12 +154,11 @@ object Uploader extends GridLogging {
       browserViewableImage <- eventualBrowserViewableImage
       s3Source <- sourceStoreFuture
       mergedUploadRequest = patchUploadRequestWithS3Metadata(uploadRequest, s3Source)
-      sourceDimensionsAndOrientation <- VipsImageOperations.dimensionsAndOrientation(uploadRequest.tempFile)
-      sourceDimensions = sourceDimensionsAndOrientation._1
-      sourceOrientationMetadata = sourceDimensionsAndOrientation._2
-      colourModelAndInformation <- VipsImageOperations.getColourModelAndInformation(uploadRequest.tempFile)
-      colourModel = colourModelAndInformation._1
-      colourModelInformation = colourModelAndInformation._2
+      imageInformation <- VipsImageOperations.getImageInformation(uploadRequest.tempFile)
+      sourceDimensions = imageInformation._1
+      sourceOrientationMetadata = imageInformation._2
+      colourModel = imageInformation._3
+      colourModelInformation = imageInformation._4
       thumbViewableImage <- createThumbFuture(browserViewableImage, deps, tempDirForRequest, uploadRequest.instance, orientationMetadata = sourceOrientationMetadata)
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
