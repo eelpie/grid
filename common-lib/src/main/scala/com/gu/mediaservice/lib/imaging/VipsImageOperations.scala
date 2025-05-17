@@ -307,6 +307,15 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
+  def dimensionsAndOrientation(sourceFile: File): Future[(Option[Dimensions], Option[OrientationMetadata])] = {
+    for {
+      dims <- dimensions(sourceFile)
+      orient <- orientation(sourceFile)
+    } yield {
+      (dims, orient)
+    }
+  }
+
   def dimensions(sourceFile: File)(implicit logMarker: LogMarker): Future[Option[Dimensions]] = {
     Future {
       val arena = Arena.ofConfined()
