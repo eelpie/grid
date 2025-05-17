@@ -75,6 +75,15 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
   def transformImage(sourceFile: File, sourceMimeType: Option[MimeType], tempDir: File)(implicit logMarker: LogMarker): Future[(File, MimeType)] = ???
 
+  def getColourModelAndInformation(sourceFile: File, originalMimeType: MimeType)(implicit logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
+    for {
+      colourModel <- identifyColourModel(sourceFile, originalMimeType)
+      colourModelInformation <- getColorModelInformation(sourceFile)
+    } yield {
+      (colourModel, colourModelInformation)
+    }
+  }
+
   def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]] = {
     val stopWatch = Stopwatch.start
     Future {
