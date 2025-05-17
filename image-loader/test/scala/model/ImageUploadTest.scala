@@ -90,7 +90,6 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       OptimiseWithPngQuant,
       uploadRequest,
       mockDependencies,
-      FileMetadata(),
       ImageProcessor.identity
     )
 
