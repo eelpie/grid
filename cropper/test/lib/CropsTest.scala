@@ -59,24 +59,25 @@ class CropsTest extends AnyFunSpec with Matchers with MockitoSugar {
   private val bounds: Bounds = Bounds(10, 20, 30, 40)
   private val outputWidth = 1234
   private val imageBucket = S3Bucket("crops-bucket", S3.AmazonAwsS3Endpoint)
+  private val s3 = new S3(config)
 
   it("should should construct a correct address for a master jpg") {
-    val outputFilename = new Crops(config, store, imageOperations, imageBucket)
+    val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
       .outputFilename(source, bounds, outputWidth, Jpeg, isMaster = true, instance = instance)
     outputFilename shouldBe "an-instance/test/10_20_30_40/master/1234.jpg"
   }
   it("should should construct a correct address for a non-master jpg") {
-    val outputFilename = new Crops(config, store, imageOperations, imageBucket)
+    val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
       .outputFilename(source, bounds, outputWidth, Jpeg, instance = instance)
     outputFilename shouldBe "an-instance/test/10_20_30_40/1234.jpg"
   }
   it("should should construct a correct address for a non-master tiff") {
-    val outputFilename = new Crops(config, store, imageOperations, imageBucket)
+    val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
       .outputFilename(source, bounds, outputWidth, Tiff, instance = instance)
     outputFilename shouldBe "an-instance/test/10_20_30_40/1234.tiff"
   }
   it("should should construct a correct address for a non-master png") {
-    val outputFilename = new Crops(config, store, imageOperations, imageBucket)
+    val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
       .outputFilename(source, bounds, outputWidth, Png, instance = instance)
     outputFilename shouldBe "an-instance/test/10_20_30_40/1234.png"
   }
