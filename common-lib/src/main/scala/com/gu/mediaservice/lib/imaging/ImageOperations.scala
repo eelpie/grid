@@ -60,5 +60,7 @@ trait ImageOperations {
 
   def orientation(sourceFile: File): Future[Option[OrientationMetadata]]
 
+  def dimensionsAndOrientation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[Dimensions], Option[OrientationMetadata])]
+
 }
 
