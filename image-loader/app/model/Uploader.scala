@@ -156,8 +156,9 @@ object Uploader extends GridLogging {
       sourceDimensionsAndOrientation <- deps.imageOps.dimensionsAndOrientation(uploadRequest.tempFile)
       sourceDimensions = sourceDimensionsAndOrientation._1
       sourceOrientationMetadata = sourceDimensionsAndOrientation._2
-      colourModel <- deps.imageOps.identifyColourModel(uploadRequest.tempFile, originalMimeType)
-      colourModelInformation <- deps.imageOps.getColorModelInformation(uploadRequest.tempFile)
+      colourModelAndInformation <- deps.imageOps.getColourModelAndInformation(uploadRequest.tempFile, originalMimeType)
+      colourModel = colourModelAndInformation._1
+      colourModelInformation = colourModelAndInformation._2
       thumbViewableImage <- createThumbFuture(browserViewableImage, deps, tempDirForRequest, uploadRequest.instance, orientationMetadata = sourceOrientationMetadata)
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
