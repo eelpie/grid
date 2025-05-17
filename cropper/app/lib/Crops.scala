@@ -4,7 +4,7 @@ import java.io.File
 import com.gu.mediaservice.lib.metadata.FileMetadataHelper
 import com.gu.mediaservice.lib.Files
 import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
-import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations, MagickImageOperations}
+import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations, VipsImageOperations}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
 
@@ -120,7 +120,8 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     Stopwatch.async(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
-        colourModel <- MagickImageOperations.identifyColourModel(sourceFile, mimeType)
+        colourModelAndInformation <- VipsImageOperations.getColourModelAndInformation(sourceFile)
+        colourModel = colourModelAndInformation._1
         masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, colourModel, apiImage.source.orientationMetadata)
 
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
