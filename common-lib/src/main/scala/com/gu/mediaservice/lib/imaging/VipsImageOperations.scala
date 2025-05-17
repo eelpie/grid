@@ -255,6 +255,16 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
 object VipsImageOperations extends GridLogging {
   val thumbMimeType = Jpeg
   val optimisedMimeType = Png
+
+  def getColourModelAndInformation(sourceFile: File, originalMimeType: MimeType)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
+    for {
+      colourModel <- identifyColourModel(sourceFile, originalMimeType)
+      colourModelInformation <- getColorModelInformation(sourceFile)
+    } yield {
+      (colourModel, colourModelInformation)
+    }
+  }
+
   def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[String]] = {
     val stopWatch = Stopwatch.start
     Future {
