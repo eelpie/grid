@@ -65,6 +65,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         }.getOrElse {
           thumbnail
         }
+        logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
 
         saveImageToFile(rotated, qual, outputFile)
       } catch {
