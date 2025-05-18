@@ -38,6 +38,42 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
 
   def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = ???
 
+  def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = mediaType match {
+    case Png =>
+      val fileName: String = resizedFile.getAbsolutePath
+
+      val optimisedImageName: String = fileName.split('.')(0) + "optimised.png"
+      Stopwatch("pngquant") {
+        Seq("pngquant", "-s10", "--quality", "1-85", fileName, "--output", optimisedImageName).!
+      }
+
+      new File(optimisedImageName)
+    case Jpeg => resizedFile
+
+    // This should never happen as we only ever crop as PNG or JPEG. See `Crops.cropType` and `CropsTest`
+    // TODO We should create a `CroppingMimeType` to enforce this at the type level.
+    //  However we'd need to change the `Asset` model as source image and crop use this model
+    //  and a source can legally be a `Tiff`. It's not a small change...
+    case Tiff =>
+      logger.error("Attempting to optimize a Tiff crop. Cropping as Tiff is not supported.")
+      throw new UnsupportedCropOutputTypeException
+  }
+
+  val interlacedHow = "Line"
+  val backgroundColour = "#333333"
+
+  /**
+   * Given a source file containing an image (the 'browser viewable' file),
+   * construct a thumbnail file in the provided temp directory, and return
+   * the file with metadata about it.
+   *
+   * @param browserViewableImage
+   * @param width               Desired with of thumbnail
+   * @param qual                Desired quality of thumbnail
+   * @param outputFile          Location to create thumbnail file
+   * @param orientationMetadata OrientationMetadata for rotation correction
+   * @return The file created and the mimetype of the content of that file, in a future.
+   */
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                       width: Int,
                       qual: Double = 100d,
