@@ -156,9 +156,6 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
       throw new UnsupportedCropOutputTypeException
   }
 
-  val thumbUnsharpRadius = 0.5d
-  val thumbUnsharpSigma = 0.5d
-  val thumbUnsharpAmount = 0.8d
   val interlacedHow = "Line"
   val backgroundColour = "#333333"
 
@@ -166,12 +163,12 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
    * Given a source file containing an image (the 'browser viewable' file),
    * construct a thumbnail file in the provided temp directory, and return
    * the file with metadata about it.
+   *
    * @param browserViewableImage
-   * @param width Desired with of thumbnail
-   * @param qual Desired quality of thumbnail
-   * @param outputFile Location to create thumbnail file
-   * @param iccColourSpace (Approximately) number of colours to use
-   * @param colourModel Colour model - eg RGB or CMYK
+   * @param width               Desired with of thumbnail
+   * @param qual                Desired quality of thumbnail
+   * @param outputFile          Location to create thumbnail file
+   * @param orientationMetadata OrientationMetadata for rotation correction
    * @return The file created and the mimetype of the content of that file, in a future.
    */
   def createThumbnail(browserViewableImage: BrowserViewableImage,
