@@ -169,17 +169,19 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
    * @param qual                Desired quality of thumbnail
    * @param outputFile          Location to create thumbnail file
    * @param orientationMetadata OrientationMetadata for rotation correction
-   * @return The file created and the mimetype of the content of that file, in a future.
+   * @return The file created and the mimetype of the content of that file and it's dimensions, in a future.
    */
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                       width: Int,
                       qual: Double = 100d,
                       outputFile: File,
                       orientationMetadata: Option[OrientationMetadata]
-                     )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
+                     )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])] = {
     val stopwatch = Stopwatch.start
 
     Future {
+      var thumbDimensions: Option[Dimensions] = None
+      var thumbDimensions: Option[Dimensions] = None
       Vips.run { arena =>
         val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
           VipsOption.Boolean("auto-rotate", false),
@@ -192,11 +194,12 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
           thumbnail
         }
         logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
+        thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
 
         saveImageToFile(rotated, qual, outputFile)
       }
       logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
-      (outputFile, thumbMimeType)
+      (outputFile, thumbMimeType, thumbDimensions)
     }
   }
 
