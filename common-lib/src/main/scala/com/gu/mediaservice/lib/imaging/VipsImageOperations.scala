@@ -184,10 +184,11 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                       qual: Double = 100d,
                       outputFile: File,
                       orientationMetadata: Option[OrientationMetadata]
-                     )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
+                     )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])] = {
     val stopwatch = Stopwatch.start
 
     Future {
+      var thumbDimensions: Option[Dimensions] = None
       val arena = Arena.ofConfined
 
       try {
@@ -206,6 +207,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           inMemoryCopy
         }
         logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
+        thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
 
         saveImageToFile(rotated, Jpeg, qual, outputFile)
 
@@ -218,7 +220,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       arena.close()
 
       logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
-      (outputFile, thumbMimeType)
+      (outputFile, thumbMimeType, thumbDimensions)
     }
   }
 
