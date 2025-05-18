@@ -191,8 +191,9 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                       qual: Double = 100d,
                       outputFile: File,
                       orientationMetadata: Option[OrientationMetadata]
-                     )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
+                     )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])] = {
     Future {
+      var thumbDimensions: Option[Dimensions] = None
       val arena = Arena.ofConfined()
       try {
         val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
@@ -209,9 +210,10 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         }.getOrElse{
           inMemoryCopy
         }
+        thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
 
         saveImageToFile(rotated, ImageOperations.thumbMimeType, qual, outputFile)
-        (outputFile, thumbMimeType)
+        (outputFile, thumbMimeType, thumbDimensions)
       } catch {
         case e: Exception =>
           logger.error(logMarker, "Error while creating thumbnail", e)
