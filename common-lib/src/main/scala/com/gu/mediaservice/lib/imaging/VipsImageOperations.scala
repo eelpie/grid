@@ -225,6 +225,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
   def transformImage(sourceFile: File, sourceMimeType: Option[MimeType], tempDir: File)(implicit logMarker: LogMarker): Future[(File, MimeType)] = ???
 
   def getImageInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[Dimensions], Option[OrientationMetadata], Option[String], Map[String, String])] = {
+    val stopwatch = Stopwatch.start
     Future {
       var dimensions: Option[Dimensions] = None
       var maybeExifOrientationWhichTransformsImage: Option[OrientationMetadata] = None
@@ -268,6 +269,9 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       arena.close()
 
       (dimensions, maybeExifOrientationWhichTransformsImage, colourModel, colourModelInformation)
+    }.map { result =>
+      logger.info(addLogMarkers(stopwatch.elapsed), "Finished getImageInformation")
+      result
     }
   }
 
