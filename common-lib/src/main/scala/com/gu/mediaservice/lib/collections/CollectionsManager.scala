@@ -45,7 +45,7 @@ object CollectionsManager {
   def isValidPathBit(s: String) = if (s.contains(delimiter) || s.contains(doublequotes)) false else true
 
   // These use Source swatches
-  val collectionColours = Map(
+  private val collectionColours = Map(
     "australia"    -> "#185E36",
     "culture"      -> "#BB3B80",
     "film & music" -> "#6B5840",
@@ -56,7 +56,7 @@ object CollectionsManager {
     "travel"       -> "#041F4A"
   )
 
-  def getCollectionColour(s: String) = collectionColours.get(s)
+  private def getCollectionColour(s: String) = collectionColours.get(s)
 
-  def getCssColour(path: List[String]) = path.headOption.map(_.toLowerCase).flatMap(getCollectionColour)
+  def getCssColour(path: List[String]): Option[String] = path.headOption.map(_.toLowerCase).flatMap(getCollectionColour)
 }
