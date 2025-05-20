@@ -50,18 +50,24 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
     Future {
       Vips.run { arena =>
-        val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
-          VipsOption.Boolean("auto-rotate", false),
-          VipsOption.String("export-profile", "srgb")
-        )
-       val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-          logger.info("Rotating thumbnail: " + angle)
-          thumbnail.rotate(angle)
-        }.getOrElse{
-          thumbnail
-        }
+        try {
+          val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
+            VipsOption.Boolean("auto-rotate", false),
+            VipsOption.String("export-profile", "srgb")
+          )
+          val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+            logger.info("Rotating thumbnail: " + angle)
+            thumbnail.rotate(angle)
+          }.getOrElse {
+            thumbnail
+          }
 
-        saveImageToFile(rotated, qual, outputFile)
+          saveImageToFile(rotated, qual, outputFile)
+        } catch {
+          case e: Exception =>
+            logger.error("Error during createThumbnail", e)
+            throw e
+        }
       }
       logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
       (outputFile, thumbMimeType)
