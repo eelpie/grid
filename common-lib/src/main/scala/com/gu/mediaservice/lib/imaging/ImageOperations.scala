@@ -14,6 +14,8 @@ import java.io._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
 
+import java.lang.foreign.Arena
+
 
 case class ExportResult(id: String, masterCrop: Asset, othersizings: List[Asset])
 class UnsupportedCropOutputTypeException extends Exception
@@ -184,32 +186,30 @@ class ImageOperations(playPath: String) extends GridLogging {
 
     Future {
       var thumbDimensions: Option[Dimensions] = None
-      Vips.run { arena =>
-        try {
-          val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
-            VipsOption.Boolean("auto-rotate", false),
-            VipsOption.String("export-profile", profilePath("srgb"))
-          )
-          val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-            logger.info("Rotating thumbnail: " + angle)
-            thumbnail.rotate(angle)
-          }.getOrElse {
-            thumbnail
-          }
-          logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
-          thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
+      val arena = Arena.ofConfined
 
-          saveImageToFile(rotated, qual.toInt, outputFile)
-          arena.close()
-
-        } catch {
-          case e: Exception =>
-            logger.error("Error during createThumbnail" , e)
-            arena.close()
-            throw e
+      try {
+        val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
+          VipsOption.Boolean("auto-rotate", false),
+          VipsOption.String("export-profile", profilePath("srgb"))
+        )
+        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+          logger.info("Rotating thumbnail: " + angle)
+          thumbnail.rotate(angle)
+        }.getOrElse {
+          thumbnail
         }
-        thumbDimensions
+        logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
+        thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
+
+        saveImageToFile(rotated, qual.toInt, outputFile)
+      } catch {
+        case e: Exception =>
+          logger.error("Error during createThumbnail", e)
+          arena.close()
+          throw e
       }
+      arena.close()
 
       logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
       (outputFile, thumbMimeType, thumbDimensions)
@@ -275,37 +275,37 @@ object ImageOperations extends GridLogging {
       var colourModel: Option[String] = None
       var colourModelInformation: Map[String, String] = Map.empty
 
-      Vips.run { arena =>
-        try {
-          val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+      val arena = Arena.ofConfined
+      try {
+        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
-          dimensions = Some(Dimensions(width = image.getWidth, height = image.getHeight))
+        dimensions = Some(Dimensions(width = image.getWidth, height = image.getHeight))
 
-          val exifOrientation = VipsHelper.image_get_orientation(image.getUnsafeStructAddress)
-          val orientation = Some(OrientationMetadata(
-            exifOrientation = Some(exifOrientation)
-          ))
-          maybeExifOrientationWhichTransformsImage = Seq(orientation).flatten.find(_.transformsImage())
+        val exifOrientation = VipsHelper.image_get_orientation(image.getUnsafeStructAddress)
+        val orientation = Some(OrientationMetadata(
+          exifOrientation = Some(exifOrientation)
+        ))
+        maybeExifOrientationWhichTransformsImage = Seq(orientation).flatten.find(_.transformsImage())
 
-          // TODO better way to go straight from int to enum?
-          val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == VipsHelper.image_get_interpretation(image.getUnsafeStructAddress))
-          colourModel = maybeInterpretation match {
-            case Some(VipsInterpretation.INTERPRETATION_B_W) => Some("Greyscale")
-            case Some(VipsInterpretation.INTERPRETATION_CMYK) => Some("CMYK")
-            case Some(VipsInterpretation.INTERPRETATION_LAB) => Some("LAB")
-            case Some(VipsInterpretation.INTERPRETATION_sRGB) => Some("RGB")
-            case _ => None
-          }
-
-          colourModelInformation = Map {
-            "hasAlpha" -> image.hasAlpha.toString
-          }
-        } catch {
-          case e: Exception =>
-            logger.error("Error during getImageInformation", e)
-            throw e
+        // TODO better way to go straight from int to enum?
+        val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == VipsHelper.image_get_interpretation(image.getUnsafeStructAddress))
+        colourModel = maybeInterpretation match {
+          case Some(VipsInterpretation.INTERPRETATION_B_W) => Some("Greyscale")
+          case Some(VipsInterpretation.INTERPRETATION_CMYK) => Some("CMYK")
+          case Some(VipsInterpretation.INTERPRETATION_LAB) => Some("LAB")
+          case Some(VipsInterpretation.INTERPRETATION_sRGB) => Some("RGB")
+          case _ => None
         }
+
+        colourModelInformation = Map {
+          "hasAlpha" -> image.hasAlpha.toString
+        }
+      } catch {
+        case e: Exception =>
+          logger.error("Error during getImageInformation", e)
+          throw e
       }
+      arena.close()
 
       (dimensions, maybeExifOrientationWhichTransformsImage, colourModel, colourModelInformation)
     }.map { result =>
