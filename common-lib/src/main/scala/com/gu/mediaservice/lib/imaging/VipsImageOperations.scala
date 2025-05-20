@@ -8,6 +8,7 @@ import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLo
 import com.gu.mediaservice.model._
 
 import java.io._
+import java.lang.foreign.Arena
 import scala.concurrent.Future
 
 
@@ -48,26 +49,29 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     val stopwatch = Stopwatch.start
 
     Future {
-      Vips.run { arena =>
-        try {
-          val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
-            VipsOption.Boolean("auto-rotate", false),
-            VipsOption.String("export-profile", "srgb")
-          )
-          val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-            logger.info("Rotating thumbnail: " + angle)
-            thumbnail.rotate(angle)
-          }.getOrElse {
-            thumbnail
-          }
+      val arena = Arena.ofConfined
 
-          saveImageToFile(rotated, qual, outputFile)
-        } catch {
-          case e: Exception =>
-            logger.error("Error during createThumbnail", e)
-            throw e
+      try {
+        val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
+          VipsOption.Boolean("auto-rotate", false),
+          VipsOption.String("export-profile", "srgb")
+        )
+        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+          logger.info("Rotating thumbnail: " + angle)
+          thumbnail.rotate(angle)
+        }.getOrElse {
+          thumbnail
         }
+
+        saveImageToFile(rotated, qual, outputFile)
+      } catch {
+        case e: Exception =>
+          logger.error("Error during createThumbnail", e)
+          arena.close()
+          throw e
       }
+      arena.close()
+
       logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
       (outputFile, thumbMimeType)
     }
@@ -82,7 +86,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       var colourModel: Option[String] = None
       var colourModelInformation: Map[String, String] = Map.empty
 
-      Vips.run { arena =>
+      val arena = Arena.ofConfined
+      try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
         dimensions = Some(Dimensions(width = image.getWidth, height = image.getHeight))
@@ -108,7 +113,13 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         colourModelInformation = Map {
           "hasAlpha" -> image.hasAlpha.toString
         }
+      } catch {
+        case e: Exception =>
+          logger.error("Error during getImageInformation", e)
+          arena.close()
+          throw e
       }
+      arena.close()
 
       (dimensions, maybeExifOrientationWhichTransformsImage, colourModel, colourModelInformation)
     }
