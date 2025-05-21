@@ -45,7 +45,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     logger.info(logMarker, s"creating master crop for ${apiImage.id}")
 
     for {
-      strip <- imageOperations.cropImage(
+      strip <- imageOperations.cropImageVips(
         sourceFile, apiImage.source.mimeType, source.bounds, masterCropQuality, config.tempDir,
         iccColourSpace, colourModel, mediaType, isTransformedFromSource = false,
         orientationMetadata
