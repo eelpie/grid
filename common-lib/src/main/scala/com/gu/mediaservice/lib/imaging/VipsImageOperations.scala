@@ -15,28 +15,87 @@ import scala.concurrent.Future
 class VipsImageOperations extends GridLogging with ImageOperations {
 
   def cropImage(
-                 sourceFile: File,
-                 sourceMimeType: Option[MimeType],
-                 bounds: Bounds,
-                 qual: Double = 100d,
-                 tempDir: File,
-                 iccColourSpace: Option[String],
-                 colourModel: Option[String],
-                 fileType: MimeType,
-                 isTransformedFromSource: Boolean,
-                 orientationMetadata: Option[OrientationMetadata]
-               )(implicit logMarker: LogMarker): Future[File] = ???
+                     sourceFile: File,
+                     sourceMimeType: Option[MimeType],
+                     bounds: Bounds,
+                     qual: Double = 100d,
+                     tempDir: File,
+                     iccColourSpace: Option[String],
+                     colourModel: Option[String],
+                     fileType: MimeType,
+                     isTransformedFromSource: Boolean,
+                     orientationMetadata: Option[OrientationMetadata]
+                   )(implicit logMarker: LogMarker): Future[File] = {
+    val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
+
+    Future {
+      val arena = Arena.ofConfined
+
+      // Read source image
+      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+      // Orient
+      val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+        image.rotate(angle)
+      }.getOrElse {
+        image
+      }
+      // TODO correct colour
+      // TODO strip meta data
+      // Output colour profile
+      val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
+      // TODO depth adjust
+
+      cropped.jpegsave(outputFile.getAbsolutePath,
+        VipsOption.Int("Q", qual.toInt),
+        //VipsOption.Boolean("optimize-scans", true),
+        //VipsOption.Boolean("optimize-coding", true),
+        //VipsOption.Boolean("interlace", true),
+        //VipsOption.Boolean("trellis-quant", true),
+        // VipsOption.Int("quant-table", 3),
+        VipsOption.Boolean("strip", true)
+      )
+
+      arena.close()
+      outputFile
+    }
+  }
 
   def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = ???
 
   def resizeImage(
-                   sourceFile: File,
-                   sourceMimeType: Option[MimeType],
-                   dimensions: Dimensions,
-                   qual: Double = 100d,
-                   tempDir: File,
-                   fileType: MimeType
-                 )(implicit logMarker: LogMarker): Future[File] = ???
+                       sourceFile: File,
+                       sourceMimeType: Option[MimeType],
+                       dimensions: Dimensions,
+                       qual: Double = 100d,
+                       tempDir: File,
+                       fileType: MimeType,
+                       sourceDimensions: Dimensions
+                     )(implicit logMarker: LogMarker): Future[File] = {
+
+    Future {
+      val arena = Arena.ofConfined
+
+      val outputFile = File.createTempFile(s"resize-", s"${fileType.fileExtension}", tempDir) // TODO function for this
+
+      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+
+      val scale = dimensions.width.toDouble / sourceDimensions.width.toDouble
+      val resized = image.resize(scale)
+
+      resized.jpegsave(outputFile.getAbsolutePath,
+        VipsOption.Int("Q", qual.toInt),
+        //VipsOption.Boolean("optimize-scans", true),
+        //VipsOption.Boolean("optimize-coding", true),
+        //VipsOption.Boolean("interlace", true),
+        //VipsOption.Boolean("trellis-quant", true),
+        // VipsOption.Int("quant-table", 3),
+        VipsOption.Boolean("strip", false)
+      )
+
+      arena.close()
+      outputFile
+    }
+  }
 
   def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = ???
 
