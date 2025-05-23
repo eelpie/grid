@@ -1,5 +1,7 @@
 package lib
 
+import app.photofox.vipsffm.VImage
+
 import java.io.File
 import com.gu.mediaservice.lib.metadata.FileMetadataHelper
 import com.gu.mediaservice.lib.Files
@@ -72,9 +74,11 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     Stopwatch.async(s"creating crops for ${apiImage.id}") {
       implicit val arena: Arena = Arena.ofConfined()
 
+      val sourceImage = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+
       val eventualAssets = Future.sequence(dimensionList.map { dimensions =>
         val cropLogMarker = logMarker ++ Map("crop-dimensions" -> s"${dimensions.width}x${dimensions.height}")
-        val file = imageOperations.resizeImage(sourceFile, apiImage.source.mimeType, dimensions, cropQuality, config.tempDir, cropType)
+        val file = imageOperations.resizeImage(sourceImage, apiImage.source.mimeType, dimensions, cropQuality, config.tempDir, cropType)
         val optimisedFile = imageOperations.optimiseCrop(file, cropType)
         val filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
 
