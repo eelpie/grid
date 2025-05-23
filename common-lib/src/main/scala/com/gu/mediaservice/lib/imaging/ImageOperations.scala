@@ -1,5 +1,7 @@
 package com.gu.mediaservice.lib.imaging
 
+import app.photofox.vipsffm.VImage
+
 import java.io.File
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.LogMarker
@@ -43,7 +45,7 @@ trait ImageOperations {
   def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
   def resizeImage(
-                   sourceFile: File,
+                   sourceFile: VImage,
                    sourceMimeType: Option[MimeType],
                    dimensions: Dimensions,
                    qual: Double = 100d,
