@@ -38,7 +38,7 @@ trait ImageOperations {
                  fileType: MimeType,
                  isTransformedFromSource: Boolean,
                  orientationMetadata: Option[OrientationMetadata]
-               )(implicit logMarker: LogMarker, arena: Arena): File
+               )(implicit logMarker: LogMarker, arena: Arena): (File, VImage)
 
   def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
