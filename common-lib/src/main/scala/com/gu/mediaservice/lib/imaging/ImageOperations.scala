@@ -1,5 +1,6 @@
 package com.gu.mediaservice.lib.imaging
 
+import app.photofox.vipsffm.VImage
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model._
@@ -43,7 +44,7 @@ trait ImageOperations {
   def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
   def resizeImage(
-                   sourceFile: File,
+                   sourceFile: VImage,
                    sourceMimeType: Option[MimeType],
                    dimensions: Dimensions,
                    qual: Double = 100d,
