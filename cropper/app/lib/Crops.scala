@@ -36,7 +36,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     sourceFile: File,
     crop: Crop,
     mediaType: MimeType,
-    colourModel: Option[String],
     orientationMetadata: Option[OrientationMetadata]
   )(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Future[MasterCrop] = {
 
@@ -47,7 +46,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     logger.info(logMarker, s"creating master crop for ${apiImage.id}")
     val strip = imageOperations.cropImageVips(
       sourceFile, apiImage.source.mimeType, source.bounds, masterCropQuality, config.tempDir,
-      iccColourSpace, colourModel, mediaType, isTransformedFromSource = false,
+      iccColourSpace, mediaType, isTransformedFromSource = false,
       orientationMetadata
     )
 
@@ -115,9 +114,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
     val result = Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
-        colourModelAndInformation <- ImageOperations.getImageInformation(sourceFile)
-        colourModel = colourModelAndInformation._3
-        masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, colourModel, apiImage.source.orientationMetadata)
+        masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, apiImage.source.orientationMetadata)
 
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
 
