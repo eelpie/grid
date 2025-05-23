@@ -65,19 +65,22 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     }
   }
 
-  private def createCrops(sourceFile: File, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker, instance: Instance): Future[List[Asset]] = {
+  def createCrops(sourceFile: File, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType, masterCrop: MasterCrop
+                 )(implicit logMarker: LogMarker, instance: Instance): Future[List[Asset]] = {
     val quality = if (cropType == Png) pngCropQuality else cropQuality
 
     Stopwatch.async(s"creating crops for ${apiImage.id}") {
       Future.sequence(dimensionList.map { dimensions =>
         val cropLogMarker = logMarker ++ Map("crop-dimensions" -> s"${dimensions.width}x${dimensions.height}")
         for {
-          file <- imageOperations.resizeImage(sourceFile,
+          file <- imageOperations.resizeImageVips(sourceFile,
             apiImage.source.mimeType,
             dimensions,
             quality,
             config.tempDir,
-            cropType)(cropLogMarker)
+            cropType,
+            masterCrop.dimensions
+          )(cropLogMarker)
           optimisedFile = imageOperations.optimiseImage(file, cropType)(cropLogMarker)
           filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
           sizing <- store.storeCropSizing(optimisedFile, filename, cropType, crop, dimensions)(cropLogMarker)
@@ -126,7 +129,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
 
-        sizes <- createCrops(masterCrop.file, outputDims, apiImage, crop, cropType)
+        sizes <- createCrops(masterCrop.file, outputDims, apiImage, crop, cropType, masterCrop)
         masterSize <- masterCrop.sizing
 
         _ <- Future.sequence(List(masterCrop.file, sourceFile).map(delete))
