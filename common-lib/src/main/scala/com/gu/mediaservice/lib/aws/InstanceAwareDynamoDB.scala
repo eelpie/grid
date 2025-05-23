@@ -129,11 +129,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
   def setAddV2(id: String, key: String, value: List[String])(implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(id, DynamoDB.addExpr(key, lastModifiedKey), AttributeValueV2.fromSs(value.asJava))
   }
-
-  def jsonGet(id: String, key: String)
-             (implicit ex: ExecutionContext, instance: Instance): Future[JsValue] =
-    get(id, key).map(item => asJsObject(item))
-
   def batchGet(ids: List[String], attributeKey: String)
               (implicit ex: ExecutionContext, rjs: Reads[T], instance: Instance): Future[Map[String, T]] = {
     val keyChunkList = ids
@@ -190,69 +185,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
                  (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(id,  deleteExpr(key, lastModifiedKey), AttributeValueV2.fromSs(List(value).asJava))
   }
-
-  def listGet(id: String, key: String)
-                (implicit ex: ExecutionContext, reads: Reads[T], instance: Instance): Future[List[T]] = {
-
-    get(id, key) map { item =>
-      Option(item.toJSON) match {
-        case Some(json) => (Json.parse(json) \ key).as[List[T]]
-        case None      => Nil
-      }
-    }
-  }
-
-  def listAdd(id: String, key: String, value: T)
-                (implicit ex: ExecutionContext, tjs: Writes[T], rjs: Reads[T], instance: Instance): Future[List[T]] = {
-
-    // TODO: Deal with the case that we don't have JSON serialisers, for now we just fail.
-    val json = Json.toJson(value).as[JsObject]
-    val valueMap = DynamoDB.jsonToValueMap(json)
-    def append =
-      update(
-        id, s"SET $key = list_append($key, :value)",
-        new ValueMap().withList(":value", valueMap)
-      )
-
-    def create =
-      update(
-        id, s"SET $key = :value",
-        new ValueMap().withList(":value", valueMap)
-      )
-
-    // DynamoDB doesn't seem to have a way of saying create the list if it doesn't exist then
-    // append to it. So what we're saying here is:
-    // Append to the list => if it doesn't exist => create it with the initial value.
-    append.map(j => (j \ key).as[List[T]]) recoverWith {
-      case err: AmazonServiceException => create.map(j => (j \ key).as[List[T]])
-      case err => throw err
-    }
-  }
-
-  def listRemoveIndexes(id: String, key: String, indexes: List[Int])
-                          (implicit ex: ExecutionContext, rjs: Reads[T], instance: Instance): Future[List[T]] =
-    update(
-      id, s"REMOVE ${indexes.map(i => s"$key[$i]").mkString(",")}"
-    ) map(j => (j \ key).as[List[T]])
-
-  def objPut(id: String, key: String, value: T)
-                 (implicit ex: ExecutionContext, wjs: Writes[T], rjs: Reads[T], instance: Instance): Future[T] = Future {
-
-    val item = new Item().withPrimaryKey(IdKey, id, InstanceKey, instance.id).withJSON(key, Json.toJson(value).toString)
-
-    val spec = new PutItemSpec().withItem(item)
-    table.putItem(spec)
-    // As PutItem only returns `null` if the item didn't exist, or the old item if it did,
-    // all we care about is whether it completed.
-  } map (_ => value)
-
-  def scan()(implicit ex: ExecutionContext, instance: Instance) = Future {
-    val byInstance = new QuerySpec()
-      .withKeyConditionExpression(s"instance = :key")
-      .withValueMap(new ValueMap()
-        .withString(":key", instance.id))
-    table.query(byInstance).iterator.asScala.toList
-  } map (_.map(asJsObject))
 
   def scanForId(indexName: String, keyname: String, key: String)(implicit ex: ExecutionContext, instance: Instance) = Future {
     val index = table.getIndex(indexName)
@@ -344,14 +276,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
   def jsonWithNullAsEmptyString(jsValue: JsValue): JsValue = mapJsValue(jsValue) {
     case JsNull => JsString("")
     case value => value
-  }
-
-  def valueMapWithNullForEmptyString(value: Map[String, JsValue]) = {
-    val valueMap = new ValueMap()
-    value.map     { case(k, v) => (k, if (v == JsNull) null else v) }
-         .foreach { case(k, v) => valueMap.withJSON(k, Json.stringify(v)) }
-
-    valueMap
   }
 
   def setExpr[T](key: String, lastModifiedKey: Option[String]) = {
