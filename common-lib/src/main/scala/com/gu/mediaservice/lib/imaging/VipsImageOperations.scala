@@ -28,7 +28,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                      fileType: MimeType,
                      isTransformedFromSource: Boolean,
                      orientationMetadata: Option[OrientationMetadata]
-                   )(implicit logMarker: LogMarker, arena: Arena): File = {
+                   )(implicit logMarker: LogMarker, arena: Arena): (File, VImage) = {
     // Read source image
     val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
     // Orient
@@ -59,7 +59,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
     saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
 
-    outputFile
+    (outputFile, cropped)
   }
 
   private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
