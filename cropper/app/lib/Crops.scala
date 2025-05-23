@@ -16,7 +16,7 @@ case object InvalidImage extends Exception("Invalid image cannot be cropped")
 case object MissingMimeType extends Exception("Missing mimeType from source API")
 case object InvalidCropRequest extends Exception("Crop request invalid for image dimensions")
 
-case class MasterCrop(sizing: Future[Asset], file: File, dimensions: Dimensions, aspectRatio: Float)
+case class MasterCrop(sizing: Future[Asset], file: File, image: VImage, dimensions: Dimensions, aspectRatio: Float)
 
 class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOperations, imageBucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext) extends GridLogging {
   import Files._
@@ -48,19 +48,23 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       val quality = if (mediaType == Png) pngCropQuality else masterCropQuality
 
       for {
-        file <- imageOperations.cropImage(
+        masterCrop <- imageOperations.cropImage(
           sourceFile, source.bounds, quality, config.tempDir,
           mediaType,
           orientationMetadata = orientationMetadata,
           metadata = metadata
         )
+
+        file = masterCrop._1
+        image = masterCrop._2
+
         dimensions = Dimensions(source.bounds.width, source.bounds.height)
         filename = outputFilename(apiImage, source.bounds, dimensions.width, mediaType, isMaster = true)
         sizing = store.storeCropSizing(file, filename, mediaType, crop, dimensions)
         dirtyAspect = source.bounds.width.toFloat / source.bounds.height
         aspect = crop.specification.aspectRatio.flatMap(AspectRatio.clean).getOrElse(dirtyAspect)
       }
-      yield MasterCrop(sizing, file, dimensions, aspect)
+      yield MasterCrop(sizing, file, image, dimensions, aspect)
     }
   }
 
@@ -127,7 +131,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
 
-        masterCropImage = VImage.newFromFile(arena, masterCrop.file.getAbsolutePath)
+        masterCropImage = masterCrop.image
         sizes <- createCrops(masterCropImage, outputDims, apiImage, crop, cropType)
         masterSize <- masterCrop.sizing
 
