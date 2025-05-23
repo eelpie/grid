@@ -120,7 +120,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
     implicit val arena: Arena = Arena.ofConfined()
 
-    val result = Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
+    Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, apiImage.source.orientationMetadata)
@@ -138,10 +138,11 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         _ <- Future.sequence(List(masterCrop.file, sourceFile).map(delete))
       }
       yield ExportResult(apiImage.id, masterSize, sizes)
-    }
 
-    arena.close()
-    result
+    }.map { result =>
+      arena.close()
+      result
+    }
   }
 }
 
