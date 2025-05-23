@@ -115,7 +115,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
       whenReady(eventualMasterCrop) { r =>
         arena.close()
-        r.isFile should be(true)
+        r._1.isFile should be(true)
       }
     }
 
@@ -134,7 +134,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
       whenReady(eventualMasterCrop) { r =>
         arena.close()
-        r.isFile should be(true)
+        r._1.isFile should be(true)
       }
     }
   }
