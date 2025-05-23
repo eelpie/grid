@@ -68,14 +68,10 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     }
   }
 
-  private def createCrops(sourceFile: File, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker, instance: Instance): Future[List[Asset]] = {
+  private def createCrops(sourceImage: VImage, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Future[List[Asset]] = {
     val quality = if (cropType == Png) pngCropQuality else cropQuality
 
     Stopwatch.async(s"creating crops for ${apiImage.id}") {
-      implicit val arena: Arena = Arena.ofShared()
-
-      val sourceImage = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-
       Future.sequence(dimensionList.map { dimensions =>
         val cropLogMarker = logMarker ++ Map("crop-dimensions" -> s"${dimensions.width}x${dimensions.height}")
         for {
@@ -92,7 +88,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
           _ <- delete(optimisedFile)
         }
         yield {
-          arena.close()
           sizing
         }
       })
@@ -127,7 +122,9 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val key = imageBucket.keyFromURL(secureFile)
     val secureUrl = s3.signUrlTony(imageBucket, key)
 
-    Stopwatch.async(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
+    implicit val arena: Arena = Arena.ofShared()
+
+    val result = Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         colourModelAndInformation <- imageOperations.getImageInformation(sourceFile)
@@ -136,13 +133,17 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
 
-        sizes <- createCrops(masterCrop.file, outputDims, apiImage, crop, cropType)
+        masterCropImage = VImage.newFromFile(arena, masterCrop.file.getAbsolutePath)
+        sizes <- createCrops(masterCropImage, outputDims, apiImage, crop, cropType)
         masterSize <- masterCrop.sizing
 
         _ <- Future.sequence(List(masterCrop.file, sourceFile).map(delete))
       }
       yield ExportResult(apiImage.id, masterSize, sizes)
     }
+
+    arena.close()
+    result
   }
 }
 
