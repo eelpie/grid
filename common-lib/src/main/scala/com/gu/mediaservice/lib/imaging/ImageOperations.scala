@@ -158,23 +158,39 @@ class ImageOperations(playPath: String) extends GridLogging {
       ).map(_ => sourceFile)
   }
 
-  def resizeImage(
-    sourceFile: File,
-    sourceMimeType: Option[MimeType],
-    dimensions: Dimensions,
-    qual: Double = 100d,
-    tempDir: File,
-    fileType: MimeType
-  )(implicit logMarker: LogMarker): Future[File] = Stopwatch.async("magick resize image") {
-    for {
-      outputFile  <- createTempFile(s"resize-", s".${fileType.fileExtension}", tempDir)
-      resizeSource = addImage(sourceFile)
-      qualified    = quality(resizeSource)(qual)
-      resized      = scale(qualified)(dimensions)
-      addOutput    = addDestImage(resized)(outputFile)
-      _           <- runConvertCmd(addOutput, useImageMagick = sourceMimeType.contains(Tiff))
+  def resizeImageVips(
+                       sourceFile: File,
+                       sourceMimeType: Option[MimeType],
+                       dimensions: Dimensions,
+                       qual: Double = 100d,
+                       tempDir: File,
+                       fileType: MimeType,
+                       sourceDimensions: Dimensions
+                     )(implicit logMarker: LogMarker): Future[File] = {
+
+    Future {
+      val arena = Arena.ofConfined
+
+      val outputFile = File.createTempFile(s"resize-", s"${fileType.fileExtension}", tempDir) // TODO function for this
+
+      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+
+      val scale = dimensions.width.toDouble / sourceDimensions.width.toDouble
+      val resized = image.resize(scale)
+
+      resized.jpegsave(outputFile.getAbsolutePath,
+        VipsOption.Int("Q", qual.toInt),
+        //VipsOption.Boolean("optimize-scans", true),
+        //VipsOption.Boolean("optimize-coding", true),
+        //VipsOption.Boolean("interlace", true),
+        //VipsOption.Boolean("trellis-quant", true),
+        // VipsOption.Int("quant-table", 3),
+        VipsOption.Boolean("strip", false)
+      )
+
+      arena.close()
+      outputFile
     }
-    yield outputFile
   }
 
   private def orient(op: IMOperation, orientationMetadata: Option[OrientationMetadata]): IMOperation = {
