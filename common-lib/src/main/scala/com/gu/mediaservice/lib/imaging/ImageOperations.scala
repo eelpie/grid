@@ -1,11 +1,11 @@
 package com.gu.mediaservice.lib.imaging
 
 import java.io.File
-
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model._
 
+import java.lang.foreign.Arena
 import scala.concurrent.Future
 
 object ImageOperations {
@@ -50,7 +50,7 @@ trait ImageOperations {
                    tempDir: File,
                    fileType: MimeType,
                    sourceDimensions: Dimensions // TODO really needed?
-                 )(implicit logMarker: LogMarker): Future[File]
+                 )(implicit logMarker: LogMarker, arena: Arena): File
 
   def getImageInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[Dimensions], Option[OrientationMetadata], Option[String], Map[String, String])]
 
