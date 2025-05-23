@@ -29,7 +29,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                  fileType: MimeType,
                  orientationMetadata: Option[OrientationMetadata],
                  metadata: ImageMetadata
-               )(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
+               )(implicit logMarker: LogMarker, arena: Arena): Future[(File, VImage)] = {
 
     Future {
       // Read source image
@@ -53,8 +53,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
       saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
 
-
-      outputFile
+      (outputFile, cropped)
     }
   }
 
