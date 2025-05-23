@@ -1,6 +1,7 @@
 package com.gu.mediaservice.lib.imaging
 
 import java.io.File
+import java.lang.foreign.Arena
 
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.LogMarker
@@ -38,7 +39,7 @@ trait ImageOperations {
                  fileType: MimeType,
                  isTransformedFromSource: Boolean,
                  orientationMetadata: Option[OrientationMetadata]
-               )(implicit logMarker: LogMarker): Future[File]
+               )(implicit logMarker: LogMarker, arena: Arena): File
 
   def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
