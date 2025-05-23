@@ -78,7 +78,6 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
                      qual: Double = 100d,
                      tempDir: File,
                      iccColourSpace: Option[String],
-                     colourModel: Option[String],
                      fileType: MimeType,
                      isTransformedFromSource: Boolean,
                      orientationMetadata: Option[OrientationMetadata]
