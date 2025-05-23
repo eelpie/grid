@@ -22,7 +22,7 @@ trait ImageOperations {
                       width: Int,
                       qual: Double = 100d,
                       outputFile: File,
-                      orientationMetadata: Option[OrientationMetadata]
+                      orientationMetadata: Option[OrientationMetadata],
                      )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])]
 
   def cropImage(
@@ -33,7 +33,7 @@ trait ImageOperations {
                  fileType: MimeType,
                  orientationMetadata: Option[OrientationMetadata],
                  metadata: ImageMetadata
-               )(implicit logMarker: LogMarker, arena: Arena): Future[File]
+               )(implicit logMarker: LogMarker, arena: Arena): Future[(File, VImage)]
 
   def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
