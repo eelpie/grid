@@ -24,7 +24,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                      fileType: MimeType,
                      isTransformedFromSource: Boolean,
                      orientationMetadata: Option[OrientationMetadata]
-                   )(implicit logMarker: LogMarker, arena: Arena): File = {
+                   )(implicit logMarker: LogMarker, arena: Arena): (File, VImage) = {
     val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
     // Read source image
     val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
@@ -51,7 +51,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       VipsOption.Boolean("strip", true)
     )
 
-    outputFile
+    (outputFile, cropped)
   }
 
   def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = ???
