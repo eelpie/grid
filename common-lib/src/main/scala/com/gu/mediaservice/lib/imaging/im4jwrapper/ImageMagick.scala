@@ -58,10 +58,6 @@ object ImageMagick extends GridLogging {
     op.resize(maxSize, maxSize)
     op
   }
-  def scale(op: IMOperation)(dimensions: Dimensions): IMOperation = {
-    op.scale(dimensions.width, dimensions.height)
-    op
-  }
   def format(op: IMOperation)(definition: String): IMOperation = {
     op.format(definition)
     op
