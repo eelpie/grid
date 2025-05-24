@@ -22,13 +22,11 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                      sourceFile: File,
                      sourceMimeType: Option[MimeType],
                      bounds: Bounds,
-                     qual: Double = 100d,
-                     tempDir: File,
                      iccColourSpace: Option[String],
                      fileType: MimeType,
                      isTransformedFromSource: Boolean,
                      orientationMetadata: Option[OrientationMetadata]
-                   )(implicit logMarker: LogMarker, arena: Arena): (File, VImage) = {
+                   )(implicit logMarker: LogMarker, arena: Arena): VImage = {
     // Read source image
     val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
     // Orient
@@ -53,13 +51,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       }
 
     val master = correctedForICCProfile
-
-    // TODO separate this local file create from the vips master image create
-    val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-    logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
-    saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
-
-    (outputFile, cropped)
+    master
   }
 
   private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
