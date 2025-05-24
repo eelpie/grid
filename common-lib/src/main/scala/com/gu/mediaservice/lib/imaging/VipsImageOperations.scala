@@ -41,8 +41,21 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
         val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
 
+        // If we saw and ICC profile than we will need to transform
+        val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
+        val correctedForICCProfile = if (needsICCTransform ) {
+          cropped.iccTransform("srgb",
+            VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),     // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
+          )
+        } else {
+          // LAB gets corrupted by a needless icc_transform
+          cropped
+        }
+
+        val master = correctedForICCProfile
+
         val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-        cropped.jpegsave(outputFile.getAbsolutePath,
+        master.jpegsave(outputFile.getAbsolutePath,
           VipsOption.Int("Q", qual.toInt),
           VipsOption.Int("keep", VipsRaw.VIPS_FOREIGN_KEEP_NONE)
         )
