@@ -58,7 +58,7 @@ class ImageOperations(playPath: String) extends GridLogging {
       // If matching, all is well, just pass through
       case (icc, model, _) if icc == model => base
       // If no colour model detected, we can't do anything anyway so just hope all is well
-      case (_,  None, _) => base
+      case (_, None, _) => base
       // Do not correct colour if file has already been transformed (ie. source file was TIFF) as correctColour has already been run
       case (_, _, true) => base
       // If mismatching, strip any (incorrect) ICC profile and inject a profile matching the model
@@ -176,17 +176,33 @@ class ImageOperations(playPath: String) extends GridLogging {
 
     val outputFile = File.createTempFile(s"resize-", s".${fileType.fileExtension}", tempDir) // TODO function for this
     logger.info("Saving resized crop as JPEG tmp file to: " + outputFile.getAbsolutePath)
-    resized.jpegsave(outputFile.getAbsolutePath,
-      VipsOption.Int("Q", qual.toInt),
-      //VipsOption.Boolean("optimize-scans", true),
-      //VipsOption.Boolean("optimize-coding", true),
-      //VipsOption.Boolean("interlace", true),
-      //VipsOption.Boolean("trellis-quant", true),
-      // VipsOption.Int("quant-table", 3),
-      VipsOption.Boolean("strip", false)
-    )
 
-    outputFile
+    fileType match {
+      case Jpeg =>
+        resized.jpegsave(outputFile.getAbsolutePath,
+          VipsOption.Int("Q", qual.toInt),
+          //VipsOption.Boolean("optimize-scans", true),
+          //VipsOption.Boolean("optimize-coding", true),
+          //VipsOption.Boolean("interlace", true),
+          //VipsOption.Boolean("trellis-quant", true),
+          // VipsOption.Int("quant-table", 3),
+          VipsOption.Boolean("strip", false)
+        )
+        outputFile
+
+      case Png =>
+        // val optimisedImageName: String = fileName.split('.')(0) + "optimised.png"
+        //      Seq("pngquant","-s8",  "--quality", "1-85", fileName, "--output", optimisedImageName).!
+        resized.pngsave(outputFile.getAbsolutePath,
+          VipsOption.Int("Q", qual.toInt),
+          VipsOption.Boolean("strip", false)
+        )
+        outputFile
+
+      case _ =>
+        logger.error(s"Cropping to $fileType is not supported.")
+        throw new UnsupportedCropOutputTypeException
+    }
   }
 
   def resizeImage(
@@ -215,25 +231,6 @@ class ImageOperations(playPath: String) extends GridLogging {
       case Some(angle) => rotate(op)(angle)
       case _ => op
     }
-  }
-
-  def optimiseImage(resizedFile: File, mediaType: MimeType): File = mediaType match {
-    case Png =>
-      val fileName: String = resizedFile.getAbsolutePath
-
-      val optimisedImageName: String = fileName.split('.')(0) + "optimised.png"
-      Seq("pngquant","-s8",  "--quality", "1-85", fileName, "--output", optimisedImageName).!
-
-      new File(optimisedImageName)
-    case Jpeg => resizedFile
-
-    // This should never happen as we only ever crop as PNG or JPEG. See `Crops.cropType` and `CropsTest`
-    // TODO We should create a `CroppingMimeType` to enforce this at the type level.
-    //  However we'd need to change the `Asset` model as source image and crop use this model
-    //  and a source can legally be a `Tiff`. It's not a small change...
-    case Tiff =>
-      logger.error("Attempting to optimize a Tiff crop. Cropping as Tiff is not supported.")
-      throw new UnsupportedCropOutputTypeException
   }
 
   val interlacedHow = "Line"
