@@ -39,10 +39,14 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
     // TODO depth adjust
 
+    val corrected = cropped.colourspace(VipsInterpretation.INTERPRETATION_sRGB)
+
+    val master = corrected
+
     // TODO separate this local file create from the vips master image create
     val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
     logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
-    cropped.jpegsave(outputFile.getAbsolutePath,
+    master.jpegsave(outputFile.getAbsolutePath,
       VipsOption.Int("Q", qual.toInt),
       //VipsOption.Boolean("optimize-scans", true),
       //VipsOption.Boolean("optimize-coding", true),
@@ -52,7 +56,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       VipsOption.Boolean("strip", true)
     )
 
-    (outputFile, cropped)
+    (outputFile, master)
   }
 
   def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = ???
