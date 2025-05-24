@@ -234,6 +234,20 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     } yield (outputFile, optimisedMimeType)
   }
 
+  private def saveImageToFile(image: VImage, qual: Double, outputFile: File): File = {
+    logger.info(s"Saving image to file: " + outputFile.getAbsolutePath)
+    image.jpegsave(outputFile.getAbsolutePath,
+      VipsOption.Int("Q", qual.toInt),
+      //VipsOption.Boolean("optimize-scans", true),
+      //VipsOption.Boolean("optimize-coding", true),
+      //VipsOption.Boolean("interlace", true),
+      //VipsOption.Boolean("trellis-quant", true),
+      // VipsOption.Int("quant-table", 3),
+      VipsOption.Boolean("strip", true)
+    )
+    outputFile
+  }
+
   // When a layered tiff is unpacked, the temp file (blah.something) is moved
   // to blah-0.something and contains the composite layer (which is what we want).
   // Other layers are then saved as blah-1.something etc.
