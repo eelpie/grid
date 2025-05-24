@@ -1,11 +1,13 @@
 package lib
 
 import app.photofox.vipsffm.VImage
+import app.photofox.vipsffm.jextract.VipsRaw
 import com.gu.mediaservice.lib.Files
 import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
+import lib.Crops.cropType
 
 import java.io.File
 import java.lang.foreign.Arena
@@ -39,7 +41,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     mediaType: MimeType,
     orientationMetadata: Option[OrientationMetadata]
   )(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Future[MasterCrop] = {
-
     Stopwatch.async(s"creating master crop for ${apiImage.id}") {
       val source = crop.specification
       val metadata = apiImage.metadata
@@ -48,19 +49,17 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       val quality = if (mediaType == Png) pngCropQuality else masterCropQuality
 
       for {
-        masterCrop <- imageOperations.cropImage(
+        image <- imageOperations.cropImage(
           sourceFile, source.bounds, quality, config.tempDir,
           mediaType,
           orientationMetadata = orientationMetadata,
           metadata = metadata
         )
-
-        file = masterCrop._1
-        image = masterCrop._2
-
+        outputFile = File.createTempFile(s"crop-", s"${mediaType.fileExtension}", config.tempDir) // TODO function for this
+        file = imageOperations.saveImageToFile(image, mediaType, quality, outputFile, quantise = false, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP()))
         dimensions = Dimensions(source.bounds.width, source.bounds.height)
         filename = outputFilename(apiImage, source.bounds, dimensions.width, mediaType, isMaster = true)
-        sizing = store.storeCropSizing(file, filename, mediaType, crop, dimensions)
+        sizing = store.storeCropSizing(outputFile, filename, mediaType, crop, dimensions)
         dirtyAspect = source.bounds.width.toFloat / source.bounds.height
         aspect = crop.specification.aspectRatio.flatMap(AspectRatio.clean).getOrElse(dirtyAspect)
       }
@@ -131,11 +130,10 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
 
-        masterCropImage = masterCrop.image
-        sizes <- createCrops(masterCropImage, outputDims, apiImage, crop, cropType)
+        sizes <- createCrops(masterCrop.image, outputDims, apiImage, crop, cropType)
         masterSize <- masterCrop.sizing
 
-        _ <- Future.sequence(List(masterCrop.file, sourceFile).map(delete))
+        _ <- Future.sequence(List(sourceFile, masterCrop.file).map(delete))
       }
       yield ExportResult(apiImage.id, masterSize, sizes)
     }
