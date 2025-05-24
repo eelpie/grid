@@ -202,7 +202,8 @@ class ImageOperations(playPath: String) extends GridLogging {
         logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
         thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
 
-        saveImageToFile(rotated, qual.toInt, outputFile)
+        saveImageToFile(rotated, Jpeg, qual.toInt, outputFile)
+
       } catch {
         case e: Exception =>
           logger.error("Error during createThumbnail", e)
@@ -216,18 +217,34 @@ class ImageOperations(playPath: String) extends GridLogging {
     }
   }
 
-  def saveImageToFile(image: VImage, qual: Double, outputFile: File): File = {
-    logger.info(s"Saving image to file: " + outputFile.getAbsolutePath)
-    image.jpegsave(outputFile.getAbsolutePath,
-      VipsOption.Int("Q", qual.toInt),
-      //VipsOption.Boolean("optimize-scans", true),
-      VipsOption.Boolean("optimize-coding", true),
-      //VipsOption.Boolean("interlace", true),
-      //VipsOption.Boolean("trellis-quant", true),
-      // VipsOption.Int("quant-table", 3),
-      VipsOption.Boolean("strip", true)
-    )
-    outputFile
+  def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File): File = {
+    logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
+    mimeType match {
+      case Jpeg =>
+        image.jpegsave(outputFile.getAbsolutePath,
+          VipsOption.Int("Q", qual.toInt),
+          //VipsOption.Boolean("optimize-scans", true),
+          VipsOption.Boolean("optimize-coding", true),
+          //VipsOption.Boolean("interlace", true),
+          //VipsOption.Boolean("trellis-quant", true),
+          // VipsOption.Int("quant-table", 3),
+          VipsOption.Boolean("strip", true)
+        )
+        outputFile
+
+      case Png =>
+        // val optimisedImageName: String = fileName.split('.')(0) + "optimised.png"
+        //      Seq("pngquant","-s8",  "--quality", "1-85", fileName, "--output", optimisedImageName).!
+        image.pngsave(outputFile.getAbsolutePath,
+          VipsOption.Int("Q", qual.toInt),
+          VipsOption.Boolean("strip", true)
+        )
+        outputFile
+
+      case _ =>
+        logger.error(s"Save to $mimeType is not supported.")
+        throw new UnsupportedCropOutputTypeException
+    }
   }
 
   // When a layered tiff is unpacked, the temp file (blah.something) is moved
