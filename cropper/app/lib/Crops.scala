@@ -143,7 +143,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   }
 }
 
-object Crops {
+object Crops extends GridLogging {
   /**
     * The aim here is to decide whether the crops should be JPEG or PNGs depending on a predicted quality/size trade-off.
     *  - If the image has transparency then it should always be a PNG as the transparency is not available in JPEG
@@ -153,10 +153,13 @@ object Crops {
     val isGraphic = !colourType.matches("True[ ]?Color.*")
     val outputAsPng = hasAlpha || isGraphic
 
-    mediaType match {
+    val decision = mediaType match {
       case Png if outputAsPng => Png
       case Tiff if outputAsPng => Png
       case _ => Jpeg
     }
+
+    logger.info(s"Choose crop type for $mediaType, $colourType, $hasAlpha: " + decision)
+    decision
   }
 }
