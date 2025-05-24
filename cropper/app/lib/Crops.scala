@@ -125,6 +125,9 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: VipsImageO
       logger.info("Starting vips operations")
       implicit val arena: Arena = Arena.ofConfined()
       val masterCrop = createMasterCrop(apiImage, sourceFile, crop, cropType, apiImage.source.orientationMetadata)
+      val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
+      imageOperations.saveImageToFile(masterCrop.image, cropType, masterCropQuality, masterCropFile)
+
       val outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
       val eventualSizesAssets: Future[List[Asset]] = createCrops(masterCrop.image, outputDims, apiImage, crop, cropType)
       // All vips operations have completed; we can close the arena
@@ -132,10 +135,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: VipsImageO
       logger.info("Finished vips operations")
 
       // Map out the eventual store futures
-
-      val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
-      imageOperations.saveImageToFile(masterCrop.image, cropType, masterCropQuality, masterCropFile)
-
       val eventualMasterCropAsset = store.storeCropSizing(masterCropFile, outputFilename(apiImage, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true), cropType, crop, masterCrop.dimensions)
       eventualMasterCropAsset.flatMap { masterSize =>
         eventualSizesAssets.flatMap { sizes =>
