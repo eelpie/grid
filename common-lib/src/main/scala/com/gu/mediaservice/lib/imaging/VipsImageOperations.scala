@@ -70,7 +70,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         }
         logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
 
-        saveImageToFile(rotated, qual, outputFile)
+        saveImageToFile(rotated, Jpeg, qual, outputFile)
+
       } catch {
         case e: Exception =>
           logger.error("Error during createThumbnail", e)
@@ -190,18 +191,34 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
   def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
 
-  private def saveImageToFile(image: VImage, qual: Double, outputFile: File): File = {
-    logger.info(s"Saving image to file: " + outputFile.getAbsolutePath)
-    image.jpegsave(outputFile.getAbsolutePath,
-      VipsOption.Int("Q", qual.toInt),
-      //VipsOption.Boolean("optimize-scans", true),
-      VipsOption.Boolean("optimize-coding", true),
-      //VipsOption.Boolean("interlace", true),
-      //VipsOption.Boolean("trellis-quant", true),
-      // VipsOption.Int("quant-table", 3),
-      VipsOption.Boolean("strip", true)
-    )
-    outputFile
+  private def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File): File = {
+    logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
+    mimeType match {
+      case Jpeg =>
+        image.jpegsave(outputFile.getAbsolutePath,
+          VipsOption.Int("Q", qual.toInt),
+          //VipsOption.Boolean("optimize-scans", true),
+          VipsOption.Boolean("optimize-coding", true),
+          //VipsOption.Boolean("interlace", true),
+          //VipsOption.Boolean("trellis-quant", true),
+          // VipsOption.Int("quant-table", 3),
+          VipsOption.Boolean("strip", true)
+        )
+        outputFile
+
+      case Png =>
+        // val optimisedImageName: String = fileName.split('.')(0) + "optimised.png"
+        //      Seq("pngquant","-s8",  "--quality", "1-85", fileName, "--output", optimisedImageName).!
+        image.pngsave(outputFile.getAbsolutePath,
+          VipsOption.Int("Q", qual.toInt),
+          VipsOption.Boolean("strip", true)
+        )
+        outputFile
+
+      case _ =>
+        logger.error(s"Save to $mimeType is not supported.")
+        throw new UnsupportedCropOutputTypeException
+    }
   }
 
 }
