@@ -39,7 +39,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
     // TODO depth adjust
 
-    val corrected = cropped.colourspace(VipsInterpretation.INTERPRETATION_sRGB)
+    val corrected = cropped.iccTransform("srgb")
 
     val master = corrected
 
