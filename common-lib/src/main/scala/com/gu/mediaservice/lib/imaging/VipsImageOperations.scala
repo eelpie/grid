@@ -1,10 +1,10 @@
 package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.VipsInterpretation
-import app.photofox.vipsffm.{VImage, Vips, VipsHelper, VipsOption}
+import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick.ctx
-import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model._
 
 import java.io._
@@ -53,6 +53,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       try {
         val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
           VipsOption.Boolean("auto-rotate", false),
+          VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),
           VipsOption.String("export-profile", "srgb")
         )
 
