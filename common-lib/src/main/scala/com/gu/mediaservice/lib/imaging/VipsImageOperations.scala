@@ -191,7 +191,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
   def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
 
-  private def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File): File = {
+  private def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File, quantise: Boolean = false): File = {
     logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
     mimeType match {
       case Jpeg =>
@@ -208,13 +208,20 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
       case Png =>
         // We are allowed to quantise PNG crops but not the master
-        image.pngsave(outputFile.getAbsolutePath,
-          VipsOption.Boolean("palette", true),
-          VipsOption.Int("Q", qual.toInt),
-          VipsOption.Int("effort", 1),
-          VipsOption.Int("bitdepth", 8),
-          VipsOption.Boolean("strip", true)
-        )
+        if (quantise) {
+          image.pngsave(outputFile.getAbsolutePath,
+            VipsOption.Boolean("palette", true),
+            VipsOption.Int("Q", qual.toInt),
+            VipsOption.Int("effort", 1),
+            VipsOption.Int("bitdepth", 8),
+            VipsOption.Boolean("strip", true)
+          )
+        } else {
+          image.pngsave(outputFile.getAbsolutePath,
+            VipsOption.Int("Q", qual.toInt),
+            VipsOption.Boolean("strip", true)
+          )
+        }
         outputFile
 
       case _ =>
