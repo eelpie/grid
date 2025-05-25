@@ -1,7 +1,7 @@
 package com.gu.mediaservice.lib.imaging
 
-import app.photofox.vipsffm.enums.VipsInterpretation
-import app.photofox.vipsffm.{VImage, Vips, VipsHelper, VipsOption}
+import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
+import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.Files._
 import com.gu.mediaservice.lib.imaging.ImageOperations.thumbMimeType
@@ -11,10 +11,9 @@ import com.gu.mediaservice.model._
 import org.im4java.core.IMOperation
 
 import java.io._
+import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
-
-import java.lang.foreign.Arena
 
 
 case class ExportResult(id: String, masterCrop: Asset, othersizings: List[Asset])
@@ -191,7 +190,8 @@ class ImageOperations(playPath: String) extends GridLogging {
       try {
         val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
           VipsOption.Boolean("auto-rotate", false),
-          VipsOption.String("export-profile", profilePath("srgb"))
+          VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),
+          VipsOption.String("export-profile", "srgb")
         )
         val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
           logger.info("Rotating thumbnail: " + angle)
