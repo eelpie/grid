@@ -59,7 +59,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     }
   }
 
-  private def createCrops(sourceImage: VImage, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Future[List[Asset]] = {
+  private def createCrops(sourceImage: VImage, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Future[List[(File, String, Dimensions)]] = {
     val quality = if (cropType == Png) pngCropQuality else cropQuality
 
     Stopwatch.async(s"creating crops for ${apiImage.id}") {
@@ -74,11 +74,9 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
             cropType)(cropLogMarker, arena)
           // TODO Decision on quantisation required
           filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
-          sizing <- store.storeCropSizing(file, filename, cropType, crop, dimensions)(cropLogMarker)
-          _ <- delete(file)
         }
         yield {
-          sizing
+          (file, filename, dimensions)
         }
       })
     }
@@ -102,7 +100,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   }
 
   def makeExport(apiImage: SourceImage, crop: Crop)(implicit logMarker: LogMarker, instance: Instance): Future[ExportResult] = {
-    val source    = crop.specification
+    val source = crop.specification
     val mimeType = apiImage.source.mimeType.getOrElse(throw MissingMimeType)
     val secureFile = apiImage.source.file
     val colourType = apiImage.fileMetadata.colourModelInformation.getOrElse("colorType", "")
@@ -123,16 +121,30 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, apiImage.source.orientationMetadata)
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
-        sizes <- createCrops(masterCrop.image, outputDims, apiImage, crop, cropType)
+        resizes <- createCrops(masterCrop.image, outputDims, apiImage, crop, cropType)
 
         masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
         _ = imageOperations.saveImageToFile(masterCrop.image, cropType, quality, masterCropFile, quantise = false, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP()))
         masterCropFilename = outputFilename(apiImage, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true)
         masterAsset <- store.storeCropSizing(masterCropFile, masterCropFilename, cropType, crop, masterCrop.dimensions)
 
+        resizeAssets <- Future.sequence {
+          resizes.map { resize =>
+            val file = resize._1
+            val filename = resize._2
+            val dimensions = resize._3
+            logger.info(s"Storing crop for: $file, $filename, $cropType")
+            for {
+              sizing <- store.storeCropSizing(file, filename, cropType, crop, dimensions)
+              _ <- delete(file)
+            }
+            yield sizing
+          }
+        }
+
         _ <- Future.sequence(List(sourceFile, masterCropFile).map(delete))
       }
-      yield ExportResult(apiImage.id, masterAsset, sizes)
+      yield ExportResult(apiImage.id, masterAsset, resizeAssets)
     }
 
     arena.close()
