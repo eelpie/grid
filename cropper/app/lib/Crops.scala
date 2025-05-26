@@ -46,8 +46,8 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
     logger.info(logMarker, s"creating master crop for ${apiImage.id}")
     val masterImage = imageOperations.cropImageVips(
-      sourceFile, apiImage.source.mimeType, source.bounds,
-      iccColourSpace, mediaType, isTransformedFromSource = false,
+      sourceFile,
+      source.bounds,
       orientationMetadata
     )
 
