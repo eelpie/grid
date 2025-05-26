@@ -1,6 +1,6 @@
 package com.gu.mediaservice.lib.aws
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
-import com.gu.mediaservice.model.{Jpeg, MimeType, Png, Tiff}
+import com.gu.mediaservice.model.{Heif, Jpeg, MimeType, Png, Tiff}
 import software.amazon.awssdk.services.s3vectors.model.QueryVectorsResponse
 
 import java.nio.file.{Files, Path}
@@ -22,6 +22,7 @@ class Embedder(s3vectors: S3Vectors, bedrock: Bedrock)(implicit ec: ExecutionCon
       case Jpeg => Right(CohereJpeg)
       case Png => Right(CoherePng)
       case Tiff => Left("Image file type is not supported. File type: Tiff")
+      case Heif => Left("Image file type is not supported. File type: Heif")
     }
   }
 

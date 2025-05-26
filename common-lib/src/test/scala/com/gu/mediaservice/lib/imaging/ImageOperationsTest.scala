@@ -88,6 +88,19 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
         r._1.isFile should be(true)
       }
     }
+
+    it("render Heif correctly") {
+      val image = fileAt("IMG_0128.HEIC")
+
+      val outputFile = new File("/Users/tony/Desktop/thumbnail-heic.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Jpeg, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 1000, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
   }
 
   describe("resize") {
