@@ -1,11 +1,9 @@
 package com.gu.mediaservice.lib.aws
 import com.amazonaws.services.sqs.model.SendMessageResult
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
-import com.gu.mediaservice.model.{Jpeg, MimeType, Png, Tiff}
 import play.api.libs.json.{Json, OFormat}
 import software.amazon.awssdk.services.s3vectors.model.QueryVectorsResponse
 
-import java.nio.file.{Files, Path}
 import scala.concurrent.{ExecutionContext, Future}
 
 sealed trait CohereCompatibleMimeType
