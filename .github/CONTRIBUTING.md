@@ -75,9 +75,9 @@ If you are amending commits or rebasing to restructure your work then you may ne
 
 Atlassian has written an excellent blog that explains why in more detail: https://developer.atlassian.com/blog/2015/04/force-with-lease/.
 
-The safe alternative is to use `git push --force-with-lease origin support-for-heic-images` which checks that the remote branch is in the same state as the local copy of the remote branch. It also explicitly specifies the branch to push as by default all branches.
+The safe alternative is to use `git push --force-with-lease origin support-for-Heif-images` which checks that the remote branch is in the same state as the local copy of the remote branch. It also explicitly specifies the branch to push as by default all branches.
 
-The author has an alias for this, `pushf`, which is shorter to type. You can set this up with `git config --global alias.pushf 'push --force-with-lease'`. As an example you can then use `git pushf origin support-for-heic-images`.
+The author has an alias for this, `pushf`, which is shorter to type. You can set this up with `git config --global alias.pushf 'push --force-with-lease'`. As an example you can then use `git pushf origin support-for-Heif-images`.
 
 ## Writing pull requests
 
