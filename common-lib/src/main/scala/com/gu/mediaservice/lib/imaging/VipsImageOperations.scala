@@ -108,7 +108,6 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
 
   def resizeImage(
                        sourceImage: VImage,
-                       sourceMimeType: Option[MimeType],
                        dimensions: Dimensions,
                        qual: Double = 100d,
                        tempDir: File,
