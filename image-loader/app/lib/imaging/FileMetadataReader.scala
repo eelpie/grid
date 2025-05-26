@@ -237,6 +237,12 @@ object FileMetadataReader extends GridLogging {
           "photometricInterpretation" -> photometricInterpretation,
           "bitsPerSample" -> getFromExifDirectory(ExifDirectoryBase.TAG_BITS_PER_SAMPLE).flatMap(extractBitsPerSample)
         ).flattenOptions
+      case Heif =>
+        Map (
+          "hasAlpha" -> hasAlpha,
+          "colorType" -> maybeImageType,
+          "photometricInterpretation" -> photometricInterpretation,
+      ).flattenOptions
     }
   }
 
