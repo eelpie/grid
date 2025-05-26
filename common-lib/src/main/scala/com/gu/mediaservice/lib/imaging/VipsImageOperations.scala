@@ -73,11 +73,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
 
   def cropImage(
                      sourceFile: File,
-                     sourceMimeType: Option[MimeType],
                      bounds: Bounds,
-                     iccColourSpace: Option[String],
-                     fileType: MimeType,
-                     isTransformedFromSource: Boolean,
                      orientationMetadata: Option[OrientationMetadata]
                    )(implicit logMarker: LogMarker, arena: Arena): VImage = {
     // Read source image
