@@ -65,7 +65,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
     logger.info("Creating resizes")
     val resizes = dimensionList.map { dimensions =>
-      val file = imageOperations.resizeImageVips(sourceImage, apiImage.source.mimeType, dimensions, cropQuality, config.tempDir, cropType, masterCrop.dimensions)
+      val file = imageOperations.resizeImageVips(sourceImage, dimensions, cropQuality, config.tempDir, cropType, masterCrop.dimensions)
       val filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType, instance = instance)
       (file, filename, dimensions)
     }
