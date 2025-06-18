@@ -1,74 +1,80 @@
 package com.gu.mediaservice.lib.config
 
+import com.gu.mediaservice.model.Instance
+
 trait Services {
 
-  def kahunaBaseUri: String
+  def kahunaBaseUri(instance: Instance): String
 
-  def apiBaseUri: String
+  def apiBaseUri(instance: Instance): String
 
-  def loaderBaseUri: String
+  def loaderBaseUri(instance: Instance): String
 
-  def projectionBaseUri: String
+  def projectionBaseUri(instance: Instance): String
 
-  def cropperBaseUri: String
+  def cropperBaseUri(instance: Instance): String
 
-  def metadataBaseUri: String
+  def metadataBaseUri(instance: Instance): String
 
-  def imgopsBaseUri: String
+  def imgopsBaseUri(instance: Instance): String
 
-  def usageBaseUri: String
+  def usageBaseUri(instance: Instance): String
 
-  def collectionsBaseUri: String
+  def collectionsBaseUri(instance: Instance): String
 
-  def leasesBaseUri: String
+  def leasesBaseUri(instance: Instance): String
 
-  def authBaseUri: String
+  def authBaseUri(instance: Instance): String
+  def authBaseInstanceUri(instance: Instance): String
 
   def guardianWitnessBaseUri: String
 
-  def corsAllowedDomains: Set[String]
+  def corsAllowedDomains(instance: Instance): Set[String]
 
   def redirectUriParam: String
 
   def redirectUriPlaceholder: String
 
-  def loginUriTemplate: String
-
+  def loginUriTemplate(instance: Instance): String
 }
 
-protected class SingleHostServices(val rootUrl: String) extends Services {
-  val kahunaBaseUri: String = rootUrl
+protected class SingleHostServices(val domain: String) extends Services {
+  override def kahunaBaseUri(instance: Instance): String =  vhostServiceName("", instance)
 
-  val apiBaseUri: String = subpathedServiceBaseUri("media-api")
+  override def apiBaseUri(instance: Instance): String = vhostServiceName("media-api", instance)
 
-  val loaderBaseUri: String = subpathedServiceBaseUri("image-loader")
+  override def loaderBaseUri(instance: Instance): String = vhostServiceName("image-loader", instance)
 
-  val projectionBaseUri: String = loaderBaseUri
+  override def projectionBaseUri(instance: Instance): String = vhostServiceName("image-loader", instance)
 
-  val cropperBaseUri: String = subpathedServiceBaseUri("cropper")
+  override def cropperBaseUri(instance: Instance): String = vhostServiceName("cropper", instance)
 
-  val metadataBaseUri: String = subpathedServiceBaseUri("metadata-editor")
+  override def metadataBaseUri(instance: Instance): String = vhostServiceName("metadata-editor", instance)
 
-  val imgopsBaseUri: String = subpathedServiceBaseUri("imgproxy")
+  override def imgopsBaseUri(instance: Instance): String=  vhostServiceName("imgproxy", instance)
 
-  val usageBaseUri: String =subpathedServiceBaseUri("usage")
+  override def usageBaseUri(instance: Instance): String = vhostServiceName("usage", instance)
 
-  val collectionsBaseUri: String = subpathedServiceBaseUri("collections")
+  override def collectionsBaseUri(instance: Instance): String = vhostServiceName("collections", instance)
 
-  val leasesBaseUri: String = subpathedServiceBaseUri("leases")
+  override def leasesBaseUri(instance: Instance): String = vhostServiceName("leases", instance)
 
-  val authBaseUri: String = subpathedServiceBaseUri("auth")
+  override def authBaseUri(instance: Instance): String = s"https://$domain/auth"
+  override def authBaseInstanceUri(instance: Instance): String = vhostServiceName("auth", instance)
 
-  private val thrallBaseUri: String =  subpathedServiceBaseUri("thrall")
+  private def thrallBaseUri(instance: Instance): String = vhostServiceName("thrall", instance)
 
   val guardianWitnessBaseUri: String = "https://n0ticeapis.com"
 
-  val corsAllowedDomains: Set[String] = Set(kahunaBaseUri, apiBaseUri, thrallBaseUri)
+  override def corsAllowedDomains(instance: Instance): Set[String] = Set(kahunaBaseUri(instance), apiBaseUri(instance), thrallBaseUri(instance))
 
   val redirectUriParam = "redirectUri"
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
-  val loginUriTemplate = s"$authBaseUri/login$redirectUriPlaceholder"
+  def loginUriTemplate(instance: Instance): String = s"${authBaseUri(instance)}/login$redirectUriPlaceholder"
 
-  private def subpathedServiceBaseUri(serviceName: String): String = s"$rootUrl/$serviceName"
+  private def vhostServiceName(serviceName: String, instance: Instance): String = {
+    val vhost = instance.id
+    s"https://$vhost.$domain" + (if (serviceName.nonEmpty) "/" + serviceName else "")
+  }
 }
 

@@ -101,9 +101,7 @@ function getKahunaConfig(config){
 
     return stripMargin`${getCommonConfig(config)}
         |aws.region="${config.AWS_DEFAULT_REGION}"
-        |origin.full="images.media.${config.DOMAIN}"
         |origin.thumb="localstack.media.${config.DOMAIN}"
-        |origin.images="images.media.${config.DOMAIN}"
         |origin.crops="public.media.${config.DOMAIN}"
         |google.tracking.id="${config.google.tracking.id}"
         |links.feedbackForm="${config.links.feedbackForm}"
@@ -136,7 +134,6 @@ function getMediaApiConfig(config) {
         |s3.thumb.bucket="${config.coreStackProps.ThumbBucket}"
         |s3.config.bucket="${config.coreStackProps.ConfigBucket}"
         |s3.usagemail.bucket="${config.coreStackProps.UsageMailBucket}"
-        |persistence.identifier="picdarUrn"
         |es6.url="${config.es6.url}"
         |es6.shards=${config.es6.shards}
         |es6.replicas=${config.es6.replicas}
@@ -179,7 +176,6 @@ function getThrallConfig(config) {
         |s3.image.bucket="${config.coreStackProps.ImageBucket}"
         |s3.thumb.bucket="${config.coreStackProps.ThumbBucket}"
         |s3.reaper.bucket="${config.coreStackProps.ReaperBucket}"
-        |persistence.identifier="picdarUrn"
         |indexed.image.sns.topic.arn="${config.coreStackProps.IndexedImageTopic}"
         |es6.url="${config.es6.url}"
         |es6.shards=${config.es6.shards}
