@@ -54,7 +54,20 @@ object CollectionsManager {
     "home" -> "#052962"
   )
 
-  private def getCollectionColour(s: String) = collectionColours.get(s)
-
-  def getCssColour(path: List[String]): Option[String] = path.headOption.map(_.toLowerCase).flatMap(getCollectionColour)
+  def getCssColour(path: List[String]): Option[String] = {
+    def forPath(depth: Int, default: Option[String]): Option[String] = {
+      if (depth > path.size) {
+        default
+      } else {
+        val pathId = path.take(depth).mkString("/")
+        collectionColours.get(pathId).map { colour =>
+          forPath(depth + 1, Some(colour))
+        }.getOrElse {
+          default
+        }
+      }
+    }
+    // recurse drop the path return the furthest leaf node
+    forPath(depth = 1, default = None)
+  }
 }
