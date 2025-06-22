@@ -83,6 +83,7 @@ lazy val commonLib = project("common-lib").settings(
     "com.amazonaws" % "aws-java-sdk-cloudwatch" % awsSdkVersion,
     "com.amazonaws" % "aws-java-sdk-cloudfront" % awsSdkVersion,
     "com.amazonaws" % "aws-java-sdk-sqs" % awsSdkVersion,
+    "software.amazon.awssdk" % "sqs" % awsSdkV2Version,
     "com.amazonaws" % "aws-java-sdk-sns" % awsSdkVersion,
     "com.amazonaws" % "aws-java-sdk-sts" % awsSdkVersion,
     "com.amazonaws" % "aws-java-sdk-dynamodb" % awsSdkVersion,
@@ -164,7 +165,8 @@ lazy val thrall = playProject("thrall", 9002)
       "software.amazon.awssdk" % "dynamodb" % awsSdkV2Version,
       "com.gu" %% "kcl-pekko-stream" % "0.1.0",
       "org.testcontainers" % "elasticsearch" % "1.19.2" % Test,
-      "com.google.protobuf" % "protobuf-java" % "3.19.6"
+      "com.google.protobuf" % "protobuf-java" % "3.19.6",
+      "software.amazon.awssdk" % "sqs" % awsSdkV2Version
     ),
     // amazon-kinesis-client 2.6.0 brings in a critically vulnerable version of apache avro,
     // but we cannot upgrade amazon-kinesis-client further without performing the v2->v3 upgrade https://docs.aws.amazon.com/streams/latest/dev/kcl-migration-from-2-3.html
@@ -262,8 +264,10 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
       Universal / javaOptions ++= Seq(
         "-Dpidfile.path=/dev/null",
         s"-Dconfig.file=/opt/docker/conf/application.conf",
-        s"-Dlogger.file=/opt/docker/conf/logback.xml"
-      )))
+        s"-Dlogger.file=/opt/docker/conf/logback.xml",
+        "-XX:+PrintCommandLineFlags", "-XX:MaxRAMPercentage=60"
+      ))
+    )
 }
 
 def playImageLoaderProject(projectName: String, port: Int, path: Option[String] = None): Project = {
@@ -300,6 +304,7 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
       Universal / mappings ++= Seq(
         file("common-lib/src/main/resources/application.conf") -> "conf/application.conf",
         file("common-lib/src/main/resources/logback.xml") -> "conf/logback.xml",
+        file("image-loader/cmyk.icc") -> "cmyk.icc",
         file("image-loader/facebook-TINYsRGB_c2.icc") -> "facebook-TINYsRGB_c2.icc",
         file("image-loader/grayscale.icc") -> "grayscale.icc",
         file("image-loader/srgb.icc") -> "srgb.icc"

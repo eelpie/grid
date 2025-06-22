@@ -4,9 +4,11 @@ import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.Link
 import com.gu.mediaservice.lib.auth.Authentication.{InnerServicePrincipal, MachinePrincipal, OnBehalfOfPrincipal, Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider._
-import com.gu.mediaservice.lib.config.CommonConfig
+import com.gu.mediaservice.lib.config.{CommonConfig, InstanceForRequest}
+import com.gu.mediaservice.model.Instance
+import play.api.libs.json.{Json, Reads}
 import play.api.libs.typedmap.TypedMap
-import play.api.libs.ws.WSRequest
+import play.api.libs.ws.{WSClient, WSRequest}
 import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
 
@@ -14,36 +16,40 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class Authentication(config: CommonConfig,
                      providers: AuthenticationProviders,
+                     wsClient: WSClient,
                      override val parser: BodyParser[AnyContent],
                      override val executionContext: ExecutionContext)
-  extends ActionBuilder[Authentication.Request, AnyContent] with ArgoHelpers {
+  extends ActionBuilder[Authentication.Request, AnyContent] with ArgoHelpers with InstanceForRequest {
 
   // make the execution context implicit so it will be picked up appropriately
   implicit val ec: ExecutionContext = executionContext
 
-  val loginLinks: List[Link] = providers.userProvider.loginLink match {
+  private val myInstancesEndpoint = config.myInstancesEndpoint
+
+  def loginLinks()(implicit instance: Instance): List[Link] = providers.userProvider.loginLink match {
     case DisableLoginLink => Nil
-    case BuiltInAuthService => List(Link("login", config.services.loginUriTemplate))
+    case BuiltInAuthService => List(Link("login", config.services.loginUriTemplate(instance)))
     case ExternalLoginLink(link) => List(Link("login", link))
   }
 
-  def unauthorised(errorMessage: String, throwable: Option[Throwable] = None): Future[Result] = {
+  private def unauthorised(errorMessage: String, throwable: Option[Throwable] = None)(implicit instance: Instance): Future[Result] = {
     logger.info(s"Authentication failure $errorMessage", throwable.orNull)
-    Future.successful(respondError(Unauthorized, "authentication-failure", "Authentication failure", loginLinks))
+    Future.successful(respondError(Unauthorized, "authentication-failure", "Authentication failure", loginLinks()))
   }
 
-  def forbidden(errorMessage: String): Future[Result] = {
+  def forbidden(errorMessage: String)(implicit instance: Instance): Future[Result] = {
     logger.info(s"User not authorised: $errorMessage")
-    Future.successful(respondError(Forbidden, "principal-not-authorised", "Principal not authorised", loginLinks))
+    Future.successful(respondError(Forbidden, "principal-not-authorised", "Principal not authorised", loginLinks()))
   }
 
-  def expired(user: UserPrincipal): Future[Result] = {
+  def expired(user: UserPrincipal)(implicit instance: Instance): Future[Result] = {
     logger.info(s"User token expired for ${user.email}, return 419")
-    Future.successful(respondError(new Status(419), errorKey = "authentication-expired", errorMessage = "User authentication token has expired", loginLinks))
+    Future.successful(respondError(new Status(419), errorKey = "authentication-expired", errorMessage = "User authentication token has expired", loginLinks()))
   }
 
   // gracePeriodCountsAsAuthenticated - if true, then users with valid but recently-expired cookies are considered authenticated, and not required to refresh session for this request
   def authenticationStatus(requestHeader: RequestHeader, gracePeriodCountsAsAuthenticated: Boolean): Either[Future[Result], Principal] = {
+    implicit val instance: Instance = instanceOf(requestHeader)
     def flushToken(resultWhenAbsent: Result): Result = {
       providers.userProvider.flushToken.fold(resultWhenAbsent)(_(requestHeader, resultWhenAbsent))
     }
@@ -75,8 +81,57 @@ class Authentication(config: CommonConfig,
   override def invokeBlock[A](request: Request[A], block: Authentication.Request[A] => Future[Result]): Future[Result] = {
     // gracePeriodCountsAsAuthenticated is set to true here, so requests using this block should accept users whose session is in the grace period
     authenticationStatus(request, gracePeriodCountsAsAuthenticated = true) match {
-      // we have a principal, so process the block
-      case Right(principal) => block(new AuthenticatedRequest(principal, request))
+      case Right(principal) => {
+        principal match {
+          case innerServicePrincipal: InnerServicePrincipal =>
+            logger.info("Allowing InnerServicePrincipal request for all instances")
+            block(new AuthenticatedRequest(innerServicePrincipal, request))
+
+          case m: MachinePrincipal =>
+            val instance = instanceOf(request)
+            val maybeApiKeyInstance = m.attributes.get(ApiKeyAuthenticationProvider.ApiKeyInstance)
+            logger.info("Api key instance: " + maybeApiKeyInstance)
+            maybeApiKeyInstance.map { apiKeyInstance =>
+              // we have an end user principal, and a list of the instances they are allowed to access.
+              // Only process the block if the instance is allowed.
+              val isAllowedToAccessThisInstance = instance.id == apiKeyInstance
+              logger.debug(s"$principal is allowed to access instance ${instance.id}: $isAllowedToAccessThisInstance")
+              if (isAllowedToAccessThisInstance) {
+                logger.debug("Allowing this request!")
+                block(new AuthenticatedRequest(principal, request))
+
+              } else {
+                logger.warn(s"Blocking request ${request.path} on instance ${instance.id} for principal: " + principal)
+                Future.successful(Forbidden("You do not have permission to use this instance"))
+              }
+            }.getOrElse{
+              logger.warn(s"Blocking request ${request.path} on instance ${instance.id} for principal: " + principal)
+              Future.successful(Forbidden("You do not have permission to use this instance"))
+            }
+
+          case _ =>
+            val instance = instanceOf(request)
+            principal.attributes.get(ApiKeyAuthenticationProvider.KindeIdKey).map { owner =>
+              getMyInstances(owner).flatMap { principalsInstances =>
+                // we have an end user principal, and a list of the instances they are allowed to access.
+                // Only process the block if the instance is allowed.
+                val isAllowedToAccessThisInstance = principalsInstances.exists(_.id == instance.id)
+                logger.debug(s"$principal is allowed to access instance ${instance.id}: $isAllowedToAccessThisInstance")
+                if (isAllowedToAccessThisInstance) {
+                  logger.debug("Allowing this request!")
+                  block(new AuthenticatedRequest(principal, request))
+
+                } else {
+                  logger.warn(s"Blocking request ${request.path} on instance ${instance.id} for principal: " + principal)
+                  Future.successful(Forbidden("You do not have permission to use this instance"))
+                }
+              }
+            }.getOrElse {
+              logger.warn(s"Blocking request ${request.path} on instance ${instance.id} for principal: " + principal)
+              Future.successful(Forbidden("You do not have permission to use this instance"))
+            }
+        }
+      }
       // no principal so return a result which will either be an error or a form of redirect
       case Left(result) => result
     }
@@ -98,6 +153,19 @@ class Authentication(config: CommonConfig,
   /** Use this for originating calls to other Grid services (this will sign the request and the receiving service will extract an `InnerServicePrincipal`)
     * IMPORTANT: Do not use this for simply making ongoing calls to other Grid services - instead use `getOnBehalfOfPrincipal` */
   def innerServiceCall(wsRequest: WSRequest): WSRequest = providers.innerServiceProvider.signRequest(wsRequest)
+
+  private def getMyInstances(owner: String): Future[Seq[Instance]] = {
+    wsClient.url(myInstancesEndpoint).withQueryStringParameters("owner" -> owner).get().map { r =>
+      r.status match {
+        case 200 =>
+          implicit val ir: Reads[Instance] = Json.reads[Instance]
+          Json.parse(r.body).as[Seq[Instance]]
+        case _ =>
+          logger.warn("Got non 200 status for instances call: " + r.status)
+          Seq.empty
+      }
+    }
+  }
 }
 
 object Authentication {

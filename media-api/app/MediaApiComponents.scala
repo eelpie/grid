@@ -24,13 +24,13 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   applicationLifecycle.addStopHook(() => Future{usageQuota.stopUpdates()})
 
   val elasticSearch = new ElasticSearch(config, mediaApiMetrics, config.esConfig, () => usageQuota.usageStore.overQuotaAgencies, actorSystem.scheduler)
-  elasticSearch.ensureIndexExistsAndAliasAssigned()
+  // TODO needs to move somewhere more instance aware elasticSearch.ensureIndexExistsAndAliasAssigned()
 
   val imageResponse = new ImageResponse(config, s3Client, usageQuota)
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
 
-  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3Client, mediaApiMetrics, wsClient, authorisation)
+  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3Client, mediaApiMetrics, wsClient, authorisation, events)
   val suggestionController = new SuggestionController(auth, elasticSearch, controllerComponents)
   val aggController = new AggregationController(auth, elasticSearch, controllerComponents)
   val usageController = new UsageController(auth, config, elasticSearch, usageQuota, controllerComponents)

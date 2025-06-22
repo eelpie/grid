@@ -2,10 +2,12 @@ package com.gu.mediaservice.lib.guardian.auth
 
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.Link
-import com.gu.mediaservice.lib.auth.Authentication.{UserPrincipal, Principal}
+import com.gu.mediaservice.lib.auth.Authentication.{Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.aws.S3Ops
+import com.gu.mediaservice.lib.config.InstanceForRequest
+import com.gu.mediaservice.model.Instance
 import com.gu.pandomainauth.PanDomainAuthSettingsRefresher
 import com.gu.pandomainauth.action.AuthActions
 import com.gu.pandomainauth.model.{AuthenticatedUser, User, Authenticated => PandaAuthenticated, Expired => PandaExpired, GracePeriod => PandaGracePeriod, InvalidCookie => PandaInvalidCookie, NotAuthenticated => PandaNotAuthenticated, NotAuthorized => PandaNotAuthorised}
@@ -25,19 +27,19 @@ class PandaAuthenticationProvider(
   resources: AuthenticationProviderResources,
   providerConfiguration: Configuration
 )
-  extends UserAuthenticationProvider with AuthActions with StrictLogging with ArgoHelpers with HeaderNames {
+  extends UserAuthenticationProvider with AuthActions with StrictLogging with ArgoHelpers with HeaderNames with InstanceForRequest {
 
   implicit val ec: ExecutionContext = controllerComponents.executionContext
 
-  final override def authCallbackUrl: String = s"${resources.commonConfig.services.authBaseUri}/oauthCallback"
+  final override def authCallbackUrl: String = ??? // TODO We're stuck here but will be replacing Panda s"${resources.commonConfig.services.authBaseUri}/oauthCallback"
   override lazy val panDomainSettings: PanDomainAuthSettingsRefresher = buildPandaSettings()
   override def wsClient: WSClient = resources.wsClient
   override def controllerComponents: ControllerComponents = resources.controllerComponents
 
   override def apiGracePeriod: Long = Duration(24, HOURS).toMillis
 
-  val loginLinks = List(
-    Link("login", resources.commonConfig.services.loginUriTemplate)
+  def loginLinks(implicit instance: Instance): List[Link] = List(
+    Link("login", resources.commonConfig.services.loginUriTemplate(instance))
   )
 
   /**
@@ -84,6 +86,8 @@ class PandaAuthenticationProvider(
     */
   override def sendForAuthenticationCallback: Option[(RequestHeader, Option[RedirectUri]) => Future[Result]] =
     Some({ (requestHeader: RequestHeader, maybeUri: Option[RedirectUri]) =>
+      implicit val instance: Instance = instanceOf(requestHeader)
+
       // We use the `Try` here as the `GoogleAuthException` are thrown before we
       // get to the asynchronicity of the `Future` it returns.
       // We then have to flatten the Future[Future[T]]. Fiddly...
