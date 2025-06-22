@@ -8,7 +8,7 @@ trait CssColours {
     "home/home news" -> "#022164",
     "home/international" -> "#022164",
     "home/ofm" -> "#f2327d",
-    "home/magazine/" -> "#5b1e4a",
+    "home/magazine" -> "#5b1e4a",
     "home/sensemakers" -> "#3c9bf9",
     "home/sport" -> "#00663b",
     "home/supplements" -> "#008083",
