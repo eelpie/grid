@@ -43,15 +43,15 @@ object CollectionsManager {
 
   // These use Source swatches
   private val collectionColours = Map(
-    "australia"    -> "#185E36",
-    "culture"      -> "#BB3B80",
-    "film & music" -> "#6B5840",
-    "g2"           -> "#121212",
-    "guide"        -> "#7D0068",
-    "observer"     -> "#052962",
-    "sport"        -> "#22874D",
-    "travel"       -> "#041F4A",
-    "home"         -> "#052962"
+    "hone/biz & cash" -> "#c98a07",
+    "home/home news" -> "#022164",
+    "home/international" -> "#022164",
+    "home/ofm" -> "#f2327d",
+    "home/magazine/" -> "#5b1e4a",
+    "home/sensemakers" -> "#3c9bf9",
+    "home/sport" -> "#00663b",
+    "home/supplements" -> "#008083",
+    "home" -> "#052962"
   )
 
   private def getCollectionColour(s: String) = collectionColours.get(s)
