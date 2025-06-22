@@ -3,7 +3,6 @@ package controllers
 
 import java.net.URI
 import java.net.URLDecoder.decode
-
 import com.amazonaws.AmazonServiceException
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.argo.ArgoHelpers
@@ -13,7 +12,6 @@ import com.gu.mediaservice.lib.auth.Authentication.Principal
 import com.gu.mediaservice.lib.auth.Permissions.EditMetadata
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
 import com.gu.mediaservice.lib.aws.NoItemFound
-import com.gu.mediaservice.lib.config.{ServiceHosts, Services}
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
 import lib._
@@ -58,8 +56,7 @@ class EditsController(
 
   import com.gu.mediaservice.lib.metadata.UsageRightsMetadataMapper.usageRightsToMetadata
 
-  val services: Services = new Services(config.domainRoot, config.serviceHosts, Set.empty)
-  val gridClient: GridClient = GridClient(services)(ws)
+  private val gridClient: GridClient = GridClient(config.services)(ws)
 
   val metadataBaseUri = config.services.metadataBaseUri
   private val AuthenticatedAndAuthorised = auth andThen authorisation.CommonActionFilters.authorisedForArchive
