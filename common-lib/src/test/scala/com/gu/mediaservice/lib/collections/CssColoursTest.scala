@@ -8,16 +8,16 @@ class CssColoursTest extends AnyFunSpec with Matchers with CssColours {
   describe("CssColours") {
     describe("getCssColour") {
       it("should return exact match for specific collections") {
-        getCssColour(List("home", "supplements")) shouldBe Some("#008083")
+        getCssColour(List("Home", "Supplements")) shouldBe Some("#008083")
       }
       it("should default of none for collections with no specific colour preferences or parents with a colour") {
-        getCssColour(List("unknown")) shouldBe None
+        getCssColour(List("Unknown")) shouldBe None
       }
       it("should return colour of parent for collection with no specific colour") {
-        getCssColour(List("home", "something")) shouldBe Some("#052962")
+        getCssColour(List("Home", "Something")) shouldBe Some("#052962")
       }
       it("should return colour of closet parent for collection with no specific colour") {
-        getCssColour(List("home", "supplements", "something", "somethingelse")) shouldBe Some("#008083")
+        getCssColour(List("Home", "Supplements", "Something", "Something else")) shouldBe Some("#008083")
       }
     }
   }

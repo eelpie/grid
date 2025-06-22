@@ -20,7 +20,7 @@ trait CssColours {
       if (depth > path.size) {
         default
       } else {
-        val pathId = path.take(depth).mkString("/")
+        val pathId = path.take(depth).map(_.toLowerCase()).mkString("/")
         collectionColours.get(pathId).map { colour =>
           forPath(depth + 1, Some(colour))
         }.getOrElse {
