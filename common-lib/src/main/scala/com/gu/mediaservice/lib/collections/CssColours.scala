@@ -4,7 +4,7 @@ trait CssColours {
 
   // These use Source swatches
   private val collectionColours = Map(
-    "hone/biz & cash" -> "#c98a07",
+    "home/biz & cash" -> "#c98a07",
     "home/home news" -> "#022164",
     "home/international" -> "#022164",
     "home/ofm" -> "#f2327d",
