@@ -28,6 +28,7 @@ object TortoiseUsageRightsConfig extends UsageRightsConfigProvider {
       PublicationPhotographer("Karen Robinson"),
       PublicationPhotographer("Sophia Evans"),
       PublicationPhotographer("Katherine Rose"),
+      PublicationPhotographer("Katherine Anna Rose"),
       PublicationPhotographer("Antonio Olmos"),
       PublicationPhotographer("Jonathan Lovekin")
     ))
