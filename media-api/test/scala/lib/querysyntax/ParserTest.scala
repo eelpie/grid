@@ -285,7 +285,18 @@ class ParserTest extends AnyFunSpec with Matchers with BeforeAndAfter with Image
             )),
             Phrase("https://generic.cms/1234")
           ),
-          Negation(Match(IsField,IsValue("deleted"))))
+          Negation(Match(IsField, IsValue("deleted"))))
+        )
+      }
+
+      it("should match nested usage printIssueDate query") {
+        Parser.run("usages@printIssueDate:foo") should be(List(
+          Nested(
+            SingleField("usages"),
+            SingleField("usages.printUsageMetadata.issueDate"),
+            Phrase("foo")
+          ),
+          Negation(Match(IsField, IsValue("deleted"))))
         )
       }
     }
