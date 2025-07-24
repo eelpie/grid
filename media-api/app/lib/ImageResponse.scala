@@ -10,6 +10,7 @@ import com.gu.mediaservice.model.usage._
 import lib.ImageResponse.extractAliasFieldValues
 import lib.elasticsearch.SourceWrapper
 import lib.usagerights.CostCalculator
+import org.apache.commons.codec.binary.Base64
 import org.joda.time.DateTime
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
@@ -144,9 +145,9 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     import BoolImplicitMagic.BoolToOption
     val cropLinkMaybe = valid.toOption(Link("crops", s"${config.cropperUri}/crops/$id"))
     val editLinkMaybe = withWritePermission.toOption(Link("edits", s"${config.metadataUri}/metadata/$id"))
-    val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgopsUri(new URI(secureUrl))) }
+    val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgProxyUri(new URI(secureUrl))) }
 
-    val optimisedLink = Link("optimised", makeImgopsUri(new URI(secureUrl)))
+    val optimisedLink = Link("optimised", makeImgProxyUri(new URI(secureUrl)))
     val imageLink = Link("ui:image", s"${config.kahunaUri}/images/$id")
     val usageLink = Link("usages", s"${config.usageUri}/usages/media/$id")
     val leasesLink = Link("leases", s"${config.leasesUri}/leases/media/$id")
@@ -253,8 +254,14 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
       "aliases" -> JsObject(aliases)
     ))
 
-  def makeImgopsUri(uri: URI): String =
+  private def makeImgProxyUri(uri: URI): String = {
     config.imgopsUri + List(uri.getPath, uri.getRawQuery).mkString("?") + "{&w,h,q}"
+    val base64EncodedSourceURL = new String(Base64.encodeBase64URLSafe(uri.toURL.toExternalForm.getBytes), "UTF-8")
+    val pathComponents = Seq(config.imgopsUri, "no-signature",
+      "auto_rotate:false", "strip_metadata:true", "strip_color_profile:true",
+      "resize:fit:{w}:{h}", "quality:{q}") :+ base64EncodedSourceURL
+    pathComponents.mkString("/")
+  }
 
   private def updateCustomSpecialInstructions(source: JsValue): Reads[JsObject] = {
      (source \ "usageRights" \ "category") match {
