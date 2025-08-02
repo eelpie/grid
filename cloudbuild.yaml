@@ -1,11 +1,11 @@
 options:
   machineType: 'N1_HIGHCPU_8'
 steps:
-  - name: 'node:21-alpine'
+  - name: 'node:24-alpine'
     entrypoint: 'npm'
     dir: 'kahuna'
     args: [ 'install' ]
-  - name: 'node:21-alpine'
+  - name: 'node:24-alpine'
     entrypoint: 'npm'
     dir: 'kahuna'
     args: [ 'run', 'test' ]
