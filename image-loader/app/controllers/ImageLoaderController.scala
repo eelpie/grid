@@ -433,7 +433,7 @@ class ImageLoaderController(auth: Authentication,
           logger.info(context, "image found")
           Ok(Json.toJson(img)).as(ArgoMediaType)
         case None =>
-          val s3Path = "s3://" + config.imageBucket + "/" + ImageIngestOperations.fileKeyFromId(imageId, instance)
+          val s3Path = "s3://" + config.imageBucket + "/" + ImageIngestOperations.fileKeyFromId(imageId)
           logger.info(context, "image not found")
           respondError(NotFound, "image-not-found", s"Could not find image: $imageId in s3 at $s3Path")
       } recover {
@@ -634,11 +634,11 @@ class ImageLoaderController(auth: Authentication,
       "requestId" -> RequestLoggingFilter.getRequestId(request)
     )
 
-    val s3Key = fileKeyFromId(imageId, instance)
+    val s3Key = fileKeyFromId(imageId)
 
     Future {
       config.maybeImageReplicaBucket match {
-        case _ if store.doesOriginalExist(imageId, instance) =>
+        case _ if store.doesOriginalExist(imageId) =>
           Future.successful(Conflict("Image already exists in main bucket"))
         case None =>
           Future.successful(NotImplemented("No replica bucket configured"))
