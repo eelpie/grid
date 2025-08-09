@@ -179,8 +179,8 @@ class ReaperController(
 
     (for {
       BatchDeletionIds(esIds, esIdsActuallyDeleted) <- es.hardDeleteNextBatchOfImages(isReapable, count, config.hardReapImagesAge)
-      mainImagesS3Deletions <- store.deleteOriginals(esIdsActuallyDeleted, i)
-      thumbsS3Deletions <- store.deleteThumbnails(esIdsActuallyDeleted, i)
+      mainImagesS3Deletions <- store.deleteOriginals(esIdsActuallyDeleted)
+      thumbsS3Deletions <- store.deleteThumbnails(esIdsActuallyDeleted)
       pngsS3Deletions <- store.deletePNGs(esIdsActuallyDeleted, i)
       _ <- softDeletedMetadataTable.clearStatuses(esIdsActuallyDeleted)
       // TODO No one has issued an image-deleted notification to metadata-editor? Metadata will persist forever?
@@ -190,8 +190,8 @@ class ReaperController(
         val wasHardDeletedFromES = esIdsActuallyDeleted.contains(id)
         val detail = Json.obj(
           "ES" -> wasHardDeletedFromES,
-          "mainImage" -> mainImagesS3Deletions.get(ImageIngestOperations.fileKeyFromId(id, instance)),
-          "thumb" -> thumbsS3Deletions.get(ImageIngestOperations.fileKeyFromId(id, instance)),
+          "mainImage" -> mainImagesS3Deletions.get(ImageIngestOperations.fileKeyFromId(id)),
+          "thumb" -> thumbsS3Deletions.get(ImageIngestOperations.fileKeyFromId(id)),
           "optimisedPng" -> pngsS3Deletions.get(ImageIngestOperations.optimisedPngKeyFromId(id, instance))
         )
         logger.info(s"Hard deleted image $id : ${Json.stringify(detail)}")
