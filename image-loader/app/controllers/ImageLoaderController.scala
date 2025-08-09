@@ -21,6 +21,7 @@ import com.gu.mediaservice.model.{Instance, UnsupportedMimeTypeException, Upload
 import lib.FailureResponse.Response
 import lib._
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3, UserImageLoaderException}
+import lib.instances.Instances
 import lib.storage.{ImageLoaderStore, S3FileDoesNotExistException}
 import model.upload.UploadRequest
 import model.{Projector, QuarantineUploader, S3FileExtractedMetadata, S3IngestObject, StatusType, UploadStatus, UploadStatusRecord, UploadStatusUri, Uploader}
@@ -436,7 +437,7 @@ class ImageLoaderController(auth: Authentication,
           logger.info(context, "image found")
           Ok(Json.toJson(img)).as(ArgoMediaType)
         case None =>
-          val s3Path = "s3://" + config.imageBucket + "/" + ImageIngestOperations.fileKeyFromId(imageId, instance)
+          val s3Path = "s3://" + config.imageBucket + "/" + ImageIngestOperations.fileKeyFromId(imageId)
           logger.info(context, "image not found")
           respondError(NotFound, "image-not-found", s"Could not find image: $imageId in s3 at $s3Path")
       } recover {
@@ -638,12 +639,12 @@ class ImageLoaderController(auth: Authentication,
 
     Future {
       config.maybeImageReplicaBucket match {
-        case _ if store.doesOriginalExist(imageId, instance) =>
+        case _ if store.doesOriginalExist(imageId) =>
           Future.successful(Conflict("Image already exists in main bucket"))
         case None =>
           Future.successful(NotImplemented("No replica bucket configured"))
-        case Some(replicaBucket) if doesObjectExist(replicaBucket, fileKeyFromId(imageId, instance)) =>
-          val s3Key = fileKeyFromId(imageId, instance)
+        case Some(replicaBucket) if doesObjectExist(replicaBucket, fileKeyFromId(imageId)) =>
+          val s3Key = fileKeyFromId(imageId)
 
           logger.info(logMarker, s"Restoring image $imageId from replica bucket $replicaBucket (key: $s3Key)")
 
