@@ -14,7 +14,7 @@ import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
 
 object ImageIngestOperations {
-  def fileKeyFromId(id: String, instance: Instance): String = instance.id + "/" + snippetForId(id)
+  def fileKeyFromId(id: String)(implicit instance: Instance): String = instance.id + "/" + snippetForId(id)
 
   def optimisedPngKeyFromId(id: String, instance: Instance): String = instance.id + "/" + "optimised/" + snippetForId(id: String)
 
@@ -78,26 +78,26 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
     }
   }
 
-  def deleteOriginal(id: String, instance: Instance)(implicit logMarker: LogMarker): Future[Unit] = if(isVersionedS3) deleteVersionedImage(imageBucket, fileKeyFromId(id, instance)) else deleteImage(imageBucket, fileKeyFromId(id, instance))
-  def deleteOriginals(ids: Set[String], instance: Instance) = bulkDeleteV2(imageBucket, ids.map(id => fileKeyFromId(id, instance)).toList)
-  def deleteThumbnail(id: String, instance: Instance)(implicit logMarker: LogMarker): Future[Unit] = deleteImage(thumbnailBucket, fileKeyFromId(id, instance))
-  def deleteThumbnails(ids: Set[String], instance: Instance) = bulkDeleteV2(thumbnailBucket, ids.map(id => fileKeyFromId(id, instance)).toList)
+  def deleteOriginal(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[Unit] = if(isVersionedS3) deleteVersionedImage(imageBucket, fileKeyFromId(id)) else deleteImage(imageBucket, fileKeyFromId(id))
+  def deleteOriginals(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(imageBucket, ids.map(id => fileKeyFromId(id)).toList)
+  def deleteThumbnail(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[Unit] = deleteImage(thumbnailBucket, fileKeyFromId(id))
+  def deleteThumbnails(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(thumbnailBucket, ids.map(id => fileKeyFromId(id)).toList)
   def deletePNG(id: String, instance: Instance)(implicit logMarker: LogMarker): Future[Unit] = deleteImage(imageBucket, optimisedPngKeyFromId(id, instance))
   def deletePNGs(ids: Set[String], instance: Instance) = bulkDeleteV2(imageBucket, ids.map(id => optimisedPngKeyFromId(id, instance)).toList)
 
-  def doesOriginalExist(id: String, instance: Instance): Boolean =
-    client.doesObjectExist(imageBucket, fileKeyFromId(id, instance))
+  def doesOriginalExist(id: String)(implicit instance: Instance): Boolean =
+    client.doesObjectExist(imageBucket, fileKeyFromId(id))
 
-  def doesOriginalExistV2(id: String, instance: Instance): Boolean = {
-    this.doesObjectExistV2(imageBucket, fileKeyFromId(id, instance))
+  def doesOriginalExistV2(id: String)(implicit instance: Instance): Boolean = {
+    this.doesObjectExistV2(imageBucket, fileKeyFromId(id))
   }
 
   private def instanceAwareOriginalImageKey(storableImage: StorableOriginalImage) = {
-    fileKeyFromId(storableImage.id, storableImage.instance)
+    fileKeyFromId(storableImage.id)(storableImage.instance)
   }
 
   private def instanceAwareThumbnailImageKey(storableImage: StorableThumbImage) = {
-    fileKeyFromId(storableImage.id, storableImage.instance)
+    fileKeyFromId(storableImage.id)(storableImage.instance)
   }
 
 }
@@ -112,7 +112,7 @@ sealed trait ImageWrapper {
 sealed trait StorableImage extends ImageWrapper {
   def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
     thumbBucket,
-    ImageIngestOperations.fileKeyFromId(id, instance),
+    ImageIngestOperations.fileKeyFromId(id)(instance),
     file,
     Some(mimeType),
     lastModified = None,
@@ -124,7 +124,7 @@ case class StorableThumbImage(id: String, file: File, mimeType: MimeType, meta: 
 case class StorableOriginalImage(id: String, file: File, mimeType: MimeType, lastModified: DateTime, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage {
   override def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
     thumbBucket,
-    ImageIngestOperations.fileKeyFromId(id, instance),
+    ImageIngestOperations.fileKeyFromId(id)(instance),
     file,
     Some(mimeType),
     lastModified = Some(lastModified),
