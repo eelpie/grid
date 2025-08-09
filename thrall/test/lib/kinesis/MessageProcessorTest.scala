@@ -66,14 +66,14 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
       val png = Promise[Unit]()
       val esDelete = Promise[ElasticSearchDeleteResponse]()
       when(f.es.ensureImageDeletable(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])).thenReturn(deletable.future)
-      when(f.store.deleteOriginal(any[String], any[Instance])(any[LogMarker])).thenReturn(original.future)
-      when(f.store.deleteThumbnail(any[String], any[Instance])(any[LogMarker])).thenReturn(thumbnail.future)
-      when(f.store.deletePNG(any[String], any[Instance])(any[LogMarker])).thenReturn(png.future)
+      when(f.store.deleteOriginal(any[String])(any[LogMarker], any[Instance])).thenReturn(original.future)
+      when(f.store.deleteThumbnail(any[String])(any[LogMarker], any[Instance])).thenReturn(thumbnail.future)
+      when(f.store.deletePNG(any[String])(any[LogMarker], any[Instance])).thenReturn(png.future)
       when(f.es.forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])).thenReturn(esDelete.future)
 
       val result = f.processor.process(DeleteImageMessage(image.id, DateTime.now, instance), marker)
 
-      verify(f.store, never()).deleteOriginal(any[String], any[Instance])(any[LogMarker])
+      verify(f.store, never()).deleteOriginal(any[String])(any[LogMarker], any[Instance])
       deletable.success(())
       original.success(())
       thumbnail.success(())
@@ -88,9 +88,9 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
       val f = new Fixture
       val failure = new RuntimeException("s3 delete failed")
       when(f.es.ensureImageDeletable(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])).thenReturn(Future.successful(()))
-      when(f.store.deleteOriginal(any[String], any[Instance])(any[LogMarker])).thenReturn(Future.failed(failure))
-      when(f.store.deleteThumbnail(any[String], any[Instance])(any[LogMarker])).thenReturn(Future.successful(()))
-      when(f.store.deletePNG(any[String], any[Instance])(any[LogMarker])).thenReturn(Future.successful(()))
+      when(f.store.deleteOriginal(any[String])(any[LogMarker], any[Instance])).thenReturn(Future.failed(failure))
+      when(f.store.deleteThumbnail(any[String])(any[LogMarker], any[Instance])).thenReturn(Future.successful(()))
+      when(f.store.deletePNG(any[String])(any[LogMarker], any[Instance])).thenReturn(Future.successful(()))
 
       f.processor.process(DeleteImageMessage(image.id, DateTime.now, instance), marker).failed.futureValue shouldBe failure
       verify(f.es, never()).forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])
@@ -103,9 +103,9 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
 
       f.processor.process(DeleteImageMessage(image.id, DateTime.now, instance), marker).futureValue
 
-      verify(f.store, never()).deleteOriginal(any[String], any[Instance])(any[LogMarker])
-      verify(f.store, never()).deleteThumbnail(any[String], any[Instance])(any[LogMarker])
-      verify(f.store, never()).deletePNG(any[String], any[Instance])(any[LogMarker])
+      verify(f.store, never()).deleteOriginal(any[String])(any[LogMarker], any[Instance])
+      verify(f.store, never()).deleteThumbnail(any[String])(any[LogMarker], any[Instance])
+      verify(f.store, never()).deletePNG(any[String])(any[LogMarker], any[Instance])
       verify(f.es, never()).forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance]) // TODO assert instance
     }
   }

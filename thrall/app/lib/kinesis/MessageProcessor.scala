@@ -189,9 +189,9 @@ class MessageProcessor(
       _ <- es.ensureImageDeletable(message.id)
       // Delete S3 objects before removing the ES document so a failed S3 delete can be retried.
       _ <- Future.sequence(List(
-        store.deleteOriginal(message.id, instance),
-        store.deleteThumbnail(message.id, instance),
-        store.deletePNG(message.id, instance)
+        store.deleteOriginal(message.id),
+        store.deleteThumbnail(message.id),
+        store.deletePNG(message.id)
       ))
       _ <- es.forceDeleteImage(message.id)
     } yield ()).recover {
