@@ -475,7 +475,7 @@ class Uploader(
           logger.info(logMarker, s"Copying $mediaId to lower environment queue bucket $lowerEnvironmentQueueBucket")
           try {
             store.client.copyObject(
-              config.imageBucket, fileKeyFromId(mediaId, instance),
+              config.imageBucket, fileKeyFromId(mediaId),
               lowerEnvironmentQueueBucket, s"${uploadRequest.uploadedBy}/${uploadRequest.uploadInfo.filename.getOrElse(mediaId)}"
             )
           } catch {
