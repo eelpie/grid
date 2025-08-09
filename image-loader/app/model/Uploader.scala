@@ -480,7 +480,7 @@ class Uploader(
             store.client.copyObject(
               CopyObjectRequest.builder()
                 .sourceBucket(config.imageBucket)
-                .sourceKey(fileKeyFromId(mediaId, instance))
+                .sourceKey(fileKeyFromId(mediaId))
                 .destinationBucket(lowerEnvironmentQueueBucket)
                 .destinationKey(s"${uploadRequest.uploadedBy}/${uploadRequest.uploadInfo.filename.getOrElse(mediaId)}")
                 .build()
