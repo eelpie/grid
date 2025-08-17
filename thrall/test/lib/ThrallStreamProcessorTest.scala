@@ -30,9 +30,11 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
   private implicit val ec: ExecutionContext = actorSystem.dispatcher
   private implicit val materializer: Materializer = Materializer.matFromSystem(actorSystem)
 
+  private val anInstance = Instance("an-instance")
+
   describe("Stream merging strategy") {
     def createKinesisRecord: KinesisRecord = KinesisRecord(
-      data = ByteString(JsonByteArrayUtil.toByteArray(UpdateMessage(subject = "delete-image", id = Some("my-id"), instance = Instance("an-instance")))),
+      data = ByteString(JsonByteArrayUtil.toByteArray(UpdateMessage(subject = "delete-image", id = Some("my-id"), instance = anInstance))),
       partitionKey = "",
       explicitHashKey = None,
       sequenceNumber = "",
@@ -122,7 +124,6 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
       mockEs,
       mockGrid,
       projectionParallelism = 1,
-      Instance("an-instance")
     )
 
     lazy val mockConsumer: ThrallEventConsumer = mock[ThrallEventConsumer]
@@ -140,9 +141,9 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
     it("can send messages manually") {
       val stream = streamProcessor.createStream()
 
-      val request = MigrationRequest("id", 1L)
+      val request = MigrationRequest("id", 1L, anInstance)
 
-      val expectedMigrationMessage = MigrateImageMessage("id", Right(projectedImage, 1L), Instance("an-instance"))
+      val expectedMigrationMessage = MigrateImageMessage("id", Right(projectedImage, 1L), anInstance)
 
       migrationSourceWithSender.send(request)
 
