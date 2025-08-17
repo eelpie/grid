@@ -4,6 +4,7 @@ import org.apache.pekko.actor.{ActorSystem, Scheduler}
 import com.gu.mediaservice.lib.VectorUtils.{firstBasisVector, vectorWithCosineSimilarity}
 import com.gu.mediaservice.lib.config.GridConfigResources
 import com.gu.mediaservice.lib.elasticsearch.{ElasticSearchAliases, ElasticSearchConfig, ElasticSearchExecutions}
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.testlib.ElasticSearchDockerBase
@@ -57,7 +58,7 @@ class HybridSearchTest extends AnyFunSpec
     replicas = 0
   )
 
-  private lazy val ES = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => List.empty, mock[Scheduler])
+  private lazy val ES = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => List.empty, mock[Scheduler], mock[InstancesClient])
   lazy val client = ES.client
 
   private val oneHundredMilliseconds = Duration(100, MILLISECONDS)
