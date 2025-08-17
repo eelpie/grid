@@ -4,6 +4,7 @@ import org.apache.pekko.actor.Scheduler
 import com.gu.mediaservice.lib.ImageFields
 import com.gu.mediaservice.lib.elasticsearch.filters
 import com.gu.mediaservice.lib.elasticsearch.{CompletionPreview, ElasticSearchClient, ElasticSearchConfig, MigrationStatusProvider, Running}
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
 import com.gu.mediaservice.lib.metrics.FutureSyntax
 import com.gu.mediaservice.model.{Agencies, Agency, AwaitingReviewForSyndication, Image, Instance}
@@ -32,7 +33,8 @@ class ElasticSearch(
   mediaApiMetrics: MediaApiMetrics,
   val elasticSearchConfig: ElasticSearchConfig,
   overQuotaAgencies: () => List[Agency],
-  val scheduler: Scheduler
+  val scheduler: Scheduler,
+  val instancesClient: InstancesClient,
 ) extends ElasticSearchClient with ImageFields with MatchFields with FutureSyntax with GridLogging with MigrationStatusProvider {
 
   private val orgOwnedAggName = "org-owned"
