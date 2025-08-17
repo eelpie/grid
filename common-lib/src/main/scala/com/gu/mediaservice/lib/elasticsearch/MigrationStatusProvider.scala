@@ -1,5 +1,6 @@
 package com.gu.mediaservice.lib.elasticsearch
 
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.model.Instance
 import org.apache.pekko.actor.Scheduler
 
@@ -7,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{Duration, DurationInt, SECONDS}
 
 sealed trait MigrationStatus
 
@@ -45,6 +46,8 @@ trait MigrationStatusProvider {
 
   def scheduler: Scheduler
 
+  def instancesClient: InstancesClient
+
   private val migrationStatues: ConcurrentHashMap[String, AtomicReference[MigrationStatus]] = new ConcurrentHashMap()
 
   private def migrationStatusRef(instance: Instance): AtomicReference[MigrationStatus] = {
@@ -77,7 +80,7 @@ trait MigrationStatusProvider {
     initialDelay = 0.seconds,
     interval = 5.seconds
   ) { () => {
-    val instances: Seq[Instance] = Seq.empty // TODO iterate instances
+    val instances = Await.result(instancesClient.getInstances(), Duration(10, SECONDS))
     instances.foreach(refreshMigrationStatus)
   }
   }
