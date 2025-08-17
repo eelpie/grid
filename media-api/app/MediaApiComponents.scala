@@ -1,5 +1,6 @@
 import com.gu.contentapi.client.ScheduledExecutor
 import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, Management}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
@@ -24,7 +25,7 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   usageQuota.scheduleUpdates()
   applicationLifecycle.addStopHook(() => Future{usageQuota.stopUpdates()})
 
-  val elasticSearch = new ElasticSearch(config, mediaApiMetrics, config.esConfig, () => usageQuota.usageStore.overQuotaAgencies, actorSystem.scheduler)
+  val elasticSearch = new ElasticSearch(config, mediaApiMetrics, config.esConfig, () => usageQuota.usageStore.overQuotaAgencies, actorSystem.scheduler, new InstancesClient(config, wsClient))
   // TODO needs to move somewhere more instance aware elasticSearch.ensureIndexExistsAndAliasAssigned()
 
   val imageResponse = new ImageResponse(config, s3, usageQuota)
