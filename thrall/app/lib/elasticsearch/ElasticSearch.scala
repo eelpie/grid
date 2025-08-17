@@ -4,6 +4,7 @@ import org.apache.pekko.actor.Scheduler
 import com.gu.mediaservice.lib.ImageFields
 import com.gu.mediaservice.lib.elasticsearch.{filters, _}
 import com.gu.mediaservice.lib.formatting.printDateTime
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.model.leases.MediaLease
@@ -31,7 +32,8 @@ object ImageNotDeletable extends Throwable("Image cannot be deleted")
 class ElasticSearch(
   val elasticSearchConfig: ElasticSearchConfig,
   metrics: Option[ThrallMetrics],
-  val scheduler: Scheduler
+  val scheduler: Scheduler,
+  val instancesClient: InstancesClient
 ) extends ElasticSearchClient with ImageFields with ElasticSearchExecutions with ThrallMigrationClient {
 
   lazy val url: String = elasticSearchConfig.url
