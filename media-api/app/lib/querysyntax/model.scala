@@ -25,3 +25,4 @@ final case class DateRange(startDate: DateTime, endDate: DateTime) extends Value
 final case class HasValue(string: String) extends Value
 final case class IsValue(string: String) extends Value
 final case class SimilarValue(string: String) extends Value
+final case class SyndicationStatusValue(string: String) extends Value
