@@ -1,91 +1,74 @@
 package com.gu.mediaservice.lib.config
 
-case class ServiceHosts(
-  kahunaPrefix: String,
-  apiPrefix: String,
-  loaderPrefix: String,
-  projectionPrefix: String,
-  cropperPrefix: String,
-  metadataPrefix: String,
-  imgopsPrefix: String,
-  usagePrefix: String,
-  collectionsPrefix: String,
-  leasesPrefix: String,
-  authPrefix: String,
-  thrallPrefix: String
-)
+trait Services {
 
-object ServiceHosts {
-  // this is tightly coupled to the Guardian's deployment.
-  // TODO make more generic but w/out relying on Play config
-  def guardianPrefixes: ServiceHosts = {
-    val rootAppName: String = "media"
+  def kahunaBaseUri: String
 
-    ServiceHosts(
-      kahunaPrefix = s"$rootAppName.",
-      apiPrefix = s"api.$rootAppName.",
-      loaderPrefix = s"loader.$rootAppName.",
-      projectionPrefix = s"loader-projection.$rootAppName",
-      cropperPrefix = s"cropper.$rootAppName.",
-      metadataPrefix = s"$rootAppName-metadata.",
-      imgopsPrefix = s"$rootAppName-imgops.",
-      usagePrefix = s"$rootAppName-usage.",
-      collectionsPrefix = s"$rootAppName-collections.",
-      leasesPrefix = s"$rootAppName-leases.",
-      authPrefix = s"$rootAppName-auth.",
-      thrallPrefix = s"thrall.$rootAppName."
-    )
-  }
+  def apiBaseUri: String
+
+  def loaderBaseUri: String
+
+  def projectionBaseUri: String
+
+  def cropperBaseUri: String
+
+  def metadataBaseUri: String
+
+  def imgopsBaseUri: String
+
+  def usageBaseUri: String
+
+  def collectionsBaseUri: String
+
+  def leasesBaseUri: String
+
+  def authBaseUri: String
+
+  def guardianWitnessBaseUri: String
+
+  def corsAllowedDomains: Set[String]
+
+  def redirectUriParam: String
+
+  def redirectUriPlaceholder: String
+
+  def loginUriTemplate: String
+
 }
 
-class Services(val domainRoot: String, hosts: ServiceHosts, corsAllowedOrigins: Set[String], domainRootOverride: Option[String] = None) {
-  val kahunaHost: String      = s"${hosts.kahunaPrefix}$domainRoot"
-  val apiHost: String         = s"${hosts.apiPrefix}$domainRoot"
-  val loaderHost: String      = s"${hosts.loaderPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val cropperHost: String     = s"${hosts.cropperPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val metadataHost: String    = s"${hosts.metadataPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val imgopsHost: String      = s"${hosts.imgopsPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val usageHost: String       = s"${hosts.usagePrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val collectionsHost: String = s"${hosts.collectionsPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val leasesHost: String      = s"${hosts.leasesPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val authHost: String        = s"${hosts.authPrefix}$domainRoot"
-  val projectionHost: String  = s"${hosts.projectionPrefix}${domainRootOverride.getOrElse(domainRoot)}"
-  val thrallHost: String      = s"${hosts.thrallPrefix}${domainRootOverride.getOrElse(domainRoot)}"
+protected class SingleHostServices(val rootUrl: String) extends Services {
+  val kahunaBaseUri: String = rootUrl
 
+  val apiBaseUri: String = subpathedServiceBaseUri("media-api")
 
-  val kahunaBaseUri      = baseUri(kahunaHost)
-  val apiBaseUri         = baseUri(apiHost)
-  val loaderBaseUri      = baseUri(loaderHost)
-  val projectionBaseUri  = baseUri(projectionHost)
-  val cropperBaseUri     = baseUri(cropperHost)
-  val metadataBaseUri    = baseUri(metadataHost)
-  val imgopsBaseUri      = baseUri(imgopsHost)
-  val usageBaseUri       = baseUri(usageHost)
-  val collectionsBaseUri = baseUri(collectionsHost)
-  val leasesBaseUri      = baseUri(leasesHost)
-  val authBaseUri        = baseUri(authHost)
-  val thrallBaseUri      = baseUri(thrallHost)
+  val loaderBaseUri: String = subpathedServiceBaseUri("image-loader")
 
-  val allInternalUris = Seq(
-    kahunaBaseUri,
-    apiBaseUri,
-    loaderBaseUri,
-    cropperBaseUri,
-    metadataBaseUri,
-    usageBaseUri,
-    collectionsBaseUri,
-    leasesBaseUri,
-    authBaseUri,
-    thrallBaseUri
-  )
+  val projectionBaseUri: String = loaderBaseUri
+
+  val cropperBaseUri: String = subpathedServiceBaseUri("cropper")
+
+  val metadataBaseUri: String = subpathedServiceBaseUri("metadata-editor")
+
+  val imgopsBaseUri: String = subpathedServiceBaseUri("imgproxy")
+
+  val usageBaseUri: String =subpathedServiceBaseUri("usage")
+
+  val collectionsBaseUri: String = subpathedServiceBaseUri("collections")
+
+  val leasesBaseUri: String = subpathedServiceBaseUri("leases")
+
+  val authBaseUri: String = subpathedServiceBaseUri("auth")
+
+  private val thrallBaseUri: String =  subpathedServiceBaseUri("thrall")
 
   val guardianWitnessBaseUri: String = "https://n0ticeapis.com"
 
-  val corsAllowedDomains: Set[String] = corsAllowedOrigins.map(baseUri) + kahunaBaseUri + apiBaseUri + thrallBaseUri
+  val corsAllowedDomains: Set[String] = Set(kahunaBaseUri, apiBaseUri, thrallBaseUri)
 
   val redirectUriParam = "redirectUri"
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
   val loginUriTemplate = s"$authBaseUri/login$redirectUriPlaceholder"
 
-  def baseUri(host: String) = s"https://$host"
+  private def subpathedServiceBaseUri(serviceName: String): String = s"$rootUrl/$serviceName"
 }
+
