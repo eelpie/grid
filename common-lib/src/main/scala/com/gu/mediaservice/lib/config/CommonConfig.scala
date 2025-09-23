@@ -57,7 +57,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val googleS3AccessKey: Option[String] = stringOpt("s3.accessKey")
   val googleS3SecretKey: Option[String] = stringOpt("s3.secretKey")
 
-  private val amazonS3: AmazonS3 = S3Ops.buildS3Client(this, forceV2Sigs = true)
+  private val amazonS3: AmazonS3 = S3Ops.buildS3Client(this)
   private val googleS3: Option[AmazonS3] = S3Ops.buildGoogleS3Client(this)
   private val localS3: Option[AmazonS3] = S3Ops.buildLocalS3Client(this)
 
