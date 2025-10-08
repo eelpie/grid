@@ -92,6 +92,20 @@ class ImageOperations(playPath: String) extends GridLogging {
       ).map(_ => sourceFile)
   }
 
+  def appendMetadataVips(image: VImage, metadata: ImageMetadata): VImage = {
+    val fieldsToSet = Seq(
+      metadata.copyright.map(v => "Copyright" -> v),
+      metadata.credit.map(v => "Credit" -> v),
+      metadata.suppliersReference.map(v => "OriginalTransmissionReference" -> v)
+    ).flatten
+
+    logger.info("Appending metadata: " + fieldsToSet)
+    fieldsToSet.foreach( t =>
+      image.set(t._1, t._2)
+    )
+    image
+  }
+
   def resizeImageVips(
                        sourceImage: VImage,
                        dimensions: Dimensions,
