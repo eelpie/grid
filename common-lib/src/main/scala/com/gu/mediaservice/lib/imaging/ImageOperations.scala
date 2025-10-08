@@ -94,9 +94,9 @@ class ImageOperations(playPath: String) extends GridLogging {
 
   def appendMetadataVips(image: VImage, metadata: ImageMetadata): VImage = {
     val fieldsToSet = Seq(
-      metadata.copyright.map(v => "Copyright" -> v),
-      metadata.credit.map(v => "Credit" -> v),
-      metadata.suppliersReference.map(v => "OriginalTransmissionReference" -> v)
+      metadata.copyright.map(v => "exif:Copyright" -> v),
+      metadata.credit.map(v => "exif:Credit" -> v),
+      metadata.suppliersReference.map(v => "exif:OriginalTransmissionReference" -> v)
     ).flatten
 
     logger.info("Appending metadata: " + fieldsToSet)
