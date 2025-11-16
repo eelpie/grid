@@ -98,13 +98,11 @@ class ThrallStreamProcessor(
   })
 
   val meh: Source[TaggedRecord[ThrallMessage], NotUsed] = Source.fromGraph(GraphDSL.create() { implicit graphBuilder =>
-    import GraphDSL.Implicits._
-
     val automationRecordSource = automationSource.map(kinesisRecord =>
       TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, AutomationPriority, kinesisRecord.markProcessed))
 
     // parse the kinesis records into thrall update messages (dropping those that fail)
-    val automationMessagesSource =
+    val automationMessagesSource: Source[TaggedRecord[ThrallMessage], Future[Done]] =
       automationRecordSource.map { taggedRecord =>
           val parsedRecord = ThrallEventConsumer
             .parseRecord(taggedRecord.payload, taggedRecord.arrivalTimestamp)
@@ -125,11 +123,7 @@ class ThrallStreamProcessor(
           case Right(taggedRecord) => taggedRecord
         }
 
-    // merge in the re-ingestion source (preferring ui/automation)
-    val mergePreferred = graphBuilder.add(MergePreferred[TaggedRecord[ThrallMessage]](0))
-    automationMessagesSource ~> mergePreferred.preferred
-
-    SourceShape(mergePreferred.out)
+    SourceShape(graphBuilder.add(automationMessagesSource).out)
   })
 
 
@@ -140,9 +134,8 @@ class ThrallStreamProcessor(
         .recover { case _ => () }
         .map(_ => (result, stopwatch, result.payload))
       }
-
-
   }
+
   def run(): Future[Done] = {
     val stream = this.createStream(mergedKinesisSource, 1).runForeach {
       case (taggedRecord, stopwatch, _) =>
