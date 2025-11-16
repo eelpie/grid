@@ -61,13 +61,12 @@ class ThrallStreamProcessor(
   val mergedKinesisSource: Source[TaggedRecord[ThrallMessage], NotUsed] = Source.fromGraph(GraphDSL.create() { implicit graphBuilder =>
     import GraphDSL.Implicits._
 
-    val uiRecordSource = uiSource.map(kinesisRecord =>
-      TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, UiPriority, kinesisRecord.markProcessed))
-
-
     val migrationMessagesSource = migrationSource.map { case MigrationRecord(internalThrallMessage, time) =>
       TaggedRecord(internalThrallMessage, time, MigrationPriority, () => {})
     }
+
+    val uiRecordSource = uiSource.map(kinesisRecord =>
+      TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, UiPriority, kinesisRecord.markProcessed))
 
     val uiRecordsMerge = graphBuilder.add(MergePreferred[TaggedRecord[Array[Byte]]](1))
     uiRecordSource ~> uiRecordsMerge.preferred
@@ -99,7 +98,7 @@ class ThrallStreamProcessor(
       TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, AutomationPriority, kinesisRecord.markProcessed))
 
     val automationRecordsMerge = graphBuilder.add(MergePreferred[TaggedRecord[Array[Byte]]](1))
-
+    automationRecordSource ~> automationRecordsMerge.preferred
     // parse the kinesis records into thrall update messages (dropping those that fail)
     val automationMessagesSource: PortOps[TaggedRecord[ExternalThrallMessage]] =
       automationRecordsMerge.out
