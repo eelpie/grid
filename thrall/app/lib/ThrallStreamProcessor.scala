@@ -92,7 +92,7 @@ class ThrallStreamProcessor(
     // merge in the re-ingestion source (preferring ui/automation)
     val mergePreferred = graphBuilder.add(MergePreferred[TaggedRecord[ThrallMessage]](1))
     uiMessagesSource ~> mergePreferred.preferred
-    migrationMessagesSource ~> mergePreferred.in(1)
+    migrationMessagesSource ~> mergePreferred.in(0)
 
     SourceShape(mergePreferred.out)
   })
