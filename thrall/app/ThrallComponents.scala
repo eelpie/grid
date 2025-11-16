@@ -87,5 +87,5 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val reaperController = new ReaperController(es, store, s3Vectors, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents)
   val healthCheckController = new HealthCheck(es, streamRunning.isCompleted, config, controllerComponents)
 
-  override lazy val router = new Routes(httpErrorHandler, thrallController, reaperController, healthCheckController, management, assets)
+  override lazy val router = new Routes(httpErrorHandler, thrallController, reaperController, healthCheckController, management, assets).withPrefix("/thrall/")
 }
