@@ -9,7 +9,7 @@ import com.gu.kinesis.KinesisRecord
 import com.gu.mediaservice.lib.DateTimeUtils
 import com.gu.mediaservice.lib.aws.UpdateMessage
 import com.gu.mediaservice.lib.logging._
-import com.gu.mediaservice.model.{ExternalThrallMessage, InternalThrallMessage, ThrallMessage}
+import com.gu.mediaservice.model.{ExternalThrallMessage, InternalThrallMessage, ReindexImageMessage, ThrallMessage}
 import lib.kinesis.{MessageTranslator, ThrallEventConsumer}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -68,14 +68,14 @@ class ThrallStreamProcessor(
     val uiRecordSource = uiSource.map(kinesisRecord =>
       TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, UiPriority, kinesisRecord.markProcessed))
 
-    val uiRecordsMerge = graphBuilder.add(MergePreferred[TaggedRecord[Array[Byte]]](1))
+    val uiRecordsMerge = graphBuilder.add(MergePreferred[TaggedRecord[Array[Byte]]](0))
     uiRecordSource ~> uiRecordsMerge.preferred
 
     // parse the kinesis records into thrall update messages (dropping those that fail)
     val uiMessagesSource: PortOps[TaggedRecord[ExternalThrallMessage]] =
       uiRecordsMerge.out
         .map { taggedRecord =>
-          val parsedRecord = ThrallEventConsumer
+          val parsedRecord: Either[Throwable, TaggedRecord[ExternalThrallMessage]] = ThrallEventConsumer
             .parseRecord(taggedRecord.payload, taggedRecord.arrivalTimestamp)
             .map(
               message => {
@@ -97,7 +97,7 @@ class ThrallStreamProcessor(
     val automationRecordSource = automationSource.map(kinesisRecord =>
       TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, AutomationPriority, kinesisRecord.markProcessed))
 
-    val automationRecordsMerge = graphBuilder.add(MergePreferred[TaggedRecord[Array[Byte]]](1))
+    val automationRecordsMerge = graphBuilder.add(MergePreferred[TaggedRecord[Array[Byte]]](0))
     automationRecordSource ~> automationRecordsMerge.preferred
     // parse the kinesis records into thrall update messages (dropping those that fail)
     val automationMessagesSource: PortOps[TaggedRecord[ExternalThrallMessage]] =
@@ -121,6 +121,13 @@ class ThrallStreamProcessor(
         .collect {
           case Right(taggedRecord) => taggedRecord
         }
+
+    val meh = automationMessagesSource.mapAsync(10) { r: TaggedRecord[ExternalThrallMessage] =>
+      r.payload
+      Future.successful{
+        r.copy(payload = r.payload)
+      }
+    }
 
     // merge in the re-ingestion source (preferring ui/automation)
     val mergePreferred = graphBuilder.add(MergePreferred[TaggedRecord[ThrallMessage]](2))
