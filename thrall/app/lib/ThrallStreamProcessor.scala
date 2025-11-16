@@ -114,13 +114,6 @@ class ThrallStreamProcessor(
           case Right(taggedRecord) => taggedRecord
         }
 
-    val meh = automationMessagesSource.mapAsync(10) { r: TaggedRecord[ExternalThrallMessage] =>
-      r.payload
-      Future.successful{
-        r.copy(payload = r.payload)
-      }
-    }
-
     // merge in the re-ingestion source (preferring ui/automation)
     val mergePreferred = graphBuilder.add(MergePreferred[TaggedRecord[ThrallMessage]](2))
     uiMessagesSource ~> mergePreferred.preferred
