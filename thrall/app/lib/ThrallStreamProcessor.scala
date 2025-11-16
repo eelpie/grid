@@ -89,6 +89,17 @@ class ThrallStreamProcessor(
         case Right(taggedRecord) => taggedRecord
       }
 
+    // merge in the re-ingestion source (preferring ui/automation)
+    val mergePreferred = graphBuilder.add(MergePreferred[TaggedRecord[ThrallMessage]](1))
+    uiMessagesSource ~> mergePreferred.preferred
+    migrationMessagesSource ~> mergePreferred.in(1)
+
+    SourceShape(mergePreferred.out)
+  })
+
+  val meh: Source[TaggedRecord[ThrallMessage], NotUsed] = Source.fromGraph(GraphDSL.create() { implicit graphBuilder =>
+    import GraphDSL.Implicits._
+
     val automationRecordSource = automationSource.map(kinesisRecord =>
       TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, AutomationPriority, kinesisRecord.markProcessed))
 
@@ -115,16 +126,15 @@ class ThrallStreamProcessor(
         }
 
     // merge in the re-ingestion source (preferring ui/automation)
-    val mergePreferred = graphBuilder.add(MergePreferred[TaggedRecord[ThrallMessage]](2))
-    uiMessagesSource ~> mergePreferred.preferred
-    automationMessagesSource ~> mergePreferred.in(0)
-    migrationMessagesSource ~> mergePreferred.in(1)
+    val mergePreferred = graphBuilder.add(MergePreferred[TaggedRecord[ThrallMessage]](0))
+    automationMessagesSource ~> mergePreferred.preferred
 
     SourceShape(mergePreferred.out)
   })
 
-  def createStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), NotUsed] = {
-    mergedKinesisSource.mapAsync(1) { result =>
+
+  def createStream(source: Source[TaggedRecord[ThrallMessage], NotUsed], parallelism: Int): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), NotUsed] = {
+    source.mapAsync(parallelism) { result =>
       val stopwatch = Stopwatch.start
       consumer.processMessage(result.payload)
         .recover { case _ => () }
@@ -134,7 +144,7 @@ class ThrallStreamProcessor(
 
   }
   def run(): Future[Done] = {
-    val stream = this.createStream().runForeach {
+    val stream = this.createStream(mergedKinesisSource, 1).runForeach {
       case (taggedRecord, stopwatch, _) =>
         val markers = combineMarkers(taggedRecord, stopwatch.elapsed)
         logger.info(markers, "Record processed")
@@ -142,6 +152,18 @@ class ThrallStreamProcessor(
     }
 
     stream.onComplete {
+      case Failure(exception) => logger.error("Thrall stream completed with failure", exception)
+      case Success(_) => logger.info("Thrall stream completed with done, probably shutting down")
+    }
+
+    val stream2 = this.createStream(meh, 10).runForeach {
+      case (taggedRecord, stopwatch, _) =>
+        val markers = combineMarkers(taggedRecord, stopwatch.elapsed)
+        logger.info(markers, "Record processed")
+        taggedRecord.markProcessed()
+    }
+
+    stream2.onComplete {
       case Failure(exception) => logger.error("Thrall stream completed with failure", exception)
       case Success(_) => logger.info("Thrall stream completed with done, probably shutting down")
     }
