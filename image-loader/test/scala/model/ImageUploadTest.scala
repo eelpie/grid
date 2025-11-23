@@ -34,17 +34,14 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), S3Bucket("img-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false), S3Bucket("thumb-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false))
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, S3Bucket("img-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false), S3Bucket("thumb-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false))
 
   /**
     * @todo: I flailed about until I found a path that worked, but
     *        what arcane magic System.getProperty relies upon, and exactly
     *        _how_ it will break in CI, I do not know
     */
-  val imageOps: ImageOperations = {
-    Vips.init()
-    new ImageOperations(System.getProperty("user.dir"))
-  }
+  val imageOps: ImageOperations = new ImageOperations(System.getProperty("user.dir"))
 
   private def imageUpload(
                    fileName: String,
@@ -94,7 +91,6 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       OptimiseWithPngQuant,
       uploadRequest,
       mockDependencies,
-      FileMetadata(),
       ImageProcessor.identity
     )
 
