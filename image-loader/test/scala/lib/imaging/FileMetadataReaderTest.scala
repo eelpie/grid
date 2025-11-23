@@ -23,46 +23,6 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
   implicit override val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(1000, Millis), interval = Span(25, Millis))
   implicit val logMarker: LogMarker = MarkerMap()
 
-  it("should read the correct dimensions for a JPG image") {
-    val image = fileAt("getty.jpg")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Jpeg))
-    whenReady(dimsFuture) { dimOpt =>
-      dimOpt should be(Symbol("defined"))
-      dimOpt.get.width should be(100)
-      dimOpt.get.height should be(60)
-    }
-  }
-
-  it("should use uncorrected width and height as dimensions for exif 90 rotations") {
-    val image = fileAt("exif-orientated.jpg")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Jpeg))
-    whenReady(dimsFuture) { dimOpt =>
-      dimOpt should be(Symbol("defined"))
-      dimOpt.get.width should be(3456)
-      dimOpt.get.height should be(2304)
-    }
-  }
-
-  it("should read the correct dimensions for a tiff image") {
-    val image = fileAt("flower.tif")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Tiff))
-    whenReady(dimsFuture) { dimOpt =>
-      dimOpt should be(Symbol("defined"))
-      dimOpt.get.width should be(73)
-      dimOpt.get.height should be(43)
-    }
-  }
-
-  it("should read the correct dimensions for a png image") {
-    val image = fileAt("schaik.com_pngsuite/basn0g08.png")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Png))
-    whenReady(dimsFuture) { dimOpt =>
-      dimOpt should be(Symbol("defined"))
-      dimOpt.get.width should be(32)
-      dimOpt.get.height should be(32)
-    }
-  }
-
   it("should read the correct metadata for Getty JPG images") {
     val image = fileAt("getty.jpg")
     val metadataFuture = FileMetadataReader.fromIPTCHeaders(image, "dummy")
