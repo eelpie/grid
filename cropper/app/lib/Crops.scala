@@ -40,9 +40,8 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     apiImage: SourceImage,
     sourceFile: File,
     crop: Crop,
-    mediaType: MimeType,
     orientationMetadata: Option[OrientationMetadata]
-  )(implicit logMarker: LogMarker, instance: Instance, arena: Arena): MasterCrop = {
+  )(implicit logMarker: LogMarker, arena: Arena): MasterCrop = {
 
     Stopwatch(s"creating master crop for ${apiImage.id}") {
       val source = crop.specification
@@ -96,9 +95,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val source = crop.specification
     val mimeType = apiImage.source.mimeType.getOrElse(throw MissingMimeType)
     val secureFile = apiImage.source.file
-    val colourType = apiImage.fileMetadata.colourModelInformation.getOrElse("colorType", "")
-    val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
-    val cropType = Crops.cropType(mimeType, colourType, hasAlpha)
 
     val key = imageBucket.keyFromS3URL(secureFile)
     val secureUrl = s3.signUrlTony(imageBucket, key)
@@ -107,7 +103,11 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     tempFileFromURL(secureUrl, "cropSource", "", config.tempDir).flatMap { sourceFile =>
       logger.info("Starting vips operations")
       implicit val arena: Arena = Arena.ofConfined()
-      val masterCrop = createMasterCrop(apiImage, sourceFile, crop, cropType, apiImage.source.orientationMetadata)
+      val masterCrop = createMasterCrop(apiImage, sourceFile, crop, apiImage.source.orientationMetadata)
+
+      val colourType = apiImage.fileMetadata.colourModelInformation.getOrElse("colorType", "")
+      val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
+      val cropType = Crops.cropType(mimeType, colourType, hasAlpha)
 
       // High quality rendering with minimal compression which will be used as the CDN resizer origin
       val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
