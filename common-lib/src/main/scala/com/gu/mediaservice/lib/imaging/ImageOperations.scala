@@ -29,7 +29,6 @@ trait ImageOperations {
                  sourceFile: File,
                  bounds: Bounds,
                  tempDir: File,
-                 fileType: MimeType,
                  orientationMetadata: Option[OrientationMetadata],
                  metadata: ImageMetadata
                )(implicit logMarker: LogMarker, arena: Arena): Future[VImage]
