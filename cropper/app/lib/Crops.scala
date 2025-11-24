@@ -37,7 +37,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     apiImage: SourceImage,
     sourceFile: File,
     crop: Crop,
-    mediaType: MimeType,
     orientationMetadata: Option[OrientationMetadata]
   )(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Future[MasterCrop] = {
     Stopwatch.async(s"creating master crop for ${apiImage.id}") {
@@ -47,7 +46,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       for {
         image <- imageOperations.cropImage(
           sourceFile, source.bounds, config.tempDir,
-          mediaType,
           orientationMetadata = orientationMetadata,
           metadata = metadata
         )
@@ -103,23 +101,25 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val source = crop.specification
     val mimeType = apiImage.source.mimeType.getOrElse(throw MissingMimeType)
     val secureFile = apiImage.source.file
-    val colourType = apiImage.fileMetadata.colourModelInformation.getOrElse("colorType", "")
-    val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
-    val cropType = Crops.cropType(mimeType, colourType, hasAlpha)
 
     val key = imageBucket.keyFromURL(secureFile)
     val secureUrl = s3.signUrlTony(imageBucket, key)
-
-    // pngs are always lossless, so quality only means effort spent compressing them. We don't
-    // care too much about filesize of master crops, so skip expensive compression to get faster cropping
-    val quality = if (cropType == Png) pngCropQuality else masterCropQuality
 
     implicit val arena: Arena = Arena.ofShared()
 
     val result = Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
-        masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, apiImage.source.orientationMetadata)
+        masterCrop <- createMasterCrop(apiImage, sourceFile, crop, apiImage.source.orientationMetadata)
+
+        colourType = apiImage.fileMetadata.colourModelInformation.getOrElse("colorType", "")
+        hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
+        cropType = Crops.cropType(mimeType, colourType, hasAlpha)
+
+        // pngs are always lossless, so quality only means effort spent compressing them. We don't
+        // care too much about filesize of master crops, so skip expensive compression to get faster cropping
+        quality = if (cropType == Png) pngCropQuality else masterCropQuality
+
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
         resizes <- createCrops(masterCrop.image, outputDims, apiImage, crop, cropType)
 
