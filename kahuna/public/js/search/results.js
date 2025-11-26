@@ -10,7 +10,9 @@ import '../util/seq';
 import '../util/storage';
 import '../util/constants/sendToCapture-config';
 import '../components/gu-lazy-table/gu-lazy-table';
+import '../components/gu-lazy-preview/gu-lazy-preview';
 import '../components/gu-lazy-table-shortcuts/gu-lazy-table-shortcuts';
+import '../components/gu-lazy-preview-shortcuts/gu-lazy-preview-shortcuts';
 import '../components/gr-archiver/gr-archiver';
 import '../components/gr-delete-image/gr-delete-image';
 import '../components/gr-undelete-image/gr-un-delete-image';
@@ -49,6 +51,8 @@ export var results = angular.module('kahuna.search.results', [
     'util.seq',
     'gu.lazyTable',
     'gu.lazyTableShortcuts',
+    'gu.lazyPreview',
+    'gu.lazyPreviewShortcuts',
     'gr.archiver',
     'gr.downloader',
     'gr.moreLikeThis',
@@ -203,6 +207,9 @@ results.controller('SearchResultsCtrl', [
         if (ctrl.image && ctrl.image.data.softDeletedMetadata !== undefined) { ctrl.isDeleted = true; }
         ctrl.newImagesCount = 0;
         ctrl.newImagesLastCheckedMoment = moment();
+
+        // Preview control
+        ctrl.previewView = false;
 
         ctrl.needsQuery = $stateParams.useAISearch && (!$stateParams.query || !$stateParams.query.trim());
 
