@@ -2,6 +2,7 @@ package lib
 
 import com.gu.mediaservice.lib.auth.Permissions.Pinboard
 import com.gu.mediaservice.lib.auth.SimplePermission
+import com.gu.mediaservice.lib.aws.S3Bucket
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.model.Instance
 import play.api.libs.json._
@@ -50,9 +51,8 @@ class KahunaConfig(resources: GridConfigResources) extends CommonConfig(resource
   val aiSearchResultLimit: Int = intOpt("ai.search.resultLimit").getOrElse(200)
 
   val frameAncestors: Set[String] = getStringSet("security.frameAncestors")
-  val connectSources: Set[String] = getStringSet("security.connectSources") ++ maybeBucketForUIUploads.map { bucket =>
-    if (isDev) "https://localstack.media.local.dev-gutools.co.uk"
-    else s"https://$bucket.s3.$awsRegion.amazonaws.com" // TODO push to bucket end point
+  val connectSources: Set[String] = getStringSet("security.connectSources") ++ maybeIngestBucket.map { ingestBucket =>
+    ingestBucket.bucketURL().toURL.toExternalForm
   } ++ telemetryUri
   val fontSources: Set[String] = getStringSet("security.fontSources")
   val imageSources: Set[String] = getStringSet("security.imageSources")
