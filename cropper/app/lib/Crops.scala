@@ -112,9 +112,10 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         masterCrop <- createMasterCrop(apiImage, sourceFile, crop, apiImage.source.orientationMetadata)
 
-        colourType = apiImage.fileMetadata.colourModelInformation.getOrElse("colorType", "")
+        isGraphic = false
         hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
-        cropType = Crops.cropType(mimeType, colourType, hasAlpha)
+
+        cropType = Crops.cropType(mimeType, isGraphic, hasAlpha)
 
         // pngs are always lossless, so quality only means effort spent compressing them. We don't
         // care too much about filesize of master crops, so skip expensive compression to get faster cropping
@@ -152,19 +153,22 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   }
 }
 
-object Crops {
+object Crops extends GridLogging {
   /**
-    * The aim here is to decide whether the crops should be JPEG or PNGs depending on a predicted quality/size trade-off.
-    *  - If the image has transparency then it should always be a PNG as the transparency is not available in JPEG
-    *  - If the image is not true colour then we assume it is a graphic that should be retained as a PNG
-    */
-  def cropType(mediaType: MimeType, colourType: String, hasAlpha: Boolean): MimeType = {
-    val isGraphic = !colourType.matches("True[ ]?Color.*")
+   * The aim here is to decide whether the crops should be JPEG or PNGs depending on a predicted quality/size trade-off.
+   *  - If the image has transparency then it should always be a PNG as the transparency is not available in JPEG
+   *  - If the image is not true colour then we assume it is a graphic that should be retained as a PNG
+   */
+  def cropType(mediaType: MimeType, isGraphic: Boolean, hasAlpha: Boolean): MimeType = {
     val outputAsPng = hasAlpha || isGraphic
 
-    mediaType match {
-      case Png | Tiff if outputAsPng => Png
+    val decision = mediaType match {
+      case Png if outputAsPng => Png
+      case Tiff if outputAsPng => Png
       case _ => Jpeg
     }
+
+    logger.info(s"Choose crop type for $mediaType, $isGraphic, $hasAlpha: " + decision)
+    decision
   }
 }
