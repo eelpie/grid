@@ -1,6 +1,6 @@
 package com.gu.mediaservice.lib.imaging
 
-import app.photofox.vipsffm.Vips
+import app.photofox.vipsffm.{VImage, Vips}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 
@@ -11,6 +11,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.lang.foreign.Arena
 import scala.concurrent.ExecutionContext.Implicits.global
 
 // This test is disabled for now as it doesn't run on our CI environment, because GraphicsMagick is not present...
@@ -150,6 +151,37 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
         orientationOpt._2 should be(None)
       }
     }
+  }
+
+  describe("cropping") {
+    it("should return not graphic for true colour jpeg") {
+      val arena = Arena.ofConfined
+      val image = VImage.newFromFile(arena, fileAt("exif-orientated-no-rotation.jpg").getAbsolutePath)
+      ImageOperations.isGraphicVips(image)(arena) should be(false)
+      arena.close()
+    }
+
+    it("should return is graphic for depth 2 tiff") {
+      val arena = Arena.ofConfined
+      val image = VImage.newFromFile(arena, fileAt("flower.tif").getAbsolutePath)
+      ImageOperations.isGraphicVips(image)(arena) should be(true)
+      arena.close()
+    }
+
+    it("should return not graphic for depth 4 png with alpha") {
+      val arena = Arena.ofConfined
+      val image = VImage.newFromFile(arena, fileAt("schaik.com_pngsuite/tbbn0g04.png").getAbsolutePath)
+      ImageOperations.isGraphicVips(image)(arena) should be(true)
+      arena.close()
+    }
+
+    it("should return is graphic for depth 8 indexed png") {
+      val arena = Arena.ofConfined
+      val image = VImage.newFromFile(arena, fileAt("schaik.com_pngsuite/basn3p08.png").getAbsolutePath)
+      ImageOperations.isGraphicVips(image)(arena) should be(true)
+      arena.close()
+    }
+
   }
 
   // TODO: test cropImage and its conversions
