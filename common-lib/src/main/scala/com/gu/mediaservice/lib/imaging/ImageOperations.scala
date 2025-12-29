@@ -272,8 +272,6 @@ object ImageOperations extends GridLogging {
     }
   }
 
-  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
-
   def isGraphicVips(image: VImage)(implicit arena: Arena): Boolean = {
     val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
    logger.info("Number of bands: " + numberOfBands)
