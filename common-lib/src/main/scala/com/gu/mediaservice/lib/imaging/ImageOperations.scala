@@ -293,4 +293,17 @@ object ImageOperations extends GridLogging {
     }
   }
 
+  def isGraphicVips(image: VImage)(implicit arena: Arena): Boolean = {
+    val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
+   logger.info("Number of bands: " + numberOfBands)
+    // Indexed plus alpha would be 2 bands
+
+    val format = VipsHelper.image_get_format(image.getUnsafeStructAddress)
+    logger.info("Format: " + format)
+
+    val paletteType = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "palette")
+    logger.info("Palette type: " + paletteType)
+
+    paletteType > 0 || numberOfBands < 3
+  }
 }
