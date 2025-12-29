@@ -105,7 +105,10 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: VipsImageO
 
       val colourType = apiImage.fileMetadata.colourModelInformation.getOrElse("colorType", "")
       val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
-      val cropType = Crops.cropType(mimeType, colourType, hasAlpha)
+
+      // TODO how to get source image colour depth from vips?
+      // val isGraphic = !colourType.matches("True[ ]?Color.*")
+      val cropType = Crops.cropType(mimeType, isGraphic = false, hasAlpha = hasAlpha)
 
       // High quality rendering with minimal compression which will be used as the CDN resizer origin
       val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
@@ -157,8 +160,7 @@ object Crops extends GridLogging {
     *  - If the image has transparency then it should always be a PNG as the transparency is not available in JPEG
     *  - If the image is not true colour then we assume it is a graphic that should be retained as a PNG
     */
-  def cropType(mediaType: MimeType, colourType: String, hasAlpha: Boolean): MimeType = {
-    val isGraphic = !colourType.matches("True[ ]?Color.*")
+  def cropType(mediaType: MimeType, isGraphic: Boolean, hasAlpha: Boolean): MimeType = {
     val outputAsPng = hasAlpha || isGraphic
 
     val decision = mediaType match {
@@ -167,7 +169,7 @@ object Crops extends GridLogging {
       case _ => Jpeg
     }
 
-    logger.info(s"Choose crop type for $mediaType, $colourType, $hasAlpha: " + decision)
+    logger.info(s"Choose crop type for $mediaType, $isGraphic, $hasAlpha: " + decision)
     decision
   }
 }
