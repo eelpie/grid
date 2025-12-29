@@ -105,12 +105,9 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       implicit val arena: Arena = Arena.ofConfined()
       val masterCrop = createMasterCrop(apiImage, sourceFile, crop, apiImage.source.orientationMetadata)
 
-      val colourType = apiImage.fileMetadata.colourModelInformation.getOrElse("colorType", "")
+      val isGraphic = ImageOperations.isGraphicVips(masterCrop.image)
       val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
-
-      // TODO how to get source image colour depth from vips?
-      // val isGraphic = !colourType.matches("True[ ]?Color.*")
-      val cropType = Crops.cropType(mimeType, isGraphic = false, hasAlpha = hasAlpha)
+      val cropType = Crops.cropType(mimeType, isGraphic = isGraphic, hasAlpha = hasAlpha)
 
       // High quality rendering with minimal compression which will be used as the CDN resizer origin
       val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
