@@ -281,12 +281,12 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
       }
     }
 
-    it("should return 3 images if an Internal tier queries for AwaitingReviewForSyndication images") {
+    it("should return 6 owned images if an Internal tier queries for AwaitingReviewForSyndication images") {
       // Elastic1 implementation is returning the images with reviewed and blocked syndicationStatus
       val search = SearchParams(tier = Internal, syndicationStatus = Some(AwaitingReviewForSyndication))
       val searchResult = ES.search(search)
       whenReady(searchResult, timeout, interval) { result =>
-        result.total shouldBe 3
+        result.total shouldBe 6
       }
     }
   }
