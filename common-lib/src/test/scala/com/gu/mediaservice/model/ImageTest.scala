@@ -14,7 +14,9 @@ class ImageTest extends AnyFunSpec with Matchers {
 
   describe("Image syndication status") {
     it("should be UnsuitableForSyndication by default") {
-      val image = createImage()
+      val image = createImage(
+        usageRights = NoRights
+      )
 
       image.usages.length shouldBe 0
       image.syndicationRights shouldBe None
@@ -23,23 +25,21 @@ class ImageTest extends AnyFunSpec with Matchers {
       image.syndicationStatus shouldBe UnsuitableForSyndication
     }
 
-    it("should be AwaitingReviewForSyndication if syndication rights are acquired") {
-      val image = createImage(
-        syndicationRights = Some(rightsAcquired)
-      )
+    it("should be AwaitingReviewForSyndication if owned") {
+      val image = createImage()
 
       image.syndicationStatus shouldBe AwaitingReviewForSyndication
     }
 
-    it("should be UnsuitableForSyndication if syndication rights are not acquired") {
+    it("should be UnsuitableForSyndication if not owned") {
       val image = createImage(
-        syndicationRights = Some(noRightsAcquired)
+        usageRights = Agency("An agency")
       )
 
       image.syndicationStatus shouldBe UnsuitableForSyndication
     }
 
-    it("should be UnsuitableForSyndication if there is no syndication rights") {
+    it("should be UnsuitableForSyndication if not owned even if has syndication usages") {
       val imageId = UUID.randomUUID().toString
 
       val usages = List(
@@ -60,7 +60,8 @@ class ImageTest extends AnyFunSpec with Matchers {
       val image = createImage(
         id = imageId,
         usages = usages,
-        leases = Some(leaseByMedia)
+        leases = Some(leaseByMedia),
+        usageRights = NoRights
       )
 
       image.syndicationStatus shouldBe UnsuitableForSyndication
@@ -135,7 +136,7 @@ class ImageTest extends AnyFunSpec with Matchers {
 }
 
 object ImageTest {
-  def createImage(id: String = UUID.randomUUID().toString, usages: List[Usage] = List(), leases: Option[LeasesByMedia] = None, syndicationRights: Option[SyndicationRights] = None): Image = {
+  def createImage(id: String = UUID.randomUUID().toString, usages: List[Usage] = List(), leases: Option[LeasesByMedia] = None, syndicationRights: Option[SyndicationRights] = None, usageRights: UsageRights = StaffPhotographer("T. Hanks", "The Guardian")): Image = {
     Image(
       id = id,
       uploadTime = DateTime.now(),
@@ -157,8 +158,8 @@ object ImageTest {
       userMetadata = None,
       metadata = ImageMetadata(dateTaken = None, title = Some(s"Test image $id"), keywords = None),
       originalMetadata = ImageMetadata(),
-      usageRights = StaffPhotographer("T. Hanks", "The Guardian"),
-      originalUsageRights = StaffPhotographer("T. Hanks", "The Guardian"),
+      usageRights = usageRights,
+      originalUsageRights = usageRights,
       exports = Nil,
 
       syndicationRights = syndicationRights,
