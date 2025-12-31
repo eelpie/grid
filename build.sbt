@@ -1,11 +1,10 @@
-import play.sbt.PlayImport.PlayKeys._
-import play.sbt.PlayImport.PlayKeys._
+import com.typesafe.sbt.packager.docker.*
+import play.sbt.PlayImport.PlayKeys.*
 import sbt.Package.FixedTimestamp
 
-import scala.sys.process._
+import scala.collection.JavaConverters.*
+import scala.sys.process.*
 import scala.util.control.NonFatal
-import scala.collection.JavaConverters._
-import com.typesafe.sbt.packager.docker._
 
 // We need to keep the timestamps to allow caching headers to work as expected on assets.
 // The below should work, but some problem in one of the plugins (possible the play plugin? or sbt-web?) causes
@@ -241,7 +240,7 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
       dockerBaseImage := "eclipse-temurin:25",
-      dockerExposedPorts in Docker := Seq(port),
+      dockerExposedPorts := Seq(port),
       playDefaultPort := port,
 
       bashScriptEnvConfigLocation := Some("/etc/environment"),
@@ -264,7 +263,7 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
       dockerBaseImage := "eclipse-temurin:25",
-      dockerExposedPorts in Docker := Seq(port),
+      dockerExposedPorts := Seq(port),
       dockerCommands ++= Seq(
         Cmd("USER", "root"), Cmd("RUN", "apt-get", "update"),
         Cmd("RUN", "apt-get", "install", "-y", "apt-utils"),
