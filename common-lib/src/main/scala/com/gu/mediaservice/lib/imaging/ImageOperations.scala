@@ -49,6 +49,7 @@ class ImageOperations(playPath: String) extends GridLogging {
                    )(implicit logMarker: LogMarker, arena: Arena): VImage = {
     // Read source image
     val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+    logger.info("Crop source file isGraphic: " + ImageOperations.isGraphicVips(image))
     val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == VipsHelper.image_get_interpretation(image.getUnsafeStructAddress))
 
     // Orient
@@ -285,6 +286,7 @@ object ImageOperations extends GridLogging {
 
     val paletteType = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "palette")
     logger.info("Palette type: " + paletteType)
+    println("Palette type: " + paletteType)
 
     paletteType > 0 || numberOfBands < 3
   }
