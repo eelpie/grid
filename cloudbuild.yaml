@@ -1,5 +1,7 @@
 options:
   machineType: 'N1_HIGHCPU_8'
+env_variables:
+    DOCKER_API_VERSION: 1.41
 steps:
   - name: 'node:24-alpine'
     entrypoint: 'npm'
