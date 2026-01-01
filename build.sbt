@@ -267,8 +267,6 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
       dockerCommands ++= Seq(
         Cmd("USER", "root"), Cmd("RUN", "apt-get", "update"),
         Cmd("RUN", "apt-get", "install", "-y", "apt-utils"),
-        Cmd("RUN", "apt-get", "install", "-y", "graphicsmagick"),
-        Cmd("RUN", "apt-get", "install", "-y", "graphicsmagick-imagemagick-compat"),
         Cmd("RUN", "apt-get", "install", "-y", "pngquant"),
         Cmd("RUN", "apt-get", "install", "-y", "libimage-exiftool-perl"),
         Cmd("RUN", "apt-get", "install", "-y", "libvips"),

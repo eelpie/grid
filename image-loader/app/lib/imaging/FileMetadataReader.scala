@@ -12,7 +12,6 @@ import com.drew.metadata.png.PngDirectory
 import com.drew.metadata.xmp.XmpDirectory
 import com.drew.metadata.{Directory, Metadata}
 import com.gu.mediaservice.lib.{ImageWrapper, StorableImage}
-import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick._
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.model._
@@ -58,16 +57,6 @@ object FileMetadataReader extends GridLogging {
       metadata <- readMetadata(image)
     }
     yield getMetadataWithIPTCHeaders(metadata, imageId) // FIXME: JPEG, JFIF, Photoshop, GPS, File
-
-  def fromIPTCHeadersWithColorInfo(image: ImageWrapper)(implicit logMarker: LogMarker): Future[FileMetadata] =
-    fromIPTCHeadersWithColorInfo(image.file, image.id, image.mimeType)
-
-  def fromIPTCHeadersWithColorInfo(image: File, imageId:String, mimeType: MimeType)(implicit logMarker: LogMarker): Future[FileMetadata] =
-    for {
-      metadata <- readMetadata(image)
-      colourModelInformation <- getColorModelInformation(image, metadata, mimeType)
-    }
-    yield getMetadataWithIPTCHeaders(metadata, imageId).copy(colourModelInformation = colourModelInformation)
 
   private def getMetadataWithIPTCHeaders(metadata: Metadata, imageId:String): FileMetadata =
     FileMetadata(
@@ -182,19 +171,6 @@ object FileMetadataReader extends GridLogging {
   }
 
   private def dateToUTCString(date: DateTime): String = ISODateTimeFormat.dateTime.print(date.withZone(DateTimeZone.UTC))
-
-  def getColorModelInformation(image: File, metadata: Metadata, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Map[String, String]] = {
-    val stopWatch = Stopwatch.start
-    val source = addImage(image)
-
-    val formatter = format(source)("%r")
-
-    runIdentifyCmd(formatter, useImageMagick = false).map { imageType => getColourInformation(metadata, imageType.headOption, mimeType) }
-      .recover { case _ => getColourInformation(metadata, None, mimeType) }.map { result =>
-      logger.info(addLogMarkers(stopWatch.elapsed), "Finished getColorModelInformation")
-      result
-    }
-  }
 
   // bits per sample might be a useful value, eg. "1", "8"; or it might be annoying like "1 bits/component/pixel", "8 8 8 bits/component/pixel"
   // either way we want everything up to the first space

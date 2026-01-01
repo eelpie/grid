@@ -594,66 +594,6 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
     }
   }
 
-  it("should read the correct metadata for a grayscale png") {
-    val image = fileAt("schaik.com_pngsuite/basn0g08.png")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Png)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "colorType" -> "Greyscale"
-      )
-    }
-  }
-
-  it("should read the correct metadata for a colour 8bit paletted png") {
-    val image = fileAt("schaik.com_pngsuite/basn3p08.png")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Png)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "colorType" -> "Indexed Color"
-      )
-    }
-  }
-
-  it("should read the correct metadata for a truecolour png without alpha channel") {
-    val image = fileAt("schaik.com_pngsuite/basn2c08.png")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Png)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "colorType" -> "True Color"
-      )
-    }
-  }
-
-  it("should read the correct metadata for a truecolour pnd with alpha channel") {
-    val image = fileAt("schaik.com_pngsuite/basn6a08.png")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Png)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "colorType" -> "True Color with Alpha"
-      )
-    }
-  }
-
-  it("should read the correct colour metadata for a greyscale tiff") {
-    val image = fileAt("flower.tif")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Tiff)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "photometricInterpretation" -> "BlackIsZero"
-      )
-    }
-  }
-
-  it("should read the correct colour metadata for an alpha tiff") {
-    val image = fileAt("lighthouse.tif")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Tiff)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "photometricInterpretation" -> "RGB"
-      )
-    }
-  }
-
   def sameMaps[T](actual: Map[String, T], expected: Map[String, T]) = {
     // Detect mismatching keys
     actual.keys should be(expected.keys)

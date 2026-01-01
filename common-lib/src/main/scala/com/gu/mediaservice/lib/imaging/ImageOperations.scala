@@ -4,10 +4,9 @@ import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
 import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.imaging.ImageOperations.thumbMimeType
-import com.gu.mediaservice.lib.imaging.im4jwrapper.{ExifTool, ImageMagick}
+import com.gu.mediaservice.lib.imaging.im4jwrapper.ExifTool
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.model._
-import org.im4java.core.IMOperation
 
 import java.io._
 import java.lang.foreign.Arena
@@ -19,7 +18,6 @@ class UnsupportedCropOutputTypeException extends Exception
 
 class ImageOperations(playPath: String) extends GridLogging {
   import ExifTool._
-  import ImageMagick._
 
   private def profilePath(fileName: String): String = s"$playPath/$fileName"
 
@@ -84,14 +82,6 @@ class ImageOperations(playPath: String) extends GridLogging {
     master
   }
 
-
-  // Updates metadata on existing file
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = {
-    runExiftoolCmd(
-      setTags(tagSource(sourceFile))(tagFilter(metadata))
-      ).map(_ => sourceFile)
-  }
-
   def resizeImageVips(
                        sourceImage: VImage,
                        dimensions: Dimensions,
@@ -106,14 +96,6 @@ class ImageOperations(playPath: String) extends GridLogging {
 
     val outputFile = File.createTempFile(s"resize-", s"${fileType.fileExtension}", tempDir) // TODO function for this
     saveImageToFile(resized, fileType, quality, outputFile, quantise = true)
-  }
-
-  private def orient(op: IMOperation, orientationMetadata: Option[OrientationMetadata]): IMOperation = {
-    logger.info("Correcting for orientation: " + orientationMetadata)
-    orientationMetadata.map(_.orientationCorrection()) match {
-      case Some(angle) => rotate(op)(angle)
-      case _ => op
-    }
   }
 
   val interlacedHow = "Line"
