@@ -30,6 +30,7 @@ object OptimiseWithPngQuant extends OptimiseOps {
       "fileName" -> file.getName()
     )
 
+    // TODO remove or migrate to libvips
     Stopwatch("pngquant") {
       val result = Seq("pngquant", "-s10", "--quality", "1-85", file.getAbsolutePath,
         "--force", "--output", optimisedFile.getAbsolutePath
