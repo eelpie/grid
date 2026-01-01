@@ -14,7 +14,7 @@ steps:
     dir: 'kahuna'
     args: [ 'run', 'dist' ]
 
-  - name: 'gcr.io/$PROJECT_ID/scala-sbt:1.10.1-jdk-22'
+  - name: 'gcr.io/$PROJECT_ID/scala-sbt:1.11.7-jdk-25'
     args: ['docker:publishLocal']
 
   - name: 'gcr.io/cloud-builders/docker'
