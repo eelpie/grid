@@ -5,7 +5,7 @@ import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.ImageWrapper
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap, Stopwatch}
-import com.gu.mediaservice.model.{MimeType, Png}
+import com.gu.mediaservice.model.{MimeType, Png, Tiff}
 
 import java.io.File
 import java.lang.foreign.Arena
@@ -56,5 +56,10 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     }(marker)
   }
 
-  def shouldOptimise(mimeType: Option[MimeType]): Boolean = false
+  def shouldOptimise(mimeType: Option[MimeType]): Boolean = {
+    mimeType match {
+      case Some(Tiff) => true
+      case _ => false
+    }
+  }
 }
