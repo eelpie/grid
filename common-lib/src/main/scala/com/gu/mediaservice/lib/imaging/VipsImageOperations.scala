@@ -134,7 +134,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  private def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File, quantise: Boolean = false): File = {
+  def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File, quantise: Boolean = false): File = {
     logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
     mimeType match {
       case Jpeg =>
