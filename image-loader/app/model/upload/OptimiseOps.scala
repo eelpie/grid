@@ -1,12 +1,14 @@
 package model.upload
 
+import app.photofox.vipsffm.VImage
 import com.gu.mediaservice.lib.ImageWrapper
-import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap, Stopwatch}
+import com.gu.mediaservice.lib.imaging.ImageOperations
+import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model.{MimeType, Png}
 
 import java.io.File
+import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
-import scala.sys.process._
 
 trait OptimiseOps {
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, tempDir: File)
@@ -17,27 +19,27 @@ trait OptimiseOps {
 
 object OptimiseWithPngQuant extends OptimiseOps {
 
+  val imageOperations = new ImageOperations("TODO") // TODO
+
   override def optimiseMimeType: MimeType = Png
 
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, optimisedFile: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = Future {
 
     val marker = MarkerMap(
-      "fileName" -> file.getName()
+      "fileName" -> file.getName
     )
 
-    Stopwatch("pngquant") {
-      val result = Seq("pngquant", "-s10", "--quality", "1-85", file.getAbsolutePath,
-        "--force", "--output", optimisedFile.getAbsolutePath
-      ).!
-      if (result > 0)
-        throw new Exception(s"pngquant failed to convert to optimised png file (rc = $result)")
-    }(marker)
+    // Given a source file on any valid upload type, return a file of the optimised type
+    try {
+      val arena = Arena.ofConfined
 
-    if (optimisedFile.exists()) {
+      val image = VImage.newFromFile(arena, file.getAbsolutePath)
+      imageOperations.saveImageToFile(image: VImage, optimiseMimeType, 85, optimisedFile)
       (optimisedFile, optimiseMimeType)
-    } else {
-      throw new Exception(s"Attempted to optimise PNG file ${optimisedFile.getPath}")
+    } catch {
+      case _: Exception =>
+        throw new Exception(s"Failed to optimise PNG file ${file.getAbsolutePath}")
     }
   }
 
