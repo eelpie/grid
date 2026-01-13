@@ -44,7 +44,6 @@ RUN rm /tmp/vips-8.18.6.tar.xz
 RUN rm -r /tmp/vips-8.18.6/
 
 RUN apt -y --no-install-suggests install \
-  pngquant \
   libimage-exiftool-perl \
   libjemalloc-dev \
   graphicsmagick \
