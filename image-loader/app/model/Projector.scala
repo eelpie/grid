@@ -15,7 +15,7 @@ import com.gu.mediaservice.lib.net.URI
 import com.gu.mediaservice.model.{Image, Instance, MimeType, UploadInfo}
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3}
 import lib.{DigestedFile, ImageLoaderConfig}
-import model.upload.UploadRequest
+import model.upload.{OptimiseOps, UploadRequest}
 import org.apache.tika.io.IOUtils
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.ws.WSRequest
@@ -31,8 +31,8 @@ object Projector {
 
   import Uploader.toImageUploadOpsCfg
 
-  def apply(config: ImageLoaderConfig, imageOps: ImageOperations, processor: ImageProcessor, auth: Authentication, maybeEmbedder: Option[Embedder], s3: S3)(implicit ec: ExecutionContext): Projector
-  = new Projector(toImageUploadOpsCfg(config), s3, imageOps, processor, auth, maybeEmbedder)
+  def apply(config: ImageLoaderConfig, imageOps: ImageOperations, processor: ImageProcessor, auth: Authentication, maybeEmbedder: Option[Embedder], s3: S3, optimiseOps: OptimiseOps)(implicit ec: ExecutionContext): Projector
+  = new Projector(toImageUploadOpsCfg(config), s3, imageOps, processor, auth, maybeEmbedder, optimiseOps)
 }
 
 case class S3FileExtractedMetadata(
@@ -89,9 +89,10 @@ class Projector(config: ImageUploadOpsCfg,
                 imageOps: ImageOperations,
                 processor: ImageProcessor,
                 auth: Authentication,
-                maybeEmbedder: Option[Embedder]) extends GridLogging with InstanceForRequest {
+                maybeEmbedder: Option[Embedder],
+                optimiseOps: OptimiseOps) extends GridLogging with InstanceForRequest {
 
-  private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3, maybeEmbedder)
+  private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3, maybeEmbedder, optimiseOps)
 
   def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest)
                         (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Option[Image]] = {
@@ -166,6 +167,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
                                processor: ImageProcessor,
                                s3: S3,
                                maybeEmbedder: Option[Embedder],
+                               optimiseOps: OptimiseOps
 ) extends GridLogging {
 
   import Uploader.{fromUploadRequestShared, toMetaMap}
@@ -184,7 +186,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
       createEmbeddingAndStore = createEmbeddingAndStore,
     )
 
-    fromUploadRequestShared(uploadRequest, dependenciesWithProjectionsOnly, processor)
+    fromUploadRequestShared(uploadRequest, dependenciesWithProjectionsOnly, processor, optimiseOps)
   }
 
   private def createEmbeddingAndStore(fileType: MimeType, imageFilePath: Path, imageId: String)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[PutVectorsResponse]] = {
