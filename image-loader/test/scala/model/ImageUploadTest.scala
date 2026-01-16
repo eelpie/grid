@@ -96,6 +96,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       uploadRequest,
       mockDependencies,
       ImageProcessor.identity,
+      new OptimiseWithPngQuant(imageOps)
     )
 
     // Assertions; Failure will auto-fail
