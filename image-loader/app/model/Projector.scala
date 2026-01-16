@@ -1,7 +1,9 @@
 package model
 
+import _root_.play.api.libs.ws.WSRequest
 import com.amazonaws.services.s3.model.{ObjectMetadata, S3Object => AwsS3Object}
 import com.gu.mediaservice.lib.ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
+import com.gu.mediaservice.lib._
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, S3, S3Bucket}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
@@ -9,15 +11,13 @@ import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
-import com.gu.mediaservice.lib._
 import com.gu.mediaservice.model.{Image, Instance, MimeType, UploadInfo}
 import com.gu.mediaservice.{GridClient, ImageDataMerger}
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3}
 import lib.{DigestedFile, ImageLoaderConfig}
-import model.upload.UploadRequest
+import model.upload.{OptimiseOps, UploadRequest}
 import org.apache.commons.io.IOUtils
 import org.joda.time.{DateTime, DateTimeZone}
-import _root_.play.api.libs.ws.WSRequest
 
 import java.io.{File, FileOutputStream}
 import scala.concurrent.duration.Duration
@@ -28,8 +28,8 @@ object Projector {
 
   import Uploader.toImageUploadOpsCfg
 
-  def apply(config: ImageLoaderConfig, imageOps: ImageOperations, processor: ImageProcessor, auth: Authentication, maybeEmbedder: Option[Embedder], s3: S3)(implicit ec: ExecutionContext): Projector
-  = new Projector(toImageUploadOpsCfg(config), s3, imageOps, processor, auth, maybeEmbedder)
+  def apply(config: ImageLoaderConfig, imageOps: ImageOperations, processor: ImageProcessor, auth: Authentication, maybeEmbedder: Option[Embedder], s3: S3, optimiseOps: OptimiseOps)(implicit ec: ExecutionContext): Projector
+  = new Projector(toImageUploadOpsCfg(config), s3, imageOps, processor, auth, maybeEmbedder, optimiseOps)
 }
 
 case class S3FileExtractedMetadata(
@@ -86,9 +86,10 @@ class Projector(config: ImageUploadOpsCfg,
                 imageOps: ImageOperations,
                 processor: ImageProcessor,
                 auth: Authentication,
-                maybeEmbedder: Option[Embedder]) extends GridLogging with InstanceForRequest {
+                maybeEmbedder: Option[Embedder],
+                optimiseOps: OptimiseOps) extends GridLogging with InstanceForRequest {
 
-  private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3, maybeEmbedder)
+  private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3, maybeEmbedder, optimiseOps)
 
   def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest)
                         (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Option[Image]] = {
@@ -163,6 +164,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
                                processor: ImageProcessor,
                                s3: S3,
                                maybeEmbedder: Option[Embedder],
+                               optimiseOps: OptimiseOps
 ) extends GridLogging {
 
   import Uploader.fromUploadRequestShared
@@ -180,7 +182,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
       tryFetchOptimisedFile = fetchOptimisedFile
     )
 
-    fromUploadRequestShared(uploadRequest, dependenciesWithProjectionsOnly, processor)
+    fromUploadRequestShared(uploadRequest, dependenciesWithProjectionsOnly, processor, optimiseOps)
   }
 
   private def projectOriginalFileAsS3Model(storableOriginalImage: StorableOriginalImage) =
