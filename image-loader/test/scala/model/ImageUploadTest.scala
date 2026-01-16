@@ -39,7 +39,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
     *        what arcane magic System.getProperty relies upon, and exactly
     *        _how_ it will break in CI, I do not know
     */
-  val imageOps: ImageOperations = new VipsImageOperations(System.getProperty("user.dir"))
+  val imageOps: VipsImageOperations = new VipsImageOperations(System.getProperty("user.dir"))
 
   private def imageUpload(
                    fileName: String,
@@ -86,11 +86,10 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       storeOrProjectOriginalFile = mockDependencies.storeOrProjectOriginalFile,
       storeOrProjectThumbFile = mockDependencies.storeOrProjectThumbFile,
       storeOrProjectOptimisedFile = mockDependencies.storeOrProjectOptimisedImage,
-      optimiseOps = OptimiseWithPngQuant,
       uploadRequest = uploadRequest,
       deps = mockDependencies,
-      fileMetadata = FileMetadata(),
       processor = ImageProcessor.identity,
+      new OptimiseWithPngQuant(imageOps)
     )
 
     // Assertions; Failure will auto-fail

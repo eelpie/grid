@@ -17,13 +17,7 @@ trait OptimiseOps {
   def optimiseMimeType: MimeType
 }
 
-object OptimiseWithPngQuant extends OptimiseOps {
-
-  val imageOperations = {
-    Vips.init()
-    VipsHelper.cache_set_max(0)
-    new VipsImageOperations("TODO - access to context")
-  }
+class OptimiseWithPngQuant(imageOperations: VipsImageOperations) extends OptimiseOps {
 
   override def optimiseMimeType: MimeType = Png
 
