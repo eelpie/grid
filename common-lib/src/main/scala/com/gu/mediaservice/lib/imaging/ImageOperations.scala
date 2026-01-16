@@ -207,7 +207,6 @@ class ImageOperations(playPath: String) extends GridLogging {
           )
         } else {
           image.pngsave(outputFile.getAbsolutePath,
-            VipsOption.Int("Q", qual.toInt),
             VipsOption.Int("bitdepth", depth),
             VipsOption.Boolean("strip", true)
           )
