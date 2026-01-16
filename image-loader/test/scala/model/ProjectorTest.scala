@@ -15,6 +15,7 @@ import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model.{Instance, _}
 import com.gu.mediaservice.model.leases.LeasesByMedia
 import lib.DigestedFile
+import model.upload.OptimiseWithPngQuant
 import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{times, verify, when}
@@ -49,7 +50,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val s3 = mock[S3]
   private val auth = mock[Authentication]
-  private val projector = new Projector(config, s3, imageOperations, ImageProcessor.identity, auth, maybeEmbedder)
+  private val projector = new Projector(config, s3, imageOperations, ImageProcessor.identity, auth, maybeEmbedder, new OptimiseWithPngQuant(imageOperations))
 
   private implicit val instance: Instance = Instance("an-instance")
 
