@@ -26,9 +26,7 @@ trait OptimiseOps {
   def optimiseMimeType: MimeType
 }
 
-object OptimiseWithPngQuant extends OptimiseOps {
-
-  val imageOperations = new ImageOperations("TODO") // TODO
+class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps {
 
   override def optimiseMimeType: MimeType = Png
 
