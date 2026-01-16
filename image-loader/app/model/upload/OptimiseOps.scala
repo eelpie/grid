@@ -44,7 +44,7 @@ object OptimiseWithPngQuant extends OptimiseOps {
       val arena = Arena.ofConfined
 
       val image = VImage.newFromFile(arena, file.getAbsolutePath)
-      imageOperations.saveImageToFile(image: VImage, optimiseMimeType, 85, optimisedFile)
+      imageOperations.saveImageToFile(image: VImage, optimiseMimeType, 85, optimisedFile) // TODO should quantise?
       (optimisedFile, optimiseMimeType)
     } catch {
       case _: Exception =>

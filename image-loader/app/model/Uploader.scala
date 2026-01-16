@@ -111,7 +111,6 @@ object Uploader extends GridLogging {
       storeOrProjectOriginalFile,
       storeOrProjectThumbFile,
       storeOrProjectOptimisedImage,
-      OptimiseWithPngQuant,
       uploadRequest,
       deps,
       processor)
@@ -120,7 +119,6 @@ object Uploader extends GridLogging {
   private[model] def uploadAndStoreImage(storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object],
                                          storeOrProjectThumbFile: StorableThumbImage => Future[S3Object],
                                          storeOrProjectOptimisedFile: StorableOptimisedImage => Future[S3Object],
-                                         optimiseOps: OptimiseOps,
                                          uploadRequest: UploadRequest,
                                          deps: ImageUploadOpsDependencies,
                                          processor: ImageProcessor)
@@ -168,7 +166,7 @@ object Uploader extends GridLogging {
       }
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
-      tempDirForRequest, optimiseOps, browserViewableImage, deps.tryFetchOptimisedFile, uploadRequest.instance)
+      tempDirForRequest, browserViewableImage, deps.tryFetchOptimisedFile, uploadRequest.instance)
       s3PngOption <- maybeStorableOptimisedImage match {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
@@ -201,19 +199,18 @@ object Uploader extends GridLogging {
 
   private def getStorableOptimisedImage(
                                          tempDir: File,
-                                         optimiseOps: OptimiseOps,
                                          browserViewableImage: BrowserViewableImage,
                                          tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]],
                                          instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
-    if (optimiseOps.shouldOptimise(Some(browserViewableImage.mimeType))) {
+    if (OptimiseWithPngQuant.shouldOptimise(Some(browserViewableImage.mimeType))) {
       for {
         tempFile <- createTempFile("optimisedpng-", optimisedMimeType.fileExtension, tempDir)
         maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, tempFile, instance)
         (optimisedFile, optimisedMimeType) <- {
           maybeDownloadedOptimisedFile match {
             case Some(optData) => Future.successful(optData)
-            case None => optimiseOps.toOptimisedFile(browserViewableImage.file, browserViewableImage, tempFile)
+            case None => OptimiseWithPngQuant.toOptimisedFile(browserViewableImage.file, browserViewableImage, tempFile)
           }
         }
       } yield Some(
