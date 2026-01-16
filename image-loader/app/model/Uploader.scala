@@ -20,7 +20,7 @@ import lib.imaging.{FileMetadataReader, MimeTypeDetection}
 import lib.storage.ImageLoaderStore
 import lib.{DigestedFile, ImageLoaderConfig, Notifications}
 import model.Uploader.{fromUploadRequestShared, toImageUploadOpsCfg}
-import model.upload.{OptimiseOps, OptimiseWithPngQuant, UploadRequest}
+import model.upload.{OptimiseOps, UploadRequest}
 import org.joda.time.DateTime
 
 import java.io.File
@@ -95,7 +95,7 @@ object Uploader extends GridLogging {
     )
   }
 
-  def fromUploadRequestShared(uploadRequest: UploadRequest, deps: ImageUploadOpsDependencies, processor: ImageProcessor)
+  def fromUploadRequestShared(uploadRequest: UploadRequest, deps: ImageUploadOpsDependencies, processor: ImageProcessor, optimiseOps: OptimiseOps)
                              (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
 
     import deps._
@@ -109,7 +109,8 @@ object Uploader extends GridLogging {
       queueImageToEmbed,
       uploadRequest,
       deps,
-      processor)
+      processor,
+      optimiseOps)
   }
 
   private[model] def uploadAndStoreImage(storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object],
@@ -118,7 +119,8 @@ object Uploader extends GridLogging {
                                          queueImageToEmbed: (EmbedderMessage) => Unit,
                                          uploadRequest: UploadRequest,
                                          deps: ImageUploadOpsDependencies,
-                                         processor: ImageProcessor)
+                                         processor: ImageProcessor,
+                                         optimiseOps: OptimiseOps)
                   (implicit ec: ExecutionContext, logMarker: LogMarker) = {
     val originalMimeType = uploadRequest.mimeType
       .orElse(MimeTypeDetection.guessMimeType(uploadRequest.tempFile).toOption)
@@ -163,7 +165,7 @@ object Uploader extends GridLogging {
       }
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
-      tempDirForRequest, browserViewableImage, deps.tryFetchOptimisedFile, uploadRequest.instance)
+      tempDirForRequest, browserViewableImage, deps.tryFetchOptimisedFile, optimiseOps, uploadRequest.instance)
       s3PngOption <- maybeStorableOptimisedImage match {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
@@ -222,16 +224,17 @@ object Uploader extends GridLogging {
                                          tempDir: File,
                                          browserViewableImage: BrowserViewableImage,
                                          tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]],
+                                         optimiseOps: OptimiseOps,
                                          instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
-    if (OptimiseWithPngQuant.shouldOptimise(Some(browserViewableImage.mimeType))) {
+    if (optimiseOps.shouldOptimise(Some(browserViewableImage.mimeType))) {
       for {
         tempFile <- createTempFile("optimisedpng-", optimisedMimeType.fileExtension, tempDir)
         maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, tempFile, instance)
         (optimisedFile, optimisedMimeType) <- {
           maybeDownloadedOptimisedFile match {
             case Some(optData) => Future.successful(optData)
-            case None => OptimiseWithPngQuant.toOptimisedFile(browserViewableImage.file, browserViewableImage, tempFile)
+            case None => optimiseOps.toOptimisedFile(browserViewableImage.file, browserViewableImage, tempFile)
           }
         }
       } yield Some(
@@ -337,7 +340,8 @@ class Uploader(val store: ImageLoaderStore,
                val imageOps: ImageOperations,
                val notifications: Notifications,
                val maybeEmbedder: Option[Embedder],
-               imageProcessor: ImageProcessor)
+               imageProcessor: ImageProcessor,
+               optimiseOps: OptimiseOps)
               (implicit val ec: ExecutionContext) extends MessageSubjects with ArgoHelpers {
 
   def fromUploadRequest(uploadRequest: UploadRequest)
@@ -345,7 +349,7 @@ class Uploader(val store: ImageLoaderStore,
     val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps,
       storeSource, storeThumbnail, storeOptimisedImage, queueImageToEmbed = queueImageToEmbed)
     Stopwatch.async("finalImage") {
-      val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor)
+      val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor, optimiseOps)
       finalImage.map(img => ImageUpload(uploadRequest, img))
     }
   }
