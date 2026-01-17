@@ -25,11 +25,10 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   import Files._
 
   private val cropQuality = 75
-  private val masterCropQuality = 95
+  private val jpegMasterCropQuality = 95
   // For PNGs, Magick considers "quality" parameter as effort spent on compression - 1 meaning none, 100 meaning max.
   // We don't overly care about output crop file sizes here, but prefer a fast output, so turn it right down.
-  // TODO confirm this for vips
-  private val pngCropQuality = 1
+  private val pngMasterCropQuality = 1  // No effort spend compressing the PNG master
 
   def outputFilename(source: SourceImage, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false, instance: Instance): String = {
     val masterString: String = if (isMaster) "master/" else ""
@@ -114,9 +113,9 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
       // pngs are always lossless, so quality only means effort spent compressing them. We don't
       // care too much about filesize of master crops, so skip expensive compression to get faster cropping
-      val quality = if (mimeType == Png) pngCropQuality else masterCropQuality
+      val masterQuality = if (mimeType == Png) pngMasterCropQuality else jpegMasterCropQuality
 
-      imageOperations.saveImageToFile(masterCrop.image, cropType, quality, masterCropFile)
+      imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile)
 
       // Static crops; higher compression
       val outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
