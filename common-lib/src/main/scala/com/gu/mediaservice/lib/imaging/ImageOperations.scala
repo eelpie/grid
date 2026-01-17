@@ -39,7 +39,7 @@ trait ImageOperations {
   def resizeImage(
                    sourceFile: VImage,
                    dimensions: Dimensions,
-                   qual: Double = 100d,
+                   qual: Int = 100,
                    tempDir: File,
                    fileType: MimeType,
                    sourceDimensions: Dimensions // TODO really needed?
