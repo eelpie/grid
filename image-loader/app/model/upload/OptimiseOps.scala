@@ -29,16 +29,18 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     )
 
     // Given a source file on any valid upload type, return a file of the optimised type
-    try {
-      val arena = Arena.ofConfined
+    Stopwatch("toOptimisedFile") {
+      try {
+        val arena = Arena.ofConfined
 
-      val image = VImage.newFromFile(arena, file.getAbsolutePath)
-      imageOperations.saveImageToFile(image: VImage, optimiseMimeType, 85, optimisedFile, quantise = true)
-      (optimisedFile, optimiseMimeType)
-    } catch {
-      case _: Exception =>
-        throw new Exception(s"Failed to optimise PNG file ${file.getAbsolutePath}")
-    }
+        val image = VImage.newFromFile(arena, file.getAbsolutePath)
+        imageOperations.saveImageToFile(image: VImage, optimiseMimeType, 85, optimisedFile, quantise = true)
+        (optimisedFile, optimiseMimeType)
+      } catch {
+        case _: Exception =>
+          throw new Exception(s"Failed to optimise PNG file ${file.getAbsolutePath}")
+      }
+    }(marker)
   }
 
   def shouldOptimise(mimeType: Option[MimeType]): Boolean = false
