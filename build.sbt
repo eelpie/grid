@@ -63,7 +63,7 @@ Global / concurrentRestrictions := Seq(
 
 val awsSdkVersion = "1.12.470"
 val awsSdkV2Version = "2.31.12"
-val elastic4sVersion = "8.3.0"
+val elastic4sVersion = "7.16.1"
 val okHttpVersion = "3.12.1"
 
 val bbcBuildProcess: Boolean = System.getenv().asScala.get("BUILD_ORG").contains("bbc")
