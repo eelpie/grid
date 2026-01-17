@@ -34,20 +34,22 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = Future {
 
     val marker = MarkerMap(
-      "fileName" -> file.getName()
+      "fileName" -> file.getName
     )
 
     // Given a source file on any valid upload type, return a file of the optimised type
-    try {
-      val arena = Arena.ofConfined
+    Stopwatch("toOptimisedFile") {
+      try {
+        val arena = Arena.ofConfined
 
-      val image = VImage.newFromFile(arena, file.getAbsolutePath)
-      imageOperations.saveImageToFile(image: VImage, optimiseMimeType, 85, optimisedFile, quantise = true)
-      (optimisedFile, optimiseMimeType)
-    } catch {
-      case _: Exception =>
-        throw new Exception(s"Failed to optimise PNG file ${file.getAbsolutePath}")
-    }
+        val image = VImage.newFromFile(arena, file.getAbsolutePath)
+        imageOperations.saveImageToFile(image: VImage, optimiseMimeType, 85, optimisedFile, quantise = true)
+        (optimisedFile, optimiseMimeType)
+      } catch {
+        case _: Exception =>
+          throw new Exception(s"Failed to optimise PNG file ${file.getAbsolutePath}")
+      }
+    }(marker)
   }
 
   def isTransformedFilePath(filePath: String): Boolean = filePath.contains("transformed-")
