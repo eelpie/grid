@@ -90,7 +90,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
   def resizeImage(
                        sourceImage: VImage,
                        dimensions: Dimensions,
-                       qual: Double = 100d,
+                       quality: Int = 100,
                        tempDir: File,
                        fileType: MimeType,
                        sourceDimensions: Dimensions
@@ -100,9 +100,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     val resized = sourceImage.resize(scale)
 
     val outputFile = File.createTempFile(s"resize-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-    logger.info("Saving resized crop as JPEG tmp file to: " + outputFile.getAbsolutePath)
-
-    saveImageToFile(resized, fileType, qual, outputFile, quantise = true)
+    saveImageToFile(resized, fileType, quality, outputFile, quantise = true)
   }
 
   private def orient(op: IMOperation, orientationMetadata: Option[OrientationMetadata]): IMOperation = {
@@ -175,12 +173,12 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     }
   }
 
-  def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File, quantise: Boolean = false): File = {
+  def saveImageToFile(image: VImage, mimeType: MimeType, quality: Int, outputFile: File, quantise: Boolean = false): File = {
     logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
     mimeType match {
       case Jpeg =>
         image.jpegsave(outputFile.getAbsolutePath,
-          VipsOption.Int("Q", qual.toInt),
+          VipsOption.Int("Q", quality),
           //VipsOption.Boolean("optimize-scans", true),
           VipsOption.Boolean("optimize-coding", true),
           //VipsOption.Boolean("interlace", true),
@@ -195,7 +193,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
         if (quantise) {
           image.pngsave(outputFile.getAbsolutePath,
             VipsOption.Boolean("palette", true),
-            VipsOption.Int("Q", qual.toInt),
+            VipsOption.Int("Q", quality),
             VipsOption.Int("effort", 1),
             //VipsOption.Int("compression", 6),
             VipsOption.Int("bitdepth", 8),
