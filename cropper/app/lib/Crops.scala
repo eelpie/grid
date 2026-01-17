@@ -24,12 +24,12 @@ case class MasterCrop(image: VImage, dimensions: Dimensions, aspectRatio: Float)
 class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOperations, imageBucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext) extends GridLogging {
   import Files._
 
-  private val cropQuality = 75d
-  private val masterCropQuality = 95d
+  private val cropQuality = 75
+  private val masterCropQuality = 95
   // For PNGs, Magick considers "quality" parameter as effort spent on compression - 1 meaning none, 100 meaning max.
   // We don't overly care about output crop file sizes here, but prefer a fast output, so turn it right down.
   // TODO confirm this for vips
-  private val pngCropQuality = 1d
+  private val pngCropQuality = 1
 
   def outputFilename(source: SourceImage, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false, instance: Instance): String = {
     val masterString: String = if (isMaster) "master/" else ""
