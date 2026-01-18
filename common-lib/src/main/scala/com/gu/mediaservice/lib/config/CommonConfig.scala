@@ -1,6 +1,6 @@
 package com.gu.mediaservice.lib.config
 
-import com.gu.mediaservice.lib.aws.{AwsClientV1BuilderUtils, AwsClientV2BuilderUtils, KinesisSenderConfig}
+import com.gu.mediaservice.lib.aws.{AwsClientV1BuilderUtils, AwsClientV2BuilderUtils, KinesisSenderConfig, S3, S3Bucket}
 import com.gu.mediaservice.model.UsageRightsSpec
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
@@ -53,8 +53,18 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   lazy val softDeletedMetadataTable: String = string("dynamo.table.softDelete.metadata")
 
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
-  val maybeIngestBucket: Option[String] = stringOpt("s3.ingest.bucket")
-  val maybeFailBucket: Option[String] = stringOpt("s3.fail.bucket")
+  val maybeIngestBucket: Option[S3Bucket] = for {
+    ingestBucket <- stringOpt("s3.ingest.bucket.name")
+    ingestBucketEndpoint <- stringOpt("s3.ingest.bucket.endpoint")
+  } yield {
+    S3Bucket(ingestBucket, ingestBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.ingest.bucket.pathStyleURLs").getOrElse(false))
+  }
+  val maybeFailBucket: Option[S3Bucket] = for {
+    failBucket <- stringOpt("s3.fail.bucket.name")
+    failBucketEndpoint <- stringOpt("s3.fail.bucket.endpoint")
+  } yield {
+    S3Bucket(failBucket, failBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.fail.bucket.pathStyleURLs").getOrElse(false))
+  }
 
   val maybeUploadLimitInBytes: Option[Int] = intOpt("upload.limit.mb").map(_ * 1024 * 1024)
 
@@ -68,6 +78,12 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val corsAllowedOrigins: Set[String] = getStringSet("security.cors.allowedOrigins")
 
   val services = new SingleHostServices(domainRoot)
+
+  val imageBucket: S3Bucket = S3Bucket(string("s3.image.bucket.name"), string("s3.image.bucket.endpoint"), usesPathStyleURLs = booleanOpt("s3.image.bucket.pathStyleURLs").getOrElse(false))
+  val thumbnailBucket: S3Bucket = S3Bucket(string("s3.thumb.bucket.name"), string("s3.thumb.bucket.endpoint"), usesPathStyleURLs = booleanOpt("s3.thumb.bucket.pathStyleURLs").getOrElse(false))
+
+  val googleS3AccessKey = stringOpt("s3.accessKey")
+  val googleS3SecretKey = stringOpt("s3.secretKey")
 
   /**
    * Load in a list of domain metadata specifications from configuration. For example:

@@ -3,7 +3,7 @@ package lib
 import java.io.File
 import com.gu.mediaservice.lib.metadata.FileMetadataHelper
 import com.gu.mediaservice.lib.Files
-import com.gu.mediaservice.lib.aws.S3
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
@@ -17,7 +17,7 @@ case object InvalidCropRequest extends Exception("Crop request invalid for image
 
 case class MasterCrop(sizing: Future[Asset], file: File, dimensions: Dimensions, aspectRatio: Float)
 
-class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOperations, imageBucket: String)(implicit ec: ExecutionContext) extends GridLogging {
+class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOperations, imageBucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext) extends GridLogging {
   import Files._
 
   private val cropQuality = 75d
@@ -25,8 +25,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   // For PNGs, Magick considers "quality" parameter as effort spent on compression - 1 meaning none, 100 meaning max.
   // We don't overly care about output crop file sizes here, but prefer a fast output, so turn it right down.
   private val pngCropQuality = 1d
-
-  private val s3 = new S3(config)
 
   def outputFilename(source: SourceImage, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false, instance: Instance): String = {
     val masterString: String = if (isMaster) "master/" else ""
@@ -117,7 +115,8 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
     val cropType = Crops.cropType(mimeType, colourType, hasAlpha)
 
-    val secureUrl = s3.signUrlTony(imageBucket, secureFile)
+    val key = imageBucket.keyFromS3URL(secureFile)
+    val secureUrl = s3.signUrlTony(imageBucket, key)
 
     Stopwatch.async(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
