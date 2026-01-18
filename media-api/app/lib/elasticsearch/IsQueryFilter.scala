@@ -13,9 +13,9 @@ sealed trait IsQueryFilter extends Query with ImageFields {
   def query: Query
 
   override def toString: String = this match {
-    case IsOwnedPhotograph(staffPhotographerOrg) => s"$staffPhotographerOrg-owned-photo"
-    case IsOwnedIllustration(staffPhotographerOrg) => s"$staffPhotographerOrg-owned-illustration"
-    case IsOwnedImage(staffPhotographerOrg) => s"$staffPhotographerOrg-owned"
+    case IsOwnedPhotograph() => s"owned-photo"
+    case IsOwnedIllustration() => s"owned-illustration"
+    case IsOwnedImage() => s"owned"
     case _: IsDeleted => "deleted"
     case _: IsUnderQuota => "under-quota"
     case _: IsReapable => "reapable"
@@ -25,32 +25,31 @@ sealed trait IsQueryFilter extends Query with ImageFields {
 object IsQueryFilter {
   // for readability, the client capitalises gnm, so `toLowerCase` it before matching
   def apply(value: String, overQuotaAgencies: () => List[Agency], config: MediaApiConfig): Option[IsQueryFilter] = {
-    val organisation = config.staffPhotographerOrganisation.toLowerCase
     value.toLowerCase match {
-      case s if s == s"$organisation-owned-photo" => Some(IsOwnedPhotograph(organisation))
-      case s if s == s"$organisation-owned-illustration" => Some(IsOwnedIllustration(organisation))
-      case s if s == s"$organisation-owned" => Some(IsOwnedImage(organisation))
+      case s if s == s"owned-photo" => Some(IsOwnedPhotograph())
+      case s if s == s"owned-illustration" => Some(IsOwnedIllustration())
+      case s if s == s"owned" => Some(IsOwnedImage())
       case "under-quota" => Some(IsUnderQuota(overQuotaAgencies()))
       case "deleted" => Some(IsDeleted(true))
-      case "reapable" => Some(IsReapable(config.maybePersistOnlyTheseCollections, config.persistenceIdentifier))
+      case "reapable" => Some(IsReapable(config.maybePersistOnlyTheseCollections))
       case _ => None
     }
   }
 }
 
-case class IsOwnedPhotograph(staffPhotographerOrg: String) extends IsQueryFilter {
+case class IsOwnedPhotograph() extends IsQueryFilter {
   override def query: Query = filters.or(
     filters.terms(usageRightsField("category"), UsageRights.photographer.map(_.category))
   )
 }
 
-case class IsOwnedIllustration(staffPhotographerOrg: String) extends IsQueryFilter {
+case class IsOwnedIllustration() extends IsQueryFilter {
   override def query: Query = filters.or(
     filters.terms(usageRightsField("category"), UsageRights.illustrator.map(_.category))
   )
 }
 
-case class IsOwnedImage(staffPhotographerOrg: String) extends IsQueryFilter {
+case class IsOwnedImage() extends IsQueryFilter {
   override def query: Query = filters.or(
     filters.terms(usageRightsField("category"), UsageRights.whollyOwned.map(_.category))
   )
@@ -68,6 +67,7 @@ case class IsDeleted(isDeleted: Boolean) extends IsQueryFilter {
   )
 }
 
-case class IsReapable(maybePersistOnlyTheseCollections: Option[Set[String]], persistenceIdentifier: String)
+case class IsReapable(maybePersistOnlyTheseCollections: Option[Set[String]])
   extends IsQueryFilter with ReapableEligibility {
+  override def query: Query = preview
 }

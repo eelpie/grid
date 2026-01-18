@@ -9,7 +9,7 @@ import com.gu.mediaservice.lib.aws.{S3Metadata, S3Object, S3ObjectMetadata, S3Op
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.LogMarker
-import com.gu.mediaservice.model.{FileMetadata, Jpeg, MimeType, Png, Tiff, UploadInfo}
+import com.gu.mediaservice.model.{FileMetadata, Instance, Jpeg, MimeType, Png, Tiff, UploadInfo}
 import lib.imaging.MimeTypeDetection
 import model.upload.{OptimiseWithPngQuant, UploadRequest}
 import org.joda.time.DateTime
@@ -69,7 +69,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
     )
 
     val tempFile = ResourceHelpers.fileAt(fileName)
-    val ul = UploadInfo(None)
+    val ul = UploadInfo(None, None)
 
     val uploadRequest = UploadRequest(
       randomId,
@@ -78,7 +78,8 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       DateTime.now(),
       "uploadedBy",
       Map(),
-      ul
+      ul,
+      Instance("an-instance"),
     )
 
     val futureImage = Uploader.uploadAndStoreImage(

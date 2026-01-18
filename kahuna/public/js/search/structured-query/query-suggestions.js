@@ -81,19 +81,14 @@ const fileTypes = [
     'png'
 ];
 
-const staffPhotographerOrganisation = window._clientConfig.staffPhotographerOrganisation;
-
 const isSearch = [
-    `${staffPhotographerOrganisation}-owned-photo`,
-    `${staffPhotographerOrganisation}-owned-illustration`,
-    `${staffPhotographerOrganisation}-owned`,
+  'owned-photo',
+  'owned-illustration',
+  'owned',
   'under-quota',
-  'deleted'
+  'deleted',
+  'reapable'
 ];
-
-if (window._clientConfig.useReaper === true) {
-  isSearch.push('reapable');
-}
 
 querySuggestions.factory('querySuggestions', ['mediaApi', 'editsApi', function(mediaApi, editsApi) {
 

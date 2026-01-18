@@ -1,16 +1,26 @@
 import com.gu.mediaservice.lib.net.URI
-import com.gu.mediaservice.lib.play.GridComponents
+import com.gu.mediaservice.lib.play.{ConnectionBrokenFilter, GridComponents, RequestLoggingFilter, RequestMetricFilter}
+import com.gu.mediaservice.model.Instance
 import controllers.{AssetsComponents, KahunaController}
 import lib.KahunaConfig
 import play.api.ApplicationLoader.Context
 import play.api.Configuration
+import play.api.mvc.EssentialFilter
 import play.filters.headers.SecurityHeadersConfig
 import router.Routes
 
 class KahunaComponents(context: Context) extends GridComponents(context, new KahunaConfig(_)) with AssetsComponents {
-  final override lazy val securityHeadersConfig: SecurityHeadersConfig = KahunaSecurityConfig(config, context.initialConfiguration)
-
   final override val buildInfo = utils.buildinfo.BuildInfo
+
+  override def httpFilters: Seq[EssentialFilter] = Seq(
+    instanceSpecificCorsFilter,
+    // csrfFilter,  TODO Ineffective as gateway is not setting correct hostname headers!
+    new InstanceSpecificSecurityHeaderFilter(config, context.initialConfiguration),
+    gzipFilter,
+    new RequestLoggingFilter(materializer),
+    new ConnectionBrokenFilter(materializer),
+    new RequestMetricFilter(config, materializer, actorSystem, applicationLifecycle)
+  )
 
   val controller = new KahunaController(auth, config, controllerComponents, authorisation)
 
@@ -19,37 +29,38 @@ class KahunaComponents(context: Context) extends GridComponents(context, new Kah
 }
 
 object KahunaSecurityConfig {
-  def apply(config: KahunaConfig, playConfig: Configuration): SecurityHeadersConfig = {
+  def apply(config: KahunaConfig, playConfig: Configuration, instance: Instance): SecurityHeadersConfig = {
     val base = SecurityHeadersConfig.fromConfiguration(playConfig)
 
     val services = List(
-      config.services.apiBaseUri,
-      config.services.loaderBaseUri,
-      config.services.cropperBaseUri,
-      config.services.metadataBaseUri,
-      config.services.imgopsBaseUri,
-      config.services.usageBaseUri,
-      config.services.collectionsBaseUri,
-      config.services.leasesBaseUri,
-      config.services.authBaseUri,
+      config.services.apiBaseUri(instance),
+      config.services.loaderBaseUri(instance),
+      config.services.cropperBaseUri(instance),
+      config.services.metadataBaseUri(instance),
+      config.services.imgopsBaseUri(instance),
+      config.services.usageBaseUri(instance),
+      config.services.collectionsBaseUri(instance),
+      config.services.leasesBaseUri(instance),
+      config.services.authBaseUri(instance),
       config.services.guardianWitnessBaseUri
     )
 
-    val frameSources = s"frame-src ${config.services.authBaseUri} ${config.services.kahunaBaseUri} https://accounts.google.com https://www.youtube.com ${config.scriptsToLoad.map(_.host).mkString(" ")}"
+    val frameSources = s"frame-src https://accounts.google.com https://www.youtube.com ${config.scriptsToLoad.map(_.host).mkString(" ")}"
     val frameAncestors = s"frame-ancestors ${config.frameAncestors.mkString(" ")}"
-    val connectSources = s"connect-src 'self' ${(services :+ config.imageOrigin).mkString(" ")} ${config.connectSources.mkString(" ")}"
+    val connectSources = s"connect-src 'self' ${config.connectSources.mkString(" ")}"
 
-    val imageSources = s"img-src ${List(
+    val str = List(
       "data:",
       "blob:",
-      URI.ensureSecure(config.services.imgopsBaseUri).toString,
-      URI.ensureSecure(config.fullOrigin).toString,
+      URI.ensureSecure(config.services.imgopsBaseUri(instance)).toString,
       URI.ensureSecure(config.thumbOrigin).toString,
       URI.ensureSecure(config.cropOrigin).toString,
       URI.ensureSecure("app.getsentry.com").toString,
       "https://*.googleusercontent.com",
       "'self'"
-    ).mkString(" ")} ${config.imageSources.mkString(" ")}"
+    ).mkString(" ")
+
+    val imageSources = s"img-src $str ${config.imageSources.mkString(" ")}"
 
     val fontSources = s"font-src data: 'self' ${config.fontSources.mkString(" ")}"
 

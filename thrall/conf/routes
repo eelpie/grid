@@ -25,6 +25,11 @@ POST    /completeMigration                            controllers.ThrallControll
 POST    /previewMigrationCompletion                   controllers.ThrallController.previewMigrationCompletion
 +nocsrf
 POST    /unPreviewMigrationCompletion                 controllers.ThrallController.unPreviewMigrationCompletion
++nocsrf
+GET     /reindex                                      controllers.ThrallController.reindex()
+
+# Config
+GET    /config                                        controllers.ReaperController.conf()
 
 # reaper
 GET    /reaper                                        controllers.ReaperController.index

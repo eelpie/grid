@@ -9,6 +9,7 @@ import com.gu.mediaservice.lib.auth.Authentication.Principal
 import com.gu.mediaservice.lib.auth.Permissions.{DeleteCropsOrUsages, PrincipalFilter}
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws.UpdateMessage
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ExportResult
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
@@ -32,22 +33,24 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
                         override val controllerComponents: ControllerComponents,
                         authorisation: Authorisation,
                         gridClient: GridClient)(implicit val ec: ExecutionContext)
-  extends BaseController with MessageSubjects with ArgoHelpers with MediaApiUrls {
+  extends BaseController with MessageSubjects with ArgoHelpers with MediaApiUrls with InstanceForRequest {
 
   // Stupid name clash between Argo and Play
   import com.gu.mediaservice.lib.argo.model.{Action => ArgoAction}
 
   val AuthenticatedAndAuthorisedToDeleteCrops = auth andThen authorisation.CommonActionFilters.authorisedForDeleteCropsOrUsages
 
-  val indexResponse = {
+  private def indexResponse(instance: Instance) = {
     val indexData = Map("description" -> "This is the Cropper Service")
     val indexLinks = List(
-      Link("crop", s"${config.rootUri}/crops")
+      Link("crop", s"${config.rootUri(instance)}/crops")
     )
     respond(indexData, indexLinks)
   }
 
-  def index = auth { indexResponse }
+  def index = auth { request =>
+    indexResponse(instanceOf(request))
+  }
 
   def addExport = auth.async(parse.json) { httpRequest =>
     httpRequest.body.validate[ExportRequest] map { exportRequest =>
@@ -59,10 +62,10 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
       val user = httpRequest.user
       val onBehalfOfPrincipal = auth.getOnBehalfOfPrincipal(user)
 
-      executeRequest(exportRequest, user, onBehalfOfPrincipal).map { case (imageId, export) =>
+      executeRequest(exportRequest, user, onBehalfOfPrincipal, httpRequest).map { case (imageId, export) =>
 
         val cropJson = Json.toJson(export).as[JsObject]
-        val updateMessage = UpdateMessage(subject = UpdateImageExports, id = Some(imageId), crops = Some(Seq(export)))
+        val updateMessage = UpdateMessage(subject = UpdateImageExports, id = Some(imageId), crops = Some(Seq(export)), instance = instanceOf(httpRequest))
         notifications.publish(updateMessage)
 
         Ok(cropJson).as(ArgoMediaType)
@@ -77,9 +80,6 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
         case InvalidImage =>
           logger.error(logMarker, InvalidImage.getMessage)
           respondError(BadRequest, "invalid-image", InvalidImage.getMessage)
-        case MissingSecureSourceUrl =>
-          logger.error(logMarker, MissingSecureSourceUrl.getMessage)
-          respondError(BadRequest, "no-source-image", MissingSecureSourceUrl.getMessage)
         case InvalidCropRequest =>
           logger.error(logMarker, InvalidCropRequest.getMessage)
           respondError(BadRequest, "invalid-crop", InvalidCropRequest.getMessage)
@@ -106,7 +106,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
   private def downloadExportLink(imageId: String, exportId: String, width: Int) = Link(s"crop-download-$exportId-$width", s"${config.apiUri}/images/$imageId/export/$exportId/asset/$width/download")
 
   def getCrops(id: String) = auth.async { httpRequest =>
-
+    implicit val instance: Instance = instanceOf(httpRequest)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "getCrops",
       "requestId" -> RequestLoggingFilter.getRequestId(httpRequest),
@@ -115,9 +115,9 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
 
     logger.info(logMarker, s"getting crops for $id")
 
-    store.listCrops(id) map (_.toList) map { crops =>
+    store.listCrops(id, instance) map (_.toList) map { crops =>
       val deleteCropsAction =
-        ArgoAction("delete-crops", URI.create(s"${config.rootUri}/crops/$id"), "DELETE")
+        ArgoAction("delete-crops", URI.create(s"${config.rootUri(instance)}/crops/$id"), "DELETE")
 
       lazy val cropDownloadLinks = for {
         crop <- crops
@@ -145,13 +145,14 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
   }
 
   def deleteCrops(id: String) = AuthenticatedAndAuthorisedToDeleteCrops.async { httpRequest =>
+    implicit val instance: Instance = instanceOf(httpRequest)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "deleteCrops",
       "requestId" -> RequestLoggingFilter.getRequestId(httpRequest),
       "imageId" -> id
     )
     store.deleteCrops(id).map { _ =>
-      val updateMessage = UpdateMessage(subject = DeleteImageExports, id = Some(id))
+      val updateMessage = UpdateMessage(subject = DeleteImageExports, id = Some(id), instance = instance)
       notifications.publish(updateMessage)
       Accepted
     } recover {
@@ -160,11 +161,12 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
   }
 
   def executeRequest(
-    exportRequest: ExportRequest, user: Principal, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal
+    exportRequest: ExportRequest, user: Principal, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal,
+    request: Authentication.Request[JsValue]
   )(implicit logMarker: LogMarker): Future[(String, Crop)] = {
-
+    implicit val instance = instanceOf(request)
     for {
-      _ <- verify(isMediaApiImageUri(exportRequest.uri, config.apiUri), InvalidSource)
+      _ <- verify(isMediaApiImageUri(exportRequest.uri, config.apiUri(instance)), InvalidSource)
       apiImage <- fetchSourceFromApi(exportRequest.uri, onBehalfOfPrincipal)
       _ <- verify(apiImage.valid, InvalidImage)
       // Image should always have dimensions, but we want to safely extract the Option
@@ -179,12 +181,12 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
         specification = cropSpec
       )
       markersWithCropDetails = logMarker ++ Map("imageId" -> apiImage.id, "cropId" -> Crop.getCropId(cropSpec.bounds))
-      ExportResult(id, masterSizing, sizings) <- crops.makeExport(apiImage, crop)(markersWithCropDetails)
+      ExportResult(id, masterSizing, sizings) <- crops.makeExport(apiImage, crop, instance)(markersWithCropDetails)
       finalCrop = Crop.createFromCrop(crop, masterSizing, sizings)
     } yield (id, finalCrop)
   }
 
-  private def fetchSourceFromApi(uri: String, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal): Future[SourceImage] = {
+  private def fetchSourceFromApi(uri: String, onBehalfOfPrincipal: Authentication.OnBehalfOfPrincipal)(implicit instance: Instance): Future[SourceImage] = {
     gridClient.getSourceImage(imageIdFrom(uri), onBehalfOfPrincipal)
   }
 

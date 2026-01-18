@@ -10,7 +10,7 @@ import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model._
+import com.gu.mediaservice.model.{Instance, _}
 import com.gu.mediaservice.model.leases.LeasesByMedia
 import lib.DigestedFile
 import org.joda.time.{DateTime, DateTimeZone}
@@ -21,6 +21,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.libs.json.{JsArray, JsString}
+import play.api.mvc.RequestHeader
 import test.lib.ResourceHelpers
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -42,6 +43,8 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
   private val s3 = mock[AmazonS3]
   private val auth = mock[Authentication]
   private val projector = new Projector(config, s3, imageOperations, ImageProcessor.identity, auth)
+
+  private implicit val instance: Instance = Instance("an-instance")
 
   // FIXME temporary ignored as test is not executable in CI/CD machine
   // because graphic lib files like srgb.icc, cmyk.icc are in root directory instead of resources
@@ -130,7 +133,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
       softDeletedMetadata = None,
       lastModified = Some(new DateTime("2020-01-24T17:36:08.456Z").withZone(DateTimeZone.UTC)),
       identifiers = Map(),
-      uploadInfo = UploadInfo(Some("getty.jpg")),
+      uploadInfo = UploadInfo(Some("getty.jpg"), Some(true)),
       source = Asset(new URI("http://img-bucket.s3.amazonaws.com/i/d/1/2/3/" + id),
         Some(12666),
         Some(Jpeg),
@@ -194,9 +197,11 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
       uploadTime = uploadTime,
       uploadFileName = uploadFileName,
       identifiers = Map.empty,
+      isFeedUpload = Some(true),
     )
 
     implicit val logMarker: LogMarker = MarkerMap()
+    implicit val instance: Instance = Instance("an-instance")
 
     val gridClient = mock[GridClient]
     when(gridClient.getUsages(id, identity)).thenReturn(Future.successful(Nil))

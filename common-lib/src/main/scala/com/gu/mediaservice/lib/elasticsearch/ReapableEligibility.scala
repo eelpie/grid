@@ -13,10 +13,9 @@ trait ReapableEligibility extends Provider{
 
 
   val maybePersistOnlyTheseCollections: Option[Set[String]] // typically from config
-  val persistenceIdentifier: String // typically from config
 
   private def moreThanTwentyDaysOld =
-    filters.date("uploadTime", None, Some(DateTime.now().minusDays(20))).getOrElse(matchAllQuery())
+    filters.date("uploadTime", None, Some(DateTime.now().minusDays(ReapableEligibility.ReapableAfterMoreThanDaysOld))).getOrElse(matchAllQuery())
 
   private lazy val persistedQueries = filters.or(
     PersistedQueries.hasCrops,
@@ -29,12 +28,25 @@ trait ReapableEligibility extends Provider{
     PersistedQueries.addedToPhotoshoot,
     PersistedQueries.hasLabels,
     PersistedQueries.hasLeases,
-    PersistedQueries.existedPreGrid(persistenceIdentifier),
     PersistedQueries.isInPersistedCollection(maybePersistOnlyTheseCollections)
   )
 
+  private def isFeedUpload =
+    filters.boolTerm("uploadInfo.isFeedUpload", value = true)
+
   def query: Query = filters.and(
     moreThanTwentyDaysOld,
+    isFeedUpload,
     filters.not(persistedQueries)
   )
+
+  def preview: Query = filters.and(
+    isFeedUpload,
+    filters.not(persistedQueries)
+  )
+
+}
+
+object ReapableEligibility {
+  val ReapableAfterMoreThanDaysOld: Int = 20
 }
