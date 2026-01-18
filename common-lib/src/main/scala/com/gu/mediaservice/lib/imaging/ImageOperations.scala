@@ -270,7 +270,7 @@ class ImageOperations(playPath: String) extends GridLogging {
     image.jpegsave(outputFile.getAbsolutePath,
       VipsOption.Int("Q", qual.toInt),
       //VipsOption.Boolean("optimize-scans", true),
-      //VipsOption.Boolean("optimize-coding", true),
+      VipsOption.Boolean("optimize-coding", true),
       //VipsOption.Boolean("interlace", true),
       //VipsOption.Boolean("trellis-quant", true),
       // VipsOption.Int("quant-table", 3),
