@@ -1,10 +1,10 @@
-import play.sbt.PlayImport.PlayKeys._
+import com.typesafe.sbt.packager.docker.*
+import play.sbt.PlayImport.PlayKeys.*
 import sbt.Package.FixedTimestamp
 
-import scala.sys.process._
+import scala.collection.JavaConverters.*
+import scala.sys.process.*
 import scala.util.control.NonFatal
-import scala.collection.JavaConverters._
-import com.typesafe.sbt.packager.docker._
 
 // We need to keep the timestamps to allow caching headers to work as expected on assets.
 // The below should work, but some problem in one of the plugins (possible the play plugin? or sbt-web?) causes
@@ -94,6 +94,7 @@ lazy val commonLib = project("common-lib").settings(
     "com.gu" %% "thrift-serializer" % "5.0.2",
     "org.scalaz" %% "scalaz-core" % "7.3.8",
     "org.im4java" % "im4java" % "1.4.0",
+    "app.photofox.vips-ffm" % "vips-ffm-core" % "1.5.2",
     "com.gu" % "kinesis-logback-appender" % "1.4.4",
     "net.logstash.logback" % "logstash-logback-encoder" % "5.0",
     logback, // play-logback; needed when running the scripts
@@ -238,8 +239,8 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "eclipse-temurin:11",
-      dockerExposedPorts in Docker := Seq(port),
+      dockerBaseImage := "eclipse-temurin:25",
+      dockerExposedPorts := Seq(port),
       playDefaultPort := port,
 
       bashScriptEnvConfigLocation := Some("/etc/environment"),
@@ -261,15 +262,20 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "eclipse-temurin:11",
-      dockerExposedPorts in Docker := Seq(port),
+      dockerBaseImage := "eclipse-temurin:25",
+      dockerExposedPorts := Seq(port),
       dockerCommands ++= Seq(
         Cmd("USER", "root"), Cmd("RUN", "apt-get", "update"),
         Cmd("RUN", "apt-get", "install", "-y", "apt-utils"),
         Cmd("RUN", "apt-get", "install", "-y", "graphicsmagick"),
         Cmd("RUN", "apt-get", "install", "-y", "graphicsmagick-imagemagick-compat"),
         Cmd("RUN", "apt-get", "install", "-y", "pngquant"),
-        Cmd("RUN", "apt-get", "install", "-y", "libimage-exiftool-perl")
+        Cmd("RUN", "apt-get", "install", "-y", "libimage-exiftool-perl"),
+        Cmd("RUN", "apt-get", "install", "-y", "libvips"),
+        Cmd("RUN", "apt-get", "install", "-y", "libvips-dev"),
+        Cmd("RUN", "apt-get", "install", "-y", "libvips-tools"),
+        Cmd("RUN", "apt-get", "install", "-y", "libjemalloc-dev"),
+        Cmd("ENV", "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so")
       ),
       playDefaultPort := port,
 
