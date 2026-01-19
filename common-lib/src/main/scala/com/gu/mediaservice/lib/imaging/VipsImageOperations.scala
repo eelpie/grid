@@ -195,7 +195,9 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
           logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
           thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
 
-          saveImageToFile(rotated, qual, outputFile)
+          saveImageToFile(rotated, qual.toInt, outputFile)
+          arena.close()
+
         } catch {
           case e: Exception =>
             logger.error("Error during createThumbnail", e)
