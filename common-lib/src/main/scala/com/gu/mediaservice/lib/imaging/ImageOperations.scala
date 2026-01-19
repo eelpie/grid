@@ -198,18 +198,14 @@ class ImageOperations(playPath: String) extends GridLogging {
           }
           logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
           thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
-          rotated.jpegsave(outputFile.getAbsolutePath,
-            VipsOption.Int("Q", qual.toInt),
-            //VipsOption.Boolean("optimize-scans", true),
-            //VipsOption.Boolean("optimize-coding", true),
-            //VipsOption.Boolean("interlace", true),
-            //VipsOption.Boolean("trellis-quant", true),
-            // VipsOption.Int("quant-table", 3),
-            VipsOption.Boolean("strip", true)
-          )
+
+          saveImageToFile(rotated, qual.toInt, outputFile)
+          arena.close()
+
         } catch {
           case e: Exception =>
             logger.error("Error during createThumbnail" , e)
+            arena.close()
             throw e
         }
         thumbDimensions
