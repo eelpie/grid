@@ -44,24 +44,18 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
       // TODO depth adjust
 
-      val labInterpretations = Set (
-        VipsInterpretation.INTERPRETATION_LAB,
-        VipsInterpretation.INTERPRETATION_LABS
+    // If we saw and ICC profile than we will need to transform
+    val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
+    val correctedForICCProfile = if (needsICCTransform ) {
+      cropped.iccTransform("srgb",
+        VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),     // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
       )
+    } else {
+      // LAB gets corrupted by a needless icc_transform
+      cropped
+    }
 
-      val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == VipsHelper.image_get_interpretation(image.getUnsafeStructAddress))
-      val isLab = maybeInterpretation.exists(interpretation => labInterpretations.contains(interpretation))
-      val corrected = if (!isLab) {
-        cropped.iccTransform("srgb",
-          VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),     // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
-          VipsOption.Boolean("embedded", true),
-        )
-      } else {
-        // LAB gets corrupted by icc_transform something about with no profile?
-        cropped
-      }
-
-      val master = corrected
+      val master = correctedForICCProfile
 
       // TODO separate this local file create from the vips master image create
       val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
