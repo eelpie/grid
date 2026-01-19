@@ -51,7 +51,6 @@ class ImageOperations(playPath: String) extends GridLogging {
                    )(implicit logMarker: LogMarker, arena: Arena): VImage = {
     // Read source image
     val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-    val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == VipsHelper.image_get_interpretation(image.getUnsafeStructAddress))
 
     // Orient
     val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
@@ -62,26 +61,19 @@ class ImageOperations(playPath: String) extends GridLogging {
     // TODO strip meta data
     // Output colour profile
     val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
-    // TODO depth adjust
 
-    val labInterpretations = Set (
-      VipsInterpretation.INTERPRETATION_LAB,
-      VipsInterpretation.INTERPRETATION_LABS
-    )
-
-    val isLab = maybeInterpretation.exists(interpretation => labInterpretations.contains(interpretation))
-    val corrected = if (!isLab) {
+    // If we saw and ICC profile than we will need to transform
+    val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
+    val correctedForICCProfile = if (needsICCTransform ) {
       cropped.iccTransform("srgb",
         VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),     // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
-        VipsOption.Boolean("embedded", true),
       )
     } else {
-      // LAB gets corrupted by icc_transform something about with no profile?
+      // LAB gets corrupted by a needless icc_transform
       cropped
     }
 
-    val master = corrected
-    master
+    correctedForICCProfile
   }
 
 
