@@ -69,6 +69,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     val corrected = if (!isLab) {
       cropped.iccTransform("srgb",
         VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),     // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
+        VipsOption.Boolean("embedded", true),
       )
     } else {
       // LAB gets corrupted by icc_transform something about with no profile?
