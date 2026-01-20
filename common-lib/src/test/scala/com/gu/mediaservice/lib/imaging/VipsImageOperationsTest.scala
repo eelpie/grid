@@ -3,14 +3,15 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.Vips
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-
-import java.io.File
-import com.gu.mediaservice.model.{Dimensions, Instance, Jpeg, MimeType}
+import com.gu.mediaservice.model.{Dimensions, Instance, Jpeg, Tiff}
+import org.apache.commons.io.FileUtils
 import org.scalatest.time.{Millis, Span}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.io.File
+import java.lang.foreign.Arena
 import scala.concurrent.ExecutionContext.Implicits.global
 
 // This test is disabled for now as it doesn't run on our CI environment, because GraphicsMagick is not present...
@@ -22,6 +23,20 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
   implicit val logMarker: LogMarker = MarkerMap()
 
   private val imageOperations = new VipsImageOperations("")
+
+  describe("thumbnail") {
+    it("should write thumbnail to output file") {
+      val image = fileAt("IMG_4403.jpg")
+
+      val outputFile = File.createTempFile("temp", ".jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false,  Instance("TODO"))
+
+      val eventualThumbnail = imageOperations.createThumbnail(browserViewableImageImage, 500, 85, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+  }
 
   describe("identifyColourModel") {
     it("should return RGB for a JPG image with RGB image data and no embedded profile") {
