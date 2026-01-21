@@ -88,8 +88,9 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       implicit val arena: Arena = Arena.ofConfined
       val fullSizedJpegImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
       val imageOperations = new ImageOperations("")
+      val outputFile = File.createTempFile("resized", ".jpg")
 
-      val resized = imageOperations.resizeImageVips(fullSizedJpegImage, Dimensions(140, 100), 85, FileUtils.getTempDirectory, Jpeg, Dimensions(fullSizedJpegImage.getWidth, fullSizedJpegImage.getHeight))
+      val resized = imageOperations.resizeImageVips(fullSizedJpegImage, Dimensions(140, 100), 85, outputFile, Jpeg, Dimensions(fullSizedJpegImage.getWidth, fullSizedJpegImage.getHeight))
 
       arena.close()
       resized.isFile should be(true)
