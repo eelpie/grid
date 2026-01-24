@@ -31,6 +31,7 @@ trait ImageOperations {
   def cropImage(
                  sourceFile: File,
                  bounds: Bounds,
+                 metadata: ImageMetadata,
                  orientationMetadata: Option[OrientationMetadata]
                )(implicit logMarker: LogMarker, arena: Arena): VImage
 
