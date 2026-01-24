@@ -7,7 +7,7 @@ import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.imaging.ImageOperations.thumbMimeType
-import com.gu.mediaservice.lib.imaging.im4jwrapper.{ExifTool, ImageMagick}
+import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.model._
 import org.im4java.core.IMOperation
@@ -16,14 +16,12 @@ import java.io._
 import java.lang.foreign.Arena
 import java.nio.charset.StandardCharsets
 import scala.concurrent.{ExecutionContext, Future}
-import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 
 case class ExportResult(id: String, masterCrop: Asset, othersizings: List[Asset])
 class UnsupportedCropOutputTypeException extends Exception
 
 class ImageOperations(playPath: String) extends GridLogging {
-  import ExifTool._
   import ImageMagick._
 
   private def profilePath(fileName: String): String = s"$playPath/$fileName"
@@ -40,14 +38,6 @@ class ImageOperations(playPath: String) extends GridLogging {
     "CMYK" -> profilePath("cmyk.icc"),
     "Greyscale" -> profilePath("grayscale.icc")
   )
-
-  private def tagFilter(metadata: ImageMetadata) = {
-    Map[String, Option[String]](
-      "Copyright" -> metadata.copyright,
-      "Credit" -> metadata.credit,
-      "OriginalTransmissionReference" -> metadata.suppliersReference
-    ).collect { case (key, Some(value)) => (key, value) }
-  }
 
   def cropImageVips(
                      sourceFile: File,
@@ -114,13 +104,6 @@ class ImageOperations(playPath: String) extends GridLogging {
       val xmpXml = XMPMetaFactory.serializeToString(xmpMeta, serializeOptions)
       xmpXml.getBytes(StandardCharsets.UTF_8)
     }
-  }
-
-  // Updates metadata on existing file
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = {
-    runExiftoolCmd(
-      setTags(tagSource(sourceFile))(tagFilter(metadata))
-      ).map(_ => sourceFile)
   }
 
   def resizeImageVips(
