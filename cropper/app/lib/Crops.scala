@@ -38,6 +38,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     apiImage: SourceImage,
     sourceFile: File,
     crop: Crop,
+    metadata: ImageMetadata,
     orientationMetadata: Option[OrientationMetadata]
   )(implicit logMarker: LogMarker, arena: Arena): MasterCrop = {
 
@@ -47,6 +48,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val masterImage = imageOperations.cropImageVips(
       sourceFile,
       source.bounds,
+      metadata,
       orientationMetadata = orientationMetadata
     )
 
@@ -104,7 +106,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     tempFileFromURL(secureUrl, "cropSource", "", config.tempDir).flatMap { sourceFile =>
       logger.info("Starting vips operations")
       implicit val arena: Arena = Arena.ofConfined()
-      val masterCrop = createMasterCrop(apiImage, sourceFile, crop, apiImage.source.orientationMetadata)
+      val masterCrop = createMasterCrop(apiImage, sourceFile, crop, apiImage.metadata, apiImage.source.orientationMetadata)
 
       val isGraphic = ImageOperations.isGraphicVips(masterCrop.image)
       val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
