@@ -19,7 +19,7 @@ trait ImageOperations {
   val thumbMimeType: MimeType = ImageOperations.thumbMimeType
   val optimisedMimeType: MimeType = ImageOperations.optimisedMimeType
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File]
+  //def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File]
 
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                       width: Int,
@@ -41,7 +41,7 @@ trait ImageOperations {
                  orientationMetadata: Option[OrientationMetadata]
                )(implicit logMarker: LogMarker, arena: Arena): File
 
-  def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
+  //def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
   def resizeImage(
                    sourceFile: File,
