@@ -7,7 +7,7 @@ import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.imaging.VipsImageOperations.thumbMimeType
-import com.gu.mediaservice.lib.imaging.im4jwrapper.{ExifTool, ImageMagick}
+import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.model._
 import org.im4java.core.IMOperation
@@ -18,7 +18,6 @@ import java.nio.charset.StandardCharsets
 import scala.concurrent.{ExecutionContext, Future}
 
 class VipsImageOperations(playPath: String) extends GridLogging with ImageOperations {
-  import ExifTool._
   import ImageMagick._
 
   private def profilePath(fileName: String): String = s"$playPath/$fileName"
@@ -35,14 +34,6 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     "CMYK" -> profilePath("cmyk.icc"),
     "Greyscale" -> profilePath("grayscale.icc")
   )
-
-  private def tagFilter(metadata: ImageMetadata) = {
-    Map[String, Option[String]](
-      "Copyright" -> metadata.copyright,
-      "Credit" -> metadata.credit,
-      "OriginalTransmissionReference" -> metadata.suppliersReference
-    ).collect { case (key, Some(value)) => (key, value) }
-  }
 
   def cropImage(
                      sourceFile: File,
@@ -109,13 +100,6 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
       val xmpXml = XMPMetaFactory.serializeToString(xmpMeta, serializeOptions)
       xmpXml.getBytes(StandardCharsets.UTF_8)
     }
-  }
-
-  // Updates metadata on existing file
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = {
-    runExiftoolCmd(
-      setTags(tagSource(sourceFile))(tagFilter(metadata))
-    ).map(_ => sourceFile)
   }
 
   def resizeImage(
