@@ -1,7 +1,9 @@
 package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
-import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
+import app.photofox.vipsffm.{VBlob, VImage, VipsHelper, VipsOption}
+import com.adobe.internal.xmp.options.SerializeOptions
+import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.imaging.ImageOperations.thumbMimeType
 import com.gu.mediaservice.lib.imaging.im4jwrapper.{ExifTool, ImageMagick}
@@ -11,6 +13,7 @@ import org.im4java.core.IMOperation
 
 import java.io._
 import java.lang.foreign.Arena
+import java.nio.charset.StandardCharsets
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
@@ -48,6 +51,7 @@ class ImageOperations(playPath: String) extends GridLogging {
   def cropImageVips(
                      sourceFile: File,
                      bounds: Bounds,
+                     metadata: ImageMetadata,
                      orientationMetadata: Option[OrientationMetadata]
                    )(implicit logMarker: LogMarker, arena: Arena): VImage = {
     // Read source image
@@ -74,7 +78,39 @@ class ImageOperations(playPath: String) extends GridLogging {
     }
 
     val striped = manuallyStripMetadata(correctedForICCProfile)
+
+    // Apply crop metadata
+    // https://developers.google.com/search/docs/appearance/structured-data/image-license-metadata#iptc-photo-metadata
+    makeXmpBlog(metadata).foreach { xmpBlob =>
+      VipsHelper.image_set_blob_copy(arena, striped.getUnsafeStructAddress, "xmp-data", VBlob.newFromBytes(arena, xmpBlob).getUnsafeDataAddress, xmpBlob.length)
+    }
+
     striped
+  }
+
+  private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
+    val mappings: Seq[(String, String, String)] = Seq(metadata.credit.map { credit =>
+      (XMPConst.NS_DC, "creator", credit)
+    },
+    metadata.copyright.map { copyright =>
+      (XMPConst.NS_DC, "rights", copyright)
+    },
+    metadata.suppliersReference.map { suppliersReference =>
+      (XMPConst.NS_PHOTOSHOP, "TransmissionReference",  suppliersReference)
+    }).flatten
+
+    mappings.headOption.map { _ =>
+      val xmpMeta = XMPMetaFactory.create()
+      mappings.foreach { mapping =>
+        xmpMeta.setProperty(mapping._1, mapping._2, mapping._3)
+      }
+
+      val serializeOptions = new SerializeOptions()
+      serializeOptions.setUseCompactFormat(true)
+      serializeOptions.setUseCanonicalFormat(false)
+      val xmpXml = XMPMetaFactory.serializeToString(xmpMeta, serializeOptions)
+      xmpXml.getBytes(StandardCharsets.UTF_8)
+    }
   }
 
   private def manuallyStripMetadata(stripped: VImage): VImage = {
