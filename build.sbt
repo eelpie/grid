@@ -109,6 +109,7 @@ lazy val commonLib = project("common-lib").settings(
     "org.scanamo" %% "scanamo" % "2.0.0",
     // declare explicit dependency on desired version of aws sdk v2 dynamo
     "software.amazon.awssdk" % "dynamodb" % awsSdkV2Version,
+    "com.adobe.xmp" % "xmpcore" % "6.1.11",
     ws,
     "org.testcontainers" % "elasticsearch" % "1.19.2" % Test
   ),
