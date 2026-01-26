@@ -222,6 +222,7 @@ class ImageOperations(playPath: String) extends GridLogging {
           VipsOption.Boolean("strip", true),
           VipsOption.Int("keep", k)
         )
+        logger.info(s"Finished saving image as $mimeType to file: " + outputFile.getAbsolutePath)
         outputFile
 
       case Png =>
@@ -242,6 +243,7 @@ class ImageOperations(playPath: String) extends GridLogging {
             VipsOption.Int("keep", k)
           )
         }
+        logger.info(s"Finished saving image as $mimeType to file: " + outputFile.getAbsolutePath)
         outputFile
 
       case _ =>
