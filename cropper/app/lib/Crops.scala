@@ -1,10 +1,9 @@
 package lib
 
 import app.photofox.vipsffm.jextract.VipsRaw
-import app.photofox.vipsffm.{VImage, VipsOption}
+import app.photofox.vipsffm.VImage
 
 import java.io.File
-import com.gu.mediaservice.lib.metadata.FileMetadataHelper
 import com.gu.mediaservice.lib.Files
 import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations}
@@ -30,9 +29,9 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   // We don't overly care about output crop file sizes here, but prefer a fast output, so turn it right down.
   private val pngMasterCropQuality = 1  // No effort spend compressing the PNG master
 
-  def outputFilename(source: SourceImage, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false)(implicit instance: Instance): String = {
+  def outputFilename(imageId: String, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false)(implicit instance: Instance): String = {
     val masterString: String = if (isMaster) "master/" else ""
-    instance.id + "/" + s"${source.id}/${Crop.getCropId(bounds)}/$masterString$outputWidth${fileType.fileExtension}"
+    instance.id + "/" + s"$imageId/${Crop.getCropId(bounds)}/$masterString$outputWidth${fileType.fileExtension}"
   }
 
   private def createMasterCrop(
@@ -62,15 +61,15 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     }
   }
 
-  private def createCrops(sourceImage: VImage, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType, masterCrop: MasterCrop
+  private def createCrops(sourceImage: VImage, dimensionList: List[Dimensions], imageId: String, crop: Crop, cropType: MimeType, masterCrop: MasterCrop
                          )(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Seq[(File, String, Dimensions)] = {
-    Stopwatch(s"creating crops for ${apiImage.id}") {
+    Stopwatch(s"creating crops for $imageId") {
       val resizes = dimensionList.map { dimensions =>
         val outputFile = File.createTempFile(s"resize-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
 
         val file = imageOperations.resizeImageVips(sourceImage, dimensions, cropQuality, outputFile, cropType, masterCrop.dimensions)
 
-        val filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
+        val filename = outputFilename(imageId, crop.specification.bounds, dimensions.width, cropType)
         (file, filename, dimensions)
       }
       logger.info("Done resizes")
@@ -124,14 +123,14 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
       // Static crops; higher compression
       val outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
-      val resizes = createCrops(masterCrop.image, outputDims, apiImage, crop, cropType, masterCrop)
+      val resizes = createCrops(masterCrop.image, outputDims, apiImage.id, crop, cropType, masterCrop)
 
       // All vips operations have completed; we can close the arena
       arena.close()
       logger.info("Finished vips operations")
 
       // Store assets
-      val eventualStoredMasterCropAsset = store.storeCropSizing(masterCropFile, outputFilename(apiImage, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true), cropType, crop, masterCrop.dimensions)
+      val eventualStoredMasterCropAsset = store.storeCropSizing(masterCropFile, outputFilename(apiImage.id, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true), cropType, crop, masterCrop.dimensions)
       val eventualStoredCropAssets = Future.sequence {
         resizes.map { resize =>
           val file = resize._1
