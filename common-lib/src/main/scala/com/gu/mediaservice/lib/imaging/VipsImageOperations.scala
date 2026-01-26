@@ -102,6 +102,28 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     }
   }
 
+  def createCrops(sourceImage: VImage, dimensionList: List[Dimensions], imageId: String, bounds: Bounds, cropType: MimeType, tempDir: File, cropQuality: Int
+                 )(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Seq[(File, String, Dimensions)] = {
+    Stopwatch(s"Resizing crops for ${imageId}") {
+      logger.info("Starting resizes")
+      val resizes = dimensionList.map { dimensions =>
+        val outputFile = File.createTempFile(s"resize-", s"${cropType.fileExtension}", tempDir) // TODO function for this
+
+        val file =resizeImage(sourceImage, dimensions, cropQuality, outputFile, cropType)
+
+        def outputFilename(imageId: String, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false, instance: Instance): String = {  // TODO push back to Crops
+          val masterString: String = if (isMaster) "master/" else ""
+          instance.id + "/" + s"$imageId/${Crop.getCropId(bounds)}/$masterString$outputWidth${fileType.fileExtension}"
+        }
+
+        val filename = outputFilename(imageId, bounds, dimensions.width, cropType, instance = instance)
+        (file, filename, dimensions)
+      }
+      logger.info("Done resizes")
+      resizes
+    }
+  }
+
   def resizeImage(
                        sourceImage: VImage,
                        dimensions: Dimensions,
