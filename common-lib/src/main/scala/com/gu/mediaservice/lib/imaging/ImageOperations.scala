@@ -128,11 +128,10 @@ class ImageOperations(playPath: String) extends GridLogging {
                        dimensions: Dimensions,
                        quality: Int = 100,
                        outputFile: File,
-                       fileType: MimeType,
-                       sourceDimensions: Dimensions
+                       fileType: MimeType
                      )(implicit logMarker: LogMarker, arena: Arena): File = {
 
-    val scale = dimensions.width.toDouble / sourceDimensions.width.toDouble
+    val scale = dimensions.width.toDouble / sourceImage.getWidth.toDouble
     val resized = sourceImage.resize(scale)
 
     saveImageToFile(resized, fileType, quality, outputFile, quantise = true, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
