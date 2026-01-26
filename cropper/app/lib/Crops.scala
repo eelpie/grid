@@ -102,7 +102,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       val masterQuality = if (mimeType == Png) pngMasterCropQuality else jpegMasterCropQuality
 
       // High quality rendering with minimal compression which will be used as the CDN resizer origin
-
+      logger.info("Requesting master file save")
       val eventualMasterSaved = Future {
         val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
         imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
@@ -110,6 +110,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       }
 
       // Static crops; higher compression
+      logger.info("Requesting resize file saves")
       val outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
       val eventualResizes = imageOperations.createCrops(masterCrop.image, outputDims, apiImage.id, crop.specification.bounds, cropType, config.tempDir, cropQuality)
 
