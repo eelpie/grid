@@ -214,7 +214,6 @@ class ImageOperations(playPath: String) extends GridLogging {
   }
 
   def saveImageToFile(image: VImage, mimeType: MimeType, quality: Int, outputFile: File, quantise: Boolean = false, keep: Option[Int] = None): File = {
-    logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
     val k = keep.getOrElse(VipsRaw.VIPS_FOREIGN_KEEP_NONE)
     mimeType match {
       case Jpeg =>
@@ -228,7 +227,6 @@ class ImageOperations(playPath: String) extends GridLogging {
           VipsOption.Boolean("strip", true),
           VipsOption.Int("keep", k)
         )
-        logger.info(s"Finished saving image as $mimeType to file: " + outputFile.getAbsolutePath)
         outputFile
 
       case Png =>
@@ -249,7 +247,6 @@ class ImageOperations(playPath: String) extends GridLogging {
             VipsOption.Int("keep", k)
           )
         }
-        logger.info(s"Finished saving image as $mimeType to file: " + outputFile.getAbsolutePath)
         outputFile
 
       case _ =>
