@@ -65,22 +65,22 @@ class CropsTest extends AnyFunSpec with Matchers with MockitoSugar {
 
   it("should should construct a correct address for a master jpg") {
     val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
-      .outputFilename(source, bounds, outputWidth, Jpeg, isMaster = true)
+      .outputFilename(source.id, bounds, outputWidth, Jpeg, isMaster = true)
     outputFilename shouldBe "an-instance/test/10_20_30_40/master/1234.jpg"
   }
   it("should should construct a correct address for a non-master jpg") {
     val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
-      .outputFilename(source, bounds, outputWidth, Jpeg)
+      .outputFilename(source.id, bounds, outputWidth, Jpeg)
     outputFilename shouldBe "an-instance/test/10_20_30_40/1234.jpg"
   }
   it("should should construct a correct address for a non-master tiff") {
     val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
-      .outputFilename(source, bounds, outputWidth, Tiff)
+      .outputFilename(source.id, bounds, outputWidth, Tiff)
     outputFilename shouldBe "an-instance/test/10_20_30_40/1234.tiff"
   }
   it("should should construct a correct address for a non-master png") {
     val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
-      .outputFilename(source, bounds, outputWidth, Png)
+      .outputFilename(source.id, bounds, outputWidth, Png)
     outputFilename shouldBe "an-instance/test/10_20_30_40/1234.png"
   }
 }
