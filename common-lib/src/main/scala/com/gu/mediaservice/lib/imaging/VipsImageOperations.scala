@@ -104,6 +104,8 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
           case Some(VipsInterpretation.INTERPRETATION_B_W) => Some("Greyscale")
           case Some(VipsInterpretation.INTERPRETATION_CMYK) => Some("CMYK")
           case Some(VipsInterpretation.INTERPRETATION_LAB) => Some("LAB")
+          case Some(VipsInterpretation.INTERPRETATION_LABS) => Some("LAB")
+          case Some(VipsInterpretation.INTERPRETATION_RGB16) => Some("RGB")
           case Some(VipsInterpretation.INTERPRETATION_sRGB) => Some("RGB")
           case _ => None
         }
