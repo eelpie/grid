@@ -96,22 +96,28 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
       val cropType = Crops.cropType(mimeType, isGraphic = isGraphic, hasAlpha = hasAlpha)
 
-      // High quality rendering with minimal compression which will be used as the CDN resizer origin
-      val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
 
       // pngs are always lossless, so quality only means effort spent compressing them. We don't
       // care too much about filesize of master crops, so skip expensive compression to get faster cropping
       val masterQuality = if (mimeType == Png) pngMasterCropQuality else jpegMasterCropQuality
 
-      imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
+      // High quality rendering with minimal compression which will be used as the CDN resizer origin
+
+      val eventualMasterSaved = Future {
+        val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
+        imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
+        masterCropFile
+      }
 
       // Static crops; higher compression
       val outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
       val eventualResizes = imageOperations.createCrops(masterCrop.image, outputDims, apiImage.id, crop.specification.bounds, cropType, config.tempDir, cropQuality)
 
       // Store assets
-      val eventualStoredMasterCropAsset = store.storeCropSizing(masterCropFile, outputFilename(apiImage.id, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true), cropType, crop, masterCrop.dimensions)
-
+      val eventualStoredMasterCropAsset = eventualMasterSaved.flatMap { masterCropFile =>
+        // TODO delete temp file
+        store.storeCropSizing(masterCropFile, outputFilename(apiImage.id, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true), cropType, crop, masterCrop.dimensions)
+      }
       val eventualStoredCropAssets = eventualResizes.flatMap { resizes =>
         // All vips operations have completed; we can close the arena
         arena.close()
@@ -134,7 +140,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
       eventualStoredMasterCropAsset.flatMap { masterSize =>
         eventualStoredCropAssets.flatMap { sizes =>
-          Future.sequence(List(masterCropFile, sourceFile).map(delete)).map { _ =>
+          Future.sequence(List(sourceFile).map(delete)).map { _ =>
             ExportResult(apiImage.id, masterSize, sizes.toList)
           }
         }
