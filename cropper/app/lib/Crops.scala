@@ -1,15 +1,14 @@
 package lib
 
-import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.VImage
-
-import java.io.File
+import app.photofox.vipsffm.jextract.VipsRaw
 import com.gu.mediaservice.lib.Files
 import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
 
+import java.io.File
 import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
