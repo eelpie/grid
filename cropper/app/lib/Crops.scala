@@ -61,22 +61,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     }
   }
 
-  private def createCrops(sourceImage: VImage, dimensionList: List[Dimensions], imageId: String, crop: Crop, cropType: MimeType,
-                         )(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Seq[(File, String, Dimensions)] = {
-    Stopwatch(s"creating crops for $imageId") {
-      val resizes = dimensionList.map { dimensions =>
-        val outputFile = File.createTempFile(s"resize-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
-
-        val file = imageOperations.resizeImageVips(sourceImage, dimensions, cropQuality, outputFile, cropType)
-
-        val filename = outputFilename(imageId, crop.specification.bounds, dimensions.width, cropType)
-        (file, filename, dimensions)
-      }
-      logger.info("Done resizes")
-      resizes
-    }
-  }
-
   def deleteCrops(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[Unit] = store.deleteCrops(id)
 
   private def dimensionsFromConfig(bounds: Bounds, aspectRatio: Float): List[Dimensions] = if (bounds.isPortrait)
@@ -123,7 +107,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
       // Static crops; higher compression
       val outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
-      val resizes = createCrops(masterCrop.image, outputDims, apiImage.id, crop, cropType)
+      val resizes = imageOperations.createCrops(masterCrop.image, outputDims, apiImage.id, crop.specification.bounds, cropType, config.tempDir, cropQuality)
 
       // All vips operations have completed; we can close the arena
       arena.close()
