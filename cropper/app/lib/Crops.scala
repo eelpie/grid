@@ -113,35 +113,40 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       val outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
       val eventualResizes = imageOperations.createCrops(masterCrop.image, outputDims, apiImage.id, crop.specification.bounds, cropType, config.tempDir, cropQuality)
 
-      // Store assets
-      val eventualStoredMasterCropAsset = eventualMasterSaved.flatMap { masterCropFile =>
-        // TODO delete temp file
-        store.storeCropSizing(masterCropFile, outputFilename(apiImage.id, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true), cropType, crop, masterCrop.dimensions)
-      }
-      val eventualStoredCropAssets = eventualResizes.flatMap { resizes =>
-        // All vips operations have completed; we can close the arena
-        arena.close()
-        logger.info("Finished vips operations")
+      // Store assets after master and resize file generation completes; to avoid sending a partial set on failure
+      // Delete the stored files and return the export result
+      eventualMasterSaved.flatMap { masterCropFile =>
+        eventualResizes.flatMap { resizes =>
+          // All vips operations have completed; we can close the arena
+          arena.close()
+          logger.info("Finished vips operations")
 
-        val eventualStoredAssets = resizes.map { resize: (File, String, Dimensions) =>
-          val file = resize._1
-          val filename = resize._2
-          val dimensions = resize._3
-          logger.info(s"Storing crop for: $file, $filename, $cropType")
+          val eventuallyStoredMasterAsset = store.storeCropSizing(masterCropFile, outputFilename(apiImage.id, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true),
+            cropType, crop, masterCrop.dimensions).map { masterAsset =>
+            logger.info("Master Crop stored")
+            delete(masterCropFile)
+            masterAsset
+          }
+
+          val eventualStoredResizeAssets = Future.sequence(resizes.map { resize: (File, String, Dimensions) =>
+            val file = resize._1
+            val filename = resize._2
+            val dimensions = resize._3
+            logger.info(s"Storing crop for: $file, $filename, $cropType")
+            for {
+              resizedAsset: Asset <- store.storeCropSizing(file, filename, cropType, crop, dimensions)
+              _ <- delete(file)
+            }
+            yield resizedAsset
+          })
 
           for {
-            sizing: Asset <- store.storeCropSizing(file, filename, cropType, crop, dimensions)
-            _ <- delete(file)
-          }
-          yield sizing
-        }
-        Future.sequence(eventualStoredAssets)
-      }
-
-      eventualStoredMasterCropAsset.flatMap { masterSize =>
-        eventualStoredCropAssets.flatMap { sizes =>
-          Future.sequence(List(sourceFile).map(delete)).map { _ =>
-            ExportResult(apiImage.id, masterSize, sizes.toList)
+            masterAsset: Asset <- eventuallyStoredMasterAsset
+            resizedAssets: Seq[Asset] <- eventualStoredResizeAssets
+          } yield {
+            logger.info("Store assets completed")
+            delete(sourceFile)
+            ExportResult(apiImage.id, masterAsset, resizedAssets.toList)
           }
         }
       }
