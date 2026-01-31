@@ -3,7 +3,7 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.{VImage, Vips}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Dimensions, Instance, Jpeg, Tiff}
+import com.gu.mediaservice.model.{Dimensions, Instance, Jpeg, Png, Tiff}
 import org.apache.commons.io.FileUtils
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
@@ -86,12 +86,52 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
   describe("resize") {
     it("should output resized image to file in chosen format") {
-      implicit val arena: Arena = Arena.ofConfined
-      val fullSizedJpegImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
+      implicit val arena: Arena = Arena.ofShared()
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
       val imageOperations = new ImageOperations("")
-      val outputFile = File.createTempFile("resized", ".jpg")
 
-      val resized = imageOperations.resizeImageVips(fullSizedJpegImage, Dimensions(140, 100), 85, outputFile, Jpeg, Dimensions(fullSizedJpegImage.getWidth, fullSizedJpegImage.getHeight))
+      val outputFile = new File("/Users/tony/Desktop/out5.jpg")
+
+      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(1000, 800), 95, outputFile, Jpeg, Dimensions(6000, 4000))
+
+      arena.close()
+      resized.isFile should be(true)
+    }
+
+    it("render LAB colour spaces correctly in sRGB") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/out6.jpg")
+
+      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg, Dimensions(1299, 866))
+
+      arena.close()
+      resized.isFile should be(true)
+    }
+
+    it("render LAB colour spaces correctly as PNG") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/out7.png")
+
+      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png, Dimensions(1299, 866))
+
+      arena.close()
+      resized.isFile should be(true)
+    }
+
+    it("render LAB 16 bit colour spaces correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB16.tif").getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/out8.jpg")
+
+      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg, Dimensions(1299, 866))
 
       arena.close()
       resized.isFile should be(true)
