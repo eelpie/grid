@@ -1,5 +1,6 @@
 package com.gu.mediaservice.lib.imaging
 
+import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VImage, Vips}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
@@ -350,7 +351,62 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
   }
 
-  // TODO: test cropImage and its conversions
+  describe("cropping") {
+    val operations = new ImageOperations("")
+
+    it("should create unscaled master crop to resize from full sized images") {
+      implicit val arena: Arena = Arena.ofConfined
+      //val fullsizedImage = fileAt("Lab 16bpc (7d0b7c7b8e890d7e5d369093aa437bd833e20f71).tiff")
+      val fullsizedImage = fileAt("IMG_4403.jpg")
+      val metadata = ImageMetadata()
+
+      val masterCrop = operations.cropImageVips(fullsizedImage, Bounds(100, 100, 2000, 2400), metadata, None)
+
+      val outputFile = new File("/Users/tony/Desktop/master.jpg")
+      operations.saveImageToFile(masterCrop, Jpeg, 95, outputFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
+      arena.close()
+    }
+
+    it("should create unscaled master crop from CMYK full sized image") {
+      implicit val arena: Arena = Arena.ofConfined
+      val fullsizedImage = fileAt("CMYK-with-profile.jpg")
+      val metadata = ImageMetadata()
+
+      val masterCrop = operations.cropImageVips(fullsizedImage, Bounds(100, 100, 2000, 2400), metadata, None)
+
+      val outputFile = new File("/Users/tony/Desktop/master-from-cmyk.jpg")
+      operations.saveImageToFile(masterCrop, Jpeg, 95, outputFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
+
+      arena.close()
+    }
+
+    it("should create files foreach crop size") {
+      implicit val arena: Arena = Arena.ofShared()
+      val fullsizedImage = fileAt("CMYK-with-profile.jpg")
+      val metadata = ImageMetadata()
+
+      val masterCrop = operations.cropImageVips(fullsizedImage, Bounds(100, 100, 3000, 2000), metadata, None)
+      val landscapeCropSizingWidths = Seq(
+        Dimensions(140, 100),
+        Dimensions(320, 200),
+        Dimensions(800, 600),
+        Dimensions(1000, 1200),
+        Dimensions(2000, 3000),
+      )
+      implicit val i: Instance = Instance("id")
+
+      val eventualCrops = operations.createCrops(masterCrop, landscapeCropSizingWidths.toList, "test-image-id",
+        Bounds(0, 0, 1000, 1200),
+        Jpeg,
+        new File("/Users/tony/tmp/crops"),
+        75
+      )
+
+      whenReady(eventualCrops) { _ =>
+        arena.close()
+      }
+    }
+  }
 
   def fileAt(resourcePath: String): File = {
     new File(getClass.getResource(s"/$resourcePath").toURI)
