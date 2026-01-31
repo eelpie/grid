@@ -1,8 +1,11 @@
 package com.gu.mediaservice.lib.imaging
 
+import app.photofox.vipsffm.{VImage, Vips}
 import app.photofox.vipsffm.Vips
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
+import com.gu.mediaservice.model.{Bounds, Dimensions, ImageMetadata, Instance, Jpeg, Png, Tiff}
+import org.scalatest.time.{Millis, Span}
 import com.gu.mediaservice.model.{Dimensions, Instance, Tiff}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
@@ -11,6 +14,8 @@ import org.scalatest.time.{Millis, Span}
 
 import java.io.File
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.{Duration, SECONDS}
 
 // This test is disabled for now as it doesn't run on our CI environment, because GraphicsMagick is not present...
 class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
@@ -24,10 +29,34 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
     it("should write thumbnail to output file") {
       val image = fileAt("IMG_4403.jpg")
 
-      val outputFile = File.createTempFile("temp", ".jpg")
+      val outputFile = new File("/Users/tony/Desktop/thumbnail.jpg")
       val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false,  Instance("TODO"))
 
-      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 500, 85, outputFile, None)
+      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 240, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("render LAB colour spaces correctly in sRGB") {
+      val image = fileAt("halfdome_LAB.tif")
+
+      val outputFile = new File("/Users/tony/Desktop/out2.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 1000, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("render LAB 16 bits colour spaces correctly in 8 bit sRGB") {
+      val image = fileAt("halfdome_LAB16.tif")
+
+      val outputFile = new File("/Users/tony/Desktop/out3.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
