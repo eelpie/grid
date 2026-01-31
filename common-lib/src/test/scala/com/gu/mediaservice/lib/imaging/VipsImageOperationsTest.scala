@@ -10,7 +10,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 
 import java.io.File
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
@@ -25,10 +24,34 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     it("should write thumbnail to output file") {
       val image = fileAt("IMG_4403.jpg")
 
-      val outputFile = File.createTempFile("temp", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, isTransformedFromSource = false, Instance("TODO"))
+      val outputFile = new File("/Users/tony/Desktop/thumbnail.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, isTransformedFromSource = false,  Instance("TODO"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 500, 85, outputFile, None, None, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 95, outputFile, None, None, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("render LAB colour spaces correctly in sRGB") {
+      val image = fileAt("halfdome_LAB.tif")
+
+      val outputFile = new File("/Users/tony/Desktop/out2.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("render LAB 16 bits colour spaces correctly in 8 bit sRGB") {
+      val image = fileAt("halfdome_LAB16.tif")
+
+      val outputFile = new File("/Users/tony/Desktop/out3.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
