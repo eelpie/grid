@@ -48,6 +48,30 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       }
     }
 
+    it("render LAB colour spaces correctly in sRGB") {
+      val image = fileAt("halfdome_LAB.tif")
+
+      val outputFile = tempFileNamed("thumbnail-from-lab", ".jpg")
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("render LAB 16 bits colour spaces correctly in 8 bit sRGB") {
+      val image = fileAt("halfdome_LAB16.tif")
+
+      val outputFile = tempFileNamed("thumbnail-from-lab16", ".jpg")
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
     it("render PNG with alpha correctly") {
       val image = fileAt("with-alpha.png")
 
