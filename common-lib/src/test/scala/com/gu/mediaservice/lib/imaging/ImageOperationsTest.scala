@@ -3,8 +3,7 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.{VImage, Vips}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Dimensions, Instance, Jpeg, Png, Tiff}
-import org.apache.commons.io.FileUtils
+import com.gu.mediaservice.model._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
@@ -146,6 +145,20 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val outputFile = new File("/Users/tony/Desktop/resized-png-with-alpha.png")
 
       val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png, Dimensions(3000, 2000))
+
+      arena.close()
+      resized.isFile should be(true)
+    }
+
+    it("render LAB TIFF with alpha correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val image = fileAt("lab8-with-alpha.tif")
+      val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/out13.jpg")
+
+      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg, Dimensions(3000, 2000))
 
       arena.close()
       resized.isFile should be(true)
