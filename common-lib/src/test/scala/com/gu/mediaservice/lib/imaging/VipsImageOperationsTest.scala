@@ -126,7 +126,20 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       implicit val arena: Arena = Arena.ofShared
       val fullSizedImage = fileAt("with-alpha.png")
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Png), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Png)
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Png), Dimensions(800, 600), 95, tempDirForOutputFiles, Png)
+
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    it("render LAB TIFF with alpha correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val fullSizedImage = fileAt("lab8-with-alpha.tif")
+      val outputFile = tempFileNamed("resized-lab-with-alpha", ".jpg")
+
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, outputFile, Jpeg)
 
       whenReady(eventualResized) { resized =>
         arena.close()
