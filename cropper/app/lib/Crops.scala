@@ -92,7 +92,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: VipsImageO
       val masterCrop = createMasterCrop(apiImage, sourceFile, crop, apiImage.metadata, apiImage.source.orientationMetadata)
 
       val isGraphic = imageOperations.isGraphic(masterCrop.image)
-      val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
+      val hasAlpha = imageOperations.hasAlpha(masterCrop.image)
       val cropType = Crops.cropType(mimeType, isGraphic = isGraphic, hasAlpha = hasAlpha)
 
 
