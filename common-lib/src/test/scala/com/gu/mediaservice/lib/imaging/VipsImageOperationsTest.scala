@@ -98,6 +98,24 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     }
   }
 
+  describe("alpha") {
+    it("should return false for RGB for a Jpeg with no alpha") {
+      implicit val arena: Arena = Arena.ofShared
+      val image =  VImage.newFromFile(arena, fileAt("rgb-wo-profile.jpg").getAbsolutePath)
+      val hasAlpha = vipsImageOperations.hasAlpha(image)
+      arena.close()
+      hasAlpha should be(false)
+    }
+
+    it("should return true for PNG with alpha") {
+      implicit val arena: Arena = Arena.ofShared
+      val image = VImage.newFromFile(arena, fileAt("with-alpha.png").getAbsolutePath)
+      val hasAlpha = vipsImageOperations.hasAlpha(image)
+      arena.close()
+      hasAlpha should be(true)
+    }
+  }
+
   describe("identifyColourModel") {
     it("should return RGB for a JPG image with RGB image data and no embedded profile") {
       val image = fileAt("rgb-wo-profile.jpg")
@@ -244,7 +262,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       arena.close()
     }
 
-    it("should return not graphic for depth 4 png with alpha") {
+    it("should return is graphic for depth 4 png with alpha") {
       val arena = Arena.ofConfined
       val image = VImage.newFromFile(arena, fileAt("schaik.com_pngsuite/tbbn0g04.png").getAbsolutePath)
       vipsImageOperations.isGraphic(image)(arena) should be(true)

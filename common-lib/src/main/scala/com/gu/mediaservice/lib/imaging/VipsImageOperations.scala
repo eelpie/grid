@@ -155,7 +155,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         }
 
         colourModelInformation = Map {
-          "hasAlpha" -> image.hasAlpha.toString
+          "hasAlpha" -> image.hasAlpha.toString // TODO push to imageoperations for testing
         }
       } catch {
         case e: Exception =>
