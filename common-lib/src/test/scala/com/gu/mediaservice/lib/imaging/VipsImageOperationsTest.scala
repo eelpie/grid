@@ -10,6 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 
 import java.io.File
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
@@ -37,6 +38,18 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("with-alpha.png")
 
       val outputFile = new File("/Users/tony/Desktop/thumbnail-png-with-alpha.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("render TIF with alpha correctly") {
+      val image = fileAt("with-alpha.tif")
+
+      val outputFile = new File("/Users/tony/Desktop/thumbnail-tif-with-alpha.jpg")
       val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false, Instance("TODO"))
 
       val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
