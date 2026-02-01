@@ -214,6 +214,14 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       hasAlpha should be(true)
     }
 
+    it("should return true for TIFF with alpha") {
+      implicit val arena: Arena = Arena.ofShared
+      val image = VImage.newFromFile(arena, fileAt("with-alpha.tif").getAbsolutePath)
+      val hasAlpha = ImageOperations.hasAlpha(image)
+      arena.close()
+      hasAlpha should be(true)
+    }
+
     /* No fix available yet
     it("should return false for LAB TIF with no alpha") {
       implicit val arena: Arena = Arena.ofShared
