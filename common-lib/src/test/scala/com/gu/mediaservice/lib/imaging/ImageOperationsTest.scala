@@ -3,15 +3,13 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.Vips
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Dimensions, Instance, Jpeg, Tiff}
-import org.apache.commons.io.FileUtils
-import org.scalatest.time.{Millis, Span}
+import com.gu.mediaservice.model.{Dimensions, Instance, Tiff}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.{Millis, Span}
 
 import java.io.File
-import java.lang.foreign.Arena
 import scala.concurrent.ExecutionContext.Implicits.global
 
 // This test is disabled for now as it doesn't run on our CI environment, because GraphicsMagick is not present...
@@ -39,6 +37,18 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val image = fileAt("with-alpha.png")
 
       val outputFile = new File("/Users/tony/Desktop/thumbnail-png-with-alpha.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 1000, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("render TIF with alpha correctly") {
+      val image = fileAt("with-alpha.tif")
+
+      val outputFile = new File("/Users/tony/Desktop/thumbnail-tif-with-alpha.jpg")
       val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false, Instance("TODO"))
 
       val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 1000, 95, outputFile, None)
