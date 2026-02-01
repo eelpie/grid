@@ -196,7 +196,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       var colourModel: Option[String] = None
       var colourModelInformation: Map[String, String] = Map.empty
 
-      val arena = Arena.ofConfined
+      implicit val arena: Arena = Arena.ofConfined
       try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
@@ -222,7 +222,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         }
 
         colourModelInformation = Map {
-          "hasAlpha" -> image.hasAlpha.toString
+          "hasAlpha" -> hasAlpha(image).toString
         }
       } catch {
         case e: Exception =>
