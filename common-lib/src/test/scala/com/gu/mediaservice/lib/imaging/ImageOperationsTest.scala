@@ -222,15 +222,15 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       hasAlpha should be(true)
     }
 
-    /* No fix available yet
-    it("should return false for LAB TIF with no alpha") {
+    it("should return false for LAB8 TIFF with no alpha") {
       implicit val arena: Arena = Arena.ofShared
-      val image = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
-      val hasAlpha = ImageOperations.hasAlpha(image)
-      arena.close()
+      val hasAlpha = ImageOperations.hasAlpha(VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath))
       hasAlpha should be(false)
+
+      val hasAlpha2 = ImageOperations.hasAlpha(VImage.newFromFile(arena, fileAt("TIFF 8bit noAlpha.tif").getAbsolutePath))
+      arena.close()
+      hasAlpha2 should be(false)
     }
-    */
 
     it("should return false for LAB 16 TIF with no alpha") {
       implicit val arena: Arena = Arena.ofShared
@@ -238,6 +238,28 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val hasAlpha = ImageOperations.hasAlpha(image)
       arena.close()
       hasAlpha should be(false)
+    }
+
+    it("should return true for LAB8 TIF with unassociated alpha") {
+      implicit val arena: Arena = Arena.ofShared
+      val image = VImage.newFromFile(arena, fileAt("TIFF 8bit unassociatedAlpha.tif").getAbsolutePath)
+      val hasAlpha = ImageOperations.hasAlpha(image)
+      arena.close()
+      hasAlpha should be(true)
+    }
+
+    it("render LAB TIFF with alpha correctly") {}
+    implicit val arena: Arena = Arena.ofShared
+    val imageOperations = new ImageOperations("")
+
+    val image = fileAt("lab8-with-alpha.tif")
+    val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
+    val outputFile = new File("/Users/tony/Desktop/out13.jpg")
+
+    val eventualResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+    whenReady(eventualResized) { resized =>
+      arena.close()
+      resized.isFile should be(true)
     }
   }
 
