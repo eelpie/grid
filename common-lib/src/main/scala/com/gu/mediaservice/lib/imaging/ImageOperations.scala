@@ -349,7 +349,18 @@ object ImageOperations extends GridLogging {
     }
   }
 
-  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
+  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = {
+    val labInterpretationsKnownToHaveFourBandsWhenNoAlpha = Set(
+      VipsInterpretation.INTERPRETATION_LAB.getRawValue
+    )
+    val interpretation = VipsHelper.image_get_interpretation(image.getUnsafeStructAddress)
+    if (labInterpretationsKnownToHaveFourBandsWhenNoAlpha.contains(interpretation)) {
+      logger.warn("Forcing colour space to sRGB to try and get a more accurate hasAlpha result")
+      image.colourspace(VipsInterpretation.INTERPRETATION_sRGB).hasAlpha
+    } else {
+      image.hasAlpha
+    }
+  }
 
   def isGraphicVips(image: VImage)(implicit arena: Arena): Boolean = {
     val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
