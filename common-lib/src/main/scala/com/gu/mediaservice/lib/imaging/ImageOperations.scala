@@ -255,7 +255,7 @@ object ImageOperations extends GridLogging {
         }
 
         colourModelInformation = Map {
-          "hasAlpha" -> image.hasAlpha.toString
+          "hasAlpha" -> image.hasAlpha.toString // TODO push to imageoperations for testing
         }
       } catch {
         case e: Exception =>
@@ -270,6 +270,8 @@ object ImageOperations extends GridLogging {
       result
     }
   }
+
+  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
 
   def isGraphicVips(image: VImage)(implicit arena: Arena): Boolean = {
     val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
