@@ -22,6 +22,12 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
   val vipsImageOperations = new VipsImageOperations()
 
+  private val metadata = ImageMetadata(
+    credit = Some("Tony McCrae"),
+    copyright = Some("Eel Pie Consulting Ltd"),
+    suppliersReference = Some("eelpie-123")
+  )
+
   describe("thumbnail") {
     it("should write thumbnail to output file") {
       val image = fileAt("IMG_4403.jpg")
