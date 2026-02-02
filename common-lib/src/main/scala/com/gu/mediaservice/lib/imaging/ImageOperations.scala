@@ -160,27 +160,16 @@ class ImageOperations(playPath: String) extends GridLogging {
         // We have not been able to extract a clean alpha mask from a LAB TIF.
         // signed values and different scales may be at play.
         // The best incremental improvement available is to drop the suspect alpha band.
-        println("Dropping suspected corrupt alpha band from LAB image")
+        logger.warn("Dropping suspected corrupt alpha band from LAB image")
         val band1 = sourceImage.extractBand(0, VipsOption.Int("n", 1))
         val band2 = sourceImage.extractBand(1, VipsOption.Int("n", 1))
         val band3 = sourceImage.extractBand(2, VipsOption.Int("n", 1))
         val alphaBand: VImage = sourceImage.extractBand(3) //.cast(VipsBandFormat.FORMAT_UCHAR)
 
-
-        println(band1.min())
-        println(band1.max())
-
-        println(alphaBand)
-        println(alphaBand.min())
-        println(alphaBand.max())
-
         val bandsToRejoin: util.ArrayList[VImage] = new java.util.ArrayList()
-       bandsToRejoin.add(band1)
+        bandsToRejoin.add(band1)
         bandsToRejoin.add(band2)
-       bandsToRejoin.add(band3)
-       bandsToRejoin.add(band1)
-       bandsToRejoin.add(alphaBand)
-      bandsToRejoin.add(band3)
+        bandsToRejoin.add(band3)
         VImage.bandjoin(arena, bandsToRejoin)
 
       } else {
