@@ -195,6 +195,21 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
         resized.isFile should be(true)
       }
     }
+
+    it("render LAB16 TIFF with alpha correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val image = fileAt("lab16-with-alpha-unsigned-unassociated.tif")
+      val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/resized-lab16-tif-with-alpha.png")
+
+      val eventualResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(1200, 800), 95, outputFile, Png)
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
   }
 
   describe("alpha") {
