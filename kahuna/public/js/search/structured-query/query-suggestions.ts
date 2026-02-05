@@ -155,6 +155,10 @@ querySuggestions.factory("querySuggestions", [
       { fieldName: "is", resolver: isSearch },
       { fieldName: "dateTaken" } as const,
       { fieldName: "date" },
+      {
+        fieldName: "syndicationStatus",
+        resolver:  ['review', 'queued', 'sent', 'unsuitable']
+      },
       ...Object.keys(fieldAliases).map((fieldName) => {
         const staticAliasOptions = suggestFieldAliasOptions(fieldName);
 
