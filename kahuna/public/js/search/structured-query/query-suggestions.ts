@@ -52,12 +52,9 @@ const isSearch = [
   `owned-illustration`,
   `owned`,
   "under-quota",
-  "deleted"
+  "deleted",
+  "reapable"
 ];
-
-if (window._clientConfig.useReaper === true) {
-  isSearch.push("reapable");
-}
 
 if (window._clientConfig.agencyPicksIngredients) {
   isSearch.push("agency-pick");
