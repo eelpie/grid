@@ -1,10 +1,8 @@
 package model
 
+import com.amazonaws.services.s3.AmazonS3
 import com.drew.imaging.ImageProcessingException
-import com.gu.mediaservice.lib.aws.{S3Metadata, S3Object, S3ObjectMetadata}
-import com.gu.mediaservice.lib.{StorableImage, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
-import com.gu.mediaservice.lib.aws.{EmbedderMessage, S3Metadata, S3Object, S3ObjectMetadata, S3Ops}
-import com.gu.mediaservice.lib.aws.{S3, S3Bucket, S3Metadata, S3Object, S3ObjectMetadata, S3Ops}
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket, S3Object}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.LogMarker
@@ -20,7 +18,6 @@ import org.scalatestplus.mockito.MockitoSugar
 import test.lib.ResourceHelpers
 
 import java.io.File
-import java.net.URI
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -32,10 +29,12 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
     override def markerContents: Map[String, Any] = Map()
   }
 
+  private val mockS3Client = mock[AmazonS3]
+
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), S3Bucket("img-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false), S3Bucket("thumb-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false))
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), S3Bucket("img-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client), S3Bucket("thumb-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client))
 
   /**
     * @todo: I flailed about until I found a path that worked, but
@@ -51,12 +50,9 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
 
     val randomId = UUID.randomUUID().toString + fileName
 
-    val mockS3Meta = S3Metadata(Map.empty, S3ObjectMetadata(None, None, None))
-    val mockS3Object = S3Object(new URI("innernets.com"), 12345, mockS3Meta)
-
     def mockStore = (a: StorableImage) =>
       Future.successful(
-        S3Object(S3Bucket("madeupname", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false), "madeupkey", a.file, Some(a.mimeType), None, a.meta, None)
+        S3Object(S3Bucket("madeupname", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client), "madeupkey", a.file, Some(a.mimeType), None, a.meta, None)
       )
 
     def storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object] = mockStore
