@@ -1,8 +1,10 @@
 package com.gu.mediaservice.lib.aws
 
+import com.amazonaws.services.s3.AmazonS3
+
 import java.net.URI
 
-case class S3Bucket(bucket: String, endpoint: String, usesPathStyleURLs: Boolean) {
+case class S3Bucket(bucket: String, endpoint: String, usesPathStyleURLs: Boolean, client: AmazonS3) {
   def objectUrl(key: String): URI = {
     val bucketBaseURL = bucketURL()
     new URI("http", bucketBaseURL.getHost, bucketBaseURL.getPath + key, null)
