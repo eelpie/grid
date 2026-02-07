@@ -14,7 +14,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.{GetObjectResponse, GetObjectRequest => GetObjectRequestV2}
 
 import java.io.File
-import java.net.URI
+import java.net.{URI, URL}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
@@ -84,12 +84,12 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     client.generatePresignedUrl(request).toExternalForm
   }
 
-  def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration()): String = {
+  def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration()): URL = {
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)
 
     val request = new GeneratePresignedUrlRequest(bucket, key).withExpiration(expiration.toDate)
-    client.generatePresignedUrl(request).toExternalForm
+    client.generatePresignedUrl(request)
   }
 
   def getObjectV2(bucket: Bucket, url: URI): ResponseInputStream[GetObjectResponse]= {
