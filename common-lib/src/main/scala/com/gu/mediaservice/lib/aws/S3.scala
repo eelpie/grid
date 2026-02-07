@@ -13,7 +13,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 
 import java.io.File
-import java.net.URI
+import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import scala.concurrent.{ExecutionContext, Future}
@@ -108,7 +108,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     req.url().toExternalForm
   }
 
-  def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration()): String = {
+  def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration()): URL = {
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)
 
@@ -127,7 +127,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
       .build()
 
     val req = presigner.presignGetObject(getObjectPresignRequest)
-    req.url().toExternalForm
+    req.url()
   }
 
   def getObject(bucket: Bucket, url: URI): ResponseInputStream[GetObjectResponse]= {
