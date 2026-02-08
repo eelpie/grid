@@ -241,7 +241,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
         anyString(),
         any[Map[String, String]],
         any[java.io.File]
-      )(any[LogMarker])).thenReturn(Future.successful(mock[S3Object]))
+      )(any[LogMarker], any[Instance])).thenReturn(Future.successful(mock[S3Object]))
 
       val request = FakeRequest(POST, "/enqueueDerivativeImage")
         .withBody(ByteString.empty)
