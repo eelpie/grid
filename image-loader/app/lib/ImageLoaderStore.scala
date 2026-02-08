@@ -2,6 +2,7 @@ package lib.storage
 
 import lib.ImageLoaderConfig
 import com.gu.mediaservice.lib
+import com.gu.mediaservice.lib.aws
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model.Instance
 import software.amazon.awssdk.core.ResponseInputStream
@@ -11,6 +12,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 
 import java.io.File
 import java.time.Duration
+import scala.concurrent.Future
 import scala.jdk.CollectionConverters.MapHasAsJava
 
 class S3FileDoesNotExistException extends Exception()
@@ -37,11 +39,10 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
     logger.error(logMarker, s"Attempted to read $key from ingest bucket, but it does not exist.")
   }
 
-  def queueS3Object(uploader: String, filename: String, s3Meta: Map[String, String], file: File)(implicit logMarker: LogMarker) = {
-    // TODO not instance aware
+  def queueS3Object(uploader: String, filename: String, s3Meta: Map[String, String], file: File)(implicit logMarker: LogMarker, instance: Instance): Future[aws.S3Object] = {
     storeV2(
         config.maybeIngestBucket.get,
-        s"$uploader/$filename",
+        s"${instance.id}/$uploader/$filename",
         file,
         mimeType = None, // we don't care as this is just the queue bucket
         meta = s3Meta,
