@@ -103,7 +103,7 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
 
   private val canDeleteCrops: PrincipalFilter = authorisation.hasPermissionTo(DeleteCropsOrUsages)
 
-  private def downloadExportLink(imageId: String, exportId: String, width: Int) = Link(s"crop-download-$exportId-$width", s"${config.apiUri}/images/$imageId/export/$exportId/asset/$width/download")
+  private def downloadExportLink(imageId: String, exportId: String, width: Int)(implicit instance: Instance) = Link(s"crop-download-$exportId-$width", s"${config.apiUri(instance)}/images/$imageId/export/$exportId/asset/$width/download")
 
   def getCrops(id: String) = auth.async { httpRequest =>
     implicit val instance: Instance = instanceOf(httpRequest)
