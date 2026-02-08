@@ -437,6 +437,7 @@ class ImageLoaderController(auth: Authentication,
     val bodyParser = authenticatedDigestBodyParser(initialContext)
 
     AuthenticatedAndAuthorised.async(bodyParser) { req =>
+      implicit val instance: Instance = instanceOf(req)
 
       val allIdentifiers = identifiers.map(Json.parse(_).as[Map[String, String]]).getOrElse(Map.empty) ++ Map(
         ImageStorageProps.derivativeOfMediaIdsIdentifierKey -> derivativeOfMediaIds
