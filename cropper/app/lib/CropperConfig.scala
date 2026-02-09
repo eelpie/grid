@@ -8,6 +8,7 @@ import java.io.File
 
 
 class CropperConfig(resources: GridConfigResources) extends CommonConfig(resources) {
+  // TODO this is common with media-api download exports
   val imgPublishingBucket: S3Bucket = S3Bucket(
     string("publishing.image.bucket.name"),
     string("publishing.image.bucket.endpoint"),
