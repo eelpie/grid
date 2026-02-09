@@ -28,9 +28,14 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   val quotaStoreKey: String = string("quota.store.key")
   val quotaStoreConfig: StoreConfig = StoreConfig(configBucket, quotaStoreKey)
 
-  //Lazy allows this to be empty and not break things unless used somewhere
   // TODO this needs to be the same as the crops bucket? Is downloadExports broken?
-  lazy val imgPublishingBucket: S3Bucket = S3Bucket(string("publishing.image.bucket"), S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, clientFor(S3.AmazonAwsS3Endpoint))
+  // TODO can be optional at BBC?
+  val imgPublishingBucket: S3Bucket = S3Bucket(
+    string("publishing.image.bucket.name"),
+    string("publishing.image.bucket.endpoint"),
+    boolean("publishing.image.bucket.pathStyleURLs"),
+    clientFor(string("publishing.image.bucket.endpoint"))
+  )
 
   val cloudFrontDomainThumbBucket: Option[String]   = stringOpt("cloudfront.domain.thumbbucket")
   val cloudFrontPrivateKeyBucket: Option[S3Bucket]    = stringOpt("cloudfront.private-key.bucket").map(S3Bucket(_, S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, clientFor(S3.AmazonAwsS3Endpoint)))

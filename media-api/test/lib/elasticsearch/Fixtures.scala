@@ -43,7 +43,9 @@ trait Fixtures {
     "grid.appName",
     "instance.service.my",
     "instance.service.instances",
-    "usageEvents.queue.name"
+    "usageEvents.queue.name",
+    "publishing.image.bucket.name",
+    "publishing.image.bucket.endpoint"
   )
 
   def deletionData(deletedBy: String): SoftDeletedMetadata = SoftDeletedMetadata(
