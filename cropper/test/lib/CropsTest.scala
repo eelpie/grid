@@ -1,7 +1,7 @@
 package lib
 
 import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
-import com.gu.mediaservice.lib.imaging.ImageOperations
+import com.gu.mediaservice.lib.imaging.{ImageOperations, VipsImageOperations}
 import com.gu.mediaservice.model._
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
@@ -49,7 +49,7 @@ class CropsTest extends AnyFunSpec with Matchers with MockitoSugar {
 
   private val config = mock[CropperConfig]
   private val store = mock[CropStore]
-  private val imageOperations: ImageOperations = mock[ImageOperations]
+  private val imageOperations: VipsImageOperations = mock[VipsImageOperations]
   private val source: SourceImage = SourceImage("test", mock[Asset], valid = true, mock[ImageMetadata], mock[FileMetadata])
   private val bounds: Bounds = Bounds(10, 20, 30, 40)
   private val outputWidth = 1234
