@@ -58,16 +58,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
     // TODO separate this local file create from the vips master image create
     val outputFile = File.createTempFile(s"crop-", s"${mediaType.fileExtension}", config.tempDir) // TODO function for this
-    logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
-    masterImage.jpegsave(outputFile.getAbsolutePath,
-      VipsOption.Int("Q", masterCropQuality.toInt),
-      //VipsOption.Boolean("optimize-scans", true),
-      //VipsOption.Boolean("optimize-coding", true),
-      //VipsOption.Boolean("interlace", true),
-      //VipsOption.Boolean("trellis-quant", true),
-      // VipsOption.Int("quant-table", 3),
-      VipsOption.Boolean("strip", true)
-    )
+    imageOperations.saveImageToFile(masterImage, mediaType, masterCropQuality, outputFile)
 
     val file = outputFile
     val image = masterImage
