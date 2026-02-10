@@ -6,7 +6,7 @@ import java.io.File
 import com.gu.mediaservice.lib.metadata.FileMetadataHelper
 import com.gu.mediaservice.lib.Files
 import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
-import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations}
+import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations, VipsImageOperations}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
 
@@ -20,7 +20,7 @@ case object InvalidCropRequest extends Exception("Crop request invalid for image
 
 case class MasterCrop(sizing: Future[Asset], image: VImage, file: File, dimensions: Dimensions, aspectRatio: Float)
 
-class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOperations, imageBucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext) extends GridLogging {
+class Crops(config: CropperConfig, store: CropStore, imageOperations: VipsImageOperations, imageBucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext) extends GridLogging {
   import Files._
 
   private val cropQuality = 75d
@@ -58,16 +58,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
     // TODO separate this local file create from the vips master image create
     val outputFile = File.createTempFile(s"crop-", s"${mediaType.fileExtension}", config.tempDir) // TODO function for this
-    logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
-    masterImage.jpegsave(outputFile.getAbsolutePath,
-      VipsOption.Int("Q", masterCropQuality.toInt),
-      //VipsOption.Boolean("optimize-scans", true),
-      //VipsOption.Boolean("optimize-coding", true),
-      //VipsOption.Boolean("interlace", true),
-      //VipsOption.Boolean("trellis-quant", true),
-      // VipsOption.Int("quant-table", 3),
-      VipsOption.Boolean("strip", true)
-    )
+    imageOperations.saveImageToFile(masterImage, mediaType, masterCropQuality, outputFile)
 
     val file = outputFile
     val image = masterImage
