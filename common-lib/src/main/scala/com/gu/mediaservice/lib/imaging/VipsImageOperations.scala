@@ -81,7 +81,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         val outputFile = File.createTempFile(s"resize-", s"${fileType.fileExtension}", tempDir) // TODO function for this
         logger.info("Saving resized crop as JPEG tmp file to: " + outputFile.getAbsolutePath)
 
-        saveImageToFile(resized, fileType, qual, outputFile)
+        saveImageToFile(resized, fileType, qual, outputFile, quantise = false)  // TODO quantise false because it is still optimiseOps's decision
         outputFile
       } catch {
         case e: Exception =>
