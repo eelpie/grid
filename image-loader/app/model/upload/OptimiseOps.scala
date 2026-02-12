@@ -1,6 +1,7 @@
 package model.upload
 
-import app.photofox.vipsffm.VImage
+import app.photofox.vipsffm.enums.VipsIntent
+import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.ImageWrapper
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap, Stopwatch}
@@ -34,7 +35,19 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
         val arena = Arena.ofConfined
 
         val image = VImage.newFromFile(arena, file.getAbsolutePath)
-        imageOperations.saveImageToFile(image: VImage, optimiseMimeType, 85, optimisedFile, quantise = true)
+
+        // If we saw and ICC profile than we will need to transform
+        val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
+        val correctedForICCProfile = if (needsICCTransform) {
+          image.iccTransform("srgb",
+            VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL), // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
+          )
+        } else {
+          // LAB gets corrupted by a needless icc_transform
+          image
+        }
+
+        imageOperations.saveImageToFile(correctedForICCProfile: VImage, optimiseMimeType, 85, optimisedFile, quantise = true)
         (optimisedFile, optimiseMimeType)
       } catch {
         case _: Exception =>
