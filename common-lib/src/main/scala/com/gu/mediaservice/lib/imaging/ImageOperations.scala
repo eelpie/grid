@@ -12,6 +12,7 @@ import org.im4java.core.IMOperation
 import java.io._
 import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 
 case class ExportResult(id: String, masterCrop: Asset, othersizings: List[Asset])
@@ -58,22 +59,38 @@ class ImageOperations(playPath: String) extends GridLogging {
     }.getOrElse {
       image
     }
-    // TODO strip meta data
-    // Output colour profile
+
     val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
 
     // If we saw and ICC profile than we will need to transform
     val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
-    val correctedForICCProfile = if (needsICCTransform ) {
+    val correctedForICCProfile = if (needsICCTransform) {
       cropped.iccTransform("srgb",
-        VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),     // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
+        VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL), // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
       )
     } else {
       // LAB gets corrupted by a needless icc_transform
       cropped
     }
 
-    correctedForICCProfile
+    val striped = manuallyStripMetadata(correctedForICCProfile)
+    striped
+  }
+
+  private def manuallyStripMetadata(stripped: VImage): VImage = {
+    stripped.remove("exif-data")
+    stripped.remove("iptc-data")
+    stripped.remove("xmp-data")
+    stripped.remove("icc-profile-data")
+    stripped.remove("jpeg-thumbnail-data")
+    stripped.remove("orientation")
+
+    stripped.getFields.asScala.foreach { field =>
+      if (field.startsWith("exif-")) {
+        stripped.remove(field)
+      }
+    }
+    stripped
   }
 
 
@@ -96,7 +113,7 @@ class ImageOperations(playPath: String) extends GridLogging {
     val scale = dimensions.width.toDouble / sourceDimensions.width.toDouble
     val resized = sourceImage.resize(scale)
 
-    saveImageToFile(resized, fileType, quality, outputFile, quantise = true)
+    saveImageToFile(resized, fileType, quality, outputFile, quantise = true, strip = true)
   }
 
   private def orient(op: IMOperation, orientationMetadata: Option[OrientationMetadata]): IMOperation = {
@@ -145,7 +162,7 @@ class ImageOperations(playPath: String) extends GridLogging {
           thumbnail
         }
         logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
-        saveImageToFile(rotated, Jpeg, qual.toInt, outputFile)
+        saveImageToFile(rotated, Jpeg, qual.toInt, outputFile, strip = true)
 
         val thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
         arena.close()
@@ -166,7 +183,7 @@ class ImageOperations(playPath: String) extends GridLogging {
     }
   }
 
-  def saveImageToFile(image: VImage, mimeType: MimeType, quality: Int, outputFile: File, quantise: Boolean = false): File = {
+  def saveImageToFile(image: VImage, mimeType: MimeType, quality: Int, outputFile: File, strip: Boolean, quantise: Boolean = false): File = {
     logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
     mimeType match {
       case Jpeg =>
@@ -177,7 +194,7 @@ class ImageOperations(playPath: String) extends GridLogging {
           //VipsOption.Boolean("interlace", true),
           //VipsOption.Boolean("trellis-quant", true),
           // VipsOption.Int("quant-table", 3),
-          VipsOption.Boolean("strip", true)
+          VipsOption.Boolean("strip", strip)
         )
         outputFile
 
