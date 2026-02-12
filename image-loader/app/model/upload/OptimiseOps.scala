@@ -56,7 +56,7 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
           image
         }
 
-        imageOperations.saveImageToFile(correctedForICCProfile: VImage, optimiseMimeType, 85, optimisedFile, quantise = true, strip = true)
+        imageOperations.saveImageToFile(correctedForICCProfile: VImage, optimiseMimeType, 85, optimisedFile, quantise = true)
         (optimisedFile, optimiseMimeType)
       } catch {
         case _: Exception =>
