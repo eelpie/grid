@@ -117,7 +117,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       // care too much about filesize of master crops, so skip expensive compression to get faster cropping
       val masterQuality = if (mimeType == Png) pngMasterCropQuality else jpegMasterCropQuality
 
-      imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile)
+      imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile, strip = true)
 
       // Static crops; higher compression
       val outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
