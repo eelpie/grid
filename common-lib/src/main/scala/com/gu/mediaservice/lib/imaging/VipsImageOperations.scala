@@ -1,6 +1,7 @@
 package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
+import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VBlob, VImage, VipsHelper, VipsOption}
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
@@ -15,7 +16,6 @@ import java.io._
 import java.lang.foreign.Arena
 import java.nio.charset.StandardCharsets
 import scala.concurrent.{ExecutionContext, Future}
-import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 class VipsImageOperations(playPath: String) extends GridLogging with ImageOperations {
   import ExifTool._
@@ -73,16 +73,14 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
       cropped
     }
 
-    val striped = manuallyStripMetadata(correctedForICCProfile)
-
     // Apply crop metadata
     // https://developers.google.com/search/docs/appearance/structured-data/image-license-metadata#iptc-photo-metadata
     makeXmpBlog(metadata).foreach { xmpBlob =>
       logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
-      striped.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
+      correctedForICCProfile.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
     }
 
-    striped
+    correctedForICCProfile
   }
 
   private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
@@ -113,23 +111,6 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     }
   }
 
-  private def manuallyStripMetadata(stripped: VImage): VImage = {
-    stripped.remove("exif-data")
-    stripped.remove("iptc-data")
-    stripped.remove("xmp-data")
-    stripped.remove("icc-profile-data")
-    stripped.remove("jpeg-thumbnail-data")
-    stripped.remove("orientation")
-
-    stripped.getFields.asScala.foreach { field =>
-      if (field.startsWith("exif-")) {
-        stripped.remove(field)
-      }
-    }
-    stripped
-  }
-
-
   // Updates metadata on existing file
   def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = {
     runExiftoolCmd(
@@ -149,7 +130,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     val scale = dimensions.width.toDouble / sourceDimensions.width.toDouble
     val resized = sourceImage.resize(scale)
 
-    saveImageToFile(resized, fileType, quality, outputFile, quantise = true, strip = true)
+    saveImageToFile(resized, fileType, quality, outputFile, quantise = true, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
   }
 
   private def orient(op: IMOperation, orientationMetadata: Option[OrientationMetadata]): IMOperation = {
@@ -201,7 +182,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
           inMemoryCopy
         }
         logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
-        saveImageToFile(rotated, Jpeg, qual.toInt, outputFile, strip = true)
+        saveImageToFile(rotated, Jpeg, qual.toInt, outputFile)
 
         val thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
         arena.close()
@@ -222,8 +203,9 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     }
   }
 
-  def saveImageToFile(image: VImage, mimeType: MimeType, quality: Int, outputFile: File, strip: Boolean, quantise: Boolean = false): File = {
+  def saveImageToFile(image: VImage, mimeType: MimeType, quality: Int, outputFile: File, quantise: Boolean = false, keep: Option[Int] = None): File = {
     logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
+    val k = keep.getOrElse(VipsRaw.VIPS_FOREIGN_KEEP_NONE)
     mimeType match {
       case Jpeg =>
         image.jpegsave(outputFile.getAbsolutePath,
@@ -233,7 +215,8 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
           //VipsOption.Boolean("interlace", true),
           //VipsOption.Boolean("trellis-quant", true),
           // VipsOption.Int("quant-table", 3),
-          VipsOption.Boolean("strip", strip)
+          VipsOption.Boolean("strip", true),
+          VipsOption.Int("keep", k)
         )
         outputFile
 
@@ -245,13 +228,14 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
             VipsOption.Int("Q", quality),
             VipsOption.Int("effort", 1),
             //VipsOption.Int("compression", 6),
-            VipsOption.Int("bitdepth", 8),
-            VipsOption.Boolean("strip", true)
+            VipsOption.Boolean("strip", true),
+            VipsOption.Int("keep", k)
           )
         } else {
           image.pngsave(outputFile.getAbsolutePath,
             //VipsOption.Int("compression", 6),
-            VipsOption.Boolean("strip", true)
+            VipsOption.Boolean("strip", true),
+            VipsOption.Int("keep", k)
           )
         }
         outputFile

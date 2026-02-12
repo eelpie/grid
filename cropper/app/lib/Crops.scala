@@ -1,5 +1,6 @@
 package lib
 
+import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VImage, VipsOption}
 
 import java.io.File
@@ -119,7 +120,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       // care too much about filesize of master crops, so skip expensive compression to get faster cropping
       val masterQuality = if (mimeType == Png) pngMasterCropQuality else jpegMasterCropQuality
 
-      imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile, strip = true)
+      imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
 
       // Static crops; higher compression
       val outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
