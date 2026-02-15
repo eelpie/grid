@@ -172,21 +172,19 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
    * @return The file created and the mimetype of the content of that file and it's dimensions, in a future.
    */
   def createThumbnail(browserViewableImage: BrowserViewableImage,
-                      width: Int,
-                      qual: Double = 100d,
-                      outputFile: File,
-                      orientationMetadata: Option[OrientationMetadata]
-                     )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])] = {
-    val stopwatch = Stopwatch.start
-
+                          width: Int,
+                          qual: Double = 100d,
+                          outputFile: File,
+                          orientationMetadata: Option[OrientationMetadata]
+                         )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])] = {
     Future {
-      var thumbDimensions: Option[Dimensions] = None
+      val stopwatch = Stopwatch.start
       val arena = Arena.ofConfined
 
       try {
         val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
           VipsOption.Boolean("auto-rotate", false),
-          VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),
+          VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL),
           VipsOption.String("export-profile", "srgb")
         )
         val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
@@ -196,20 +194,24 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
           thumbnail
         }
         logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
-        thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
-
         saveImageToFile(rotated, Jpeg, qual.toInt, outputFile)
 
+        val thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
+        arena.close()
+
+        logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
+        (outputFile, thumbMimeType, thumbDimensions)
+
       } catch {
-        case e: Exception =>
-          logger.error("Error during createThumbnail", e)
+        case e: Throwable =>
           arena.close()
           throw e
       }
-      arena.close()
 
-      logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
-      (outputFile, thumbMimeType, thumbDimensions)
+    }.recoverWith {
+      case e: Throwable =>
+        logger.error("Error creating thumbnail", e)
+        Future.failed(e)
     }
   }
 
