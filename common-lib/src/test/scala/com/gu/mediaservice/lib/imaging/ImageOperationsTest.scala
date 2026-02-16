@@ -89,6 +89,18 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       }
     }
 
+    it("render LAB colour spaces with alpha correctly in sRGB") {
+      val image = fileAt("lab8-with-alpha.tif")
+
+      val outputFile = new File("/Users/tony/Desktop/out4.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 1000, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
     it("render Heif correctly") {
       val image = fileAt("IMG_0128.HEIC")
 
