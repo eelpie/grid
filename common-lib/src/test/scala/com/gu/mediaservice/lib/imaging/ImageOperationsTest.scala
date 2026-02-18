@@ -83,6 +83,19 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
     }
   }
 
+  describe("resize") {
+    it("should output resized image to file in chosen format") {
+      implicit val arena: Arena = Arena.ofConfined
+      val fullSizedJpegImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
+      val imageOperations = new ImageOperations("")
+
+      val resized = imageOperations.resizeImageVips(fullSizedJpegImage, Dimensions(140, 100), 85, FileUtils.getTempDirectory, Jpeg, Dimensions(fullSizedJpegImage.getWidth, fullSizedJpegImage.getHeight))
+
+      arena.close()
+      resized.isFile should be(true)
+    }
+  }
+
   describe("identifyColourModel") {
     it("should return RGB for a JPG image with RGB image data and no embedded profile") {
       val image = fileAt("rgb-wo-profile.jpg")
