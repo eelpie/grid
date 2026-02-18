@@ -3,7 +3,8 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.{VImage, Vips}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Dimensions, Instance, Tiff}
+import com.gu.mediaservice.model.{Dimensions, Instance, Jpeg, Tiff}
+import org.apache.commons.io.FileUtils
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
@@ -80,6 +81,19 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
+    }
+  }
+
+  describe("resize") {
+    it("should output resized image to file in chosen format") {
+      implicit val arena: Arena = Arena.ofConfined
+      val fullSizedJpegImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
+      val imageOperations = new ImageOperations("")
+
+      val resized = imageOperations.resizeImageVips(fullSizedJpegImage, Dimensions(140, 100), 85, FileUtils.getTempDirectory, Jpeg, Dimensions(fullSizedJpegImage.getWidth, fullSizedJpegImage.getHeight))
+
+      arena.close()
+      resized.isFile should be(true)
     }
   }
 
