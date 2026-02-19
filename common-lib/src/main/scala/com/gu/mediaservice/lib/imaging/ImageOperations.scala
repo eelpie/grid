@@ -114,7 +114,10 @@ class ImageOperations(playPath: String) extends GridLogging {
         val resizes = dimensionList.map { dimensions =>
           val outputFile = File.createTempFile(s"resize-", s"${cropType.fileExtension}", tempDir) // TODO function for this
 
+          logger.info("Starting resize for: " + dimensions)
           resizeImageVips(sourceImage, dimensions, cropQuality, outputFile, cropType).map { f =>
+            logger.info("Done resize for: " + dimensions)
+
             def outputFilename(imageId: String, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false, instance: Instance): String = { // TODO push back to Crops
               val masterString: String = if (isMaster) "master/" else ""
               instance.id + "/" + s"$imageId/${Crop.getCropId(bounds)}/$masterString$outputWidth${fileType.fileExtension}"
