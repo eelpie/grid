@@ -15,6 +15,7 @@ import org.im4java.core.IMOperation
 import java.io._
 import java.lang.foreign.Arena
 import java.nio.charset.StandardCharsets
+import java.util
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -135,9 +136,49 @@ class ImageOperations(playPath: String) extends GridLogging {
                        outputFile: File,
                        fileType: MimeType
                      )(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
+
+    def hasLabsColourspaceWithPotentiallyUnreliableAlpha(image: VImage): Boolean = {
+      VipsHelper.image_get_interpretation(image.getUnsafeStructAddress) == VipsInterpretation.INTERPRETATION_LABQ.getRawValue ||
+        VipsHelper.image_get_interpretation(image.getUnsafeStructAddress) == VipsInterpretation.INTERPRETATION_LAB.getRawValue ||
+        VipsHelper.image_get_interpretation(image.getUnsafeStructAddress) == VipsInterpretation.INTERPRETATION_LABS.getRawValue
+    }
+
     Future {
+      val inputWasLabs = hasLabsColourspaceWithPotentiallyUnreliableAlpha(sourceImage)
+      // Various LAB TIF files present in a colour space with 4 bands even though they have no alpha channel
+      // Shifting them makes the 4th band implies alpha check stable
+      val withColorspaceWithTrustedAlphaBands = if (inputWasLabs) {
+        val shifted = sourceImage.colourspace(VipsInterpretation.INTERPRETATION_sRGB)
+        logger.info("Shifted LAB image_get_interpretation " + VipsHelper.image_get_interpretation(sourceImage.getUnsafeStructAddress)  + " to " + VipsHelper.image_get_interpretation(shifted.getUnsafeStructAddress))
+        shifted
+      } else {
+        sourceImage
+      }
+
+      val bandsCount = VipsRaw.vips_image_get_bands(withColorspaceWithTrustedAlphaBands.getUnsafeStructAddress)
+      val withBrokenLabAlphaDropped = if (inputWasLabs && bandsCount > 3) {
+        // We have not been able to extract a clean alpha mask from a LAB TIF.
+        // signed values and different scales may be at play.
+        // The best incremental improvement available is to drop the suspect alpha band.
+        logger.warn("Dropping suspected corrupt alpha band from LAB image")
+        val band1 = withColorspaceWithTrustedAlphaBands.extractBand(0, VipsOption.Int("n", 1))
+        val band2 = withColorspaceWithTrustedAlphaBands.extractBand(1, VipsOption.Int("n", 1))
+        val band3 = withColorspaceWithTrustedAlphaBands.extractBand(2, VipsOption.Int("n", 1))
+        //val alphaBand: VImage = withColorspaceWithTrustedAlphaBands.extractBand(3) //.cast(VipsBandFormat.FORMAT_UCHAR)
+
+        val bandsToRejoin: util.ArrayList[VImage] = new java.util.ArrayList()
+        bandsToRejoin.add(band1)
+        bandsToRejoin.add(band2)
+        bandsToRejoin.add(band3)
+        VImage.bandjoin(arena, bandsToRejoin)
+
+      } else {
+        withColorspaceWithTrustedAlphaBands
+      }
+
+      // Resize the image and save
       val scale = dimensions.width.toDouble / sourceImage.getWidth.toDouble
-      val resized = sourceImage.resize(scale)
+      val resized = withBrokenLabAlphaDropped.resize(scale)
 
       saveImageToFile(resized, fileType, quality, outputFile, quantise = true, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
     }
