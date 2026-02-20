@@ -284,7 +284,9 @@ image.controller('ImageCtrl', [
               ' does not have the same dimensions as the master. Using the next largest cropped asset with width ' + largestWidth +
               'Please correct this inconsistency.');
             }
-            crop.downloadLink = largestAsset.downloadLink;
+            const masterDownloadLink = cropsResource.links.find(link => link.rel.includes(`crop-download-${crop.id}-master`))?.href;
+            console.log(masterDownloadLink);
+            crop.downloadLink = masterDownloadLink;
           }
         });
       }
