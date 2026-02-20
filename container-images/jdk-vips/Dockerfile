@@ -40,7 +40,6 @@ RUN rm -r /tmp/vips-8.18.0/
 
 RUN apt -y --no-install-suggests install \
   pngquant \
-  libimage-exiftool-perl \
   libjemalloc-dev \
   graphicsmagick \
   graphicsmagick-imagemagick-compat
