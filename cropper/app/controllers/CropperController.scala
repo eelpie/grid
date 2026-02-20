@@ -103,6 +103,8 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
 
   private val canDeleteCrops: PrincipalFilter = authorisation.hasPermissionTo(DeleteCropsOrUsages)
 
+  private def downloadExportMasterLink(imageId: String, exportId: String)(implicit instance: Instance) = Link(s"crop-download-$exportId-master", s"${config.apiUri(instance)}/images/$imageId/export/$exportId/master/download")
+
   private def downloadExportLink(imageId: String, exportId: String, width: Int)(implicit instance: Instance) = Link(s"crop-download-$exportId-$width", s"${config.apiUri(instance)}/images/$imageId/export/$exportId/asset/$width/download")
 
   def getCrops(id: String) = auth.async { httpRequest =>
@@ -119,20 +121,27 @@ class CropperController(auth: Authentication, crops: Crops, store: CropStore, no
       val deleteCropsAction =
         ArgoAction("delete-crops", URI.create(s"${config.rootUri(instance)}/crops/$id"), "DELETE")
 
-      lazy val cropDownloadLinks = for {
-        crop <- crops
-        asset <- crop.assets
-        dimensions <- asset.dimensions
-        width = dimensions.width
-        cropId <- crop.id
-      } yield downloadExportLink(id, cropId, width)
+      lazy val cropDownloadAssetsLinks =
+        for {
+          crop <- crops
+          asset <- crop.assets
+          dimensions <- asset.dimensions
+          width = dimensions.width
+          cropId <- crop.id
+        } yield downloadExportLink(id, cropId, width)
+
+      lazy val cropDownloadMasterLinks =
+        for {
+          crop <- crops
+          cropId <- crop.id
+        } yield downloadExportMasterLink(id, cropId)
 
       val links = (for {
         crop <- crops.headOption
         link = Link("image", crop.specification.uri)
       } yield {
         if (config.canDownloadCrop) {
-          link :: cropDownloadLinks
+          link :: cropDownloadAssetsLinks ++ cropDownloadMasterLinks
         } else List(link)
       }) getOrElse List()
 
