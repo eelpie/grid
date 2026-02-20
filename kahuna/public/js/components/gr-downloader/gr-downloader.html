@@ -33,14 +33,14 @@
     </a>
     <button ng-if="ctrl.singleImageSelected && ctrl.crop && ctrl.canDownloadCrop"
             class="drop-menu clickable inner-clickable button-right-side side-padded"
-            aria-label="Download selected crop"
+            aria-label="Download master crop"
             ng-click="showExpandedDownload = !showExpandedDownload">
         <span>▾</span>
         <a ng-if="showExpandedDownload"
            class="drop-menu__items drop-menu__items--nopad"
            href="{{ ctrl.crop.downloadLink }}" download rel="noopener" target="_blank"
-           aria-label="Download selected crop">
-            <gr-icon-label gr-icon="file_download">Download selected crop</gr-icon-label>
+           aria-label="Download master crop">
+            <gr-icon-label gr-icon="file_download">Download master crop</gr-icon-label>
         </a>
     </button>
     <span ng-if="ctrl.multipleSelectedNoneValid || ctrl.singleSelectedInvalid"
