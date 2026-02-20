@@ -27,7 +27,8 @@ import '../components/gr-display-crops/gr-display-crops';
 import '../components/gu-date/gu-date';
 import {radioList} from '../components/gr-radio-list/gr-radio-list';
 import {cropUtil} from '../util/crop';
-import { List } from 'immutable';
+import {List} from 'immutable';
+
 const image = angular.module('kahuna.image.controller', [
   'util.rx',
   'util.storage',
@@ -288,7 +289,7 @@ image.controller('ImageCtrl', [
               ' does not have the same dimensions as the master. Using the next largest cropped asset with width ' + largestWidth +
               'Please correct this inconsistency.');
             }
-            crop.downloadLink = largestAsset.downloadLink;
+            crop.downloadLink = cropsResource.links.find(link => link.rel.includes(`crop-download-${crop.id}-master`))?.href;
           }
         });
       }
