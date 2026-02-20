@@ -301,6 +301,36 @@ class MediaApi(
       .recover{ case error => respondError(InternalServerError, "cannot-get", s"Cannot get soft-deleted metadata ${error}") }
   }
 
+  def downloadImageExportMaster(imageId: String, exportId: String) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
+    implicit val logMarker: LogMarker = MarkerMap(
+      "requestType" -> "download-image-export-master",
+      "requestId" -> RequestLoggingFilter.getRequestId(request),
+      "imageId" -> imageId,
+      "exportId" -> exportId,
+    ) ++ RequestLoggingFilter.loggablePrincipal(request.user)
+
+    elasticSearch.getImageById(imageId) map {
+      case Some(source) if isVisibleToAccessor(request.user, source) =>
+        val maybeResult = for {
+          export <- source.exports.find(_.id.contains(exportId))
+          asset <- export.master
+          key = config.imgPublishingBucket.keyFromS3URL(asset.file)
+          s3Object <- Try(s3.getObject(config.imgPublishingBucket, key)).toOption
+          file = StreamConverters.fromInputStream(() => s3Object.getObjectContent)
+          entity = HttpEntity.Streamed(file, asset.size, asset.mimeType.map(_.name))
+          result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset, config.shortenDownloadFilename))
+        } yield {
+          if(config.recordDownloadAsUsage) {
+            postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), source.id, Authentication.getIdentity(request.user))
+          }
+          result
+        }
+        maybeResult.getOrElse(ExportNotFound)
+      case _ => ImageNotFound(imageId)
+    }
+  }
+
   def downloadImageExport(imageId: String, exportId: String, width: Int) = auth.async { implicit request =>
     implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
