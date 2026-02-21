@@ -160,8 +160,8 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
         ),
         Some(DigitalUsageMetadata(
           webUrl = new URI("http://localhost/test"),
-          webTitle = "A page",
-          sectionId = "a-section"
+          webTitle = Some("A page"),
+          sectionId = Some("a-section")
         )),
         Some(SyndicationUsageMetadata(
           partnerName = "Test Partner",

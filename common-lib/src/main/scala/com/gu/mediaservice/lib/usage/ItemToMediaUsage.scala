@@ -64,8 +64,8 @@ object ItemToMediaUsage {
     Try {
       DigitalUsageMetadata(
         URI.create(metadataMap("webUrl").asInstanceOf[String]),
-        metadataMap("webTitle").asInstanceOf[String],
-        metadataMap("sectionId").asInstanceOf[String],
+        metadataMap.get("webTitle").map(x => x.asInstanceOf[String]),
+        metadataMap.get("sectionId").map(x => x.asInstanceOf[String]),
         metadataMap.get("composerUrl").map(x => URI.create(x.asInstanceOf[String]))
       )
     }.toOption
