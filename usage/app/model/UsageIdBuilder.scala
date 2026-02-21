@@ -15,6 +15,11 @@ object UsageIdBuilder {
     Some(printUsageRecord.usageStatus)
   ))
 
+  def build(digitalMediaUsageRecord: DigitalMediaUsageRecord) = buildId(List(
+    Some(digitalMediaUsageRecord.mediaId),
+    Some(digitalMediaUsageRecord.metadata.webUrl)
+  ))
+
   def build(mediaWrapper: MediaWrapper) = buildId(List(
     Some(mediaWrapper.mediaId),
     Some(mediaWrapper.contentStatus)
