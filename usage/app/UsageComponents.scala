@@ -1,5 +1,3 @@
-import com.gu.contentapi.client.ScheduledExecutor
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.UsageApi
 import lib._
