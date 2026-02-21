@@ -6,18 +6,17 @@ import org.joda.time.DateTime
 
 case class DigitalUsageMetadata (
   webUrl: URI,
-  webTitle: String,
-  sectionId: String,
+  webTitle: Option[String],
+  sectionId: Option[String],
   composerUrl: Option[URI] = None
 ) extends UsageMetadata {
   private val placeholderWebTitle = "No title given"
-  private val dynamoSafeWebTitle = if(webTitle.isEmpty) placeholderWebTitle else webTitle
+  private val dynamoSafeWebTitle = webTitle.find(_.nonEmpty).getOrElse(placeholderWebTitle)
 
   override def toMap: Map[String, String] = Map(
     "webUrl" -> webUrl.toString,
-    "webTitle" -> dynamoSafeWebTitle,
-    "sectionId" -> sectionId
-  ) ++ composerUrl.map("composerUrl" -> _.toString)
+    "webTitle" -> dynamoSafeWebTitle
+  ) ++ sectionId.filter(_.nonEmpty).map("sectionId" -> _) ++ composerUrl.map("composerUrl" -> _.toString)
 }
 
 object DigitalUsageMetadata {
