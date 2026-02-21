@@ -201,8 +201,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
       it("should correctly compile DigitalUsageMetadata with all optional fields present") {
         val metadata = DigitalUsageMetadata(
           webUrl = new URI("https://www.theguardian.com/tech"),
-          webTitle = "Scala 3 adoption grows",
-          sectionId = "technology",
+          webTitle = Some("Scala 3 adoption grows"),
+          sectionId = Some("technology"),
           composerUrl = Some(new URI("https://composer.internal/123"))
         )
 
@@ -228,8 +228,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
       it("should fall back to placeholder when webTitle is empty and omit composerUrl when None") {
         val metadata = DigitalUsageMetadata(
           webUrl = new URI("https://www.theguardian.com/media"),
-          webTitle = "",
-          sectionId = "media",
+          webTitle = Some(""),
+          sectionId = Some("media"),
           composerUrl = None
         )
 
@@ -268,8 +268,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
 
       val digitalMetadata = DigitalUsageMetadata(
         webUrl = new URI("https://www.theguardian.com/tech"),
-        webTitle = "Scala adoption grows",
-        sectionId = "technology",
+        webTitle = Some("Scala adoption grows"),
+        sectionId = Some("technology"),
         composerUrl = Some(new URI("https://composer.internal/123"))
       )
 
