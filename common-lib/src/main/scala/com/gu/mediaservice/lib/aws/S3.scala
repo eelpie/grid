@@ -140,7 +140,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     Future {
 
       val fileMarkers = Map(
-        "bucket" -> bucket,
+        "bucket" -> bucket.bucket,
       )
       val markers = logMarker ++ fileMarkers
 
