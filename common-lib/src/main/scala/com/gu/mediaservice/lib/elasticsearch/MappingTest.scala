@@ -183,8 +183,8 @@ object MappingTest {
       ),
       digitalUsageMetadata = Some(DigitalUsageMetadata(
         webUrl = new URI("https://gu.com/12345"),
-        webTitle = "Article title",
-        sectionId = "uk/news",
+        webTitle = Some("Article title"),
+        sectionId = Some("uk/news"),
         composerUrl = Some(new URI("https://composer/api/2345678987654321345678"))
       )),
       syndicationUsageMetadata = Some(SyndicationUsageMetadata(
