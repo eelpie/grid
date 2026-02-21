@@ -52,7 +52,7 @@ object UsageBuilder {
   private def buildDigitalUsageReference(usage: MediaUsage): List[UsageReference] = {
     (usage.digitalUsageMetadata, usage.frontUsageMetadata) match {
       case (Some(metadata), None) => List(
-        UsageReference(FrontendUsageReference, Some(metadata.webUrl), Some(metadata.webTitle))
+        UsageReference(FrontendUsageReference, Some(metadata.webUrl), metadata.webTitle)
       ) ++ metadata.composerUrl.map(url => UsageReference(ComposerUsageReference, Some(url)))
       case (None, Some(metadata)) => List(
         UsageReference(FrontUsageReference, None, name = Some(metadata.front))
