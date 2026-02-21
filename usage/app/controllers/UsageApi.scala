@@ -57,9 +57,11 @@ class UsageApi(
       Link("usages-by-id", s"${config.usageUri}/usages/{id}")
     )
 
+    val digitalPostUri = URI.create(s"${config.usageUri}/usages/digital")
     val printPostUri = URI.create(s"${config.usageUri}/usages/print")
     val syndicationPostUri = URI.create(s"${config.usageUri}/usages/syndication")
     val actions = List(
+      ArgoAction("digital-usage", digitalPostUri, "POST"),
       ArgoAction("print-usage", printPostUri, "POST"),
       ArgoAction("syndication-usage", syndicationPostUri, "POST"),
     )
@@ -165,6 +167,29 @@ class UsageApi(
     }
   }
 
+  val maxDigitalRequestLength: Int = 1024 * config.maxPrintRequestLengthInKb
+  val setDigitalRequestBodyParser: BodyParser[JsValue] = playBodyParsers.json(maxLength = maxDigitalRequestLength)
+
+  def setDigitalUsages = auth(setDigitalRequestBodyParser) { req => {
+
+    val digitalMediaUsageRequestResult = req.body.validate[DigitalMediaUsageRequest]
+    digitalMediaUsageRequestResult.fold(
+      e => {
+        respondError(BadRequest, "digital-media-usage-request-parse-failed", JsError.toJson(e).toString)
+      },
+      digitalMediaUsageRequest => {
+        implicit val logMarker: LogMarker = MarkerMap(
+          "requestType" -> "set-digital-media-usages",
+          "requestId" -> RequestLoggingFilter.getRequestId(req),
+        )
+        val usageGroups = usageGroupOps.buildFromDigitalMediaUsageRecords(digitalMediaUsageRequest.digitalMediaUsageRecords)
+        usageGroups.map(ug => WithLogMarker.includeUsageGroup(ug)).foreach(usageApiSubject.onNext)
+
+        Accepted
+      }
+    )
+  }}
+
   val maxPrintRequestLength: Int = 1024 * config.maxPrintRequestLengthInKb
   val setPrintRequestBodyParser: BodyParser[JsValue] = playBodyParsers.json(maxLength = maxPrintRequestLength)
 
@@ -180,7 +205,7 @@ class UsageApi(
           "requestType" -> "set-print-usages",
           "requestId" -> RequestLoggingFilter.getRequestId(req),
         )
-        val usageGroups = usageGroupOps.build(printUsageRequest.printUsageRecords)
+        val usageGroups = usageGroupOps.buildFromPrintUsageRecords(printUsageRequest.printUsageRecords)
         usageGroups.map(WithLogMarker.includeUsageGroup).foreach(usageApiSubject.onNext)
 
         Accepted
