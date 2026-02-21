@@ -157,7 +157,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
       metadata.setUserMetadata(meta.asJava)
 
       val fileMarkers = Map(
-        "bucket" -> bucket,
+        "bucket" -> bucket.bucket,
         "fileName" -> id,
         "mimeType" -> mimeType.getOrElse("none"),
       )
