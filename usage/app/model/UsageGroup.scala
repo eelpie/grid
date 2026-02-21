@@ -18,6 +18,13 @@ case class UsageGroup(
 class UsageGroupOps(config: UsageConfig)
   extends GridLogging {
 
+  def buildId(digitalMediaUsageRecord: DigitalMediaUsageRecord): String =
+    MD5.hash(List(
+      digitalMediaUsageRecord.mediaId,
+      digitalMediaUsageRecord.metadata.webUrl,
+      digitalMediaUsageRecord.dateAdded.getMillis.toString
+    ).mkString("_"))
+
   def buildId(printUsage: PrintUsageRecord) = s"print/${MD5.hash(List(
     Some(printUsage.mediaId),
     Some(printUsage.printUsageMetadata.pageNumber),
@@ -48,7 +55,7 @@ class UsageGroupOps(config: UsageConfig)
     ).mkString("_"))
   }"
 
-  def build(printUsageRecords: List[PrintUsageRecord]) =
+  def buildFromPrintUsageRecords(printUsageRecords: List[PrintUsageRecord]): Seq[UsageGroup] =
     printUsageRecords.map(printUsageRecord => {
       val usageId = UsageIdBuilder.build(printUsageRecord)
 
@@ -58,6 +65,17 @@ class UsageGroupOps(config: UsageConfig)
         printUsageRecord.dateAdded
       )
     })
+
+  def buildFromDigitalMediaUsageRecords(digitalMediaUsageRecords: List[DigitalMediaUsageRecord]): Seq[UsageGroup] =
+    digitalMediaUsageRecords.map((digitalMediaUsageRecord: DigitalMediaUsageRecord) => {
+      val usageId = UsageIdBuilder.build(digitalMediaUsageRecord)
+      UsageGroup(
+        Set(MediaUsageBuilder.build(digitalMediaUsageRecord, usageId, buildId(digitalMediaUsageRecord))),
+        usageId.toString,
+        digitalMediaUsageRecord.dateAdded
+      )
+    })
+
 
   def build(syndicationUsageRequest: SyndicationUsageRequest): UsageGroup = {
     val usageGroupId = buildId(syndicationUsageRequest)
