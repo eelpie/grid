@@ -6,20 +6,36 @@ import model._
 
 object MediaUsageBuilder {
 
-  def build(printUsage: PrintUsageRecord, usageId: UsageId, grouping: String) = MediaUsage(
+  def build(printUsageRecord: PrintUsageRecord, usageId: UsageId, grouping: String) = MediaUsage(
     usageId,
     grouping,
-    printUsage.mediaId,
+    printUsageRecord.mediaId,
     PrintUsage,
     "image",
-    printUsage.usageStatus,
-    Some(printUsage.printUsageMetadata),
+    printUsageRecord.usageStatus,
+    Some(printUsageRecord.printUsageMetadata),
     None,
     None,
     None,
     None,
     childUsageMetadata = None,
-    printUsage.dateAdded
+    printUsageRecord.dateAdded
+  )
+
+  def build(digitalMediaUsageRecord: DigitalMediaUsageRecord, usageId: UsageId, grouping: String): MediaUsage = MediaUsage(
+      usageId,
+      grouping,
+      digitalMediaUsageRecord.mediaId,
+      DigitalUsage,
+    "image",
+    PublishedUsageStatus,
+    None,
+    Some(digitalMediaUsageRecord.metadata),
+    None,
+    None,
+    None,
+    childUsageMetadata = None,
+    digitalMediaUsageRecord.dateAdded,
   )
 
   def build(mediaWrapper: MediaWrapper): MediaUsage = {

@@ -4,7 +4,7 @@ import com.gu.mediaservice.lib.dynamo.{DbString, DynamoElement}
 
 import java.net.URI
 import play.api.libs.json._
-import com.gu.mediaservice.syntax._
+import org.joda.time.DateTime
 
 case class DigitalUsageMetadata (
   webUrl: URI,
