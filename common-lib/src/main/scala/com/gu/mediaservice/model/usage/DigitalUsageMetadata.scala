@@ -2,7 +2,7 @@ package com.gu.mediaservice.model.usage
 
 import java.net.URI
 import play.api.libs.json._
-import com.gu.mediaservice.syntax._
+import org.joda.time.DateTime
 
 case class DigitalUsageMetadata (
   webUrl: URI,
