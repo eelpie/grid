@@ -131,8 +131,8 @@ class ItemToMediaUsageTest extends AnyFunSuiteLike {
       Some(
         DigitalUsageMetadata(
           URI.create("https://www.theguardian.com/world/2026/jul/20/article"),
-          "Breaking News",
-          "world",
+          Some("Breaking News"),
+          Some("world"),
           Some(URI.create("https://composer.gutools.co.uk/content/123"))
         )
       ),
@@ -232,8 +232,8 @@ class ItemToMediaUsageTest extends AnyFunSuiteLike {
     mediaUsage.digitalUsageMetadata shouldEqual Some(
       DigitalUsageMetadata(
         URI.create("https://www.theguardian.com/world/2026/jul/20/article"),
-        "Breaking News",
-        "world",
+        Some("Breaking News"),
+        Some("world"),
         Some(URI.create("https://composer.gutools.co.uk/content/123"))
       )
     )

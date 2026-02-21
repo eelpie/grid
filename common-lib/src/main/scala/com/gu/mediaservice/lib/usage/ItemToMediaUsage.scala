@@ -102,10 +102,10 @@ object ItemToMediaUsage {
   private def buildDigital(metadataMap: Map[String, String]): Option[DigitalUsageMetadata] = {
     Try {
       DigitalUsageMetadata(
-        URI.create(metadataMap("webUrl")),
-        metadataMap("webTitle"),
-        metadataMap("sectionId"),
-        metadataMap.get("composerUrl").map(x => URI.create(x))
+        URI.create(metadataMap("webUrl").asInstanceOf[String]),
+        metadataMap.get("webTitle").map(x => x.asInstanceOf[String]),
+        metadataMap.get("sectionId").map(x => x.asInstanceOf[String]),
+        metadataMap.get("composerUrl").map(x => URI.create(x.asInstanceOf[String]))
       )
     }.toOption
   }
