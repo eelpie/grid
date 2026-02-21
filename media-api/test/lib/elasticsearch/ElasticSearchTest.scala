@@ -400,7 +400,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
           sectionName = "Morning Section", publicationCode = "PUB1"
         )))
         val digitalSection = digitalPublished.copy(digitalUsageMetadata = Some(DigitalUsageMetadata(
-          URI.create("https://example.test/article"), "Fixture article", "SEC1"
+          URI.create("https://example.test/article"), Some("Fixture article"), Some("SEC1")
         )))
         val fieldImages = Seq(
           "fields-together" -> List(together),
@@ -437,7 +437,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
           val aliasedSearch = new ElasticSearch(aliasConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler])
           val orderedPrint = printPublished.copy(printUsageMetadata = Some(otherMetadata.copy(orderedBy = Some("DESK1"))))
           val digitalSection = digitalPublished.copy(digitalUsageMetadata = Some(DigitalUsageMetadata(
-            URI.create("https://example.test/article"), "Fixture article", "DESK1"
+            URI.create("https://example.test/article"), Some("Fixture article"), Some("DESK1")
           )))
           val aliasImages = Seq(
             "alias-none" -> List.empty[Usage],
