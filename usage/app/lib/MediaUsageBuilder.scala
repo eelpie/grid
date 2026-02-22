@@ -36,7 +36,7 @@ object MediaUsageBuilder {
     digitalMediaUsageRecord.dateAdded,
   )
 
-  def build(mediaWrapper: MediaWrapper): MediaUsage = {
+  def build(mediaWrapper: MediaWrapper): MediaUsage = { // TODO reuse this in the digital usage end point
     val usageId = UsageIdBuilder.build(mediaWrapper)
 
     MediaUsage(
