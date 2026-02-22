@@ -89,7 +89,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     //val eventualResult = Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
     tempFileFromURL(secureUrl, "cropSource", "", config.tempDir).flatMap { sourceFile =>
       logger.info("Starting vips operations")
-      implicit val arena: Arena = Arena.ofConfined()
+      implicit val arena: Arena = Arena.ofShared()
       val masterCrop = createMasterCrop(apiImage, sourceFile, crop, apiImage.metadata, apiImage.source.orientationMetadata)
 
       val isGraphic = ImageOperations.isGraphicVips(masterCrop.image)
@@ -107,26 +107,29 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
       // Static crops; higher compression
       val outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
-      val resizes = imageOperations.createCrops(masterCrop.image, outputDims, apiImage.id, crop.specification.bounds, cropType, config.tempDir, cropQuality)
-
-      // All vips operations have completed; we can close the arena
-      arena.close()
-      logger.info("Finished vips operations")
+      val eventualResizes = imageOperations.createCrops(masterCrop.image, outputDims, apiImage.id, crop.specification.bounds, cropType, config.tempDir, cropQuality)
 
       // Store assets
       val eventualStoredMasterCropAsset = store.storeCropSizing(masterCropFile, outputFilename(apiImage.id, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true), cropType, crop, masterCrop.dimensions)
-      val eventualStoredCropAssets = Future.sequence {
-        resizes.map { resize =>
+
+      val eventualStoredCropAssets = eventualResizes.flatMap { resizes =>
+        // All vips operations have completed; we can close the arena
+        arena.close()
+        logger.info("Finished vips operations")
+
+        val eventualStoredAssets = resizes.map { resize: (File, String, Dimensions) =>
           val file = resize._1
           val filename = resize._2
           val dimensions = resize._3
           logger.info(s"Storing crop for: $file, $filename, $cropType")
+
           for {
-            sizing <- store.storeCropSizing(file, filename, cropType, crop, dimensions)
+            sizing: Asset <- store.storeCropSizing(file, filename, cropType, crop, dimensions)
             _ <- delete(file)
           }
           yield sizing
         }
+        Future.sequence(eventualStoredAssets)
       }
 
       eventualStoredMasterCropAsset.flatMap { masterSize =>
