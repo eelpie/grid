@@ -89,8 +89,8 @@ class ImageOperations(playPath: String) extends GridLogging {
   }
 
   private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
-    val mappings: Seq[(String, String, String)] = Seq(metadata.credit.map { credit =>
-      (XMPConst.NS_DC, "creator", credit)
+    val mappings: Seq[(String, String, String)] = Seq(metadata.byline.map { creator =>
+      (XMPConst.NS_DC, "creator", creator)
     },
     metadata.credit.map { credit =>
       (XMPConst.NS_PHOTOSHOP, "Credit", credit)
