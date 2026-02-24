@@ -3,7 +3,6 @@ package model
 import java.io.File
 import java.net.URI
 import java.util.{Date, UUID}
-import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication
@@ -46,7 +45,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val maybeEmbedder = None
 
-  private val s3 = mock[AmazonS3]
+  private val s3 = mock[S3]
   private val auth = mock[Authentication]
   private val projector = new Projector(config, s3, imageOperations, ImageProcessor.identity, auth, maybeEmbedder)
 
