@@ -92,6 +92,9 @@ class ImageOperations(playPath: String) extends GridLogging {
     val mappings: Seq[(String, String, String)] = Seq(metadata.credit.map { credit =>
       (XMPConst.NS_DC, "creator", credit)
     },
+    metadata.credit.map { credit =>
+      (XMPConst.NS_PHOTOSHOP, "Credit", credit)
+    },
     metadata.copyright.map { copyright =>
       (XMPConst.NS_DC, "rights", copyright)
     },
