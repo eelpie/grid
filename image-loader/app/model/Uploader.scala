@@ -96,7 +96,6 @@ object Uploader extends GridLogging {
       config.thumbQuality,
       config.transcodedMimeTypes,
       config.imageBucket,
-      config.imageBucketS3Endpoint,
       config.thumbnailBucket,
     )
   }
