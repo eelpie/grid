@@ -44,8 +44,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
         s"${instance.id}/$uploader/$filename",
         file,
         mimeType = None, // we don't care as this is just the queue bucket
-        meta = s3Meta,
-        s3Endpoint = config.maybeIngestBucketEndpoint.get
+        meta = s3Meta
       )
   }
 
