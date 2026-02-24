@@ -295,6 +295,7 @@ object ImageOperations extends GridLogging {
       } catch {
         case e: Exception =>
           logger.error("Error during getImageInformation", e)
+          arena.close()
           throw e
       }
       arena.close()
