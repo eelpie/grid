@@ -15,6 +15,7 @@ import org.im4java.core.IMOperation
 import java.io._
 import java.lang.foreign.Arena
 import java.nio.charset.StandardCharsets
+import java.util
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -113,7 +114,10 @@ class ImageOperations(playPath: String) extends GridLogging {
         val resizes = dimensionList.map { dimensions =>
           val outputFile = File.createTempFile(s"resize-", s"${cropType.fileExtension}", tempDir) // TODO function for this
 
+          logger.info("Starting resize for: " + dimensions)
           resizeImageVips(sourceImage, dimensions, cropQuality, outputFile, cropType).map { f =>
+            logger.info("Done resize for: " + dimensions)
+
             def outputFilename(imageId: String, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false, instance: Instance): String = { // TODO push back to Crops
               val masterString: String = if (isMaster) "master/" else ""
               instance.id + "/" + s"$imageId/${Crop.getCropId(bounds)}/$masterString$outputWidth${fileType.fileExtension}"
@@ -135,9 +139,49 @@ class ImageOperations(playPath: String) extends GridLogging {
                        outputFile: File,
                        fileType: MimeType
                      )(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
+
+    def hasLabsColourspaceWithPotentiallyUnreliableAlpha(image: VImage): Boolean = {
+      VipsHelper.image_get_interpretation(image.getUnsafeStructAddress) == VipsInterpretation.INTERPRETATION_LABQ.getRawValue ||
+        VipsHelper.image_get_interpretation(image.getUnsafeStructAddress) == VipsInterpretation.INTERPRETATION_LAB.getRawValue ||
+        VipsHelper.image_get_interpretation(image.getUnsafeStructAddress) == VipsInterpretation.INTERPRETATION_LABS.getRawValue
+    }
+
     Future {
+      val inputWasLabs = hasLabsColourspaceWithPotentiallyUnreliableAlpha(sourceImage)
+      // Various LAB TIF files present in a colour space with 4 bands even though they have no alpha channel
+      // Shifting them makes the 4th band implies alpha check stable
+      val withColorspaceWithTrustedAlphaBands = if (inputWasLabs) {
+        val shifted = sourceImage.colourspace(VipsInterpretation.INTERPRETATION_sRGB)
+        logger.info("Shifted LAB image_get_interpretation " + VipsHelper.image_get_interpretation(sourceImage.getUnsafeStructAddress)  + " to " + VipsHelper.image_get_interpretation(shifted.getUnsafeStructAddress))
+        shifted
+      } else {
+        sourceImage
+      }
+
+      val bandsCount = VipsRaw.vips_image_get_bands(withColorspaceWithTrustedAlphaBands.getUnsafeStructAddress)
+      val withBrokenLabAlphaDropped = if (inputWasLabs && bandsCount > 3) {
+        // We have not been able to extract a clean alpha mask from a LAB TIF.
+        // signed values and different scales may be at play.
+        // The best incremental improvement available is to drop the suspect alpha band.
+        logger.warn("Dropping suspected corrupt alpha band from LAB image")
+        val band1 = sourceImage.extractBand(0, VipsOption.Int("n", 1))
+        val band2 = sourceImage.extractBand(1, VipsOption.Int("n", 1))
+        val band3 = sourceImage.extractBand(2, VipsOption.Int("n", 1))
+        val alphaBand: VImage = sourceImage.extractBand(3) //.cast(VipsBandFormat.FORMAT_UCHAR)
+
+        val bandsToRejoin: util.ArrayList[VImage] = new java.util.ArrayList()
+        bandsToRejoin.add(band1)
+        bandsToRejoin.add(band2)
+        bandsToRejoin.add(band3)
+        VImage.bandjoin(arena, bandsToRejoin)
+
+      } else {
+        withColorspaceWithTrustedAlphaBands
+      }
+
+      // Resize the image and save
       val scale = dimensions.width.toDouble / sourceImage.getWidth.toDouble
-      val resized = sourceImage.resize(scale)
+      val resized = withBrokenLabAlphaDropped.resize(scale)
 
       saveImageToFile(resized, fileType, quality, outputFile, quantise = true, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
     }
@@ -308,7 +352,18 @@ object ImageOperations extends GridLogging {
     }
   }
 
-  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
+  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = {
+    val labInterpretationsKnownToHaveFourBandsWhenNoAlpha = Set(
+      VipsInterpretation.INTERPRETATION_LAB.getRawValue
+    )
+    val interpretation = VipsHelper.image_get_interpretation(image.getUnsafeStructAddress)
+    if (labInterpretationsKnownToHaveFourBandsWhenNoAlpha.contains(interpretation)) {
+      logger.warn("Forcing colour space to sRGB to try and get a more accurate hasAlpha result")
+      image.colourspace(VipsInterpretation.INTERPRETATION_sRGB).hasAlpha
+    } else {
+      image.hasAlpha
+    }
+  }
 
   def isGraphicVips(image: VImage)(implicit arena: Arena): Boolean = {
     val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)

@@ -67,5 +67,10 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
 
   def isTransformedFilePath(filePath: String): Boolean = filePath.contains("transformed-")
 
-  def shouldOptimise(mimeType: Option[MimeType]): Boolean = false
+  def shouldOptimise(mimeType: Option[MimeType]): Boolean = {
+    mimeType match {
+      case Some(Tiff) => true
+      case _ => false
+    }
+  }
 }

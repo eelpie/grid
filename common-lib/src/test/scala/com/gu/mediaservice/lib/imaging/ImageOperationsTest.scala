@@ -88,6 +88,18 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
         r._1.isFile should be(true)
       }
     }
+
+    it("render LAB colour spaces with alpha correctly in sRGB") {
+      val image = fileAt("lab8-with-alpha.tif")
+
+      val outputFile = new File("/Users/tony/Desktop/out4.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false, Instance("TODO"))
+
+      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 1000, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
   }
 
   describe("resize") {
@@ -167,19 +179,34 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       }
     }
 
-    it("render LAB TIFF with alpha correctly") {}
-    implicit val arena: Arena = Arena.ofShared
-    val imageOperations = new ImageOperations("")
+    it("render LAB TIFF with alpha correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
 
-    val image = fileAt("lab8-with-alpha.tif")
-    val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
-    val outputFile = new File("/Users/tony/Desktop/out13.jpg")
+      val image = fileAt("lab8-with-alpha.tif")
+      val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/resized-lab8-tif-with-alpha.png")
 
-    val eventuallyResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+      val eventualResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png)
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
 
-    whenReady(eventuallyResized) { resized =>
-      arena.close()
-      resized.isFile should be(true)
+    it("render LAB16 TIFF with alpha correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val image = fileAt("lab16-with-alpha-unsigned-unassociated.tif")
+      val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/resized-lab16-tif-with-alpha.png")
+
+      val eventualResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(1200, 800), 95, outputFile, Png)
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
     }
   }
 
@@ -198,6 +225,54 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val hasAlpha = ImageOperations.hasAlpha(image)
       arena.close()
       hasAlpha should be(true)
+    }
+
+    it("should return true for TIFF with alpha") {
+      implicit val arena: Arena = Arena.ofShared
+      val image = VImage.newFromFile(arena, fileAt("with-alpha.tif").getAbsolutePath)
+      val hasAlpha = ImageOperations.hasAlpha(image)
+      arena.close()
+      hasAlpha should be(true)
+    }
+
+    it("should return false for LAB8 TIFF with no alpha") {
+      implicit val arena: Arena = Arena.ofShared
+      val hasAlpha = ImageOperations.hasAlpha(VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath))
+      hasAlpha should be(false)
+
+      val hasAlpha2 = ImageOperations.hasAlpha(VImage.newFromFile(arena, fileAt("TIFF 8bit noAlpha.tif").getAbsolutePath))
+      arena.close()
+      hasAlpha2 should be(false)
+    }
+
+    it("should return false for LAB 16 TIF with no alpha") {
+      implicit val arena: Arena = Arena.ofShared
+      val image = VImage.newFromFile(arena, fileAt("halfdome_LAB16.tif").getAbsolutePath)
+      val hasAlpha = ImageOperations.hasAlpha(image)
+      arena.close()
+      hasAlpha should be(false)
+    }
+
+    it("should return true for LAB8 TIF with unassociated alpha") {
+      implicit val arena: Arena = Arena.ofShared
+      val image = VImage.newFromFile(arena, fileAt("TIFF 8bit unassociatedAlpha.tif").getAbsolutePath)
+      val hasAlpha = ImageOperations.hasAlpha(image)
+      arena.close()
+      hasAlpha should be(true)
+    }
+
+    it("render LAB TIFF with alpha correctly") {}
+    implicit val arena: Arena = Arena.ofShared
+    val imageOperations = new ImageOperations("")
+
+    val image = fileAt("lab8-with-alpha.tif")
+    val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
+    val outputFile = new File("/Users/tony/Desktop/out13.jpg")
+
+    val eventualResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+    whenReady(eventualResized) { resized =>
+      arena.close()
+      resized.isFile should be(true)
     }
   }
 
