@@ -1,6 +1,5 @@
 import com.gu.mediaservice.GridClient
-import com.gu.mediaservice.lib.aws.{Bedrock, S3Vectors, SimpleSqsMessageConsumer, Embedder}
-import com.gu.mediaservice.lib.events.UsageEvents
+import com.gu.mediaservice.lib.aws.{Bedrock, S3, S3Vectors, SimpleSqsMessageConsumer, Embedder}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.play.GridComponents
@@ -39,7 +38,8 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   }
 
   val uploader = new Uploader(store, config, imageOperations, notifications, maybeEmbedder, imageProcessor)
-  val projector = Projector(config, imageOperations, imageProcessor, auth, maybeEmbedder)
+  val s3 = new S3(config)
+  val projector = Projector(config, imageOperations, imageProcessor, auth, maybeEmbedder, s3)
   val quarantineUploader: Option[QuarantineUploader] = config.maybeQuarantineBucket.map(_ =>
     new QuarantineUploader(new QuarantineStore(config), config)
   )
