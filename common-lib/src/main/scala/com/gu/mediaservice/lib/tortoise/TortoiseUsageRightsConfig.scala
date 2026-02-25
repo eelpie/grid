@@ -225,7 +225,6 @@ object TortoiseUsageRightsConfig extends UsageRightsConfigProvider {
     "Daily Express",
     "DAJ",
     "DAJ RM",
-    "Dave Benett Library",
     "De Agostini RM",
     "Denkou RF",
     "DigitalGlobe",
