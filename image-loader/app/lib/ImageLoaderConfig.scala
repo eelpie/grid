@@ -19,7 +19,6 @@ class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(res
   val quarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map { bucket =>
     S3Bucket(bucket, quarantineBucketEndpoint, usesPathStyleURLs = false, clientFor(quarantineBucketEndpoint))
   }
-  val uploadToQuarantineEnabled: Boolean = boolean("upload.quarantine.enabled")
 
   val tempDir: File = new File(stringDefault("upload.tmp.dir", "/tmp"))
 
