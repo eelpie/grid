@@ -19,7 +19,6 @@ class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(res
   val quarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map { bucket =>
     S3Bucket(bucket, quarantineBucketEndpoint, usesPathStyleURLs = false, clientFor(quarantineBucketEndpoint))
   }
-  val uploadToQuarantineEnabled: Boolean = boolean("upload.quarantine.enabled")
 
   val lowerEnvironmentSamplingPercentageAsDecimal = intOpt("s3.sampling.percentage").getOrElse(1) / 100.0
   val maybeLowerEnvironmentQueueBucketToSampleInto = stringOpt("s3.sampling.targetBucket")
