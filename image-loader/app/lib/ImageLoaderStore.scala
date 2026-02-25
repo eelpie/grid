@@ -15,7 +15,9 @@ import scala.concurrent.Future
 
 class S3FileDoesNotExistException extends Exception()
 
-class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config, imageBucketS3Endpoint = config.imageBucketS3Endpoint, thumbnailBucketS3Endpoint = config.thumbnailBucketS3Endpoint) with GridLogging {
+class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config) with GridLogging {
+
+  private val imageIngestS3Endpoint = AmazonAwsS3Endpoint
 
   private def handleNotFound[T](key: String)(doWork: => T)(loggingIfNotFound: => Unit): T = {
     try {
@@ -48,7 +50,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
 
   def generatePreSignedUploadUrl(filename: String, expiration: ZonedDateTime, uploadedBy: String, mediaId: String)(implicit instance: Instance): String = {
     val request = new GeneratePresignedUrlRequest(
-      config.maybeBucketForUIUploads.get, // bucket
+      config.maybeBucketForUIUploads.get.bucket, // bucket
       s"${instance.id}/$uploadedBy/$filename", // key
     )
       .withMethod(HttpMethod.PUT)
@@ -57,7 +59,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
     // sent by the client in manager.js
     request.putCustomRequestHeader("x-amz-meta-media-id", mediaId)
 
-    generatePresignedRequest(request).toString
+    generatePresignedRequest(request, config.maybeIngestBucket.get).toString
   }
 
   def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key){
