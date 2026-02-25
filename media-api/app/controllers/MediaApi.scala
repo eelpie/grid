@@ -8,6 +8,8 @@ import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsa
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider
 import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.aws.{ContentDisposition, Embedder, ThrallMessageSender, UpdateMessage}
+import com.gu.mediaservice.lib.aws.{ContentDisposition, S3, ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.formatting.printDateTime
