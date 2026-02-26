@@ -1,6 +1,6 @@
 package store
 
-import com.gu.mediaservice.model.{ActionData, Collection}
+import com.gu.mediaservice.model.{ActionData, Collection, Instance}
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
@@ -30,15 +30,19 @@ class ImageCollectionsStoreTest extends AnyFunSpec with Matchers with ScalaFutur
     region(Region.of(dynamoContainer.getRegion)).
     credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(dynamoContainer.getAccessKey, dynamoContainer.getSecretKey))).build()
 
+  private implicit val instance: Instance = Instance("an-instance")
+
   private val imageCollectionsTable = "test-image-collections-table-" + UUID.randomUUID().toString
   private val store = new ImageCollectionsStore(imageCollectionsTable, dynamoClient)
 
   override def beforeAll(): Unit = {
     val attributeDefinitions = List(
-      AttributeDefinition.builder.attributeName("id").attributeType(ScalarAttributeType.S).build()
+      AttributeDefinition.builder.attributeName("id").attributeType(ScalarAttributeType.S).build(),
+      AttributeDefinition.builder.attributeName("instance").attributeType(ScalarAttributeType.S).build()
     )
     val keySchema = List(
-      KeySchemaElement.builder.attributeName("id").keyType(KeyType.HASH).build()
+      KeySchemaElement.builder.attributeName("instance").keyType(KeyType.HASH).build(),
+      KeySchemaElement.builder.attributeName("id").keyType(KeyType.RANGE).build()
     )
     val provisionedThroughput = ProvisionedThroughput.builder.readCapacityUnits(1L).writeCapacityUnits(1L).build()
     val request = CreateTableRequest.builder
