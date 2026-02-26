@@ -91,7 +91,7 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
   }
 
   describe("resize") {
-    it ("should output resized image to file in chosen format") {
+    it("should output resized image to file in chosen format") {
       implicit val arena: Arena = Arena.ofShared()
       val fullSizedImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
       val imageOperations = new ImageOperations("")
@@ -167,19 +167,20 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       }
     }
 
-    it("render LAB TIFF with alpha correctly") {}
-    implicit val arena: Arena = Arena.ofShared
-    val imageOperations = new ImageOperations("")
+    it("render LAB TIFF with alpha correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
 
-    val image = fileAt("lab8-with-alpha.tif")
-    val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
-    val outputFile = new File("/Users/tony/Desktop/out13.jpg")
+      val image = fileAt("lab8-with-alpha.tif")
+      val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/out13.jpg")
 
-    val eventuallyResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+      val eventuallyResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
 
-    whenReady(eventuallyResized) { resized =>
-      arena.close()
-      resized.isFile should be(true)
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
     }
   }
 
