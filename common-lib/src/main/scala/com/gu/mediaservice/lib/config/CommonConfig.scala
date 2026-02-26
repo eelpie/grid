@@ -67,7 +67,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
     S3Bucket(failBucket, failBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.fail.bucket.pathStyleURLs").getOrElse(false))
   }
 
-  val maybeQuarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map(S3Bucket(_, S3.AmazonAwsS3Endpoint))
+  val maybeQuarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map(S3Bucket(_, S3.AmazonAwsS3Endpoint, usesPathStyleURLs = booleanOpt("s3.fail.bucket.pathStyleURLs").getOrElse(false)))
 
   val maybeBucketForUIUploads: Option[S3Bucket] = maybeQuarantineBucket orElse maybeIngestBucket
 
