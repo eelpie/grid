@@ -1,6 +1,6 @@
 package store
 
-import com.gu.mediaservice.model.{ActionData, Collection}
+import com.gu.mediaservice.model.{ActionData, Collection, Instance}
 import lib.CollectionsConfig
 import org.joda.time.DateTime
 import org.scanamo.generic.auto.genericDerivedFormat
@@ -14,7 +14,7 @@ import org.scanamo.syntax._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class ImageRecord(id: String, collections: List[Collection])
+case class ImageRecord(id: String, instance: String, collections: List[Collection])
 
 class ImageCollectionsStore(val tableName: String, val client: DynamoDbAsyncClient) extends DynamoHelpers {
 
@@ -27,8 +27,8 @@ class ImageCollectionsStore(val tableName: String, val client: DynamoDbAsyncClie
 
   private lazy val imageCollectionsTable = Table[ImageRecord](tableName)
 
-  def get(id: String): Future[List[Collection]] = {
-    ScanamoAsync(client).exec(imageCollectionsTable.get("id" === id)).flatMap(maybeEither =>
+  def get(id: String)(implicit instance: Instance): Future[List[Collection]] = {
+    ScanamoAsync(client).exec(imageCollectionsTable.get("id" === id and "instance" === instance.id)).flatMap(maybeEither =>
       maybeEither.fold[Future[List[Collection]]](
         Future.failed(NoItemFound)
       )(res =>
@@ -37,14 +37,14 @@ class ImageCollectionsStore(val tableName: String, val client: DynamoDbAsyncClie
     )
   }
 
-  def add(id: String, collection: Collection): Future[List[Collection]] = {
-    ScanamoAsync(client).exec(imageCollectionsTable.update("id" === id, append("collections", collection))).flatMap(res => {
+  def add(id: String, collection: Collection)(implicit instance: Instance): Future[List[Collection]] = {
+    ScanamoAsync(client).exec(imageCollectionsTable.update("id" === id and "instance" === instance.id, append("collections", collection))).flatMap(res => {
       handleResponse(res)(res => res.collections)
     })
   }
 
-  def update(id: String, collections: List[Collection]): Future[List[Collection]] = {
-    ScanamoAsync(client).exec(imageCollectionsTable.update("id" === id, set("collections", collections))).flatMap(res => {
+  def update(id: String, collections: List[Collection])(implicit instance: Instance): Future[List[Collection]] = {
+    ScanamoAsync(client).exec(imageCollectionsTable.update("id" === id and "instance" === instance.id, set("collections", collections))).flatMap(res => {
       handleResponse(res)(res => res.collections)
     })
   }
