@@ -79,6 +79,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
     }
     val commonConfig = mock[CommonConfig]
     when(commonConfig.services).thenReturn(new SingleHostServices("https://example.test"))
+    when(commonConfig.myInstancesEndpoint).thenReturn("https://example.test/instances/my")
     val auth = new Authentication(
       commonConfig,
       AuthenticationProviders(userProvider, machineProvider, new InnerServiceAuthenticationProvider(mock[CookieSigner], "test")),
@@ -99,7 +100,6 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
       store,
       None,
       mock[UploadStatusTable],
-      mock[Notifications],
       config,
       uploader,
       None,
@@ -108,6 +108,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
       mock[GridClient],
       authorisation,
       mock[ImageLoaderMetrics],
+      wsClient,
       mock[ApplicationLifecycle]
     )(executionContext, materializer)
   }
