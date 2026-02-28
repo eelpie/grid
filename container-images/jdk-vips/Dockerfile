@@ -21,7 +21,8 @@ RUN apt -y --no-install-suggests install \
     libpango1.0-dev \
     libopenjp2-7-dev \
     liblcms2-dev \
-    libimagequant-dev
+    libimagequant-dev \
+    libheif-dev
 
 WORKDIR /tmp
 RUN wget https://github.com/libvips/libvips/releases/download/v8.18.0/vips-8.18.0.tar.xz
