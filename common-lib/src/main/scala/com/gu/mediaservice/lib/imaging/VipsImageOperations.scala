@@ -3,6 +3,7 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
 import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.BrowserViewableImage
+import com.gu.mediaservice.lib.imaging.im4jwrapper.{ExifTool, ImageMagick}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.model._
 
@@ -11,6 +12,31 @@ import java.lang.foreign.Arena
 import scala.concurrent.Future
 
 class VipsImageOperations(playPath: String) extends GridLogging with ImageOperations {
+  import ExifTool._
+  import ImageMagick._
+
+  private def profilePath(fileName: String): String = s"$playPath/$fileName"
+
+  private def rgbProfileLocation(optimised: Boolean): String = {
+    if (optimised)
+      profilePath("facebook-TINYsRGB_c2.icc")
+    else
+      profilePath("srgb.icc")
+  }
+
+  private val profileLocations = Map(
+    "RGB" -> profilePath("srgb.icc"),
+    "CMYK" -> profilePath("cmyk.icc"),
+    "Greyscale" -> profilePath("grayscale.icc")
+  )
+
+  private def tagFilter(metadata: ImageMetadata) = {
+    Map[String, Option[String]](
+      "Copyright" -> metadata.copyright,
+      "Credit" -> metadata.credit,
+      "OriginalTransmissionReference" -> metadata.suppliersReference
+    ).collect { case (key, Some(value)) => (key, value) }
+  }
 
   def cropImage(
                      sourceFile: File,
