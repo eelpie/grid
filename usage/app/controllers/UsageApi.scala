@@ -396,7 +396,7 @@ class UsageApi(
                 case (usageId, mediaUsage) =>
                 usageTable.deleteRecord(mediaUsage)
                 notifications.publish(
-                  UpdateMessage(subject = DeleteSingleUsage, id = Some(mediaId), usageId = Some(usageId), instance = instanceOf(req))
+                  UpdateMessage(subject = DeleteSingleUsage, id = Some(mediaId), usageId = Some(usageId), instance = instance)
                 )
               }
               Ok
