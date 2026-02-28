@@ -33,6 +33,9 @@ class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(res
 
   val shouldEmbed: Boolean = boolean("s3.vectors.shouldEmbed")
   val maybeImageEmbedderQueueUrl: Option[String] = stringOpt("sqs.image.embedder.queue.url")
+
+  val instancesEndpoint: String = string("instance.service.instances")
+
   /**
     * Load in the chain of image processors from config. This can be a list of
     * companion objects, class names, both with and without config.
