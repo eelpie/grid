@@ -10,20 +10,23 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 import lib.ImageLoaderConfig
 import com.gu.mediaservice.lib
 import com.gu.mediaservice.lib.logging.LogMarker
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 
 import java.io.File
 
 class S3FileDoesNotExistException extends Exception()
 
-class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config) {
+class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config) with GridLogging {
 
   private def handleNotFound[T](key: String)(doWork: => T)(loggingIfNotFound: => Unit): T = {
     try {
       doWork
     } catch {
-      case e: S3Exception if e.statusCode() == 404 || e.statusCode() == 403 =>
+      case e: S3Exception if e.statusCode() == 404 || e.statusCode() == 403 => {
+        logger.warn(s"AmazonS3Exception ${e.getStatusCode} for key '$key'")
         loggingIfNotFound
         throw new S3FileDoesNotExistException
+      }
       case other: Throwable => throw other
     }
   }
@@ -63,9 +66,9 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key){
     client.copyObject(
       CopyObjectRequest.builder()
-        .sourceBucket(config.maybeIngestBucket.get)
+        .sourceBucket(config.maybeIngestBucket.get)  // TODO Naked get - make optional
         .sourceKey(key)
-        .destinationBucket(config.maybeFailBucket.get)
+        .destinationBucket(config.maybeFailBucket.get)   // TODO Naked get - make optional
         .destinationKey(key)
         .build()
     )
