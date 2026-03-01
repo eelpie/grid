@@ -246,7 +246,7 @@ query.controller('SearchQueryCtrl', [
     // eslint-disable-next-line complexity
     function watchSearchChange(newFilter, sender) {
       let showPaid = newFilter.nonFree ? newFilter.nonFree : false;
-      if (sender && sender == "filterChange" && !newFilter.nonFree) {
+      if (sender && sender === "filterChange" && !newFilter.nonFree) {
         showPaid = ctrl.user.permissions.showPaid;
       }
       storage.setJs("isNonFree", showPaid, true);
@@ -258,7 +258,7 @@ query.controller('SearchQueryCtrl', [
       const newCollection = storeCollection(newFilter.query);
 
       if (ctrl.usePermissionsFilter) {
-        if (sender && ctrl.ordering["orderBy"] != $stateParams.orderBy) {
+        if (sender && ctrl.ordering["orderBy"] !== $stateParams.orderBy) {
           ctrl.ordering["orderBy"] = $stateParams.orderBy;
         }
         if ($stateParams.orderBy && $stateParams.orderBy.includes(TAKEN_SORT) && (!newFilter.query || !newFilter.query.includes(HAS_DATE_TAKEN))) {
