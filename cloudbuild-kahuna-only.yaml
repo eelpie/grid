@@ -1,0 +1,25 @@
+options:
+  machineType: 'N1_HIGHCPU_8'
+steps:
+  - name: 'node:24-alpine'
+    entrypoint: 'npm'
+    dir: 'kahuna'
+    args: [ 'install' ]
+  - name: 'node:24-alpine'
+    entrypoint: 'npm'
+    dir: 'kahuna'
+    args: [ 'run', 'test' ]
+  - name: 'node:24-alpine'
+    entrypoint: 'npm'
+    dir: 'kahuna'
+    args: [ 'run', 'dist' ]
+
+  - name: 'gcr.io/$PROJECT_ID/scala-sbt:1.11.7-jdk-25'
+    args: ['kahuna/docker:publishLocal']
+    env:
+      - 'DOCKER_API_VERSION=1.41'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['tag', 'kahuna:0.1', 'eu.gcr.io/$PROJECT_ID/kahuna:$BRANCH_NAME']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'eu.gcr.io/$PROJECT_ID/kahuna:$BRANCH_NAME']
