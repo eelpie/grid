@@ -24,7 +24,7 @@ import {
   DefaultSortOption,
   CollectionSortOption,
   HAS_DATE_TAKEN,
-  TAKEN_SORT, SortOptions
+  TAKEN_SORT
 } from "../components/gr-sort-control/gr-sort-control-config";
 
 export var query = angular.module('kahuna.search.query', [
@@ -302,15 +302,13 @@ query.controller('SearchQueryCtrl', [
 
     //-sort control-
     function updateSortChips (sortSel) {
-      ctrl.sortProps.selectedOption = sortSel;
       ctrl.ordering['orderBy'] = manageSortSelection(sortSel.value);
-      watchSearchChange(ctrl.filter, "sorting");
+      storage.setJs("orderBy", ctrl.ordering["orderBy"]);
+      $state.go('search.results', {...ctrl.filter, ...{orderBy: ctrl.ordering['orderBy']}});
     }
 
     ctrl.sortProps = {
-      options: SortOptions,
-      selectedOption: DefaultSortOption,
-      onSelect: updateSortChips,
+      onSortSelect: updateSortChips,
       query: ctrl.filter.query,
       orderBy: ctrl.ordering ? ctrl.ordering.orderBy : ""
     };
