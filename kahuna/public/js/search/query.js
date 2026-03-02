@@ -21,10 +21,7 @@ import * as PermissionsConf from '../components/gr-permissions-filter/gr-permiss
 import {updateFilterChips} from "../components/gr-permissions-filter/gr-permissions-filter-util";
 import {
   manageSortSelection,
-  DefaultSortOption,
-  CollectionSortOption,
-  HAS_DATE_TAKEN,
-  TAKEN_SORT
+  DefaultSortOption, SortOptions
 } from "../components/gr-sort-control/gr-sort-control-config";
 
 export var query = angular.module('kahuna.search.query', [
@@ -188,81 +185,14 @@ query.controller('SearchQueryCtrl', [
         ctrl.filter.orgOwned = false;
     }
 
-    function checkForCollection(query) {
-      return /~"[a-zA-Z0-9 #-_.://]+"/.test(query);
-    };
-
-    function storeCollection(query) {
-      const match = query ? query.match(/~"[a-zA-Z0-9 #-_.://]+"/) : undefined;
-      const collection = match ? match[0] : "";
-      storage.setJs("currentCollection", collection);
-      return collection;
-    }
-
-    function getCollection() {
-      const collection = storage.getJs("currentCollection") ? storage.getJs("currentCollection") : "";
-      return collection;
-    }
-
-    function getPriorOrderBy() {
-      const prior = storage.getJs("priorOrderBy") ? storage.getJs("priorOrderBy") : "";
-      return prior;
-    }
-
-    function setPriorOrderBy(priorOrderBy) {
-      storage.setJs("priorOrderBy", priorOrderBy);
-    }
-
-    function revisedOrderBy(collectionSearch) {
-      if (collectionSearch) {
-        return CollectionSortOption.value;
-      } else {
-        return DefaultSortOption.value;
-      }
-    }
-
-    function priorRevisedOrderBy(collectionSearch, newCollection, oldCollection) {
-      const priorOrderBy = getPriorOrderBy();
-      if (collectionSearch && ((oldCollection !== newCollection) || ("" !== priorOrderBy))) {
-        if (priorOrderBy != "") {
-          setPriorOrderBy("");
-          return priorOrderBy;
-        } else {
-          setPriorOrderBy(CollectionSortOption.value);
-          return null;
-        }
-      } else {
-        return null;
-      }
-    }
-
     // eslint-disable-next-line complexity
     function watchSearchChange(newFilter, sender) {
-      let showPaid = newFilter.nonFree ? newFilter.nonFree : false;
-      if (sender && sender == "filterChange" && !newFilter.nonFree) {
-        showPaid = ctrl.user.permissions.showPaid;
-      }
+      const showPaid = newFilter.nonFree ? newFilter.nonFree : false;
       storage.setJs("isNonFree", showPaid, true);
-
-      // check for taken date sort contradiction
-      const curCollectionSearch = ctrl.collectionSearch;
-      ctrl.collectionSearch = newFilter.query ? checkForCollection(newFilter.query) : false;
-      const oldCollection = getCollection();
-      const newCollection = storeCollection(newFilter.query);
-
-      if (ctrl.usePermissionsFilter) {
-        if (sender && ctrl.ordering["orderBy"] != $stateParams.orderBy) {
-          ctrl.ordering["orderBy"] = $stateParams.orderBy;
-        }
-        if ($stateParams.orderBy && $stateParams.orderBy.includes(TAKEN_SORT) && (!newFilter.query || !newFilter.query.includes(HAS_DATE_TAKEN))) {
-          ctrl.ordering["orderBy"] = revisedOrderBy(ctrl.collectionSearch);
-        } else {
-          const prior = priorRevisedOrderBy(ctrl.collectionSearch, newCollection, oldCollection);
-          ctrl.ordering["orderBy"] = prior ? prior : ctrl.ordering["orderBy"];
-        }
-      }
-      let sortBy = ctrl.ordering["orderBy"] ? ctrl.ordering["orderBy"] : DefaultSortOption.value;
+      let sortBy = ctrl.ordering["orderBy"] ? ctrl.ordering["orderBy"] : "newest";
       storage.setJs("orderBy", sortBy);
+
+      ctrl.collectionSearch = newFilter.query ? newFilter.query.indexOf('~') === 0 : false;
 
       //--update filter elements--
       manageUploadedBy(newFilter, sender);
@@ -278,17 +208,10 @@ query.controller('SearchQueryCtrl', [
         nonFreeCheck = undefined;
       }
       ctrl.filter.nonFree = nonFreeCheck;
+      raiseQueryChangeEvent(ctrl.filter.query);
 
       sendTelemetryForQuery(ctrl.filter.query, nonFreeCheck, uploadedByMe);
-      if (ctrl.collectionSearch && !curCollectionSearch) {
-        storage.setJs("orderBy", CollectionSortOption.value);
-        ctrl.ordering["orderBy"] = CollectionSortOption.value;
-        raiseQueryChangeEvent(ctrl.filter.query, curCollectionSearch, CollectionSortOption.value);
-        $state.go('search.results', {...ctrl.filter, ...{orderBy: CollectionSortOption.value}});
-      } else {
-        raiseQueryChangeEvent(ctrl.filter.query, curCollectionSearch, ctrl.ordering["orderBy"]);
-        $state.go('search.results', {...ctrl.filter, ...{orderBy: ctrl.ordering["orderBy"]}});
-      }
+      $state.go('search.results', ctrl.filter);
     }
 
     //-my uploads-
@@ -305,13 +228,15 @@ query.controller('SearchQueryCtrl', [
 
     //-sort control-
     function updateSortChips (sortSel) {
+      ctrl.sortProps.selectedOption = sortSel;
       ctrl.ordering['orderBy'] = manageSortSelection(sortSel.value);
-      storage.setJs("orderBy", ctrl.ordering["orderBy"]);
-      $state.go('search.results', {...ctrl.filter, ...{orderBy: ctrl.ordering['orderBy']}});
+      watchSearchChange(ctrl.filter, "sorting");
     }
 
     ctrl.sortProps = {
-      onSortSelect: updateSortChips,
+      options: SortOptions,
+      selectedOption: DefaultSortOption,
+      onSelect: updateSortChips,
       query: ctrl.filter.query,
       orderBy: ctrl.ordering ? ctrl.ordering.orderBy : ""
     };
@@ -394,13 +319,14 @@ query.controller('SearchQueryCtrl', [
             ctrl.filter[key] = valOrUndefined($stateParams[key]);
         }
 
-        ctrl.collectionSearch = ctrl.filter.query ?  checkForCollection(ctrl.filter.query) : false;
-        storeCollection(ctrl.filter.query);
+        ctrl.collectionSearch = ctrl.filter.query ?  ctrl.filter.query.indexOf('~') === 0 : false;
 
         $scope.$watch(() => $stateParams[key], onValChange(newVal => {
             // FIXME: broken for 'your uploads'
             // FIXME: + they triggers filter $watch and $state.go (breaks history)
-            if (key !== 'orderBy') {
+            if (key === 'orderBy') {
+                ctrl.ordering[key] = valOrUndefined(newVal);
+            } else {
                 ctrl.filter[key] = valOrUndefined(newVal);
             }
 
