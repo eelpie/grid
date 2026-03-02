@@ -302,9 +302,9 @@ query.controller('SearchQueryCtrl', [
 
     //-sort control-
     function updateSortChips (sortSel) {
-      ctrl.sortProps.selectedOption = sortSel;
       ctrl.ordering['orderBy'] = manageSortSelection(sortSel.value);
-      watchSearchChange(ctrl.filter, "sorting");
+      storage.setJs("orderBy", ctrl.ordering["orderBy"]);
+      $state.go('search.results', {...ctrl.filter, ...{orderBy: ctrl.ordering['orderBy']}});
     }
 
     ctrl.sortProps = {
