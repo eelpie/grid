@@ -241,7 +241,7 @@ query.controller('SearchQueryCtrl', [
       let showPaid = newFilter.nonFree ? newFilter.nonFree : false;
       if (ctrl.usePermissionsFilter) {
         // Fixes Free to use only check-box is cleared on Back to search
-        if (sender && sender == "filterChange" && !newFilter.nonFree) {
+        if (sender && sender === "filterChange" && !newFilter.nonFree) {
           showPaid = ctrl.user.permissions.showPaid;
         }
       }
