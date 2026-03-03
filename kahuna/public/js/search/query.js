@@ -24,7 +24,7 @@ import {
   DefaultSortOption,
   CollectionSortOption,
   HAS_DATE_TAKEN,
-  TAKEN_SORT, SortOptions
+  TAKEN_SORT
 } from "../components/gr-sort-control/gr-sort-control-config";
 
 export var query = angular.module('kahuna.search.query', [
@@ -238,7 +238,10 @@ query.controller('SearchQueryCtrl', [
 
     // eslint-disable-next-line complexity
     function watchSearchChange(newFilter, sender) {
-      const showPaid = newFilter.nonFree ? newFilter.nonFree : false;
+      let showPaid = newFilter.nonFree ? newFilter.nonFree : false;
+      if (sender && sender == "filterChange" && !newFilter.nonFree) {
+        showPaid = ctrl.user.permissions.showPaid;
+      }
       storage.setJs("isNonFree", showPaid, true);
 
       // check for taken date sort contradiction
@@ -308,9 +311,7 @@ query.controller('SearchQueryCtrl', [
     }
 
     ctrl.sortProps = {
-      options: SortOptions,
-      selectedOption: DefaultSortOption,
-      onSelect: updateSortChips,
+      onSortSelect: updateSortChips,
       query: ctrl.filter.query,
       orderBy: ctrl.ordering ? ctrl.ordering.orderBy : ""
     };
