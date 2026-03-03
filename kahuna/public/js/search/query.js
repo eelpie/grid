@@ -238,7 +238,13 @@ query.controller('SearchQueryCtrl', [
 
     // eslint-disable-next-line complexity
     function watchSearchChange(newFilter, sender) {
-      const showPaid = newFilter.nonFree ? newFilter.nonFree : false;
+      let showPaid = newFilter.nonFree ? newFilter.nonFree : false;
+      if (ctrl.usePermissionsFilter) {
+        // Fixes Free to use only check-box is cleared on Back to search
+        if (sender && sender == "filterChange" && !newFilter.nonFree) {
+          showPaid = ctrl.user.permissions.showPaid;
+        }
+      }
       storage.setJs("isNonFree", showPaid, true);
 
       // check for taken date sort contradiction
