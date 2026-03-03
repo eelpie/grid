@@ -393,14 +393,13 @@ query.controller('SearchQueryCtrl', [
             ctrl.filter[key] = valOrUndefined($stateParams[key]);
         }
 
-        ctrl.collectionSearch = ctrl.filter.query ?  ctrl.filter.query.indexOf('~') === 0 : false;
+        ctrl.collectionSearch = ctrl.filter.query ?  checkForCollection(ctrl.filter.query) : false;
+        storeCollection(ctrl.filter.query);
 
         $scope.$watch(() => $stateParams[key], onValChange(newVal => {
             // FIXME: broken for 'your uploads'
             // FIXME: + they triggers filter $watch and $state.go (breaks history)
-            if (key === 'orderBy') {
-                ctrl.ordering[key] = valOrUndefined(newVal);
-            } else {
+            if (key !== 'orderBy') {
                 ctrl.filter[key] = valOrUndefined(newVal);
             }
 
