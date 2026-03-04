@@ -154,11 +154,14 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3Client, usageQuota: Usag
     val fileMetadataLink = Link("fileMetadata", s"${config.rootUri(instance)}/images/$id/fileMetadata")
     val projectionLink = Link("loader", s"${config.loaderUri(instance)}/images/project/$id")
     val projectionDiffLink = Link("api", s"${config.rootUri(instance)}/images/$id/projection/diff")
+    val imageCollectionsLink = Link("collections", s"${config.collectionsUri(instance)}/images/$id")
 
     editLinkMaybe.toList ++ cropLinkMaybe.toList ++ optimisedPngLinkMaybe.toList ++
       List(
         optimisedLink, imageLink, usageLink, leasesLink, fileMetadataLink,
-        projectionLink, projectionDiffLink)
+        projectionLink, projectionDiffLink,
+        imageCollectionsLink
+      )
   }
 
   def imageActions(id: String, isDeletable: Boolean, withWritePermission: Boolean, withDeleteCropsOrUsagePermission: Boolean)(implicit instance: Instance): List[Action] = {
