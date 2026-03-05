@@ -1,10 +1,8 @@
 package model
 
-import com.gu.contentapi.client.model.v1.{Content, Element, ElementType}
-import com.gu.contentatom.thrift.{Atom, AtomData}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
-import com.gu.mediaservice.model.usage.{MediaUsage, PublishedUsageStatus, UsageStatus}
-import lib.{ContentHelpers, MD5, MediaUsageBuilder, UsageConfig}
+import com.gu.mediaservice.model.usage.{MediaUsage, UsageStatus}
+import lib.{MD5, MediaUsageBuilder, UsageConfig}
 import org.joda.time.DateTime
 import play.api.libs.json._
 
@@ -118,78 +116,4 @@ class UsageGroupOps(config: UsageConfig)
     usage
   }
 
-  private def isNewContent(content: Content, usageStatus: UsageStatus): Boolean = {
-    val dateLimit = new DateTime(config.usageDateLimit)
-    val contentFirstPublished = ContentHelpers.getContentFirstPublished(content)
-    usageStatus match {
-      case PublishedUsageStatus => contentFirstPublished.exists(_.isAfter(dateLimit))
-      case _ => true
-    }
-  }
-
-  private def filterOutAtomsWithNoImage(atoms: Seq[Atom]): Seq[Atom] = {
-    for {
-      atom <- atoms
-      atomId = getImageId(atom)
-      if atomId.isDefined
-    } yield atom
-  }
-
-  private def getImageId(atom: Atom): Option[String] = {
-    try {
-      val posterImage = atom.data.asInstanceOf[AtomData.Media].media.posterImage
-      posterImage match {
-        case Some(image) => Some(image.mediaId.replace(s"${config.apiUri}/images/", ""))
-        case _ => None
-      }
-    } catch {
-      case e: ClassCastException => None
-    }
-  }
-
-  private def extractCartoonUniqueMediaIds(content: Content): Set[String] =
-    (for {
-      elements <- content.elements.toSeq
-      cartoonElement <- elements.filter(_.`type` == ElementType.Cartoon)
-      asset <- cartoonElement.assets.toSeq
-      data <- asset.typeData.toSeq
-      cartoonVariants <- data.cartoonVariants.toSeq
-      cartoonVariant <- cartoonVariants
-      image <- cartoonVariant.images
-      mediaId <- image.mediaId
-    } yield mediaId).toSet
-
-  private def extractImageElements(
-    content: Content, usageStatus: UsageStatus, isReindex: Boolean
-  )(implicit logMarker: LogMarker): Seq[Element] = {
-    val isNew = isNewContent(content, usageStatus)
-    val shouldRecordUsages = isNew || isReindex
-
-    if (shouldRecordUsages) {
-      logger.info(logMarker, s"Passed shouldRecordUsages")
-      val groupedElements = groupImageElements(content)
-
-      if (groupedElements.isEmpty) {
-        logger.info(logMarker, s"No Matching elements found")
-      } else {
-        groupedElements.foreach(elements => {
-          logger.info(logMarker, s"${elements.length} elements found")
-          elements.foreach(element => logger.info(logMarker, s"Matching element ${element.id} found"))
-        })
-      }
-
-      groupedElements.getOrElse(Seq.empty)
-    } else {
-      logger.info(logMarker, s"Failed shouldRecordUsages: isNew-$isNew isReindex-$isReindex")
-      Seq.empty
-    }
-  }
-
-  private def groupImageElements(content: Content): Option[Seq[Element]] = {
-    content.elements.map(elements => {
-      elements.filter(_.`type` == ElementType.Image)
-        .groupBy(_.id)
-        .map(_._2.head).to(collection.immutable.Seq)
-    })
-  }
 }
