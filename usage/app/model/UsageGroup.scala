@@ -1,12 +1,12 @@
 package model
 
-import play.api.libs.json._
 import com.gu.contentapi.client.model.v1.{Content, Element, ElementType}
 import com.gu.contentatom.thrift.{Atom, AtomData}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
-import com.gu.mediaservice.model.usage.{DigitalUsageMetadata, MediaUsage, PublishedUsageStatus, UsageStatus}
+import com.gu.mediaservice.model.usage.{MediaUsage, PublishedUsageStatus, UsageStatus}
 import lib.{ContentHelpers, MD5, MediaUsageBuilder, UsageConfig}
 import org.joda.time.DateTime
+import play.api.libs.json._
 
 case class UsageGroup(
   usages: Set[MediaUsage],
@@ -192,10 +192,3 @@ class UsageGroupOps(config: UsageConfig)
     })
   }
 }
-
-case class MediaWrapper(
-    mediaId: String,
-    usageGroupId: String,
-    contentStatus: UsageStatus,
-    usageMetadata: DigitalUsageMetadata,
-    lastModified: DateTime)
