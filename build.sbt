@@ -195,8 +195,6 @@ lazy val thrall = playProject("thrall", 9002)
 
 lazy val usage = playProject("usage", 9009).settings(
   libraryDependencies ++= Seq(
-    "com.gu" %% "content-api-client-default" % "32.0.0",
-    "com.gu" %% "content-api-client-aws" % "0.7.6",
     "io.reactivex" %% "rxscala" % "0.27.0",
     // amazon-kinesis-client brings in a critical vulnerability warning through apache avro, resolved in versions 1.11.4 and 1.12.0.
     // updating amazon-kinesis-client? check if the override below can be removed
