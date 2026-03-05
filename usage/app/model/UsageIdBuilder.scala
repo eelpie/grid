@@ -20,11 +20,6 @@ object UsageIdBuilder {
     Some(digitalMediaUsageRecord.metadata.webUrl)
   ))
 
-  def build(mediaWrapper: MediaWrapper) = buildId(List(
-    Some(mediaWrapper.mediaId),
-    Some(mediaWrapper.contentStatus)
-  ))
-
   def build(syndicationUsageRequest: SyndicationUsageRequest) = buildId(List(
     Some(syndicationUsageRequest.mediaId),
     Some(syndicationUsageRequest.metadata.partnerName),
