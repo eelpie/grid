@@ -1,4 +1,3 @@
-import com.gu.contentapi.client.ScheduledExecutor
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.UsageApi
 import lib._

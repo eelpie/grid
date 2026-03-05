@@ -1,7 +1,5 @@
 package controllers
 
-import java.net.URI
-import com.gu.contentapi.client.model.ItemQuery
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.{EntityResponse, Link, Action => ArgoAction}
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
@@ -9,7 +7,7 @@ import com.gu.mediaservice.lib.aws.UpdateMessage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.lib.usage.UsageBuilder
-import com.gu.mediaservice.model.usage.{MediaUsage, SyndicatedUsageStatus, Usage, UsageNotice, UsageStatus}
+import com.gu.mediaservice.model.usage.{MediaUsage, Usage, UsageNotice, UsageStatus}
 import com.gu.mediaservice.syntax.MessageSubjects
 import lib._
 import model._
@@ -18,6 +16,7 @@ import play.api.mvc._
 import play.utils.UriEncoding
 import rx.lang.scala.Subject
 
+import java.net.URI
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
