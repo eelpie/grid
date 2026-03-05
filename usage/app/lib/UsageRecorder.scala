@@ -9,8 +9,6 @@ import rx.lang.scala.{Observable, Subject, Subscriber, Subscription}
 
 import scala.concurrent.duration.DurationInt
 
-case class ResetException() extends Exception
-
 class UsageRecorder(
   usageMetrics: UsageMetrics,
   usageTable: UsageTable,
