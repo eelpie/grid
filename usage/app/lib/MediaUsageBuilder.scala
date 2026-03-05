@@ -38,26 +38,6 @@ object MediaUsageBuilder {
     digitalMediaUsageRecord.dateAdded,
   )
 
-  def build(mediaWrapper: MediaWrapper): MediaUsage = {
-    val usageId = UsageIdBuilder.build(mediaWrapper)
-
-    MediaUsage(
-      usageId = usageId,
-      grouping = mediaWrapper.usageGroupId,
-      mediaId = mediaWrapper.mediaId,
-      DigitalUsage,
-      mediaType = "image",
-      status = mediaWrapper.contentStatus,
-      printUsageMetadata = None,
-      digitalUsageMetadata = Some(mediaWrapper.usageMetadata),
-      None,
-      None,
-      None,
-      childUsageMetadata = None,
-      lastModified = mediaWrapper.lastModified
-    )
-  }
-
   def build(syndicationUsageRequest: SyndicationUsageRequest, groupId: String): MediaUsage = {
     val usageId = UsageIdBuilder.build(syndicationUsageRequest)
     MediaUsage(
