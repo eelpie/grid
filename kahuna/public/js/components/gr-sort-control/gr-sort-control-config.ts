@@ -1,47 +1,57 @@
 import {SortDropdownOption} from "./gr-sort-control";
 
-export function manageSortSelection(newSelection: string): string {
-  if (["newest", "oldest", "-taken", "taken", "dateAddedToCollection"].includes(newSelection)) {
-    return newSelection;
-  } else { return "newest"; }
+export function manageSortSelection(newSelection:string): string {
+  let newVal;
+  switch (newSelection) {
+    case "uploadNewOld":
+      newVal = undefined;
+      break;
+    case "oldest":
+      newVal = "oldest";
+      break;
+    case "-taken":
+      newVal = "-taken";
+      break;
+    case "taken":
+      newVal = "taken";
+      break;
+    case "dateAddedToCollection":
+      newVal = "dateAddedToCollection";
+      break;
+    default:
+      newVal = undefined;
+      break;
+  }
+  return newVal;
 }
 
 export const SortOptions: SortDropdownOption[] = [
   {
-    value: "newest",
+    value: "uploadNewOld",
     label: "Upload date (new to old)",
-    isCollection: false,
-    isTaken: false
+    isCollection: false
   },
   {
     value: "oldest",
     label: "Upload date (old to new)",
-    isCollection: false,
-    isTaken: false
+    isCollection: false
   },
   {
     value: "-taken",
     label: "Taken date (new to old)",
-    isCollection: false,
-    isTaken: true
+    isCollection: false
   },
   {
     value: "taken",
     label: "Taken date (old to new)",
-    isCollection: false,
-    isTaken: true
+    isCollection: false
   },
   {
     value: "dateAddedToCollection",
     label: "Added to collection (new to old)",
-    isCollection: true,
-    isTaken: false
+    isCollection: true
   }
 ];
 
 export const DefaultSortOption: SortDropdownOption = SortOptions[0];
 export const CollectionSortOption: SortDropdownOption = SortOptions[4];
-export const HAS_DATE_TAKEN = "has:dateTaken";
-export const HASNT_DATE_TAKEN = "-has:dateTaken";
-export const TAKEN_SORT = "taken";
-export const COLLECTION_SORT_VALUE = SortOptions[4].value;
