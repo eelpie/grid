@@ -314,7 +314,7 @@ query.controller('SearchQueryCtrl', [
     }
 
     ctrl.sortProps = {
-      onSelect: updateSortChips,
+      onSortSelect: updateSortChips,
       query: ctrl.filter.query,
       orderBy: ctrl.ordering ? ctrl.ordering.orderBy : ""
     };
