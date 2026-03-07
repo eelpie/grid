@@ -2,11 +2,9 @@ package store
 
 import cats.implicits._
 import com.gu.mediaservice.lib.collections.CollectionsManager
-import com.gu.mediaservice.model.{ActionData, Collection}
-import lib.CollectionsConfig
+import com.gu.mediaservice.model.{ActionData, Collection, Instance}
 import org.joda.time.DateTime
 import org.scanamo.generic.auto.genericDerivedFormat
-import org.scanamo.generic.semiauto.FieldName
 import org.scanamo.syntax._
 import org.scanamo.{DynamoFormat, ScanamoAsync, Table}
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
