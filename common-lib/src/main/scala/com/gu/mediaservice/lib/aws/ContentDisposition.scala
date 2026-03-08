@@ -22,9 +22,10 @@ trait ContentDisposition extends GridLogging {
   def getContentDisposition(image: Image, crop: Crop, asset: Asset): String = {
     val extension: String = getExtension(image, asset)
     val filename = image.uploadInfo.filename match {
-      case Some(filename) => s"($filename$extension"
+      case Some(filename) => s"$filename$extension"
       case _ => s"${image.id}$extension"
     }
+    logger.info("getContentDisposition for crop: " + filename)
     getContentDisposition(filename, fallbackLatin1Filename(image, extension))
   }
 
