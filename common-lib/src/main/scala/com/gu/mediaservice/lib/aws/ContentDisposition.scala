@@ -19,14 +19,16 @@ trait ContentDisposition extends GridLogging {
     getContentDisposition(filename, fallbackLatin1Filename(image, extension))
   }
 
-  def getContentDisposition(image: Image, crop: Crop, asset: Asset, shortenDownloadFilename: Boolean): String = {
-    val cropId: String = crop.id.map(id => s"($id)").getOrElse("")
+  def getContentDisposition(image: Image, crop: Crop, asset: Asset): String = {
     val extension: String = getExtension(image, asset)
-    val dimensions: String = asset.dimensions.map(dims => s"(${dims.width} x ${dims.height})").getOrElse("")
-    val filenameSuffix: String = s"(${image.id})$cropId$dimensions$extension"
-    val filename = getBaseFilename(image, filenameSuffix, shortenDownloadFilename)
+    val filename = image.uploadInfo.filename match {
+      case Some(filename) => filename
+      case _ => image.id
+    }
 
-    getContentDisposition(filename, fallbackLatin1Filename(image, extension))
+    // Drop original file's extension and replace with the crops actual extension
+    val withCropsExtension = removeExtension(filename) + extension
+    getContentDisposition(withCropsExtension, fallbackLatin1Filename(image, extension))
   }
 
   private def getExtension(image: Image, asset: Asset): String = asset.mimeType match {
