@@ -25,17 +25,17 @@ class ContentDispositionTest extends AnyFunSuiteLike with ContentDisposition {
     header shouldBe """attachment; filename="abcdef1234567890.jpg"; filename*=UTF-8''%C2%A9House%20of%20Commons_240508_MU_PMQs-09_42668%20%28abcdef1234567890%29.jpg"""
   }
 
-  test("include crop id and dimensions in main crop asset filename") {
+  test("crop asset filename is the image uploaded filename with the correct file extension for the crop mime type") {
     val image = withFilename(MappingTest.testImage, "imagefilename.jpg")
     val crop = image.exports.head
     val cropAsset = crop.assets.head
-    val header = getContentDisposition(image, crop, cropAsset, shortenDownloadFilename = false)
+    val header = getContentDisposition(image, crop, cropAsset)
 
     // Latin1 fallback wants to remain simple
     header.contains("""filename="abcdef1234567890.jpg";""") shouldBe true
 
     val decoded = URLDecoder.decode(header, "UTF-8")
-    decoded shouldBe """attachment; filename="abcdef1234567890.jpg"; filename*=UTF-8''imagefilename (abcdef1234567890)(1234567890987654321)(1000 x 2000).jpg"""
+    decoded shouldBe """attachment; filename="abcdef1234567890.jpg"; filename*=UTF-8''imagefilename.jpg"""
   }
 
   test("use just the generated filename suffix as filename if short filenames are requested") {
