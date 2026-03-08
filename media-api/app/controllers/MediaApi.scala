@@ -319,7 +319,7 @@ class MediaApi(
           s3Object <- Try(s3.getObject(config.imgPublishingBucket, key)).toOption
           file = StreamConverters.fromInputStream(() => s3Object.getObjectContent)
           entity = HttpEntity.Streamed(file, asset.size, asset.mimeType.map(_.name))
-          result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset, config.shortenDownloadFilename))
+          result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset))
         } yield {
           if(config.recordDownloadAsUsage) {
             postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), source.id, Authentication.getIdentity(request.user))
@@ -349,7 +349,7 @@ class MediaApi(
           s3Object <- Try(s3.getObject(config.imgPublishingBucket, key)).toOption
           file = StreamConverters.fromInputStream(() => s3Object.getObjectContent)
           entity = HttpEntity.Streamed(file, asset.size, asset.mimeType.map(_.name))
-          result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset, config.shortenDownloadFilename))
+          result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset))
         } yield {
           if(config.recordDownloadAsUsage) {
             postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), source.id, Authentication.getIdentity(request.user))
