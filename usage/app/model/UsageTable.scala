@@ -39,7 +39,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
     .build()
   lazy val table = dynamo.table(tableName, tableSchema)
 
-  def queryByUsageId(id: String): Future[Option[MediaUsage]] = Future {
+  def queryByUsageId(id: String)(implicit instance: Instance): Future[Option[MediaUsage]] = Future {
     UsageTableFullKey.build(id).flatMap((tableFullKey: UsageTableFullKey) => {
 
       val key = Key.builder()
@@ -51,7 +51,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
     })
   }
 
-  def queryByImageId(id: String)(implicit logMarkerWithId: LogMarker): Future[List[MediaUsage]] = Future {
+  def queryByImageId(id: String)(implicit logMarkerWithId: LogMarker, instance: Instance): Future[List[MediaUsage]] = Future {
 
     if (id.trim.isEmpty)
       throw new BadInputException("Empty string received for image id")
@@ -133,16 +133,16 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
     })
   }
 
-  def create(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def create(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildCreateRecord(mediaUsage))
 
-  def update(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def update(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildUpdateRecord(mediaUsage))
 
-  def markAsRemoved(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def markAsRemoved(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildMarkAsRemovedRecord(mediaUsage))
 
-  def deleteRecord(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): EnhancedDocument = {
+  def deleteRecord(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): EnhancedDocument = {
     logger.info(logMarker, s"deleting usage ${mediaUsage.usageId} for media id ${mediaUsage.mediaId}")
 
     val key = Key.builder()
@@ -153,7 +153,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
     table.deleteItem(DeleteItemEnhancedRequest.builder().key(key).build())
   }
 
-  private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker): Observable[JsObject] = Observable.from(Future {
+  private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] = Observable.from(Future {
       val key = Map(
         hashKeyName -> AttributeValue.builder().s(record.hashKey).build(),
         rangeKeyName -> AttributeValue.builder().s(record.rangeKey).build()
