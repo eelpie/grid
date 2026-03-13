@@ -6,7 +6,6 @@ import com.gu.mediaservice.lib.usage.ItemToMediaUsage
 import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.usage.{MediaUsage, PendingUsageStatus, PublishedUsageStatus, UsageTableFullKey}
 import lib.{BadInputException, WithLogMarker}
-import org.apache.pekko.http.impl.util.JavaMapping.Implicits.AddAsJava
 import play.api.libs.json._
 import rx.lang.scala.Observable
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
@@ -15,7 +14,7 @@ import software.amazon.awssdk.services.dynamodb.model.{DeleteItemRequest, QueryR
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters.CollectionHasAsScala
+import scala.jdk.CollectionConverters.{CollectionHasAsScala, MapHasAsJava}
 
 class UsageTable(
                   client2: DynamoDbClient,
@@ -26,7 +25,7 @@ class UsageTable(
   val rangeKeyName = "usage_id"
   val imageIndexName = "media_id"
 
-  def queryByUsageId(id: String): Future[Option[MediaUsage]] = Future {
+  def queryByUsageId(id: String)(implicit instance: Instance): Future[Option[MediaUsage]] = Future {
     UsageTableFullKey.build(id).flatMap { tableFullKey =>
       val request = QueryRequest.builder()
         .tableName(tableName)
@@ -47,7 +46,7 @@ class UsageTable(
     }
   }
 
-  def queryByImageId(id: String)(implicit logMarkerWithId: LogMarker): Future[List[MediaUsage]] = Future {
+  def queryByImageId(id: String)(implicit logMarkerWithId: LogMarker, instance: Instance): Future[List[MediaUsage]] = Future {
 
     if (id.trim.isEmpty)
       throw new BadInputException("Empty string received for image id")
@@ -129,13 +128,13 @@ class UsageTable(
     })
   }
 
-  def create(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def create(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildCreateRecord(mediaUsage))
 
-  def update(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def update(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildUpdateRecord(mediaUsage))
 
-  def markAsRemoved(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def markAsRemoved(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildMarkAsRemovedRecord(mediaUsage))
 
   def deleteRecord(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Unit = {
@@ -152,7 +151,7 @@ class UsageTable(
     client2.deleteItem(request)
   }
 
-  private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker): Observable[JsObject] = Observable.from(Future {
+  private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] = Observable.from(Future {
 
     val (expression, attrValues) = record.toUpdateExpressionV2
     val request = UpdateItemRequest.builder()
