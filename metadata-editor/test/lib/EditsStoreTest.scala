@@ -3,7 +3,7 @@ package lib
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
-import com.gu.mediaservice.model.{Edits, ImageMetadata}
+import com.gu.mediaservice.model.{Edits, ImageMetadata, Instance}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
@@ -47,10 +47,12 @@ class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Bef
   override def beforeAll(): Unit = {
     def createTableRequestFor(tableName: String): CreateTableRequest = {
       val attributeDefinitions = List(
+        AttributeDefinition.builder.attributeName("instance").attributeType(ScalarAttributeType.S).build(),
         AttributeDefinition.builder.attributeName("id").attributeType(ScalarAttributeType.S).build()
       )
       val keySchema = List(
-        KeySchemaElement.builder.attributeName("id").keyType(KeyType.HASH).build()
+        KeySchemaElement.builder.attributeName("instance").keyType(KeyType.HASH).build(),
+        KeySchemaElement.builder.attributeName("id").keyType(KeyType.RANGE).build()
       )
       val provisionedThroughput = ProvisionedThroughput.builder.readCapacityUnits(1L).writeCapacityUnits(1L).build()
       val request = CreateTableRequest.builder
@@ -71,6 +73,7 @@ class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Bef
   }
 
   describe("EditsStore") {
+    implicit val instance: Instance = Instance("an-instance")
 
     it("should fail with NoItemFound for a non-existent item in getV2") {
       val imageId = "non-existent-image"

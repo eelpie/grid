@@ -71,23 +71,25 @@ class EditsController(
   def getAllMetadata(id: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
     val emptyResponse = respond(Edits.getEmpty)(editsEntity(id))
-    editsStore.getV2(id) map { dynamoEntry =>
+    editsStore.get(id) map { dynamoEntry =>
       dynamoEntry.asOpt[Edits]
         .map(respond(_)(editsEntity(id)))
         .getOrElse(emptyResponse)
     } recover { case NoItemFound => emptyResponse }
   }
 
-  def getEdits(id: String) = auth.async {
-    editsStore.getV2(id) map { dynamoEntry =>
+  def getEdits(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
+    editsStore.get(id) map { dynamoEntry =>
       val edits = dynamoEntry.asOpt[Edits]
       respond(data = edits)
     } recover { case NoItemFound => NotFound }
   }
 
-  def getArchived(id: String) = auth.async {
-    editsStore.booleanGetV2(id, Edits.Archived) map { archived =>
-      respond(archived)
+  def getArchived(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
+    editsStore.booleanGet(id, Edits.Archived) map { archived =>
+      respond(archived.getOrElse(false))
     } recover {
       case NoItemFound => respond(false)
     }
@@ -115,7 +117,7 @@ class EditsController(
 
   def getLabels(id: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
-    editsStore.setGetV2(id, Edits.Labels)
+    editsStore.setGet(id, Edits.Labels)
       .map(labelsCollection(id, _))
       .map {case (_, labels) => respondCollection(labels)} recover {
       case NoItemFound => respond(Array[String]())
@@ -147,8 +149,9 @@ class EditsController(
   }
 
 
-  def getMetadata(id: String) = auth.async {
-    editsStore.getV2(id).map { dynamoEntry =>
+  def getMetadata(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
+    editsStore.jsonGet(id, Edits.Metadata).map { dynamoEntry =>
       val metadata = (dynamoEntry \ Edits.Metadata).as[ImageMetadata]
       respond(metadata)
     } recover {
@@ -181,7 +184,7 @@ class EditsController(
 
   def setMetadataFromUsageRights(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async { implicit req =>
     implicit val instance: Instance = instanceOf(req)
-    editsStore.getV2(id) flatMap { dynamoEntry =>
+    editsStore.get(id) flatMap { dynamoEntry =>
       gridClient.getMetadata(id, auth.getOnBehalfOfPrincipal(req.user)) flatMap { imageMetadata =>
         val edits = dynamoEntry.as[Edits]
         val originalUserMetadata = edits.metadata
@@ -210,8 +213,9 @@ class EditsController(
     }
   }
 
-  def getUsageRights(id: String) = auth.async {
-    editsStore.getV2(id).map { dynamoEntry: JsValue =>
+  def getUsageRights(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
+    editsStore.jsonGet(id, Edits.UsageRights).map { dynamoEntry =>
       val mayBeUsageRights = (dynamoEntry \ Edits.UsageRights).toOption.map(_.as[UsageRights])
       mayBeUsageRights match {
         case Some(usageRights: UsageRights) => respond(usageRights)
