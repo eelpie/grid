@@ -259,6 +259,7 @@ class UsageApi(
   }}
 
   def updateUsageStatus(mediaId: String, usageId: String) = auth.async(parse.json) {req => {
+    implicit val instance: Instance = instanceOf(req)
     val request = (req.body \ "data").validate[UsageStatus]
     request.fold(
       e => Future.successful(
@@ -301,6 +302,7 @@ class UsageApi(
   }}
 
   def deleteSingleUsage(mediaId: String, usageId: String) = AuthenticatedAndAuthorisedToDelete.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "delete-usage",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
@@ -321,6 +323,7 @@ class UsageApi(
   }
 
   def deleteUsages(mediaId: String) = AuthenticatedAndAuthorisedToDelete.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "delete-usages",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
