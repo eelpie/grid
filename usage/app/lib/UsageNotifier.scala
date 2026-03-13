@@ -7,7 +7,6 @@ import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.usage.{MediaUsage, UsageNotice}
 import com.gu.mediaservice.syntax.MessageSubjects
 import model.UsageTable
-import org.joda.time.DateTime
 import play.api.libs.json._
 import rx.lang.scala.Observable
 
@@ -21,7 +20,7 @@ class UsageNotifier(config: UsageConfig, usageTable: UsageTable)
     logger.info(logMarkerWithId, s"Building usage notice for $mediaID")
 
     Observable.from(
-      usageTable.queryByImageId(mediaID)(logMarkerWithId).map((dbUsages: List[MediaUsage]) =>
+      usageTable.queryByImageId(mediaID)(logMarkerWithId, instance).map((dbUsages: List[MediaUsage]) =>
         UsageNotice(
           mediaID,
           Json.toJson(dbUsages.map(UsageBuilder.build)).as[JsArray],
