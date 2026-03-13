@@ -28,7 +28,7 @@ class UsageTable(
   val rangeKeyName = "usage_id"
   val imageIndexName = "media_id"
 
-  def queryByUsageId(id: String): Future[Option[MediaUsage]] = Future {
+  def queryByUsageId(id: String)(implicit instance: Instance): Future[Option[MediaUsage]] = Future {
     UsageTableFullKey.build(id).flatMap((tableFullKey: UsageTableFullKey) => {
       val keyAttribute: KeyAttribute = new KeyAttribute(hashKeyName, tableFullKey.hashKey)
       val rangeKeyCondition: RangeKeyCondition = new RangeKeyCondition(rangeKeyName).eq(tableFullKey.rangeKey)
@@ -39,7 +39,7 @@ class UsageTable(
     })
   }
 
-  def queryByImageId(id: String)(implicit logMarkerWithId: LogMarker): Future[List[MediaUsage]] = Future {
+  def queryByImageId(id: String)(implicit logMarkerWithId: LogMarker, instance: Instance): Future[List[MediaUsage]] = Future {
 
     if (id.trim.isEmpty)
       throw new BadInputException("Empty string received for image id")
@@ -110,13 +110,13 @@ class UsageTable(
     })
   }
 
-  def create(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def create(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildCreateRecord(mediaUsage))
 
-  def update(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def update(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildUpdateRecord(mediaUsage))
 
-  def markAsRemoved(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def markAsRemoved(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildMarkAsRemovedRecord(mediaUsage))
 
   def deleteRecord(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): DeleteItemOutcome = {
@@ -131,7 +131,7 @@ class UsageTable(
     table.deleteItem(deleteSpec)
   }
 
-  private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker): Observable[JsObject] = Observable.from(Future {
+  private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] = Observable.from(Future {
 
      val updateSpec = new UpdateItemSpec()
       .withPrimaryKey(
