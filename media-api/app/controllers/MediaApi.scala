@@ -337,7 +337,7 @@ class MediaApi(
       "imageId" -> id,
     ) ++ RequestLoggingFilter.loggablePrincipal(request.user)
 
-    elasticSearch.getImageById(id) map {
+    elasticSearch.getImageById(id) map {  // TODO with instance!
       case Some(image) if isVisibleToAccessor(request.user, image) =>
         val imageCanBeDeleted = imageResponse.canBeDeleted(image)
 
@@ -345,7 +345,7 @@ class MediaApi(
           val canDelete = authorisation.isUploaderOrHasPermission(request.user, image.uploadedBy, DeleteImagePermission)
 
           if (canDelete) {
-            val updateMessage = UpdateMessage(subject = DeleteImage, id = Some(id))
+            val updateMessage = UpdateMessage(subject = DeleteImage, id = Some(id), instance = instanceOf(request).id)
             messageSender.publish(updateMessage)
             Accepted
           } else {
@@ -382,7 +382,8 @@ class MediaApi(
                   softDeletedMetadata = Some(SoftDeletedMetadata(
                     deleteTime = DateTime.now(DateTimeZone.UTC),
                     deletedBy = request.user.accessor.identity
-                  ))
+                  )),
+                  instance = instanceOf(request).id
                 )
               )
             }
@@ -415,7 +416,8 @@ class MediaApi(
             messageSender.publish(
               UpdateMessage(
                 subject = UnSoftDeleteImage,
-                id = Some(id)
+                id = Some(id),
+                instance = instanceOf(request).id
               )
             )
           }.map { _ => Accepted }
