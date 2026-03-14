@@ -153,7 +153,7 @@ class ReaperController(
   def doBatchHardReap(count: Int): Action[AnyContent] = batchDeleteWrapper(count)(doBatchHardReap)
 
   def doBatchHardReap(count: Int, deletedBy: String): Future[JsValue] = persistedBatchDeleteOperation("hard"){
-
+    val instance = ??? // TODO
     es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.increment(Nil, _))
 
     logger.info(s"Hard deleting next $count images...")
@@ -172,7 +172,7 @@ class ReaperController(
           "ES" -> wasHardDeletedFromES,
           "mainImage" -> mainImagesS3Deletions.get(ImageIngestOperations.fileKeyFromId(id)),
           "thumb" -> thumbsS3Deletions.get(ImageIngestOperations.fileKeyFromId(id)),
-          "optimisedPng" -> pngsS3Deletions.get(ImageIngestOperations.optimisedPngKeyFromId(id))
+          "optimisedPng" -> pngsS3Deletions.get(ImageIngestOperations.optimisedPngKeyFromId(id, instance))
         )
         logger.info(s"Hard deleted image $id : ${Json.stringify(detail)}")
         id -> detail
