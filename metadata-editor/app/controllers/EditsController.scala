@@ -15,7 +15,7 @@ import com.gu.mediaservice.syntax.MessageSubjects
 import lib._
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
-import play.api.mvc.{BaseController, ControllerComponents, RequestHeader}
+import play.api.mvc.{BaseController, ControllerComponents}
 
 import java.net.URI
 import java.net.URLDecoder.decode
@@ -71,7 +71,7 @@ class EditsController(
   def getAllMetadata(id: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
     val emptyResponse = respond(Edits.getEmpty)(editsEntity(id))
-    editsStore.get(id) map { dynamoEntry =>
+    editsStore.getV2(id) map { dynamoEntry =>
       dynamoEntry.asOpt[Edits]
         .map(respond(_)(editsEntity(id)))
         .getOrElse(emptyResponse)
@@ -80,7 +80,7 @@ class EditsController(
 
   def getEdits(id: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
-    editsStore.get(id) map { dynamoEntry =>
+    editsStore.getV2(id) map { dynamoEntry =>
       val edits = dynamoEntry.asOpt[Edits]
       respond(data = edits)
     } recover { case NoItemFound => NotFound }
@@ -88,8 +88,8 @@ class EditsController(
 
   def getArchived(id: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
-    editsStore.booleanGet(id, Edits.Archived) map { archived =>
-      respond(archived.getOrElse(false))
+    editsStore.booleanGetV2(id, Edits.Archived) map { archived =>
+      respond(archived)
     } recover {
       case NoItemFound => respond(false)
     }
@@ -117,7 +117,7 @@ class EditsController(
 
   def getLabels(id: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
-    editsStore.setGet(id, Edits.Labels)
+    editsStore.setGetV2(id, Edits.Labels)
       .map(labelsCollection(id, _))
       .map {case (_, labels) => respondCollection(labels)} recover {
       case NoItemFound => respond(Array[String]())
@@ -184,7 +184,7 @@ class EditsController(
 
   def setMetadataFromUsageRights(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async { implicit req =>
     implicit val instance: Instance = instanceOf(req)
-    editsStore.get(id) flatMap { dynamoEntry =>
+    editsStore.getV2(id) flatMap { dynamoEntry =>
       gridClient.getMetadata(id, auth.getOnBehalfOfPrincipal(req.user)) flatMap { imageMetadata =>
         val edits = dynamoEntry.as[Edits]
         val originalUserMetadata = edits.metadata
