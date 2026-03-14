@@ -313,10 +313,10 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
 
   // FIXME: surely there must be a better way to convert?
   def asJsObject(item: Item): JsObject =
-    jsonWithNullAsEmptyString(Json.parse(item.toJSON)).as[JsObject] - IdKey
+    jsonWithNullAsEmptyString(Json.parse(item.toJSON)).as[JsObject] - IdKey - InstanceKey
 
   def asJsObject(doc: EnhancedDocument): JsObject =
-    jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject] - IdKey
+    jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject] - IdKey - InstanceKey
 
   def asJsObject(outcome: UpdateItemOutcome): JsObject =
     Option(outcome.getItem) map asJsObject getOrElse Json.obj()
