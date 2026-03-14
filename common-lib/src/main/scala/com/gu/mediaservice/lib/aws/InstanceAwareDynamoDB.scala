@@ -61,7 +61,7 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
          (implicit ex: ExecutionContext, instance: Instance): Future[Item] = Future {
     table.getItem(
       new GetItemSpec()
-        .withPrimaryKey(IdKey, id, "instance", instance.id)
+        .withPrimaryKey(IdKey, id, InstanceKey, instance.id)
         .withAttributesToGet(attribute)
     )
   } flatMap itemOrNotFound
@@ -88,7 +88,7 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
     )
 
   def deleteItem(id: String)(implicit ex: ExecutionContext, instance: Instance): Future[Unit] = Future {
-    table.deleteItem(new DeleteItemSpec().withPrimaryKey(IdKey, id, "instance", instance.id))
+    table.deleteItem(new DeleteItemSpec().withPrimaryKey(IdKey, id, InstanceKey, instance.id))
   }
 
   def booleanGetV2(id: String, key: String)
@@ -158,7 +158,7 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
   def batchGet(ids: List[String], attributeKey: String)
               (implicit ex: ExecutionContext, rjs: Reads[T], instance: Instance): Future[Map[String, T]] = {
     val keyChunkList = ids
-      .map(k => Map("instance" -> new AttributeValue(instance.id), IdKey -> new AttributeValue(k)).asJava)
+      .map(k => Map(InstanceKey -> new AttributeValue(instance.id), IdKey -> new AttributeValue(k)).asJava)
       .grouped(100)
 
     Future.traverse(keyChunkList) { keyChunk => {
@@ -261,7 +261,7 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
   def objPut(id: String, key: String, value: T)
                  (implicit ex: ExecutionContext, wjs: Writes[T], rjs: Reads[T], instance: Instance): Future[T] = Future {
 
-    val item = new Item().withPrimaryKey(IdKey, id, "instance", instance.id).withJSON(key, Json.toJson(value).toString)
+    val item = new Item().withPrimaryKey(IdKey, id, InstanceKey, instance.id).withJSON(key, Json.toJson(value).toString)
 
     val spec = new PutItemSpec().withItem(item)
     table.putItem(spec)
@@ -298,7 +298,7 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
             (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
 
     val baseUpdateSpec = new UpdateItemSpec().
-      withPrimaryKey(IdKey, id, "instance", instance.id).
+      withPrimaryKey(IdKey, id, InstanceKey, instance.id).
       withUpdateExpression(expression).
       withReturnValues(ReturnValue.ALL_NEW).
       withValueMap(valueMap.orNull)
