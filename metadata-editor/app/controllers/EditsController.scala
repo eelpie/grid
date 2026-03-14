@@ -15,7 +15,7 @@ import com.gu.mediaservice.syntax.MessageSubjects
 import lib._
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
-import play.api.mvc.{BaseController, ControllerComponents, RequestHeader}
+import play.api.mvc.{BaseController, ControllerComponents}
 
 import java.net.URI
 import java.net.URLDecoder.decode
