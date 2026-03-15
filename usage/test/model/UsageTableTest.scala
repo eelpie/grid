@@ -51,7 +51,8 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
     val attributeDefinitions = List(
       AttributeDefinition.builder.attributeName("grouping").attributeType(ScalarAttributeType.S).build(),
       AttributeDefinition.builder.attributeName("usage_id").attributeType(ScalarAttributeType.S).build(),
-      AttributeDefinition.builder.attributeName("media_id").attributeType(ScalarAttributeType.S).build()
+      AttributeDefinition.builder.attributeName("media_id").attributeType(ScalarAttributeType.S).build(),
+      AttributeDefinition.builder.attributeName("instance").attributeType(ScalarAttributeType.S).build()
     )
     val keySchema = List(
       KeySchemaElement.builder.attributeName("grouping").keyType(KeyType.HASH).build(),
@@ -61,9 +62,11 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
 
     val imageIndex = GlobalSecondaryIndex.builder()
       .indexName("media_id")
-      .keySchema(KeySchemaElement.builder()
-        .attributeName("media_id")
-        .keyType(KeyType.HASH).build())
+      .keySchema(
+        List(
+          KeySchemaElement.builder().attributeName("instance").keyType(KeyType.HASH).build(),
+          KeySchemaElement.builder().attributeName("media_id").keyType(KeyType.RANGE).build(),
+        ).asJava)
       .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
       .provisionedThroughput(provisionedThroughput)
       .build()
