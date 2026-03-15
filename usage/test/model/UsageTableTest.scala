@@ -4,6 +4,7 @@ import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder}
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.usage._
 import lib.WithLogMarker
 import org.joda.time.DateTime
@@ -29,6 +30,8 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
 
   implicit val defaultPatience: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds), interval = Span(500, Millis))
   private val tenSeconds = 10.seconds
+  implicit val instance: Instance = Instance("an-instance")
+  implicit val markerMap: MarkerMap = MarkerMap()
 
   private val dynamoContainer = new LocalStackContainer(
     DockerImageName.parse("localstack/localstack:1.4.0")
@@ -60,7 +63,8 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
     val attributeDefinitions = List(
       AttributeDefinition.builder.attributeName("grouping").attributeType(ScalarAttributeType.S).build(),
       AttributeDefinition.builder.attributeName("usage_id").attributeType(ScalarAttributeType.S).build(),
-      AttributeDefinition.builder.attributeName("media_id").attributeType(ScalarAttributeType.S).build()
+      AttributeDefinition.builder.attributeName("media_id").attributeType(ScalarAttributeType.S).build(),
+      AttributeDefinition.builder.attributeName("instance").attributeType(ScalarAttributeType.S).build()
     )
     val keySchema = List(
       KeySchemaElement.builder.attributeName("grouping").keyType(KeyType.HASH).build(),
@@ -70,9 +74,11 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
 
     val imageIndex = GlobalSecondaryIndex.builder()
       .indexName("media_id")
-      .keySchema(KeySchemaElement.builder()
-        .attributeName("media_id")
-        .keyType(KeyType.HASH).build())
+      .keySchema(
+        List(
+          KeySchemaElement.builder().attributeName("instance").keyType(KeyType.HASH).build(),
+          KeySchemaElement.builder().attributeName("media_id").keyType(KeyType.RANGE).build(),
+        ).asJava)
       .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
       .provisionedThroughput(provisionedThroughput)
       .build()
@@ -129,12 +135,12 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
         DateTime.now()
       )
 
-      val eventualUsage1Created = store.create(usage1)(MarkerMap()).toList.toBlocking.toFuture
-      val eventualUsage2Created = store.create(usage2)(MarkerMap()).toList.toBlocking.toFuture
+      val eventualUsage1Created = store.create(usage1).toList.toBlocking.toFuture
+      val eventualUsage2Created = store.create(usage2).toList.toBlocking.toFuture
       Await.result(eventualUsage1Created, tenSeconds)
       Await.result(eventualUsage2Created, tenSeconds)
 
-      val eventualResult = store.queryByImageId(imageId1)(MarkerMap())
+      val eventualResult = store.queryByImageId(imageId1)
 
       whenReady(eventualResult) { result =>
         result.size should be(1)
@@ -162,7 +168,7 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
         DateTime.now()
       )
 
-      val eventualUsage1Created = store.create(usage)(MarkerMap()).toList.toBlocking.toFuture
+      val eventualUsage1Created = store.create(usage).toList.toBlocking.toFuture
       Await.result(eventualUsage1Created, tenSeconds)
 
       val eventualResult = store.queryByUsageId(s"${grouping}_${usageId.id}")
