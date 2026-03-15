@@ -104,7 +104,7 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
       val outputFile = new File("/Users/tony/Desktop/out5.jpg")
 
-      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(1000, 800), 95, outputFile, Jpeg, Dimensions(6000, 4000))
+      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(1000, 800), 95, outputFile, Jpeg)
 
       arena.close()
       resized.isFile should be(true)
@@ -117,7 +117,7 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
       val outputFile = new File("/Users/tony/Desktop/out6.jpg")
 
-      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg, Dimensions(1299, 866))
+      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
 
       arena.close()
       resized.isFile should be(true)
@@ -130,7 +130,7 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
       val outputFile = new File("/Users/tony/Desktop/out7.png")
 
-      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png, Dimensions(1299, 866))
+      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png)
 
       arena.close()
       resized.isFile should be(true)
@@ -143,7 +143,7 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB16.tif").getAbsolutePath)
       val outputFile = new File("/Users/tony/Desktop/out8.jpg")
 
-      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg, Dimensions(1299, 866))
+      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
 
       arena.close()
       resized.isFile should be(true)
@@ -157,7 +157,7 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
       val outputFile = new File("/Users/tony/Desktop/resized-png-with-alpha.png")
 
-      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png, Dimensions(3000, 2000))
+      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png)
 
       arena.close()
       resized.isFile should be(true)
@@ -171,7 +171,7 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
       val outputFile = new File("/Users/tony/Desktop/out13.jpg")
 
-      val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg, Dimensions(3000, 2000))
+    val resized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
 
       arena.close()
       resized.isFile should be(true)
