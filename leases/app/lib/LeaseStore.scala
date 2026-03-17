@@ -4,24 +4,38 @@ import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.leases.{MediaLease, MediaLeaseType}
 import org.joda.time.DateTime
 import org.scanamo._
-import org.scanamo.generic.auto.Typeclass
-import org.scanamo.generic.semiauto.deriveDynamoFormat
+import org.scanamo.generic.auto.{Typeclass, _}
 import org.scanamo.syntax._
-import org.scanamo.generic.auto._
-import software.amazon.awssdk.services.dynamodb.model.{AttributeValue, PutItemRequest}
-import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbClient, model}
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
-import java.util
 import scala.concurrent.{ExecutionContext, Future}
 
 
 class LeaseStore(tableName: String, client: DynamoDbAsyncClient) {
-  val syncClient = config.dynamoDBV2Builder().build()
 
   implicit val dateTimeFormat: Typeclass[DateTime] =
     DynamoFormat.coercedXmap[DateTime, String, IllegalArgumentException](DateTime.parse, _.toString)
   implicit val enumFormat: Typeclass[MediaLeaseType] =
     DynamoFormat.coercedXmap[MediaLeaseType, String, IllegalArgumentException](MediaLeaseType(_), _.toString)
+
+  private val baseMediaLeaseFormat = DynamoFormat[MediaLease]
+
+  // 2. Define a custom format that also writes the instance index field
+  private def instanceAwareLeaseFormat(instance: Instance): DynamoFormat[MediaLease] = new DynamoFormat[MediaLease] {
+    override def read(dv: DynamoValue): Either[DynamoReadError, MediaLease] = baseMediaLeaseFormat.read(dv)
+
+    def write(l: MediaLease): DynamoValue = {
+      val baseValue = baseMediaLeaseFormat.write(l)
+      baseValue.asObject match {
+        case Some(obj) =>
+          val enrichedObj = obj + ("instance" -> DynamoValue.fromString(instance.id))
+          enrichedObj.toDynamoValue
+        case None =>
+          // Fallback for safety, though case classes always derive to Maps
+          baseValue
+      }
+    }
+  }
 
   private val leasesTable = Table[MediaLease](tableName)
 
@@ -34,24 +48,16 @@ class LeaseStore(tableName: String, client: DynamoDbAsyncClient) {
   }
 
   def put(lease: MediaLease)(implicit ec: ExecutionContext, instance: Instance) = {
-    // TODO bypass scanomo to put on composite key
-    implicit val formatLeases: DynamoFormat[com.gu.mediaservice.model.leases.MediaLease] = deriveDynamoFormat[com.gu.mediaservice.model.leases.MediaLease]
-    val map: util.Map[String, model.AttributeValue] = formatLeases.write(lease).asObject.get.toJavaMap
-    map.put("instance", AttributeValue.fromS(instance.id))
-    val putRequest = PutItemRequest.builder().
-      tableName(config.leasesTable)
-      .item(map)
-      .build()
-    syncClient.putItem(putRequest)
-    Future.successful(true)
+    implicit val format: Typeclass[MediaLease] = instanceAwareLeaseFormat(instance)
+    val t = Table[MediaLease](tableName)
+    val op = t.put(lease)
+    ScanamoAsync(client).exec(op)
   }
 
   def putAll(leases: List[MediaLease])(implicit ec: ExecutionContext, instance: Instance) = {
-    // TODO BATCH
-    leases.foreach { l =>
-      put(l)
-    }
-    Future.successful(true)
+    implicit val format: Typeclass[MediaLease] = instanceAwareLeaseFormat(instance)
+    val t = Table[MediaLease](tableName)
+    ScanamoAsync(client).exec(t.putAll(leases.toSet))
   }
 
   def delete(id: String)(implicit ec: ExecutionContext, instance: Instance) = {
