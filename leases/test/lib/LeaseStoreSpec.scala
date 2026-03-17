@@ -1,5 +1,6 @@
 package lib
 
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.leases.{AllowUseLease, MediaLease}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.BeforeAndAfterAll
@@ -36,19 +37,26 @@ class LeaseStoreSpec extends AnyFunSpec with Matchers with ScalaFutures with Bef
 
   private val store = new LeaseStore(leasesTable, dynamoClient)
 
+  private implicit val instance: Instance = Instance("an-instance")
+
   override def beforeAll(): Unit = {
     def createTableRequestFor(tableName: String): CreateTableRequest = {
       val attributeDefinitions = List(
         AttributeDefinition.builder.attributeName("id").attributeType(ScalarAttributeType.S).build(),
+        AttributeDefinition.builder.attributeName("instance").attributeType(ScalarAttributeType.S).build(),
         AttributeDefinition.builder.attributeName("mediaId").attributeType(ScalarAttributeType.S).build()
       )
       val keySchema = List(
-        KeySchemaElement.builder.attributeName("id").keyType(KeyType.HASH).build()
+        KeySchemaElement.builder.attributeName("instance").keyType(KeyType.HASH).build(),
+        KeySchemaElement.builder.attributeName("id").keyType(KeyType.RANGE).build()
       )
       val globalSecondaryIndexes = List(
         GlobalSecondaryIndex.builder()
           .indexName("mediaId")
-          .keySchema(KeySchemaElement.builder().attributeName("mediaId").keyType(KeyType.HASH).build())
+          .keySchema(
+            KeySchemaElement.builder.attributeName("instance").keyType(KeyType.HASH).build(),
+            KeySchemaElement.builder().attributeName("mediaId").keyType(KeyType.RANGE).build()
+          )
           .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
           .provisionedThroughput(ProvisionedThroughput.builder().readCapacityUnits(1L).writeCapacityUnits(1L).build())
           .build()
