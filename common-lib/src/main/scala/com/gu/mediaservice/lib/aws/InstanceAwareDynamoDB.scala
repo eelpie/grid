@@ -109,10 +109,24 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
       new ValueMap().withBoolean(":value", value)
     )
 
+  def booleanSetV2(id: String, key: String, value: Boolean)
+                (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
+    updateV2(
+      id,
+      DynamoDB.setExpr(key, lastModifiedKey),
+      AttributeValueV2.fromBool(value)
+    )
+  }
+
   def booleanSetOrRemove(id: String, key: String, value: Boolean)
                         (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
     if (value) booleanSet(id, key, value)
     else removeKey(id, key)
+
+  def booleanSetOrRemoveV2(id: String, key: String, value: Boolean)
+                        (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
+    if (value) booleanSetV2(id, key, value)
+    else removeKeyV2(id, key)
 
   def stringSet(id: String, key: String, value: JsValue)
                 (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
@@ -304,6 +318,17 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
       .updateExpression(expression)
       .returnValues(ReturnValueV2.ALL_NEW)
       .tableName(tableName)
+  }
+
+  def updateV2(id: String, expression: String, attribute: AttributeValueV2)(implicit instance: Instance) = {
+    val baseValuesMap = Map(":value" -> attribute)
+    val valuesMap = lastModifiedKey.fold(baseValuesMap)(key => baseValuesMap ++ Map(s":${key}" -> AttributeValueV2.fromS(DateTime.now().toString)))
+    val updateRequest = updateRequestBuilder(id, expression)
+      .expressionAttributeValues(valuesMap.asJava)
+      .build()
+    val updateItemResponse = client2.updateItem(updateRequest)
+    val jsonString = EnhancedDocument.fromAttributeValueMap(updateItemResponse.attributes()).toJson
+    Json.parse(jsonString).as[JsObject]
   }
 
   def updateV2(id: String, expression: String)(implicit instance: Instance) = {
