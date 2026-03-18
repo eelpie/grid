@@ -10,9 +10,10 @@ import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
 import play.api.libs.json._
-import software.amazon.awssdk.enhanced.dynamodb.{AttributeConverterProvider, AttributeValueType, DynamoDbEnhancedClient, Key, TableMetadata, TableSchema}
+import software.amazon.awssdk.enhanced.dynamodb._
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
+import software.amazon.awssdk.services.dynamodb.model.{UpdateItemRequest, AttributeValue => AttributeValueV2, ReturnValue => ReturnValueV2}
 
 import java.util
 import scala.annotation.tailrec
@@ -87,8 +88,12 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
       s"REMOVE $key"
     )
 
-  def deleteItem(id: String)(implicit ex: ExecutionContext, instance: Instance): Future[Unit] = Future {
-    table.deleteItem(new DeleteItemSpec().withPrimaryKey(IdKey, id, InstanceKey, instance.id))
+  def removeKeyV2(id: String, key: String)(implicit ex: ExecutionContext, instance: Instance) = Future{
+    updateV2(id, DynamoDB.removeExpr(key, lastModifiedKey))
+  }
+
+  def deleteItem(id: String)(implicit ex: ExecutionContext): Future[Unit] = Future {
+    table.deleteItem(new DeleteItemSpec().withPrimaryKey(IdKey, id))
   }
 
   def booleanGetV2(id: String, key: String)
@@ -288,6 +293,27 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
 
     val items: List[Item] = index.query(spec).iterator.asScala.toList
     items map (a => a.getString("id"))
+  }
+
+  private def updateRequestBuilder(id: String, expression: String)(implicit instance: Instance) = {
+    UpdateItemRequest.builder()
+      .key(Map(
+        InstanceKey -> AttributeValueV2.fromS(instance.id),
+        IdKey -> AttributeValueV2.fromS(id)).asJava
+      )
+      .updateExpression(expression)
+      .returnValues(ReturnValueV2.ALL_NEW)
+      .tableName(tableName)
+  }
+
+  def updateV2(id: String, expression: String)(implicit instance: Instance) = {
+    val valuesMap = lastModifiedKey.fold(Map.empty[String, AttributeValueV2])(key =>  Map(s":${key}" -> AttributeValueV2.fromS(DateTime.now().toString)))
+    val updateRequest = updateRequestBuilder(id, expression)
+      .expressionAttributeValues(valuesMap.asJava)
+      .build()
+    val updateItemResponse = client2.updateItem(updateRequest)
+    val jsonString = EnhancedDocument.fromAttributeValueMap(updateItemResponse.attributes()).toJson
+    Json.parse(jsonString).as[JsObject]
   }
 
   def update(id: String, expression: String, valueMap: ValueMap)
