@@ -229,6 +229,15 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
         new ValueMap().withMap(":value", valueMapWithNullForEmptyString(value))
     )
 
+  def jsonAddV2(id: String, key: String, value: Map[String, JsValue])
+             (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
+    updateV2(
+      id,
+      setExpr(key, lastModifiedKey),
+      AttributeValueV2.fromM(value.view.mapValues(DynamoDB.jsonToAttributeValue).toMap.asJava)
+    )
+  }
+
   def setDelete(id: String, key: String, value: String)
                (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
     update(
@@ -403,6 +412,11 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
          .foreach { case(k, v) => valueMap.withJSON(k, Json.stringify(v)) }
 
     valueMap
+  }
+
+  def setExpr[T](key: String, lastModifiedKey: Option[String]) = {
+    val baseExpression = s"SET $key = :value"
+    lastModifiedKey.fold(baseExpression)(lastModifiedKey => s"$baseExpression, $lastModifiedKey = :$lastModifiedKey")
   }
 
 }
