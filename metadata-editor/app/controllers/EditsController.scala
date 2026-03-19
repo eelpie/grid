@@ -215,7 +215,7 @@ class EditsController(
 
   def getUsageRights(id: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
-    editsStore.jsonGet(id, Edits.UsageRights).map { dynamoEntry =>
+    editsStore.getV2(id).map { dynamoEntry =>
       val mayBeUsageRights = (dynamoEntry \ Edits.UsageRights).toOption.map(_.as[UsageRights])
       mayBeUsageRights match {
         case Some(usageRights: UsageRights) => respond(usageRights)
