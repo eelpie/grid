@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.document.spec._
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
 import com.amazonaws.services.dynamodbv2.document.{DynamoDB => AwsDynamoDB, _}
 import com.amazonaws.services.dynamodbv2.model.{AttributeValue, KeysAndAttributes, ReturnValue}
+import com.gu.mediaservice.lib.aws.DynamoDB.deleteExpr
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
@@ -169,6 +170,9 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
       new ValueMap().withStringSet(":value", value:_*)
     )
 
+  def setAddV2(id: String, key: String, value: List[String])(implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
+    updateV2(id, DynamoDB.addExpr(key, lastModifiedKey), AttributeValueV2.fromSs(value.asJava))
+  }
 
   def jsonGet(id: String, key: String)
              (implicit ex: ExecutionContext, instance: Instance): Future[JsValue] =
@@ -232,6 +236,11 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
       s"DELETE $key :value",
       new ValueMap().withStringSet(":value", value)
     )
+
+  def setDeleteV2(id: String, key: String, value: String)
+                 (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
+    updateV2(id,  deleteExpr(key, lastModifiedKey), AttributeValueV2.fromSs(List(value).asJava))
+  }
 
   def listGet(id: String, key: String)
                 (implicit ex: ExecutionContext, reads: Reads[T], instance: Instance): Future[List[T]] = {
