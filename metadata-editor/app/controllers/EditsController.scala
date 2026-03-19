@@ -151,7 +151,7 @@ class EditsController(
 
   def getMetadata(id: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
-    editsStore.jsonGet(id, Edits.Metadata).map { dynamoEntry =>
+    editsStore.getV2(id).map { dynamoEntry =>
       val metadata = (dynamoEntry \ Edits.Metadata).as[ImageMetadata]
       respond(metadata)
     } recover {
