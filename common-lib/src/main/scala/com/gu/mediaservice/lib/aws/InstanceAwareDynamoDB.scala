@@ -97,6 +97,11 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
     table.deleteItem(new DeleteItemSpec().withPrimaryKey(IdKey, id, "instance", instance.id))
   }
 
+  def deleteItemV2(id: String)(implicit ex: ExecutionContext): Future[Unit] = Future {
+    table2.deleteItem(
+      Key.builder().partitionValue(id).build()
+    )
+  }
   def booleanGetV2(id: String, key: String)
     (implicit ex: ExecutionContext, instance: Instance): Future[Boolean] = {
       getV2(id, key).map(_.getBoolean(key).booleanValue())
@@ -128,6 +133,10 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
                         (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
     if (value) booleanSetV2(id, key, value)
     else removeKeyV2(id, key)
+
+  def stringSetV2(id: String, key: String, value: String)(implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
+    updateV2(id,  DynamoDB.setExpr(key, lastModifiedKey), AttributeValueV2.fromS(value))
+  }
 
   def stringSet(id: String, key: String, value: JsValue)
                 (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
