@@ -107,14 +107,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
       getV2(id, key).map(_.getBoolean(key).booleanValue())
   }
 
-  def booleanSet(id: String, key: String, value: Boolean)
-                (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
-    update(
-      id,
-      s"SET $key = :value",
-      new ValueMap().withBoolean(":value", value)
-    )
-
   def booleanSetV2(id: String, key: String, value: Boolean)
                 (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(
@@ -123,11 +115,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
       AttributeValueV2.fromBool(value)
     )
   }
-
-  def booleanSetOrRemove(id: String, key: String, value: Boolean)
-                        (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
-    if (value) booleanSet(id, key, value)
-    else removeKey(id, key)
 
   def booleanSetOrRemoveV2(id: String, key: String, value: Boolean)
                         (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
@@ -138,46 +125,10 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
     updateV2(id,  DynamoDB.setExpr(key, lastModifiedKey), AttributeValueV2.fromS(value))
   }
 
-  def stringSet(id: String, key: String, value: JsValue)
-                (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
-    update(
-      id,
-      s"SET $key = :value",
-      valueMapWithNullForEmptyString(Map(":value" -> value))
-    )
-
-  def stringListSet(id: String, keyValues: (String, JsValue)*)
-                   (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = {
-    val keyValueMap = keyValues.toMap
-    val expressionParts = keyValueMap.keys.map(key => s"$key = :$key")
-    val valueMap = keyValueMap.map {case (key, value) => (s":$key", value)}
-    update(
-      id,
-      expression = s"SET ${expressionParts.mkString(",")}",
-      valueMapWithNullForEmptyString(valueMap)
-    )
-  }
-
   def setGetV2(id: String, key: String)
     (implicit ex: ExecutionContext, instance: Instance): Future[Set[String]] = {
       getV2(id, key).map(_.getStringSet(key).asScala.toSet)
   }
-
-  def setAdd(id: String, key: String, value: String)
-            (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
-    update(
-      id,
-      s"ADD $key :value",
-      new ValueMap().withStringSet(":value", value)
-    )
-
-  def setAdd(id: String, key: String, value: List[String])
-            (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
-    update(
-      id,
-      s"ADD $key :value",
-      new ValueMap().withStringSet(":value", value:_*)
-    )
 
   def setAddV2(id: String, key: String, value: List[String])(implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(id, DynamoDB.addExpr(key, lastModifiedKey), AttributeValueV2.fromSs(value.asJava))
@@ -230,14 +181,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
 
 
   // We cannot update, so make sure you send over the WHOLE document
-  def jsonAdd(id: String, key: String, value: Map[String, JsValue])
-             (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
-    update(
-      id,
-      s"SET $key = :value",
-        new ValueMap().withMap(":value", valueMapWithNullForEmptyString(value))
-    )
-
   def jsonAddV2(id: String, key: String, value: Map[String, JsValue])
              (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(
@@ -246,14 +189,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
       AttributeValueV2.fromM(value.view.mapValues(DynamoDB.jsonToAttributeValue).toMap.asJava)
     )
   }
-
-  def setDelete(id: String, key: String, value: String)
-               (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
-    update(
-      id,
-      s"DELETE $key :value",
-      new ValueMap().withStringSet(":value", value)
-    )
 
   def setDeleteV2(id: String, key: String, value: String)
                  (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
