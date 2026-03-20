@@ -1,7 +1,6 @@
 package com.gu.mediaservice.lib.aws
 
-import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, EnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider}
+import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, EnvironmentVariableCredentialsProvider}
 import com.amazonaws.client.builder.AwsClientBuilder
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.gu.mediaservice.lib.logging.GridLogging
