@@ -1,31 +1,31 @@
 package com.gu.mediaservice.lib.aws
 
-import java.util
 import com.amazonaws.AmazonServiceException
-import com.amazonaws.services.dynamodbv2.document.spec.{DeleteItemSpec, GetItemSpec, PutItemSpec, QuerySpec, UpdateItemSpec}
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
+import com.amazonaws.services.dynamodbv2.document.spec._
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
 import com.amazonaws.services.dynamodbv2.document.{DynamoDB => AwsDynamoDB, _}
 import com.amazonaws.services.dynamodbv2.model.{AttributeValue, KeysAndAttributes, ReturnValue}
-import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder}
-import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
 import play.api.libs.json._
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 
+import java.util
 import scala.annotation.tailrec
-import scala.jdk.CollectionConverters._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 /**
   * A lightweight wrapper around AWS dynamo SDK for undertaking various operations
-  * @param config Common grid config including AWS credentials
+  * @param client AmazonDynamoDBAsync client
+  * @param client2 DynamoDbClient client
   * @param tableName the table name for this instance of the dynamoDB wrapper
   * @param lastModifiedKey if set to a string the wrapper will maintain a last modified with that name on any update
   * @tparam T The type of this table
   */
-class InstanceAwareDynamoDB[T](config: CommonConfig, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
-  lazy val client: AmazonDynamoDBAsync = config.withAWSCredentials(AmazonDynamoDBAsyncClientBuilder.standard()).build()
+class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
   lazy val dynamo = new AwsDynamoDB(client)
   lazy val table: Table = dynamo.getTable(tableName)
 
