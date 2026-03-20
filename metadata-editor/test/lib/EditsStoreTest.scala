@@ -12,7 +12,6 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.testcontainers.containers.localstack.LocalStackContainer
 import org.testcontainers.containers.localstack.LocalStackContainer.Service.DYNAMODB
 import org.testcontainers.utility.DockerImageName
-import play.api.libs.json.{JsValue, Json}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
@@ -297,6 +296,33 @@ class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Bef
 
         whenReady(eventualResult) { result =>
           result should be(Set("label1", "label2"))
+        }
+      }
+    }
+
+    describe("deleteItemV2") {
+      it("should delete an existing item") {
+        val imageId = "test-image-for-delete-item-v2"
+        val labels = List("label1", "label2")
+
+        val eventualResult = for {
+          _ <- store.setAddV2(imageId, Edits.Labels, labels)
+          _ <- store.deleteItemV2(imageId)
+          result <- store.getV2(imageId).failed
+        } yield result
+
+        whenReady(eventualResult) { exception =>
+          exception shouldBe com.gu.mediaservice.lib.aws.NoItemFound
+        }
+      }
+
+      it("should not fail when deleting a non-existent item") {
+        val imageId = "non-existent-image-for-delete-item-v2"
+
+        val eventualResult = store.deleteItemV2(imageId)
+
+        whenReady(eventualResult) { result =>
+          result should be(())
         }
       }
     }
