@@ -93,8 +93,8 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
     updateV2(id, DynamoDB.removeExpr(key, lastModifiedKey))
   }
 
-  def deleteItem(id: String)(implicit ex: ExecutionContext): Future[Unit] = Future {
-    table.deleteItem(new DeleteItemSpec().withPrimaryKey(IdKey, id))
+  def deleteItem(id: String)(implicit ex: ExecutionContext, instance: Instance): Future[Unit] = Future {
+    table.deleteItem(new DeleteItemSpec().withPrimaryKey(IdKey, id, "instance", instance.id))
   }
 
   def booleanGetV2(id: String, key: String)
