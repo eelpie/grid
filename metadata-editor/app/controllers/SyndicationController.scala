@@ -23,8 +23,9 @@ class SyndicationController(auth: Authentication,
 
   override val metadataBaseUri: Instance => String = config.services.metadataBaseUri
 
-  def getPhotoshoot(id: String) = auth.async {
-    editsStore.getV2(id).map(dynamoEntry => {
+  def getPhotoshoot(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
+    editsStore.jsonGet(id, Edits.Photoshoot).map(dynamoEntry => {
       (dynamoEntry \ Edits.Photoshoot).toOption match {
         case Some(photoshoot) => respond(photoshoot.as[Photoshoot])
         case None => respondNotFound("No photoshoot found")
@@ -50,7 +51,8 @@ class SyndicationController(auth: Authentication,
     deletePhotoshootAndPublish(id).map(_ => Accepted)
   }
 
-  def getSyndication(id: String): Action[AnyContent] = auth.async {
+  def getSyndication(id: String): Action[AnyContent] = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     getSyndicationForImage(id)
       .map {
         case Some(rights) => respond(rights)
