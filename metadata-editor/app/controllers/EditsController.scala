@@ -78,14 +78,16 @@ class EditsController(
     } recover { case NoItemFound => emptyResponse }
   }
 
-  def getEdits(id: String) = auth.async {
+  def getEdits(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.getV2(id) map { dynamoEntry =>
       val edits = dynamoEntry.asOpt[Edits]
       respond(data = edits)
     } recover { case NoItemFound => NotFound }
   }
 
-  def getArchived(id: String) = auth.async {
+  def getArchived(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.booleanGetV2(id, Edits.Archived) map { archived =>
       respond(archived)
     } recover {
@@ -147,7 +149,8 @@ class EditsController(
   }
 
 
-  def getMetadata(id: String) = auth.async {
+  def getMetadata(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     editsStore.getV2(id).map { dynamoEntry =>
       val metadata = (dynamoEntry \ Edits.Metadata).as[ImageMetadata]
       respond(metadata)
@@ -210,8 +213,9 @@ class EditsController(
     }
   }
 
-  def getUsageRights(id: String) = auth.async {
-    editsStore.getV2(id).map { dynamoEntry: JsValue =>
+  def getUsageRights(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
+    editsStore.getV2(id).map { dynamoEntry =>
       val mayBeUsageRights = (dynamoEntry \ Edits.UsageRights).toOption.map(_.as[UsageRights])
       mayBeUsageRights match {
         case Some(usageRights: UsageRights) => respond(usageRights)
