@@ -58,9 +58,9 @@ class InstanceAwareDynamoDB[T](client2: DynamoDbClient, tableName: String, lastM
     updateV2(id, DynamoDB.removeExpr(key, lastModifiedKey))
   }
 
-  def deleteItemV2(id: String)(implicit ex: ExecutionContext): Future[Unit] = Future {
+  def deleteItemV2(id: String)(implicit ex: ExecutionContext, instance: Instance): Future[Unit] = Future {
     table2.deleteItem(
-      Key.builder().partitionValue(id).build()
+      itemKey(id)
     )
   }
   def booleanGetV2(id: String, key: String)
