@@ -25,7 +25,7 @@ class SyndicationController(auth: Authentication,
 
   def getPhotoshoot(id: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
-    editsStore.jsonGet(id, Edits.Photoshoot).map(dynamoEntry => {
+    editsStore.getV2(id).map(dynamoEntry => {
       (dynamoEntry \ Edits.Photoshoot).toOption match {
         case Some(photoshoot) => respond(photoshoot.as[Photoshoot])
         case None => respondNotFound("No photoshoot found")
