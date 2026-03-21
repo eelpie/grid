@@ -61,14 +61,14 @@ class UsageTable(
     )
   }
 
-  def hidePendingIfRemoved(usages: List[MediaUsage]): List[MediaUsage] = usages.filterNot((mediaUsage: MediaUsage) => {
+  private def hidePendingIfRemoved(usages: List[MediaUsage]): List[MediaUsage] = usages.filterNot((mediaUsage: MediaUsage) => {
     mediaUsage.status match {
       case PendingUsageStatus => mediaUsage.isRemoved
       case _ => false
     }
   })
 
-  def hidePendingIfPublished(usages: List[MediaUsage]): List[MediaUsage] = usages.groupBy(_.grouping).flatMap {
+  private def hidePendingIfPublished(usages: List[MediaUsage]): List[MediaUsage] = usages.groupBy(_.grouping).flatMap {
     case (_, groupedUsages) =>
       val publishedUsage = groupedUsages.find(_.status match {
         case PublishedUsageStatus => true
@@ -129,7 +129,7 @@ class UsageTable(
     table.deleteItem(deleteSpec)
   }
 
-  def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker): Observable[JsObject] = Observable.from(Future {
+  private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker): Observable[JsObject] = Observable.from(Future {
 
      val updateSpec = new UpdateItemSpec()
       .withPrimaryKey(
