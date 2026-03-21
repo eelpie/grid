@@ -1,6 +1,5 @@
 package com.gu.mediaservice.lib.aws
 
-import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.amazonaws.services.dynamodbv2.document.spec._
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
@@ -59,25 +58,9 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
     case None => Future.failed(NoItemFound)
   }
 
-  private def get(id: String, attribute: String)
-         (implicit ex: ExecutionContext, instance: Instance): Future[Item] = Future {
-    table.getItem(
-      new GetItemSpec()
-        .withPrimaryKey(IdKey, id, InstanceKey, instance.id)
-        .withAttributesToGet(attribute)
-    )
-  } flatMap itemOrNotFound
-
   private def docOrNotFound(docOrNull: EnhancedDocument): Future[EnhancedDocument] = {
     Option(docOrNull) match {
       case Some(doc) => Future.successful(doc)
-      case None       => Future.failed(NoItemFound)
-    }
-  }
-
-  private def itemOrNotFound(itemOrNull: Item): Future[Item] = {
-    Option(itemOrNull) match {
-      case Some(item) => Future.successful(item)
       case None       => Future.failed(NoItemFound)
     }
   }
