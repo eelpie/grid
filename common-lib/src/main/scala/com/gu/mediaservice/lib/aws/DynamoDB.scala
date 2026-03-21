@@ -205,11 +205,7 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
     Json.parse(jsonString).as[JsObject]
   }
 
-  def update(id: String, expression: String, valueMap: ValueMap)
-            (implicit ex: ExecutionContext): Future[JsObject] =
-    update(id, expression, Some(valueMap))
-
-  def update(id: String, expression: String, valueMap: Option[ValueMap] = None)
+  private def update(id: String, expression: String, valueMap: Option[ValueMap] = None)
             (implicit ex: ExecutionContext): Future[JsObject] = Future {
 
     val baseUpdateSpec = new UpdateItemSpec().
