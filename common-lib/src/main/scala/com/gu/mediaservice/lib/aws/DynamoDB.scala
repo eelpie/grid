@@ -224,7 +224,7 @@ class DynamoDB[T](client: DynamoDbClient, tableName: String, lastModifiedKey: Op
 
 object DynamoDB {
 
-  def jsonToAttributeValue(json: JsValue): AttributeValueV2 = {
+  private def jsonToAttributeValue(json: JsValue): AttributeValueV2 = {
     json match {
       case JsString(v)  => AttributeValueV2.fromS(v)
       case JsBoolean(b) => AttributeValueV2.fromBool(b)
@@ -266,7 +266,7 @@ object DynamoDB {
   // fenced in this Dynamo play area. `null` is continual and big annoyance with AWS libs.
   // see: https://forums.aws.amazon.com/message.jspa?messageID=389032
   // see: http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html
-  def mapJsValue(jsValue: JsValue)(f: JsValue => JsValue): JsValue = jsValue match {
+  private def mapJsValue(jsValue: JsValue)(f: JsValue => JsValue): JsValue = jsValue match {
     case JsObject(items) => JsObject(items.map{ case (k, v) => k -> mapJsValue(v)(f) })
     case JsArray(items) => JsArray(items.map(f))
     case value => f(value)
