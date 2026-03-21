@@ -197,14 +197,14 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
         None,
         DateTime.now()
       )
-      val eventualUsageCreated = store.create(usage)(MarkerMap()).toList.toBlocking.toFuture
+      val eventualUsageCreated = store.create(usage)(MarkerMap(), instance).toList.toBlocking.toFuture
       Await.result(eventualUsageCreated, tenSeconds)
       val eventualReadbackResult = store.queryByUsageId(s"${grouping}_${usageId.id}")
       whenReady(eventualReadbackResult) { result =>
         result should be(Some(usage))
       }
 
-      store.deleteRecord(usage)(MarkerMap())
+      store.deleteRecord(usage)(MarkerMap(), instance)
 
       val eventualReadbackAfterDelete = store.queryByUsageId(s"${grouping}_${usageId.id}")
       whenReady(eventualReadbackAfterDelete) { result =>
@@ -231,11 +231,11 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
         None,
         DateTime.now()
       )
-      val eventualUsageCreated = store.create(usage)(MarkerMap()).toList.toBlocking.toFuture
+      val eventualUsageCreated = store.create(usage)(MarkerMap(), instance).toList.toBlocking.toFuture
       Await.result(eventualUsageCreated, tenSeconds)
       val updatedUsage = usage.copy(status = PublishedUsageStatus)
 
-      val eventualUsageUpdated = store.update(updatedUsage)(MarkerMap()).toList.toBlocking.toFuture
+      val eventualUsageUpdated = store.update(updatedUsage)(MarkerMap(), instance).toList.toBlocking.toFuture
       Await.result(eventualUsageUpdated, tenSeconds)
 
       val eventualReadbackResult = store.queryByUsageId(s"${grouping}_${usageId.id}")
@@ -263,10 +263,10 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
         None,
         DateTime.now()
       )
-      val eventualUsageCreated = store.create(usage)(MarkerMap()).toList.toBlocking.toFuture
+      val eventualUsageCreated = store.create(usage)(MarkerMap(), instance).toList.toBlocking.toFuture
       Await.result(eventualUsageCreated, tenSeconds)
 
-      val eventualUsageMarkedAsRemoved = store.markAsRemoved(usage)(MarkerMap()).toList.toBlocking.toFuture
+      val eventualUsageMarkedAsRemoved = store.markAsRemoved(usage)(MarkerMap(), instance).toList.toBlocking.toFuture
       Await.result(eventualUsageMarkedAsRemoved, tenSeconds)
 
       val eventualReadbackResult = store.queryByUsageId(s"${grouping}_${usageId.id}")
@@ -296,7 +296,7 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
         DateTime.now()
       )
 
-      val eventualUsageCreated = store.create(usage)(MarkerMap()).toList.toBlocking.toFuture
+      val eventualUsageCreated = store.create(usage)(MarkerMap(), instance).toList.toBlocking.toFuture
       Await.result(eventualUsageCreated, tenSeconds)
 
       val usageGroup = UsageGroup(
@@ -306,7 +306,7 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
       )
 
       implicit val logMarker: MarkerMap = MarkerMap()
-      val eventualResult = store.matchUsageGroup(WithLogMarker(usageGroup)).toList.toBlocking.toFuture
+      val eventualResult = store.matchUsageGroup(WithLogMarker((usageGroup, instance))(MarkerMap())).toList.toBlocking.toFuture
 
       whenReady(eventualResult) { result =>
         result.head.value should be(Set(usage))
