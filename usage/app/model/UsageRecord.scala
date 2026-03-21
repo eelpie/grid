@@ -1,11 +1,10 @@
 package model
 
-import com.amazonaws.services.dynamodbv2.xspec.{ExpressionSpecBuilder, UpdateItemExpressionSpec}
-import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder.{M, N, S}
 import com.gu.mediaservice.model.usage._
+import org.joda.time.DateTime
+import software.amazon.awssdk.services.dynamodb.model.{AttributeValue => AttributeValueV2}
 
 import scala.jdk.CollectionConverters._
-import org.joda.time.DateTime
 
 sealed trait DateRemovedOperation
 case object ClearDateRemoved extends DateRemovedOperation
@@ -29,28 +28,52 @@ case class UsageRecord(
   childUsageMetadata: Option[ChildUsageMetadata] = None,
   dateAdded: Option[DateTime] = None
 ) {
-  def toXSpec: UpdateItemExpressionSpec = {
-    val specBuilder = new ExpressionSpecBuilder
-    List(
-      mediaId.filter(_.nonEmpty).map(S("media_id").set(_)),
-      usageType.map(usageType => S("usage_type").set(usageType.toString)),
-      mediaType.filter(_.nonEmpty).map(S("media_type").set(_)),
-      lastModified.map(lastMod => N("last_modified").set(lastMod.getMillis)),
-      usageStatus.filter(_.nonEmpty).map(S("usage_status").set(_)),
-      printUsageMetadata.map(_.toMap).map(map => M("print_metadata").set(map.asJava)),
-      digitalUsageMetadata.map(_.toMap).map(map => M("digital_metadata").set(map.asJava)),
-      syndicationUsageMetadata.map(_.toMap).map(map => M("syndication_metadata").set(map.asJava)),
-      frontUsageMetadata.map(_.toMap).map(map => M("front_metadata").set(map.asJava)),
-      downloadUsageMetadata.map(_.toMap).map(map => M("download_metadata").set(map.asJava)),
-      childUsageMetadata.map(_.toMap).map(map => M("child_metadata").set(map.asJava)),
-      dateAdded.map(dateAdd => N("date_added").set(dateAdd.getMillis)),
+  def toUpdateExpressionV2: (String, Map[String, AttributeValueV2]) = {
+    val setFields: List[(String, AttributeValueV2)] = List(
+      mediaId.filter(_.nonEmpty).map(mediaId => "media_id" -> AttributeValueV2.fromS(mediaId)),
+      usageType.map(usageType => "usage_type" -> AttributeValueV2.fromS(usageType.toString)),
+      mediaType.filter(_.nonEmpty).map(mediaType => "media_type" -> AttributeValueV2.fromS(mediaType)),
+      lastModified.map(lastModified => "last_modified" -> AttributeValueV2.fromN(lastModified.getMillis.toString)),
+      usageStatus.filter(_.nonEmpty).map(usageStatus => "usage_status" -> AttributeValueV2.fromS(usageStatus)),
+      printUsageMetadata.map(m => "print_metadata" -> metadataToAttr(m.toMap)),
+      digitalUsageMetadata.map(m => "digital_metadata" -> metadataToAttr(m.toMap)),
+      syndicationUsageMetadata.map(m => "syndication_metadata" -> metadataToAttr(m.toMap)),
+      frontUsageMetadata.map(m => "front_metadata" -> metadataToAttr(m.toMap)),
+      downloadUsageMetadata.map(m => "download_metadata" -> metadataToAttr(m.toMap)),
+      childUsageMetadata.map(m => "child_metadata" -> metadataToAttr(m.toMap)),
+      dateAdded.map(dateAdded => "date_added" -> AttributeValueV2.fromN(dateAdded.getMillis.toString)),
       dateRemovedOperation match {
-        case ClearDateRemoved => Some(N("date_removed").remove)
-        case LeaveDateRemovedUntouched => None
-        case SetDateRemoved(dateRemoved) => Some(N("date_removed").set(dateRemoved.getMillis))
+        case SetDateRemoved(dr) => Some("date_removed" -> AttributeValueV2.fromN(dr.getMillis.toString))
+        case _ => None
       }
-    ).flatten.foreach(specBuilder.addUpdate)
-    specBuilder.buildForUpdate
+    ).flatten
+
+    val setExpression = if (setFields.nonEmpty)
+      "SET " + setFields.map { case (name, _) => s"$name = :$name" }.mkString(", ")
+    else ""
+
+    val removeExpression = dateRemovedOperation match {
+      case ClearDateRemoved => "REMOVE date_removed"
+      case _ => ""
+    }
+
+    val expression = List(setExpression, removeExpression).filter(_.nonEmpty).mkString(" ")
+    val values = setFields.map { case (name, value) => s":$name" -> value }.toMap
+
+    (expression, values)
+  }
+
+  private def metadataToAttr(m: Map[String, Any]): AttributeValueV2 =
+    AttributeValueV2.fromM(m.view.mapValues(anyToAttr).toMap.asJava)
+
+  private def anyToAttr(v: Any): AttributeValueV2 = v match {
+    case s: String               => AttributeValueV2.fromS(s)
+    case n: Int                  => AttributeValueV2.fromN(n.toString)
+    case n: Long                 => AttributeValueV2.fromN(n.toString)
+    case n: java.math.BigDecimal => AttributeValueV2.fromN(n.toString)
+    case m: java.util.Map[_, _]  =>
+      AttributeValueV2.fromM(m.asScala.map { case (k, v) => k.toString -> anyToAttr(v) }.toMap.asJava)
+    case _                       => AttributeValueV2.fromNul(true)
   }
 }
 

@@ -1,44 +1,46 @@
 package com.gu.mediaservice.lib.usage
 
 import java.net.URI
-import com.amazonaws.services.dynamodbv2.document.Item
 import com.gu.mediaservice.model.usage._
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
+import software.amazon.awssdk.services.dynamodb.model.{AttributeValue => AttributeValueV2}
 
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 object ItemToMediaUsage {
 
-  def transform(item: Item): MediaUsage = {
+  def transformV2(attrs: java.util.Map[String, AttributeValueV2]): MediaUsage = {
+    val m = attrs.asScala
     MediaUsage(
-      UsageId(item.getString("usage_id")),
-      item.getString("grouping"),
-      item.getString("media_id"),
-      UsageType(item.getString("usage_type")),
-      item.getString("media_type"),
-      UsageStatus(item.getString("usage_status")),
-      Option(item.getMap[Any]("print_metadata"))
-        .map(_.asScala.toMap).flatMap(buildPrint),
-      Option(item.getMap[Any]("digital_metadata"))
-        .map(_.asScala.toMap).flatMap(buildDigital),
-      Option(item.getMap[Any]("syndication_metadata"))
-        .map(_.asScala.toMap).flatMap(buildSyndication),
-      Option(item.getMap[Any]("front_metadata"))
-        .map(_.asScala.toMap).flatMap(buildFront),
-      Option(item.getMap[Any]("download_metadata"))
-        .map(_.asScala.toMap).flatMap(buildDownload),
-      Option(item.getMap[Any]("child_metadata"))
-        .map(_.asScala.toMap).flatMap(buildChild),
-      new DateTime(item.getLong("last_modified")),
-      Try {
-        item.getLong("date_added")
-      }.toOption.map(new DateTime(_)),
-      Try {
-        item.getLong("date_removed")
-      }.toOption.map(new DateTime(_))
+      UsageId(m("usage_id").s()),
+      m("grouping").s(),
+      m("media_id").s(),
+      UsageType(m("usage_type").s()),
+      m("media_type").s(),
+      UsageStatus(m("usage_status").s()),
+      m.get("print_metadata").map(_.m().asScala.view.mapValues(attrToAny).toMap).flatMap(buildPrint),
+      m.get("digital_metadata").map(_.m().asScala.view.mapValues(attrToAny).toMap).flatMap(buildDigital),
+      m.get("syndication_metadata").map(_.m().asScala.view.mapValues(attrToAny).toMap).flatMap(buildSyndication),
+      m.get("front_metadata").map(_.m().asScala.view.mapValues(attrToAny).toMap).flatMap(buildFront),
+      m.get("download_metadata").map(_.m().asScala.view.mapValues(attrToAny).toMap).flatMap(buildDownload),
+      m.get("child_metadata").map(_.m().asScala.view.mapValues(attrToAny).toMap).flatMap(buildChild),
+      new DateTime(m("last_modified").n().toLong),
+      Try(m("date_added").n().toLong).toOption.map(new DateTime(_)),
+      Try(m("date_removed").n().toLong).toOption.map(new DateTime(_))
     )
+  }
+
+  private def attrToAny(av: AttributeValueV2): Any = {
+    if (av.s() != null) av.s()
+    else if (av.n() != null) new java.math.BigDecimal(av.n())
+    else if (av.hasM) {
+      val linkedMap = new java.util.LinkedHashMap[String, Any]()
+      av.m().forEach((k, v) => linkedMap.put(k, attrToAny(v)))
+      linkedMap
+    }
+    else null
   }
 
   private def buildFront(metadataMap: Map[String, Any]): Option[FrontUsageMetadata] = {
