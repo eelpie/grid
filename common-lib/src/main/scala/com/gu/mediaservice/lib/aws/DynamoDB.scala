@@ -73,9 +73,6 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
   def removeKeyV2(id: String, key: String)(implicit ex: ExecutionContext) = Future{
     updateV2(id, DynamoDB.removeExpr(key, lastModifiedKey))
   }
-  def deleteItem(id: String)(implicit ex: ExecutionContext): Future[Unit] = Future {
-    table.deleteItem(new DeleteItemSpec().withPrimaryKey(IdKey, id))
-  }
 
   def deleteItemV2(id: String)(implicit ex: ExecutionContext): Future[Unit] = Future {
     table2.deleteItem(
