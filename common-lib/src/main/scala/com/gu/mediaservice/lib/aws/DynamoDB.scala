@@ -187,11 +187,11 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
       .tableName(tableName)
   }
 
-  def updateV2(id: String, expression: String, attribute: AttributeValueV2): JsObject = {
+  private def updateV2(id: String, expression: String, attribute: AttributeValueV2): JsObject = {
     updateV2(id, expression, Map(":value" -> attribute))
   }
 
-  def updateV2(id: String, expression: String): JsObject = {
+  private def updateV2(id: String, expression: String): JsObject = {
     updateV2(id, expression, Map.empty[String, AttributeValueV2])
   }
 
@@ -241,13 +241,13 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
   // fenced in this Dynamo play area. `null` is continual and big annoyance with AWS libs.
   // see: https://forums.aws.amazon.com/message.jspa?messageID=389032
   // see: http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html
-  def mapJsValue(jsValue: JsValue)(f: JsValue => JsValue): JsValue = jsValue match {
+  private def mapJsValue(jsValue: JsValue)(f: JsValue => JsValue): JsValue = jsValue match {
     case JsObject(items) => JsObject(items.map{ case (k, v) => k -> mapJsValue(v)(f) })
     case JsArray(items) => JsArray(items.map(f))
     case value => f(value)
   }
 
-  def jsonWithNullAsEmptyString(jsValue: JsValue): JsValue = mapJsValue(jsValue) {
+  private def jsonWithNullAsEmptyString(jsValue: JsValue): JsValue = mapJsValue(jsValue) {
     case JsNull => JsString("")
     case value => value
   }
@@ -277,7 +277,7 @@ object DynamoDB {
     valueMap
   }
 
-  def jsonToAttributeValue(json: JsValue): AttributeValueV2 = {
+  private def jsonToAttributeValue(json: JsValue): AttributeValueV2 = {
     json match {
       case JsString(v)  => AttributeValueV2.fromS(v)
       case JsBoolean(b) => AttributeValueV2.fromBool(b)
