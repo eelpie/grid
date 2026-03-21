@@ -56,24 +56,9 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
     case None => Future.failed(NoItemFound)
   }
 
-  def get(id: String, attribute: String)(implicit ex: ExecutionContext): Future[Item] = Future {
-    table.getItem(
-      new GetItemSpec()
-        .withPrimaryKey(IdKey, id)
-        .withAttributesToGet(attribute)
-    )
-  } flatMap itemOrNotFound
-
   private def docOrNotFound(docOrNull: EnhancedDocument): Future[EnhancedDocument] = {
     Option(docOrNull) match {
       case Some(doc) => Future.successful(doc)
-      case None       => Future.failed(NoItemFound)
-    }
-  }
-
-  private def itemOrNotFound(itemOrNull: Item): Future[Item] = {
-    Option(itemOrNull) match {
-      case Some(item) => Future.successful(item)
       case None       => Future.failed(NoItemFound)
     }
   }
