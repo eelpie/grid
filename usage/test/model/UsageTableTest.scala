@@ -5,6 +5,7 @@ import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder}
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
 import com.gu.mediaservice.model.usage._
+import lib.WithLogMarker
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
@@ -168,6 +169,141 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
 
       whenReady(eventualResult) { result =>
         result.get.usageId should be(usageId)
+      }
+    }
+
+    it("should be able to delete a record") {
+      val imageId = "test-image-id-for-delete-test"
+      val usageId = UsageId(UUID.randomUUID().toString)
+      val grouping = "some-grouping-for-delete"
+
+      val usage = MediaUsage(
+        usageId,
+        grouping,
+        imageId,
+        DigitalUsage,
+        "image",
+        PendingUsageStatus,
+        None,
+        None,
+        None,
+        None,
+        None,
+        DateTime.now()
+      )
+      val eventualUsageCreated = store.create(usage)(MarkerMap()).toList.toBlocking.toFuture
+      Await.result(eventualUsageCreated, tenSeconds)
+      val eventualReadbackResult = store.queryByUsageId(s"${grouping}_${usageId.id}")
+      whenReady(eventualReadbackResult) { result =>
+        result should be(Some(usage))
+      }
+
+      store.deleteRecord(usage)(MarkerMap())
+
+      val eventualReadbackAfterDelete = store.queryByUsageId(s"${grouping}_${usageId.id}")
+      whenReady(eventualReadbackAfterDelete) { result =>
+        result should be(None)
+      }
+    }
+
+    it("should be able to update a record") {
+      val imageId = "test-image-id-for-update-test"
+      val usageId = UsageId(UUID.randomUUID().toString)
+      val grouping = "some-grouping-for-update"
+
+      val usage = MediaUsage(
+        usageId,
+        grouping,
+        imageId,
+        DigitalUsage,
+        "image",
+        PendingUsageStatus,
+        None,
+        None,
+        None,
+        None,
+        None,
+        DateTime.now()
+      )
+      val eventualUsageCreated = store.create(usage)(MarkerMap()).toList.toBlocking.toFuture
+      Await.result(eventualUsageCreated, tenSeconds)
+      val updatedUsage = usage.copy(status = PublishedUsageStatus)
+
+      val eventualUsageUpdated = store.update(updatedUsage)(MarkerMap()).toList.toBlocking.toFuture
+      Await.result(eventualUsageUpdated, tenSeconds)
+
+      val eventualReadbackResult = store.queryByUsageId(s"${grouping}_${usageId.id}")
+      whenReady(eventualReadbackResult) { result =>
+        result.get.status should be(PublishedUsageStatus)
+      }
+    }
+
+    it("should be able to mark a record as removed") {
+      val imageId = "test-image-id-for-mark-as-removed-test"
+      val usageId = UsageId(UUID.randomUUID().toString)
+      val grouping = "some-grouping-for-mark-as-removed"
+
+      val usage = MediaUsage(
+        usageId,
+        grouping,
+        imageId,
+        DigitalUsage,
+        "image",
+        PendingUsageStatus,
+        None,
+        None,
+        None,
+        None,
+        None,
+        DateTime.now()
+      )
+      val eventualUsageCreated = store.create(usage)(MarkerMap()).toList.toBlocking.toFuture
+      Await.result(eventualUsageCreated, tenSeconds)
+
+      val eventualUsageMarkedAsRemoved = store.markAsRemoved(usage)(MarkerMap()).toList.toBlocking.toFuture
+      Await.result(eventualUsageMarkedAsRemoved, tenSeconds)
+
+      val eventualReadbackResult = store.queryByUsageId(s"${grouping}_${usageId.id}")
+      whenReady(eventualReadbackResult) { result =>
+        result.get.isRemoved should be(true)
+      }
+    }
+
+    it("should be able to match a usage group") {
+      // TODO unclear what this means
+      val imageId = "test-image-id-for-match-usage-group-test"
+      val usageId = UsageId(UUID.randomUUID().toString)
+      val grouping = "some-grouping-for-match-usage-group"
+
+      val usage = MediaUsage(
+        usageId,
+        grouping,
+        imageId,
+        DigitalUsage,
+        "image",
+        PendingUsageStatus,
+        None,
+        None,
+        None,
+        None,
+        None,
+        DateTime.now()
+      )
+
+      val eventualUsageCreated = store.create(usage)(MarkerMap()).toList.toBlocking.toFuture
+      Await.result(eventualUsageCreated, tenSeconds)
+
+      val usageGroup = UsageGroup(
+        usages = Set(usage),
+        grouping = grouping,
+        lastModified = DateTime.now
+      )
+
+      implicit val logMarker: MarkerMap = MarkerMap()
+      val eventualResult = store.matchUsageGroup(WithLogMarker(usageGroup)).toList.toBlocking.toFuture
+
+      whenReady(eventualResult) { result =>
+        result.head.value should be(Set(usage))
       }
     }
   }
