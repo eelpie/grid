@@ -273,7 +273,7 @@ object DynamoDB {
     valueMap
   }
 
-  private def jsonToAttributeValue(json: JsValue): AttributeValueV2 = {
+  def jsonToAttributeValue(json: JsValue): AttributeValueV2 = {
     json match {
       case JsString(v)  => AttributeValueV2.fromS(v)
       case JsBoolean(b) => AttributeValueV2.fromBool(b)
