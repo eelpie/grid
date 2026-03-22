@@ -31,7 +31,7 @@ import scala.util.{Failure, Success}
 class ReaperController(
   es: ElasticSearch,
   store: ThrallStore,
-  s3Vectors: S3Vectors,
+  //s3Vectors: S3Vectors,
   authorisation: Authorisation,
   val config: ThrallConfig,
   scheduler: Scheduler,
@@ -154,14 +154,14 @@ class ReaperController(
           instance = instance.id
         )
       ))
-      s3VectorsDeletions <- s3Vectors.deleteEmbeddings(esIdsActuallySoftDeleted)
+      //s3VectorsDeletions <- s3Vectors.deleteEmbeddings(esIdsActuallySoftDeleted)
     } yield {
       metrics.softReaped.increment(n = esIdsActuallySoftDeleted.size)
       esIds.map { id =>
         val wasSoftDeletedInES = esIdsActuallySoftDeleted.contains(id)
         val detail = Json.obj(
           "ES" -> wasSoftDeletedInES,
-          "s3Vectors" -> s3VectorsDeletions.get(id).map(_.toString)
+          //"s3Vectors" -> s3VectorsDeletions.get(id).map(_.toString)
         )
         logger.info(s"Soft deleted image $id : ${Json.stringify(detail)}")
         id -> detail
