@@ -15,7 +15,7 @@ steps:
     args: [ 'run', 'dist' ]
 
   - name: 'gcr.io/$PROJECT_ID/scala-sbt:1.11.7-jdk-25'
-    args: ['docker:publishLocal']
+    args: ['test', 'docker:publishLocal']
     env:
     - 'DOCKER_API_VERSION=1.41'
   - name: 'gcr.io/cloud-builders/docker'
