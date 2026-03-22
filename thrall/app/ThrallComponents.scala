@@ -94,7 +94,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val streamRunning: Future[Done] = thrallStreamProcessor.run()
 
   val s3 = new S3(config)
-  val s3Vectors = new S3Vectors(config)
+  //val s3Vectors = new S3Vectors(config)
 
   Source.repeat(()).throttle(1, per = 5.minute).map(_ => {
     implicit val logMarker: MarkerMap = MarkerMap()
@@ -125,7 +125,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val maybeCustomReapableEligibility = config.maybeReapableEligibilityClass(applicationLifecycle)
 
   val thrallController = new ThrallController(es, store, migrationSourceWithSender.send, messageSender, actorSystem, auth, config.services, controllerComponents, gridClient, s3, config.imageBucket, lowPriorityMessageSender)
-  val reaperController = new ReaperController(es, store, s3Vectors, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents, wsClient, events)
+  val reaperController = new ReaperController(es, store, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents, wsClient, events)
   val healthCheckController = new HealthCheck(es, streamRunning.isCompleted, config, controllerComponents)
 
   override lazy val router = new Routes(httpErrorHandler, thrallController, reaperController, healthCheckController, management, assets).withPrefix("/thrall/")
