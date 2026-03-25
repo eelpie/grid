@@ -325,6 +325,7 @@ class ThrallController(
 
     @tailrec
     def getMediaIdsFromS3(all: Seq[String], nextMarker: Option[String])(implicit instance: Instance): Seq[String] = {
+      logger.info("Paginating S3 from: " + nextMarker)
       val baseRequest = new ListObjectsRequest().withBucketName(imageBucket.bucket).withPrefix(instance.id + "/")
       val request = nextMarker.map { marker =>
         baseRequest.withMarker(marker)
@@ -334,7 +335,7 @@ class ThrallController(
 
       val listing = s3.listObjects(imageBucket, request)
       val keys = listing.getObjectSummaries.asScala.flatMap { s3Object =>
-        logger.info("Reindexing s3 key: " + s3Object.getKey)
+        logger.info("Found s3 object to reindex: " + s3Object.getKey + " / " + s3Object.getLastModified)
         s3Object.getKey.split("/").lastOption
       }
 
