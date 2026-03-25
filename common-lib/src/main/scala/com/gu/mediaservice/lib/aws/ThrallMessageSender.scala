@@ -16,7 +16,7 @@ class ThrallMessageSender(config: KinesisSenderConfig) {
     kinesis.publish(updateMessage)(UpdateMessage.writes)
   }
 
-  def publish(externalThrallMessage: ExternalThrallMessage) = {
+  def publish(externalThrallMessage: ExternalThrallMessage): Unit = {
     kinesis.publish(externalThrallMessage)
   }
 }
