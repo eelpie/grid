@@ -7,8 +7,8 @@ import com.gu.mediaservice.lib.aws.{S3, S3Bucket, ThrallMessageSender, UpdateMes
 import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
 import com.gu.mediaservice.lib.elasticsearch.{NotRunning, Running}
 import com.gu.mediaservice.lib.logging.GridLogging
-import com.gu.mediaservice.model.{CompleteMigrationMessage, CreateMigrationIndexMessage, Instance, ReindexImageMessage, UpsertFromProjectionMessage}
-import com.gu.mediaservice.syntax.MessageSubjects.{Image, ReindexImage}
+import com.gu.mediaservice.model._
+import com.gu.mediaservice.syntax.MessageSubjects.ReindexImage
 import lib.elasticsearch.ElasticSearch
 import lib.{MigrationRequest, OptionalFutureRunner, Paging, ThrallStore}
 import org.apache.pekko.actor.ActorSystem
@@ -17,12 +17,12 @@ import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.data.Form
 import play.api.data.Forms._
+import play.api.libs.Files
 import play.api.libs.json.Json
-import play.api.mvc.{Action, AnyContent, ControllerComponents}
+import play.api.mvc.{Action, AnyContent, ControllerComponents, MultipartFormData}
 
-import java.util.concurrent.TimeUnit
 import scala.annotation.tailrec
-import scala.concurrent.duration.{Duration, DurationInt}
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.language.postfixOps
@@ -360,5 +360,33 @@ class ThrallController(
     }
     Ok("ok")
   }
+
+  def reindexFromCsvPage: Action[AnyContent] = withLoginRedirect { implicit request =>
+    Ok(views.html.reindexFromCsv())
+  }
+
+  def reindexFromCsv: Action[MultipartFormData[Files.TemporaryFile]] =
+    Action(parse.multipartFormData).async { implicit request =>
+      request.body
+        .file("csv")
+        .map { csv =>
+          implicit val instance: Instance = instanceOf(request)
+          val imageIds: Seq[String] = scala.io.Source.fromFile(csv.ref.toFile).getLines().toList
+          imageIds.foreach { imageId =>
+            val reindexImageMessage = ReindexImageMessage(id = imageId, lastModified = DateTime.now(DateTimeZone.UTC), instance = instance)
+            messageSender.publish(reindexImageMessage)
+          }
+          Future.successful {
+            Ok(s"reindex request for ${imageIds.size} images submitted")
+          }
+        }
+        .getOrElse {
+          Future.successful(
+            Redirect(routes.ThrallController.reindexFromCsvPage())
+              .flashing("error" -> "Missing file")
+          )
+        }
+    }
+
 
 }
