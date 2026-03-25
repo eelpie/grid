@@ -1,0 +1,31 @@
+@import helper._
+@()(implicit request: RequestHeader)
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Reindex image</title>
+        <link rel="stylesheet" href="@routes.Assets.versioned("stylesheets/main.css")" />
+    </head>
+    <body>
+        <nav>
+            <span>
+                <a href="@routes.ThrallController.index">&lt; back to Thrall Dashboard</a>
+            </span>
+        </nav>
+        <main>
+            <h1>Reindex image</h1>
+            <p>
+                This option will send a message to kinesis to reindex an image in elasticsearch.
+            </p>
+            <p>Enter the media ID below and hit 'submit'...</p>
+
+            @form(routes.ThrallController.reindexImage()) {
+                <label for="id">Image ID:</label>
+                <input type="text" id="id" name="id">
+                <input type="submit" value="Submit">
+            }
+        </main>
+    </body>
+</html>
