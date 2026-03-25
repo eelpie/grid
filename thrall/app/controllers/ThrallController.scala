@@ -301,6 +301,26 @@ class ThrallController(
   )
 
   def reindex(): Action[AnyContent] = withLoginRedirect { implicit request =>
+    Ok(views.html.reindexImage())
+  }
+
+  case class ReindexImageForm(id: String)
+
+  val reindexImageFormReader: Form[ReindexImageForm] = Form(
+    mapping(
+      "id" -> text
+    )(ReindexImageForm.apply)(ReindexImageForm.unapply)
+  )
+
+  def reindexImage: Action[AnyContent] = withLoginRedirectAsync { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
+    val imageId = reindexImageFormReader.bindFromRequest().get.id
+    val reindexImageMessage = ReindexImageMessage(id = imageId, lastModified = DateTime.now(DateTimeZone.UTC), instance = instance)
+    messageSender.publish(reindexImageMessage)
+    Future.successful(Ok(s"reindex request for $imageId submitted"))
+  }
+
+  def reindexAll(): Action[AnyContent] = withLoginRedirect { implicit request =>
     implicit val instance: Instance = instanceOf(request)
 
     @tailrec
