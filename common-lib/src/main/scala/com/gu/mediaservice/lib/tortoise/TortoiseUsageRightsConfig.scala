@@ -1,6 +1,7 @@
 package com.gu.mediaservice.lib.tortoise
 
 import com.gu.mediaservice.lib.config.{PublicationPhotographer, PublicationPhotographers, UsageRightsConfigProvider}
+import org.joda.time.LocalDate
 
 object TortoiseUsageRightsConfig extends UsageRightsConfigProvider {
   private val ObserverPublication = "The Observer"
@@ -21,15 +22,15 @@ object TortoiseUsageRightsConfig extends UsageRightsConfigProvider {
 
   val contractedPhotographers = List(
     PublicationPhotographers(ObserverPublication, List(
-      PublicationPhotographer("Andy Hall"),
-      PublicationPhotographer("Gary Calton"),
-      PublicationPhotographer("Suki Dhanda"),
-      PublicationPhotographer("Richard Saker"),
-      PublicationPhotographer("Karen Robinson"),
-      PublicationPhotographer("Sophia Evans"),
-      PublicationPhotographer("Katherine Anne Rose"),
-      PublicationPhotographer("Antonio Olmos"),
-      PublicationPhotographer("Jonathan Lovekin")
+      PublicationPhotographer("Andy Hall", from = Some(LocalDate.parse("2025-04-22"))),
+      PublicationPhotographer("Gary Calton", from = Some(LocalDate.parse("2025-04-22"))),
+      PublicationPhotographer("Suki Dhanda", from = Some(LocalDate.parse("2025-04-22"))),
+      PublicationPhotographer("Richard Saker", from = Some(LocalDate.parse("2025-04-22"))),
+      PublicationPhotographer("Karen Robinson", from = Some(LocalDate.parse("2025-04-22"))),
+      PublicationPhotographer("Sophia Evans", from = Some(LocalDate.parse("2025-04-22"))),
+      PublicationPhotographer("Katherine Anne Rose", from = Some(LocalDate.parse("2025-04-22"))),
+      PublicationPhotographer("Antonio Olmos", from = Some(LocalDate.parse("2025-04-22"))),
+      PublicationPhotographer("Jonathan Lovekin", from = Some(LocalDate.parse("2025-04-22")))
     ))
   )
 
@@ -38,7 +39,7 @@ object TortoiseUsageRightsConfig extends UsageRightsConfigProvider {
 
   val contractIllustrators = List(
     PublicationPhotographers(ObserverPublication, List(
-      PublicationPhotographer("Chris Riddell")
+      PublicationPhotographer("Chris Riddell", from = Some(LocalDate.parse("2025-04-22")))
     ))
   )
 
