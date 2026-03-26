@@ -27,6 +27,17 @@
                 <input type="submit" value="Submit">
             }
 
+            <h1>Reindex images from CSV file</h1>
+            <p>
+                This option will send a message to kinesis to reindex images in elasticsearch from a CSV file.
+            </p>
+            <p>The CSV file should contain one image ID per line.</p>
+            <p>Select the CSV file below and hit 'submit'...</p>
+
+            @form(action = routes.ThrallController.reindexFromCsv(), Symbol("enctype") -> "multipart/form-data") {
+                <input type="file" name="csv">
+                <input type="submit" value="Upload">
+            }
 
             <h1>Reindex all</h1>
             @form(routes.ThrallController.reindexAll()) {
