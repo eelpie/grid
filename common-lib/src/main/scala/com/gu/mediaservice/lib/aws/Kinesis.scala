@@ -2,7 +2,7 @@ package com.gu.mediaservice.lib.aws
 
 import java.nio.ByteBuffer
 import java.util.UUID
-import com.amazonaws.services.kinesis.model.PutRecordRequest
+import com.amazonaws.services.kinesis.model.{PutRecordRequest, PutRecordsRequest, PutRecordsRequestEntry}
 import com.amazonaws.services.kinesis.{AmazonKinesis, AmazonKinesisClientBuilder}
 import com.gu.mediaservice.lib.json.JsonByteArrayUtil
 import com.gu.mediaservice.model.usage.UsageNotice
@@ -12,6 +12,8 @@ import com.amazonaws.auth.AWSCredentialsProvider
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
+
+import scala.jdk.CollectionConverters.SeqHasAsJava
 
 case class KinesisSenderConfig(
   override val awsRegion: String,
@@ -57,5 +59,38 @@ class Kinesis(config: KinesisSenderConfig) extends GridLogging{
         throw e
     }
   }
+
+  def publish[T <: LogMarker](messages: Seq[T])(implicit messageWrites: Writes[T]): Unit = {
+    val records: Seq[PutRecordsRequestEntry] = messages.map { message =>
+      val partitionKey = UUID.randomUUID().toString
+      implicit val yourJodaDateWrites: Writes[DateTime] = JodaWrites.JodaDateTimeWrites
+      implicit val iw: Writes[Instance] = Json.writes[Instance]
+      implicit val unw: Writes[UsageNotice] = Json.writes[UsageNotice]
+
+      val payload = JsonByteArrayUtil.toByteArray(message)
+      val data = ByteBuffer.wrap(payload)
+
+      val entry = new PutRecordsRequestEntry
+      entry.setPartitionKey(partitionKey)
+      entry.setData(data)
+      entry
+    }
+
+    logger.info(s"Publishing ${messages.size} messages to kinesis: ${config.streamName}")
+
+    val request = new PutRecordsRequest()
+      .withStreamName(config.streamName).withRecords(records.asJava)
+
+    try {
+      val result = kinesisClient.putRecords(request)
+      logger.info(s"Published kinesis message: $result")
+    } catch {
+      case e: Exception =>
+        logger.error(s"kinesis putRecord failed", e)
+        // propagate error forward to the client
+        throw e
+    }
+  }
+
 }
 
