@@ -1,22 +1,22 @@
 package com.gu.mediaservice.lib.aws
 
+import com.gu.mediaservice.lib.json.JsonByteArrayUtil
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.model.Instance
+import com.gu.mediaservice.model.usage.UsageNotice
+import net.logstash.logback.marker.{LogstashMarker, Markers}
+import org.joda.time.DateTime
+import play.api.libs.json.{JodaWrites, Json, Writes}
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.regions.Region
-
-import java.nio.ByteBuffer
-import java.util.UUID
-import software.amazon.awssdk.services.kinesis.model.PutRecordRequest
 import software.amazon.awssdk.services.kinesis.KinesisClient
-import com.gu.mediaservice.lib.json.JsonByteArrayUtil
-import com.gu.mediaservice.model.usage.UsageNotice
-import net.logstash.logback.marker.{LogstashMarker, Markers}
-import play.api.libs.json.{JodaWrites, Json, Writes}
-import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
-import com.gu.mediaservice.model.Instance
-import org.joda.time.DateTime
+import software.amazon.awssdk.services.kinesis.model.{PutRecordRequest, PutRecordsRequest, PutRecordsRequestEntry}
 
 import java.net.URI
+import java.nio.ByteBuffer
+import java.util.UUID
+import scala.jdk.CollectionConverters.SeqHasAsJava
 
 case class KinesisSenderConfig(
   override val awsRegionV2: Region,
@@ -61,5 +61,38 @@ class Kinesis(config: KinesisSenderConfig) extends GridLogging{
         throw e
     }
   }
+
+  def publish[T <: LogMarker](messages: Seq[T])(implicit messageWrites: Writes[T]): Unit = {
+    implicit val yourJodaDateWrites: Writes[DateTime] = JodaWrites.JodaDateTimeWrites
+    implicit val iw: Writes[Instance] = Json.writes[Instance]
+    implicit val unw: Writes[UsageNotice] = Json.writes[UsageNotice]
+
+    val records: Seq[PutRecordsRequestEntry] = messages.map { message =>
+      val payload = JsonByteArrayUtil.toByteArray(message)
+
+      PutRecordsRequestEntry.builder()
+        .partitionKey(UUID.randomUUID().toString)
+        .data(SdkBytes.fromByteArray(payload))
+        .build()
+    }
+
+    logger.info(s"Publishing ${messages.size} messages to kinesis: ${config.streamName}")
+
+    val request = PutRecordsRequest.builder()
+      .streamName(config.streamName)
+      .records(records.asJava)
+      .build()
+
+    try {
+      val result = kinesisClient.putRecords(request)
+      logger.info(s"Published kinesis message: $result")
+    } catch {
+      case e: Exception =>
+        logger.error(s"kinesis putRecords failed", e)
+        // propagate error forward to the client
+        throw e
+    }
+  }
+
 }
 
