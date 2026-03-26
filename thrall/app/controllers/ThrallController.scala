@@ -327,11 +327,12 @@ class ThrallController(
 
     logger.info(s"Reindex requested for instance ${instance.id}")
     val s3Objects = Await.result(s3.listPaginating(imageBucket, Some(instance.id)), Duration(5, TimeUnit.MINUTES))
+
     val mediaIds = s3Objects.flatMap { s3Object =>
       val key = imageBucket.keyFromURL(s3Object.uri)
       logger.info("Reindexing s3 key: " + key)
-      key.split("/").lastOption
-    }
+      key.split("/").lastOption.map(key => (key, s3Object.metadata.objectMetadata.lastModified.map(_.getMillis)))
+    }.sortBy(_._2).reverse.map(_._1)
 
     logger.info(s"Queuing reindex requests for ${mediaIds.size} images for instance ${instance.id}")
 
