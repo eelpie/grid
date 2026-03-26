@@ -226,11 +226,15 @@ class ThrallController(
     es.refreshAndRetrieveMigrationStatus(instance)
     Redirect(routes.ThrallController.index)
   }
+
   def pauseMigration = {
     adjustMigration(es.pauseMigration)
   }
+
   def resumeMigration = adjustMigration(es.resumeMigration)
+
   def previewMigrationCompletion = adjustMigration(es.previewMigrationCompletion)
+
   def unPreviewMigrationCompletion = adjustMigration(es.unPreviewMigrationCompletion)
 
   def migrateSingleImage: Action[AnyContent] = withLoginRedirectAsync { implicit request =>
@@ -330,14 +334,17 @@ class ThrallController(
     }
 
     logger.info(s"Queuing reindex requests for ${mediaIds.size} images for instance ${instance.id}")
-    mediaIds.foreach { mediaId =>
-      lowPriorityMessageSender.publish(
+
+    val batches = mediaIds.grouped(100)
+    batches.foreach { batch =>
+      val messages = batch.map { mediaId =>
         UpdateMessage(
           subject = ReindexImage,
           id = Some(mediaId),
           instance = instance
         )
-      )
+      }
+      lowPriorityMessageSender.publish(messages)
     }
     Ok("ok")
   }
