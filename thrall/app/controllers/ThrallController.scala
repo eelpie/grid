@@ -21,6 +21,7 @@ import play.api.libs.Files
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents, MultipartFormData}
 
+import java.util.Date
 import scala.annotation.tailrec
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -328,7 +329,7 @@ class ThrallController(
     implicit val instance: Instance = instanceOf(request)
 
     @tailrec
-    def getMediaIdsFromS3(all: Seq[String], nextMarker: Option[String])(implicit instance: Instance): Seq[String] = {
+    def getMediaIdsFromS3(all: Seq[(String, Date)], nextMarker: Option[String])(implicit instance: Instance): Seq[(String, Date)] = {
       logger.info("Paginating S3 from: " + nextMarker)
       val baseRequest = new ListObjectsRequest().withBucketName(imageBucket.bucket).withPrefix(instance.id + "/")
       val request = nextMarker.map { marker =>
@@ -340,7 +341,7 @@ class ThrallController(
       val listing = s3.listObjects(imageBucket, request)
       val keys = listing.getObjectSummaries.asScala.flatMap { s3Object =>
         logger.info("Found s3 object to reindex: " + s3Object.getKey + " / " + s3Object.getLastModified)
-        s3Object.getKey.split("/").lastOption
+        s3Object.getKey.split("/").lastOption.map( key => (key, s3Object.getLastModified))
       }
 
       if (listing.isTruncated) {
@@ -351,8 +352,10 @@ class ThrallController(
     }
 
     logger.info(s"Reindex requested for instance ${instance.id}")
-    val mediaIds = getMediaIdsFromS3(Seq.empty, None)
-    logger.info(s"Queuing reindex requests for ${mediaIds.size} images for instance ${instance.id}")
+    val keys = getMediaIdsFromS3(Seq.empty, None)
+    logger.info(s"Queuing reindex requests for ${keys.size} images for instance ${instance.id}")
+
+    val mediaIds = keys.sortBy(_._2).reverse.map(_._1)
 
     val batches = mediaIds.grouped(100)
     batches.foreach { batch =>
