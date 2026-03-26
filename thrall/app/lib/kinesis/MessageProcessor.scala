@@ -283,7 +283,7 @@ class MessageProcessor(
     logger.info(s"Reindexing from s3 ${instance.id} / $mediaId")
 
     gridClient.getImageLoaderProjection(mediaId, auth.innerServiceCall).map { maybeImage =>
-      logger.info(s"Projected ${instance.id} / $mediaId to $maybeImage}")
+      logger.info(s"Projected ${instance.id} / $mediaId to ${maybeImage.map(_.id)}")
       maybeImage.exists { image =>
         val updateMessage = UpsertFromProjectionMessage(image.id, image, DateTime.now, instance)
         logger.info(s"Publishing projected image as a thrall image message: ${updateMessage.id}")
