@@ -36,7 +36,8 @@ POST    /reindex                                      controllers.ThrallControll
 GET     /reindex/csv                                  controllers.ThrallController.reindexFromCsvPage()
 +nocsrf
 POST    /reindex/csv                                  controllers.ThrallController.reindexFromCsv()
-
++nocsrf
+POST    /reindex/all                                  controllers.ThrallController.reindexAll()
 
 # Config
 GET    /config                                        controllers.ReaperController.conf()
