@@ -94,32 +94,34 @@ class ThrallStreamProcessor(
     out
   })
 
-  val automationKinesisSource: Source[TaggedRecord[ThrallMessage], NotUsed] = Source.fromGraph(GraphDSL.create() { implicit graphBuilder =>
-    val automationRecordSource: Source[TaggedRecord[Array[Byte]], Future[Done]] = automationSource.map(kinesisRecord =>
-    TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, AutomationPriority, kinesisRecord.markProcessed))
+  val automationKinesisSource: Source[TaggedRecord[ThrallMessage], NotUsed] = {
+    val z: Source[TaggedRecord[ExternalThrallMessage], NotUsed] = Source.fromGraph(GraphDSL.create() { implicit graphBuilder =>
+      val automationRecordSource: Source[TaggedRecord[Array[Byte]], Future[Done]] = automationSource.map(kinesisRecord =>
+        TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, AutomationPriority, kinesisRecord.markProcessed))
 
-    // parse the kinesis records into thrall update messages (dropping those that fail)
-    val automationMessagesSource: Source[TaggedRecord[ExternalThrallMessage], Future[Done]] = automationRecordSource.map { taggedRecord =>
-        val parsedRecord = ThrallEventConsumer
-          .parseRecord(taggedRecord.payload, taggedRecord.arrivalTimestamp)
-          .map(
-            message => taggedRecord.copy(payload = message)
-          )
-        // If we failed to parse the record (Left), we'll drop it below because we can't process it.
-        // However we still need to mark the record as processed, otherwise the kinesis stream can't progress
-        // and checkpoint will be stuck at this message forevermore.
-        parsedRecord.left.foreach(_ => taggedRecord.markProcessed())
-        parsedRecord
-      }
-      // drop unparseable records
-      .collect {
-        case Right(taggedRecord) => taggedRecord
-      }
+      // parse the kinesis records into thrall update messages (dropping those that fail)
+      val automationMessagesSource: Source[TaggedRecord[ExternalThrallMessage], Future[Done]] = automationRecordSource.map { taggedRecord =>
+          val parsedRecord = ThrallEventConsumer
+            .parseRecord(taggedRecord.payload, taggedRecord.arrivalTimestamp)
+            .map(
+              message => taggedRecord.copy(payload = message)
+            )
+          // If we failed to parse the record (Left), we'll drop it below because we can't process it.
+          // However we still need to mark the record as processed, otherwise the kinesis stream can't progress
+          // and checkpoint will be stuck at this message forevermore.
+          parsedRecord.left.foreach(_ => taggedRecord.markProcessed())
+          parsedRecord
+        }
+        // drop unparseable records
+        .collect {
+          case Right(taggedRecord) => taggedRecord
+        }
 
-    val out: SourceShape[TaggedRecord[ExternalThrallMessage]] = automationMessagesSource.shape
-    out
-  })
-
+      val out: SourceShape[TaggedRecord[ExternalThrallMessage]] = automationMessagesSource.shape
+      out
+    })
+    z
+  }
 
   def createUIStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), NotUsed] = {
     mergedKinesisSource.mapAsync(1) { result =>
