@@ -109,9 +109,12 @@ class UsageTable(
       val request = QueryRequest.builder()
         .tableName(tableName)
         .consistentRead(true)
-        .keyConditionExpression(s"$hashKeyName = :grouping")
+        .keyConditionExpression("#hashKeyName = :hashKey")
+        .expressionAttributeNames(Map(
+          "#hashKeyName" -> hashKeyName
+        ).asJava)
         .expressionAttributeValues(Map(
-          ":grouping" -> AttributeValueV2.fromS(grouping)
+          ":hashKey" -> AttributeValueV2.fromS(grouping)
         ).asJava)
         .build()
 
