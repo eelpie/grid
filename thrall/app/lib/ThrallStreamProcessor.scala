@@ -3,7 +3,7 @@ package lib
 import com.gu.kinesis.KinesisRecord
 import com.gu.mediaservice.lib.DateTimeUtils
 import com.gu.mediaservice.lib.logging._
-import com.gu.mediaservice.model.{MigrationMessage, ThrallMessage}
+import com.gu.mediaservice.model.{ExternalThrallMessage, MigrationMessage, ThrallMessage}
 import lib.kinesis.ThrallEventConsumer
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.scaladsl.{GraphDSL, MergePreferred, Source}
@@ -68,7 +68,7 @@ class ThrallStreamProcessor(
     }
 
     // parse the kinesis records into thrall update messages (dropping those that fail)
-    val uiMessagesSource = uiRecordSource.map { taggedRecord =>
+    val uiMessagesSource: Source[TaggedRecord[ExternalThrallMessage], Future[Done]] = uiRecordSource.map { taggedRecord =>
           val parsedRecord = ThrallEventConsumer
             .parseRecord(taggedRecord.payload, taggedRecord.arrivalTimestamp)
             .map(
@@ -90,28 +90,74 @@ class ThrallStreamProcessor(
     uiMessagesSource ~> mergePreferred.preferred
     migrationMessagesSource ~> mergePreferred.in(0)
 
-    SourceShape(mergePreferred.out)
+    val out: SourceShape[TaggedRecord[ThrallMessage]] = SourceShape(mergePreferred.out)
+    out
   })
 
-  def createStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), NotUsed] = {
+  val automationKinesisSource: Source[TaggedRecord[ThrallMessage], NotUsed] = Source.fromGraph(GraphDSL.create() { implicit graphBuilder =>
+    val automationRecordSource: Source[TaggedRecord[Array[Byte]], Future[Done]] = automationSource.map(kinesisRecord =>
+    TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, AutomationPriority, kinesisRecord.markProcessed))
+
+    // parse the kinesis records into thrall update messages (dropping those that fail)
+    val automationMessagesSource: Source[TaggedRecord[ExternalThrallMessage], Future[Done]] = automationRecordSource.map { taggedRecord =>
+        val parsedRecord = ThrallEventConsumer
+          .parseRecord(taggedRecord.payload, taggedRecord.arrivalTimestamp)
+          .map(
+            message => taggedRecord.copy(payload = message)
+          )
+        // If we failed to parse the record (Left), we'll drop it below because we can't process it.
+        // However we still need to mark the record as processed, otherwise the kinesis stream can't progress
+        // and checkpoint will be stuck at this message forevermore.
+        parsedRecord.left.foreach(_ => taggedRecord.markProcessed())
+        parsedRecord
+      }
+      // drop unparseable records
+      .collect {
+        case Right(taggedRecord) => taggedRecord
+      }
+
+    val out: SourceShape[TaggedRecord[ExternalThrallMessage]] = automationMessagesSource.shape
+    out
+  })
+
+
+  def createUIStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), NotUsed] = {
     mergedKinesisSource.mapAsync(1) { result =>
       val stopwatch = Stopwatch.start
       consumer.processMessage(result.payload)
         .recover { case _ => () }
         .map(_ => (result, stopwatch, result.payload))
-      }
-
-
+    }
   }
+
+  def createAutomationStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), NotUsed] = {
+    automationKinesisSource.mapAsync(20) { result =>
+      val stopwatch = Stopwatch.start
+      consumer.processMessage(result.payload)
+        .recover { case _ => () }
+        .map(_ => (result, stopwatch, result.payload))
+      }
+  }
+
   def run(): Future[Done] = {
-    val stream = this.createStream().runForeach {
+    val stream = this.createUIStream().runForeach {
       case (taggedRecord, stopwatch, _) =>
         val markers = combineMarkers(taggedRecord, stopwatch.elapsed)
         logger.info(markers, "Record processed")
         taggedRecord.markProcessed()
     }
-
     stream.onComplete {
+      case Failure(exception) => logger.error("Thrall stream completed with failure", exception)
+      case Success(_) => logger.info("Thrall stream completed with done, probably shutting down")
+    }
+
+    val automationStream = this.createAutomationStream().runForeach {
+      case (taggedRecord, stopwatch, _) =>
+        val markers = combineMarkers(taggedRecord, stopwatch.elapsed)
+        logger.info(markers, "Record processed")
+        taggedRecord.markProcessed()
+    }
+    automationStream.onComplete {
       case Failure(exception) => logger.error("Thrall stream completed with failure", exception)
       case Success(_) => logger.info("Thrall stream completed with done, probably shutting down")
     }
