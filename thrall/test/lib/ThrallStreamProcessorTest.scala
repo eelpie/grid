@@ -50,7 +50,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
     )
 
     val COUNT_EACH = 2000 // Arbitrary number
-    val COUNT_TOTAL = 3 * COUNT_EACH
+    val COUNT_TOTAL = 2 * COUNT_EACH
 
     val uiPrioritySource: Source[KinesisRecord, Future[Done.type]] =
       Source.repeat(createKinesisRecord).mapMaterializedValue(_ => Future.successful(Done)).take(COUNT_EACH)
@@ -71,7 +71,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
       actorSystem
     )
     it("should process high priority events first") {
-      val stream = streamProcessor.createStream()
+      val stream = streamProcessor.createUIStream()
 
       val prioritiesFromMessages =
         Await.result(stream.take(COUNT_TOTAL).runWith(Sink.seq), 5.minutes)
@@ -83,8 +83,8 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
 
       val output = prioritiesFromMessages.toList
       val firstBatch = output.slice(0, COUNT_EACH - 1)
-      val middleBatch = output.slice(COUNT_EACH, 2 * COUNT_EACH - 1 )
-      val lastBatch = output.slice(2* COUNT_EACH,3 * COUNT_EACH - 1)
+      //val middleBatch = output.slice(COUNT_EACH, 2 * COUNT_EACH - 1 )
+      val lastBatch = output.slice(COUNT_EACH, 2 * COUNT_EACH - 1)
 
       // This is an arbitrary value - the preference algo in MergedPreferred doesn't strictly process the
       // `preferred` inlet and then the remaining inlets. It appears to take some a number from all defined inlets
@@ -94,11 +94,11 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
       val MINIMUM_RECORDS: Int = (PERCENTAGE * COUNT_EACH).toInt
 
       firstBatch.count(p => p == UiPriority) should be > MINIMUM_RECORDS
-      middleBatch.count(p => p == AutomationPriority) should be > MINIMUM_RECORDS
+      //middleBatch.count(p => p == AutomationPriority) should be > MINIMUM_RECORDS
       lastBatch.count(p => p == MigrationPriority) should be > MINIMUM_RECORDS
 
       output.count(p => p == UiPriority) should be (COUNT_EACH)
-      output.count(p => p == AutomationPriority) should be (COUNT_EACH)
+      //output.count(p => p == AutomationPriority) should be (COUNT_EACH)
       output.count(p => p == MigrationPriority) should be (COUNT_EACH)
     }
   }
@@ -146,7 +146,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
     it("can send messages manually") {
       when(mockInstancesClient.getInstances()(any)).thenReturn(Future.successful(Seq.empty))
 
-      val stream = streamProcessor.createStream()
+      val stream = streamProcessor.createUIStream()
 
       val request = MigrationRequest("id", 1L, anInstance)
 
