@@ -1,17 +1,16 @@
 package lib
 
-import java.time.Instant
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.scaladsl.{GraphDSL, MergePreferred, MergePrioritized, Source}
-import org.apache.pekko.stream.{Materializer, SourceShape}
-import org.apache.pekko.{Done, NotUsed}
 import com.gu.kinesis.KinesisRecord
 import com.gu.mediaservice.lib.DateTimeUtils
-import com.gu.mediaservice.lib.aws.UpdateMessage
 import com.gu.mediaservice.lib.logging._
-import com.gu.mediaservice.model.{ExternalThrallMessage, InternalThrallMessage, ThrallMessage}
-import lib.kinesis.{MessageTranslator, ThrallEventConsumer}
+import com.gu.mediaservice.model.{MigrationMessage, ThrallMessage}
+import lib.kinesis.ThrallEventConsumer
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.scaladsl.{GraphDSL, MergePreferred, Source}
+import org.apache.pekko.stream.{Materializer, SourceShape}
+import org.apache.pekko.{Done, NotUsed}
 
+import java.time.Instant
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
@@ -61,25 +60,15 @@ class ThrallStreamProcessor(
   val mergedKinesisSource: Source[TaggedRecord[ThrallMessage], NotUsed] = Source.fromGraph(GraphDSL.create() { implicit graphBuilder =>
     import GraphDSL.Implicits._
 
-    val uiRecordSource = uiSource.map(kinesisRecord =>
+    val uiRecordSource: Source[TaggedRecord[Array[Byte]], Future[Done]] = uiSource.map(kinesisRecord =>
       TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, UiPriority, kinesisRecord.markProcessed))
 
-    val automationRecordSource = automationSource.map(kinesisRecord =>
-      TaggedRecord(kinesisRecord.data.toArray, kinesisRecord.approximateArrivalTimestamp, AutomationPriority, kinesisRecord.markProcessed))
-
-    val migrationMessagesSource = migrationSource.map { case MigrationRecord(internalThrallMessage, time) =>
+    val migrationMessagesSource: Source[TaggedRecord[MigrationMessage], Future[Done]] = migrationSource.map { case MigrationRecord(internalThrallMessage, time) =>
       TaggedRecord(internalThrallMessage, time, MigrationPriority, () => {})
     }
 
-    // merge together ui and automation kinesis records
-    val uiAndAutomationRecordsMerge = graphBuilder.add(MergePreferred[TaggedRecord[Array[Byte]]](1))
-    uiRecordSource ~> uiAndAutomationRecordsMerge.preferred
-    automationRecordSource  ~> uiAndAutomationRecordsMerge.in(0)
-
     // parse the kinesis records into thrall update messages (dropping those that fail)
-    val uiAndAutomationMessagesSource: PortOps[TaggedRecord[ExternalThrallMessage]] =
-      uiAndAutomationRecordsMerge.out
-        .map { taggedRecord =>
+    val uiMessagesSource = uiRecordSource.map { taggedRecord =>
           val parsedRecord = ThrallEventConsumer
             .parseRecord(taggedRecord.payload, taggedRecord.arrivalTimestamp)
             .map(
@@ -98,7 +87,7 @@ class ThrallStreamProcessor(
 
     // merge in the re-ingestion source (preferring ui/automation)
     val mergePreferred = graphBuilder.add(MergePreferred[TaggedRecord[ThrallMessage]](1))
-    uiAndAutomationMessagesSource ~> mergePreferred.preferred
+    uiMessagesSource ~> mergePreferred.preferred
     migrationMessagesSource ~> mergePreferred.in(0)
 
     SourceShape(mergePreferred.out)
