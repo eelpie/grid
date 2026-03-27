@@ -1,4 +1,4 @@
-# API Response examples
+# API Response examplesh
 
 ## Usage (by media id)
 
