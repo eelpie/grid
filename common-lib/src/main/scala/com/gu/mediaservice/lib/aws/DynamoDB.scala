@@ -1,9 +1,5 @@
 package com.gu.mediaservice.lib.aws
 
-import com.amazonaws.services.dynamodbv2.document._
-import com.amazonaws.services.dynamodbv2.document.spec._
-import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
-import com.gu.mediaservice.lib.aws.DynamoDB.{deleteExpr, setExpr}
 import com.gu.mediaservice.lib.logging.GridLogging
 import org.joda.time.DateTime
 import play.api.libs.json._
@@ -142,14 +138,14 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
              (implicit ex: ExecutionContext): Future[JsObject] = Future {
     updateV2(
       id,
-      setExpr(key, lastModifiedKey),
+      DynamoDB.setExpr(key, lastModifiedKey),
       AttributeValueV2.fromM(value.view.mapValues(DynamoDB.jsonToAttributeValue).toMap.asJava)
     )
   }
 
   def setDeleteV2(id: String, key: String, value: String)
                (implicit ex: ExecutionContext): Future[JsObject] = Future {
-    updateV2(id,  deleteExpr(key, lastModifiedKey), AttributeValueV2.fromSs(List(value).asJava))
+    updateV2(id,  DynamoDB.deleteExpr(key, lastModifiedKey), AttributeValueV2.fromSs(List(value).asJava))
   }
 
   def scanForIdV2(indexName: String, keyname: String, key: String)(implicit ex: ExecutionContext): Future[List[String]] = Future {
@@ -190,15 +186,8 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
     Json.parse(jsonString).as[JsObject]
   }
 
-  // FIXME: surely there must be a better way to convert?
-  def asJsObject(item: Item): JsObject =
-    jsonWithNullAsEmptyString(Json.parse(item.toJSON)).as[JsObject] - IdKey
-
   def asJsObject(doc: EnhancedDocument): JsObject =
     jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject] - IdKey
-
-  def asJsObject(outcome: UpdateItemOutcome): JsObject =
-    Option(outcome.getItem) map asJsObject getOrElse Json.obj()
 
   // FIXME: Dynamo accepts `null`, but not `""`. This is a well documented issue
   // around the community. This guard keeps the introduction of `null` fairly
@@ -219,28 +208,6 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
 }
 
 object DynamoDB {
-  def jsonToValueMap(json: JsObject): ValueMap = {
-    val valueMap = new ValueMap()
-    json.value map { case (key, value) =>
-      value match {
-        case v: JsString  => valueMap.withString(key, v.value)
-        case v: JsBoolean => valueMap.withBoolean(key, v.value)
-        case v: JsNumber  => valueMap.withNumber(key, v.value)
-        case v: JsObject  => valueMap.withMap(key, jsonToValueMap(v))
-
-        // TODO: Lists of different Types? JsArray is not type safe (because json lists aren't)
-        // so this leaves us in a bit of a pickle when converting them. So for now we only support
-        // List[String]
-        case v: JsArray   => valueMap.withList(key, v.value.map {
-          case i: JsString => i.value
-          case i: JsValue => i.toString
-        }.asJava)
-        case _ => valueMap
-      }
-    }
-    valueMap
-  }
-
   private def jsonToAttributeValue(json: JsValue): AttributeValueV2 = {
     json match {
       case JsString(v)  => AttributeValueV2.fromS(v)
@@ -256,34 +223,6 @@ object DynamoDB {
 
   def caseClassToMap[T](caseClass: T)(implicit tjs: Writes[T]): Map[String, JsValue] =
     Json.toJson[T](caseClass).as[JsObject].as[Map[String, JsValue]]
-
-  def addLastModifiedUpdate(update: UpdateItemSpec, lastModifiedKey: String, lastModifiedDate: DateTime): UpdateItemSpec = {
-    val expression = update.getUpdateExpression
-    val valueMap: ValueMap = {
-      val m = new ValueMap()
-      Option(update.getValueMap).foreach { vm =>
-        m.putAll(vm)
-      }
-      m
-    }
-
-    val newExpression = {
-      val keyUpdate: String = s"$lastModifiedKey = :$lastModifiedKey"
-      if (expression.contains("SET ")) {
-          // add to existing clause
-        expression.replace("SET ", s"SET ${keyUpdate}, ")
-      } else {
-        // add SET clause to existing expression
-        s"SET $keyUpdate ${expression}"
-      }
-    }
-
-    valueMap.put(s":$lastModifiedKey", lastModifiedDate.toString)
-
-    update
-      .withUpdateExpression(newExpression)
-      .withValueMap(valueMap)
-  }
 
   def setExpr[T](key: String, lastModifiedKey: Option[String]) = {
     val baseExpression = s"SET $key = :value"
