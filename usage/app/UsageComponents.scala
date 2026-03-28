@@ -1,4 +1,3 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.UsageApi
 import lib._
@@ -15,7 +14,6 @@ class UsageComponents(context: Context) extends GridComponents(context, new Usag
 
   val usageGroupOps = new UsageGroupOps(config)
   val usageTable = new UsageTable(
-    config.withAWSCredentials(AmazonDynamoDBAsyncClientBuilder.standard()).build(),
     config.withAWSCredentialsV2(DynamoDbClient.builder()).build(),
     config.usageRecordTable
   )
