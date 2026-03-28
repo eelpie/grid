@@ -20,6 +20,7 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model._
 
+import java.net.URI
 import java.util.UUID
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -154,11 +155,33 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
         DigitalUsage,
         "image",
         PendingUsageStatus,
-        None,
-        None,
-        None,
-        None,
-        None,
+        Some(PrintUsageMetadata(
+          sectionCode = "a-section",
+          sectionName = "A section",
+          pageNumber = 7,
+          issueDate = DateTime.now,
+          storyName = "a-story",
+          publicationCode = "tst",
+          publicationName = "Test publication",
+          edition = Some(1)
+        )
+        ),
+        Some(DigitalUsageMetadata(
+          webUrl = new URI("http://localhost/test"),
+          webTitle = "A page",
+          sectionId = "a-section"
+        )),
+        Some(SyndicationUsageMetadata(
+          partnerName = "Test Partner",
+          syndicatedBy = Some("test-syndicator")
+        )),
+        Some(FrontUsageMetadata(
+          addedBy = "test-user",
+          front = "uk/culture"
+        )),
+        Some(DownloadUsageMetadata(
+          downloadedBy = "test-downloader"
+        )),
         DateTime.now()
       )
 
