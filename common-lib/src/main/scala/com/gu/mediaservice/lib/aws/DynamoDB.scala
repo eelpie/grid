@@ -198,23 +198,6 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
     Json.parse(jsonString).as[JsObject]
   }
 
-  private def update(id: String, expression: String, valueMap: Option[ValueMap] = None)
-            (implicit ex: ExecutionContext): Future[JsObject] = Future {
-
-    val baseUpdateSpec = new UpdateItemSpec().
-      withPrimaryKey(IdKey, id).
-      withUpdateExpression(expression).
-      withReturnValues(ReturnValue.ALL_NEW).
-      withValueMap(valueMap.orNull)
-
-    val updateSpec = lastModifiedKey.map { key =>
-      DynamoDB.addLastModifiedUpdate(baseUpdateSpec, key, DateTime.now)
-    }.getOrElse(baseUpdateSpec)
-
-    table.updateItem(updateSpec)
-  } map asJsObject
-
-
   // FIXME: surely there must be a better way to convert?
   def asJsObject(item: Item): JsObject =
     jsonWithNullAsEmptyString(Json.parse(item.toJSON)).as[JsObject] - IdKey
