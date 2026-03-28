@@ -8,8 +8,9 @@ import play.api.libs.json._
 import software.amazon.awssdk.enhanced.dynamodb._
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.{QueryRequest, UpdateItemRequest, AttributeValue => AttributeValueV2, ReturnValue => ReturnValueV2}
+import software.amazon.awssdk.services.dynamodb.model.{BatchGetItemRequest, QueryRequest, UpdateItemRequest, AttributeValue => AttributeValueV2, KeysAndAttributes => KeysAndAttributesV2, ReturnValue => ReturnValueV2}
 
+import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
@@ -93,6 +94,49 @@ class InstanceAwareDynamoDB[T](client2: DynamoDbClient, tableName: String, lastM
 
   def setAddV2(id: String, key: String, value: List[String])(implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(id, DynamoDB.addExpr(key, lastModifiedKey), AttributeValueV2.fromSs(value.asJava))
+  }
+
+  def batchGetV2(ids: List[String], attributeKey: String)
+                (implicit ex: ExecutionContext, rjs: Reads[T], instance: Instance): Future[Map[String, T]] = {
+    val keyChunkList = ids
+      .map(k => Map(IdKey -> AttributeValueV2.fromS(k),
+        InstanceKey -> AttributeValueV2.fromS(instance.id)
+      ).asJava)
+      .grouped(100)
+
+    Future.traverse(keyChunkList) { keyChunk => {
+        val keysAndAttributes: KeysAndAttributesV2 = KeysAndAttributesV2.builder().keys(keyChunk.asJava).build()
+
+        @tailrec
+        def nextPageOfBatch(request: java.util.Map[String, KeysAndAttributesV2], acc: List[(String, T)])
+                           (implicit ex: ExecutionContext, rjs: Reads[T]): List[(String, T)] = {
+          if (request.isEmpty) acc
+          else {
+            logger.info(s"Fetching records for $request")
+            val response = client2.batchGetItem(BatchGetItemRequest.builder().requestItems(request).build())
+            val responses = response.responses()
+            logger.info(s"Got responses of $responses")
+            val results = responses.get(tableName).asScala.toList
+              .flatMap(att => {
+                logger.info(s"Obtained attributes of $att from response")
+                val json = asJsObject(EnhancedDocument.fromAttributeValueMap(att))
+                val maybeT = (json \ attributeKey).asOpt[T]
+                logger.info(s"Obtained a T of $maybeT from json $json")
+                maybeT.map(
+                  att.get(IdKey).s() -> _
+                )
+              })
+            logger.info(s"Got $results for request")
+            nextPageOfBatch(response.unprocessedKeys(), acc ::: results)
+          }
+        }
+
+        Future {
+          nextPageOfBatch(Map(tableName -> keysAndAttributes).asJava, Nil).toMap
+        }
+      }
+    }
+    .map(chunkIterator => chunkIterator.fold(Map.empty)((acc, result) => acc ++ result))
   }
 
   // We cannot update, so make sure you send over the WHOLE document
