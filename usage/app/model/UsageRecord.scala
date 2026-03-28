@@ -43,7 +43,6 @@ case class UsageRecord(
       downloadUsageMetadata.map(m => "download_metadata" -> metadataToAttr(m.toMap)),
       dateAdded.map(dateAdded => "date_added" -> AttributeValueV2.fromN(dateAdded.getMillis.toString)),
       dateRemovedOperation match {
-        // TODO case ClearDateRemoved => Some("date_removed" -> "REMOTE date_removed")
         case LeaveDateRemovedUntouched => None
         case SetDateRemoved(dateRemoved) => Some("date_removed" -> AttributeValueV2.fromN(dateRemoved.getMillis.toString))
         case _ => None
