@@ -39,7 +39,6 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
   lazy val table2 = dynamo2.table(tableName, tableSchema)
 
   lazy val dynamo = new AwsDynamoDB(client)
-  lazy val table: Table = dynamo.getTable(tableName)
 
   private val IdKey = "id"
 
