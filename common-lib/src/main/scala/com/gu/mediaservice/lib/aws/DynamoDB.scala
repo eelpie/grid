@@ -160,18 +160,6 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
     updateV2(id,  deleteExpr(key, lastModifiedKey), AttributeValueV2.fromSs(List(value).asJava))
   }
 
-  def scanForId(indexName: String, keyname: String, key: String)(implicit ex: ExecutionContext) = Future {
-    val index = table.getIndex(indexName)
-
-    val spec = new QuerySpec()
-      .withKeyConditionExpression(s"$keyname = :key")
-      .withValueMap(new ValueMap()
-        .withString(":key", key))
-
-    val items: List[Item] = index.query(spec).iterator.asScala.toList
-    items map (a => a.getString("id"))
-  }
-
   def scanForIdV2(indexName: String, keyname: String, key: String)(implicit ex: ExecutionContext): Future[List[String]] = Future {
     val request = QueryRequest.builder()
       .tableName(tableName)
