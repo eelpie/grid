@@ -115,7 +115,7 @@ class ThrallStreamProcessor(
     }
   }
 
-  private def createUIStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), NotUsed] = {
+  def createUIStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), NotUsed] = {
     mergedKinesisSource.mapAsync(1) { result =>
       val stopwatch = Stopwatch.start
       consumer.processMessage(result.payload)
@@ -124,7 +124,7 @@ class ThrallStreamProcessor(
     }
   }
 
-  private def createAutomationStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), Future[Done]] = {
+  def createAutomationStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), Future[Done]] = {
     automationKinesisSource.mapAsync(20) { result =>
       val stopwatch = Stopwatch.start
       consumer.processMessage(result.payload)
