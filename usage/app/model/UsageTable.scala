@@ -1,6 +1,5 @@
 package model
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.gu.mediaservice.lib.aws.DynamoDB
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.lib.usage.ItemToMediaUsage
@@ -10,17 +9,16 @@ import play.api.libs.json._
 import rx.lang.scala.Observable
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.{AttributeValue => AttributeValueV2, DeleteItemRequest, QueryRequest, ReturnValue => ReturnValueV2, UpdateItemRequest}
+import software.amazon.awssdk.services.dynamodb.model.{DeleteItemRequest, QueryRequest, UpdateItemRequest, AttributeValue => AttributeValueV2, ReturnValue => ReturnValueV2}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
 
 class UsageTable(
-                                  client: AmazonDynamoDBAsync,
-                                  client2: DynamoDbClient,
-                                  tableName: String
-                                ) extends DynamoDB[MediaUsage](client, client2, tableName) with GridLogging {
+                  client2: DynamoDbClient,
+                  tableName: String
+                ) extends DynamoDB[MediaUsage](client2, tableName) with GridLogging {
 
   val hashKeyName = "grouping"
   val rangeKeyName = "usage_id"
