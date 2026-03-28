@@ -8,7 +8,7 @@ import play.api.libs.json._
 import software.amazon.awssdk.enhanced.dynamodb._
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.{UpdateItemRequest, AttributeValue => AttributeValueV2, ReturnValue => ReturnValueV2}
+import software.amazon.awssdk.services.dynamodb.model.{QueryRequest, UpdateItemRequest, AttributeValue => AttributeValueV2, ReturnValue => ReturnValueV2}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
@@ -108,6 +108,21 @@ class InstanceAwareDynamoDB[T](client2: DynamoDbClient, tableName: String, lastM
   def setDeleteV2(id: String, key: String, value: String)
                  (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(id,  deleteExpr(key, lastModifiedKey), AttributeValueV2.fromSs(List(value).asJava))
+  }
+
+  def scanForIdV2(indexName: String, keyname: String, key: String)(implicit ex: ExecutionContext, instance: Instance): Future[List[String]] = Future {
+    val request = QueryRequest.builder()
+      .tableName(tableName)
+      .indexName(indexName)
+      .keyConditionExpression(s"$keyname = :key AND instance = :instance")
+      .expressionAttributeValues(Map(
+        ":key" -> AttributeValueV2.fromS(key),
+        ":instance" -> AttributeValueV2.fromS(instance.id)
+      ).asJava)
+      .build()
+
+    client2.query(request).items().asScala.toList
+      .flatMap(item => Option(item.get("id")).map(_.s()))
   }
 
   private def updateRequestBuilder(id: String, expression: String)(implicit instance: Instance) = {
