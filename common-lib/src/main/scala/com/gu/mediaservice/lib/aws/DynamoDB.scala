@@ -1,7 +1,6 @@
 package com.gu.mediaservice.lib.aws
 
 import com.amazonaws.services.dynamodbv2.document._
-import com.amazonaws.services.dynamodbv2.document.spec._
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
 import com.gu.mediaservice.lib.aws.DynamoDB.{deleteExpr, jsonWithNullAsEmptyString, setExpr}
 import com.gu.mediaservice.lib.logging.GridLogging
@@ -272,34 +271,6 @@ object DynamoDB {
 
   def caseClassToMap[T](caseClass: T)(implicit tjs: Writes[T]): Map[String, JsValue] =
     Json.toJson[T](caseClass).as[JsObject].as[Map[String, JsValue]]
-
-  def addLastModifiedUpdate(update: UpdateItemSpec, lastModifiedKey: String, lastModifiedDate: DateTime): UpdateItemSpec = {
-    val expression = update.getUpdateExpression
-    val valueMap: ValueMap = {
-      val m = new ValueMap()
-      Option(update.getValueMap).foreach { vm =>
-        m.putAll(vm)
-      }
-      m
-    }
-
-    val newExpression = {
-      val keyUpdate: String = s"$lastModifiedKey = :$lastModifiedKey"
-      if (expression.contains("SET ")) {
-          // add to existing clause
-        expression.replace("SET ", s"SET ${keyUpdate}, ")
-      } else {
-        // add SET clause to existing expression
-        s"SET $keyUpdate ${expression}"
-      }
-    }
-
-    valueMap.put(s":$lastModifiedKey", lastModifiedDate.toString)
-
-    update
-      .withUpdateExpression(newExpression)
-      .withValueMap(valueMap)
-  }
 
   def setExpr[T](key: String, lastModifiedKey: Option[String]) = {
     val baseExpression = s"SET $key = :value"
