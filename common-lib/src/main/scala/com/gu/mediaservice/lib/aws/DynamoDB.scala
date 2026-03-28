@@ -1,6 +1,6 @@
 package com.gu.mediaservice.lib.aws
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
+import com.amazonaws.services.dynamodbv2.document._
 import com.amazonaws.services.dynamodbv2.document.spec._
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
 import com.gu.mediaservice.lib.aws.DynamoDB.{deleteExpr, jsonWithNullAsEmptyString, setExpr}
@@ -13,7 +13,6 @@ import software.amazon.awssdk.enhanced.dynamodb.model.{BatchGetItemEnhancedReque
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.{UpdateItemRequest, AttributeValue => AttributeValueV2, QueryRequest => QueryRequestV2, ReturnValue => ReturnValueV2}
 
-import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
@@ -21,13 +20,12 @@ object NoItemFound extends Throwable("item not found")
 
 /**
   * A lightweight wrapper around AWS dynamo SDK for undertaking various operations
-  * @param client AmazonDynamoDBAsync client
   * @param client2 DynamoDbClient client
   * @param tableName the table name for this instance of the dynamoDB wrapper
   * @param lastModifiedKey if set to a string the wrapper will maintain a last modified with that name on any update
   * @tparam T The type of this table
   */
-class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
+class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
   lazy val dynamo2: DynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(client2).build()
   lazy val tableSchema = TableSchema.documentSchemaBuilder()
     .addIndexPartitionKey(TableMetadata.primaryIndexName(), IdKey, AttributeValueType.S)
