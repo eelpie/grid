@@ -1,8 +1,5 @@
 package model
 
-import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
-import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder}
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
 import com.gu.mediaservice.model.usage._
 import lib.WithLogMarker
@@ -36,17 +33,6 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
   ).withServices(DYNAMODB)
   dynamoContainer.start()
 
-  private val dynamoClientV1: AmazonDynamoDBAsync = AmazonDynamoDBAsyncClientBuilder.standard()
-    .withEndpointConfiguration(new EndpointConfiguration(
-      dynamoContainer.getEndpointOverride(DYNAMODB).toString,
-      dynamoContainer.getRegion
-    ))
-    .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(
-      dynamoContainer.getAccessKey,
-      dynamoContainer.getSecretKey
-    )))
-    .build()
-
   private val dynamoClientV2: DynamoDbClient = DynamoDbClient.builder()
     .endpointOverride(dynamoContainer.getEndpointOverride(DYNAMODB))
     .region(Region.of(dynamoContainer.getRegion))
@@ -55,7 +41,7 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
     )).build()
 
   private val usageTable = "test-usage-table-" + UUID.randomUUID().toString
-  private val store = new UsageTable(dynamoClientV1, dynamoClientV2, usageTable)
+  private val store = new UsageTable(dynamoClientV2, usageTable)
 
   override def beforeAll(): Unit = {
     val attributeDefinitions = List(
