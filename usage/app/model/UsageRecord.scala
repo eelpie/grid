@@ -29,17 +29,17 @@ case class UsageRecord(
 ) {
   def toUpdateExpressionV2: (String, Map[String, AttributeValueV2]) = {
     val setFields: List[(String, AttributeValueV2)] = List(
-      mediaId.filter(_.nonEmpty).map(v => "media_id" -> AttributeValueV2.fromS(v)),
-      usageType.map(t => "usage_type" -> AttributeValueV2.fromS(t.toString)),
-      mediaType.filter(_.nonEmpty).map(v => "media_type" -> AttributeValueV2.fromS(v)),
-      lastModified.map(lm => "last_modified" -> AttributeValueV2.fromN(lm.getMillis.toString)),
-      usageStatus.filter(_.nonEmpty).map(v => "usage_status" -> AttributeValueV2.fromS(v)),
+      mediaId.filter(_.nonEmpty).map(mediaId => "media_id" -> AttributeValueV2.fromS(mediaId)),
+      usageType.map(usageType => "usage_type" -> AttributeValueV2.fromS(usageType.toString)),
+      mediaType.filter(_.nonEmpty).map(mediaType => "media_type" -> AttributeValueV2.fromS(mediaType)),
+      lastModified.map(lastModified => "last_modified" -> AttributeValueV2.fromN(lastModified.getMillis.toString)),
+      usageStatus.filter(_.nonEmpty).map(usageStatus => "usage_status" -> AttributeValueV2.fromS(usageStatus)),
       printUsageMetadata.map(m => "print_metadata" -> metadataToAttr(m.toMap)),
       digitalUsageMetadata.map(m => "digital_metadata" -> metadataToAttr(m.toMap)),
       syndicationUsageMetadata.map(m => "syndication_metadata" -> metadataToAttr(m.toMap)),
       frontUsageMetadata.map(m => "front_metadata" -> metadataToAttr(m.toMap)),
       downloadUsageMetadata.map(m => "download_metadata" -> metadataToAttr(m.toMap)),
-      dateAdded.map(da => "date_added" -> AttributeValueV2.fromN(da.getMillis.toString)),
+      dateAdded.map(dateAdded => "date_added" -> AttributeValueV2.fromN(dateAdded.getMillis.toString)),
       dateRemovedOperation match {
         case SetDateRemoved(dr) => Some("date_removed" -> AttributeValueV2.fromN(dr.getMillis.toString))
         case _ => None
