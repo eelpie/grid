@@ -13,7 +13,7 @@ import play.api.libs.json._
 import software.amazon.awssdk.enhanced.dynamodb._
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.{UpdateItemRequest, AttributeValue => AttributeValueV2, ReturnValue => ReturnValueV2}
+import software.amazon.awssdk.services.dynamodb.model.{QueryRequest, UpdateItemRequest, AttributeValue => AttributeValueV2, ReturnValue => ReturnValueV2}
 
 import java.util
 import scala.annotation.tailrec
@@ -170,6 +170,18 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
 
     val items: List[Item] = index.query(spec).iterator.asScala.toList
     items map (a => a.getString("id"))
+  }
+
+  def scanForIdV2(indexName: String, keyname: String, key: String)(implicit ex: ExecutionContext): Future[List[String]] = Future {
+    val request = QueryRequest.builder()
+      .tableName(tableName)
+      .indexName(indexName)
+      .keyConditionExpression(s"$keyname = :key")
+      .expressionAttributeValues(Map(":key" -> AttributeValueV2.fromS(key)).asJava)
+      .build()
+
+    client2.query(request).items().asScala.toList
+      .flatMap(item => Option(item.get("id")).map(_.s()))
   }
 
   private def updateRequestBuilder(id: String, expression: String) = {
