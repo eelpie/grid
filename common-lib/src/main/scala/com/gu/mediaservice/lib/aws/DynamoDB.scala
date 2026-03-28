@@ -1,9 +1,9 @@
 package com.gu.mediaservice.lib.aws
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
+import com.amazonaws.services.dynamodbv2.document._
 import com.amazonaws.services.dynamodbv2.document.spec._
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
-import com.amazonaws.services.dynamodbv2.document.{DynamoDB => AwsDynamoDB, _}
 import com.amazonaws.services.dynamodbv2.model.{AttributeValue, KeysAndAttributes}
 import com.gu.mediaservice.lib.aws.DynamoDB.{deleteExpr, setExpr}
 import com.gu.mediaservice.lib.logging.GridLogging
@@ -15,7 +15,6 @@ import software.amazon.awssdk.enhanced.dynamodb.model.{BatchGetItemEnhancedReque
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.{UpdateItemRequest, AttributeValue => AttributeValueV2, QueryRequest => QueryRequestV2, ReturnValue => ReturnValueV2}
 
-import java.util
 import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
@@ -174,7 +173,7 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
           logger.info(s"Got responses of $responses")
           val results = responses.get(tableName).asScala.toList
             .flatMap(att => {
-              val attributes: util.Map[String, AnyRef] = ItemUtils.toSimpleMapValue(att)
+              val attributes: java.util.Map[String, AnyRef] = ItemUtils.toSimpleMapValue(att)
               logger.info(s"Obtained attributes of $attributes from response $att")
               val json = asJsObject(Item.fromMap(attributes))
               val maybeT = (json \ attributeKey).asOpt[T]
@@ -194,7 +193,6 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
     }}
       .map(chunkIterator => chunkIterator.fold(Map.empty)((acc, result) => acc ++ result))
   }
-
 
   // We cannot update, so make sure you send over the WHOLE document
   def jsonAddV2(id: String, key: String, value: Map[String, JsValue])
