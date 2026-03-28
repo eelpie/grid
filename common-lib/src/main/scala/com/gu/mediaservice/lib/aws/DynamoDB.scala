@@ -4,7 +4,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.amazonaws.services.dynamodbv2.document.spec._
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
 import com.amazonaws.services.dynamodbv2.document.{DynamoDB => AwsDynamoDB, _}
-import com.amazonaws.services.dynamodbv2.model.{AttributeValue, KeysAndAttributes, ReturnValue}
+import com.amazonaws.services.dynamodbv2.model.{AttributeValue, KeysAndAttributes}
 import com.gu.mediaservice.lib.aws.DynamoDB.{deleteExpr, setExpr}
 import com.gu.mediaservice.lib.logging.GridLogging
 import org.joda.time.DateTime
