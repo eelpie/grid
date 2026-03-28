@@ -4,7 +4,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.amazonaws.services.dynamodbv2.document._
 import com.amazonaws.services.dynamodbv2.document.spec._
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
-import com.amazonaws.services.dynamodbv2.model.{AttributeValue, KeysAndAttributes}
 import com.gu.mediaservice.lib.aws.DynamoDB.{deleteExpr, setExpr}
 import com.gu.mediaservice.lib.logging.GridLogging
 import org.joda.time.DateTime
@@ -97,46 +96,6 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
 
   def setAddV2(id: String, key: String, value: List[String])(implicit ex: ExecutionContext): Future[JsObject] = Future {
     updateV2(id, DynamoDB.addExpr(key, lastModifiedKey), AttributeValueV2.fromSs(value.asJava))
-  }
-  def batchGet(ids: List[String], attributeKey: String)
-              (implicit ex: ExecutionContext, rjs: Reads[T]): Future[Map[String, T]] = {
-    val keyChunkList = ids
-      .map(k => Map(IdKey -> new AttributeValue(k)).asJava)
-      .grouped(100)
-
-    Future.traverse(keyChunkList) { keyChunk => {
-      val keysAndAttributes: KeysAndAttributes = new KeysAndAttributes().withKeys(keyChunk.asJava)
-
-      @tailrec
-      def nextPageOfBatch(request: java.util.Map[String, KeysAndAttributes], acc: List[(String, T)])
-                         (implicit ex: ExecutionContext, rjs: Reads[T]): List[(String, T)] = {
-        if (request.isEmpty) acc
-        else {
-          logger.info(s"Fetching records for $request")
-          val response = client.batchGetItem(request)
-          val responses = response.getResponses
-          logger.info(s"Got responses of $responses")
-          val results = responses.get(tableName).asScala.toList
-            .flatMap(att => {
-              val attributes: java.util.Map[String, AnyRef] = ItemUtils.toSimpleMapValue(att)
-              logger.info(s"Obtained attributes of $attributes from response $att")
-              val json = asJsObject(Item.fromMap(attributes))
-              val maybeT = (json \ attributeKey).asOpt[T]
-              logger.info(s"Obtained a T of $maybeT from json $json")
-              maybeT.map(
-                attributes.get(IdKey).toString -> _
-              )
-            })
-          logger.info(s"Got $results for request")
-          nextPageOfBatch(response.getUnprocessedKeys, acc ::: results)
-        }
-      }
-
-      Future {
-        nextPageOfBatch(Map(tableName -> keysAndAttributes).asJava, Nil).toMap
-      }
-    }}
-      .map(chunkIterator => chunkIterator.fold(Map.empty)((acc, result) => acc ++ result))
   }
 
   def batchGetV2(ids: List[String], attributeKey: String)
