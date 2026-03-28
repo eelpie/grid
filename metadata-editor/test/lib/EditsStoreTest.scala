@@ -1,8 +1,5 @@
 package lib
 
-import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
-import com.amazonaws.client.builder.AwsClientBuilder
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.gu.mediaservice.model.{Edits, ImageMetadata}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
@@ -30,17 +27,12 @@ class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Bef
 
   val testTableName: String = "test-edits-table-" + UUID.randomUUID().toString
 
-  private val dynamoClient = AmazonDynamoDBAsyncClientBuilder.standard().
-    withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(dynamoContainer.getEndpoint.toURL.toExternalForm, dynamoContainer.getRegion)).
-    withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(dynamoContainer.getAccessKey, dynamoContainer.getSecretKey))).
-    build()
-
   private val dynamoClient2: DynamoDbClient = DynamoDbClient.builder().
     endpointOverride(dynamoContainer.getEndpointOverride(DYNAMODB)).
     region(Region.of(dynamoContainer.getRegion)).
     credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(dynamoContainer.getAccessKey, dynamoContainer.getSecretKey))).build()
 
-  private val store = new EditsStore(dynamoClient, dynamoClient2, testTableName) {
+  private val store = new EditsStore(dynamoClient2, testTableName) {
   }
 
   override def beforeAll(): Unit = {
