@@ -1,10 +1,5 @@
 package com.gu.mediaservice.lib.aws
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
-import com.amazonaws.services.dynamodbv2.document.spec._
-import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
-import com.amazonaws.services.dynamodbv2.document.{DynamoDB => AwsDynamoDB, _}
-import com.amazonaws.services.dynamodbv2.model.{AttributeValue, KeysAndAttributes, ReturnValue}
 import com.gu.mediaservice.lib.aws.DynamoDB.deleteExpr
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.Instance
@@ -15,20 +10,17 @@ import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.{UpdateItemRequest, AttributeValue => AttributeValueV2, ReturnValue => ReturnValueV2}
 
-import java.util
-import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
 /**
   * A lightweight wrapper around AWS dynamo SDK for undertaking various operations
-  * @param client AmazonDynamoDBAsync client
   * @param client2 DynamoDbClient client
   * @param tableName the table name for this instance of the dynamoDB wrapper
   * @param lastModifiedKey if set to a string the wrapper will maintain a last modified with that name on any update
   * @tparam T The type of this table
   */
-class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
+class InstanceAwareDynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
   lazy val dynamo2: DynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(client2).build()
   lazy val tableSchema = TableSchema.documentSchemaBuilder()
     .addIndexPartitionKey(TableMetadata.primaryIndexName(), InstanceKey, AttributeValueType.S)
@@ -36,9 +28,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
     .attributeConverterProviders(AttributeConverterProvider.defaultProvider())
     .build()
   lazy val table2 = dynamo2.table(tableName, tableSchema)
-
-  lazy val dynamo = new AwsDynamoDB(client)
-  lazy val table: Table = dynamo.getTable(tableName)
 
   private val IdKey = "id"
   private val InstanceKey = "instance"
@@ -64,13 +53,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
       case None       => Future.failed(NoItemFound)
     }
   }
-
-  def removeKey(id: String, key: String)
-               (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
-    update(
-      id,
-      s"REMOVE $key"
-    )
 
   def removeKeyV2(id: String, key: String)(implicit ex: ExecutionContext, instance: Instance) = Future{
     updateV2(id, DynamoDB.removeExpr(key, lastModifiedKey))
@@ -112,47 +94,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
   def setAddV2(id: String, key: String, value: List[String])(implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(id, DynamoDB.addExpr(key, lastModifiedKey), AttributeValueV2.fromSs(value.asJava))
   }
-  def batchGet(ids: List[String], attributeKey: String)
-              (implicit ex: ExecutionContext, rjs: Reads[T], instance: Instance): Future[Map[String, T]] = {
-    val keyChunkList = ids
-      .map(k => Map(InstanceKey -> new AttributeValue(instance.id), IdKey -> new AttributeValue(k)).asJava)
-      .grouped(100)
-
-    Future.traverse(keyChunkList) { keyChunk => {
-      val keysAndAttributes: KeysAndAttributes = new KeysAndAttributes().withKeys(keyChunk.asJava)
-
-      @tailrec
-      def nextPageOfBatch(request: java.util.Map[String, KeysAndAttributes], acc: List[(String, T)])
-                         (implicit ex: ExecutionContext, rjs: Reads[T]): List[(String, T)] = {
-        if (request.isEmpty) acc
-        else {
-          logger.info(s"Fetching records for $request")
-          val response = client.batchGetItem(request)
-          val responses = response.getResponses
-          logger.info(s"Got responses of $responses")
-          val results = responses.get(tableName).asScala.toList
-            .flatMap(att => {
-              val attributes: util.Map[String, AnyRef] = ItemUtils.toSimpleMapValue(att)
-              logger.info(s"Obtained attributes of $attributes from response $att")
-              val json = asJsObject(Item.fromMap(attributes))
-              val maybeT = (json \ attributeKey).asOpt[T]
-              logger.info(s"Obtained a T of $maybeT from json $json")
-              maybeT.map(
-                attributes.get(IdKey).toString -> _
-              )
-            })
-          logger.info(s"Got $results for request")
-          nextPageOfBatch(response.getUnprocessedKeys, acc ::: results)
-        }
-      }
-
-      Future {
-        nextPageOfBatch(Map(tableName -> keysAndAttributes).asJava, Nil).toMap
-      }
-    }}
-      .map(chunkIterator => chunkIterator.fold(Map.empty)((acc, result) => acc ++ result))
-  }
-
 
   // We cannot update, so make sure you send over the WHOLE document
   def jsonAddV2(id: String, key: String, value: Map[String, JsValue])
@@ -167,19 +108,6 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
   def setDeleteV2(id: String, key: String, value: String)
                  (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(id,  deleteExpr(key, lastModifiedKey), AttributeValueV2.fromSs(List(value).asJava))
-  }
-
-  def scanForId(indexName: String, keyname: String, key: String)(implicit ex: ExecutionContext, instance: Instance) = Future {
-    val index = table.getIndex(indexName)
-
-    val spec = new QuerySpec()
-      .withKeyConditionExpression(s"instance = :instance AND $keyname = :key")
-      .withValueMap(new ValueMap()
-        .withString(":instance", instance.id)
-        .withString(":key", key))
-
-    val items: List[Item] = index.query(spec).iterator.asScala.toList
-    items map (a => a.getString("id"))
   }
 
   private def updateRequestBuilder(id: String, expression: String)(implicit instance: Instance) = {
@@ -214,36 +142,8 @@ class InstanceAwareDynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbCli
     Json.parse(jsonString).as[JsObject]
   }
 
-  def update(id: String, expression: String, valueMap: ValueMap)
-            (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
-    update(id, expression, Some(valueMap))
-
-  def update(id: String, expression: String, valueMap: Option[ValueMap] = None)
-            (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
-
-    val baseUpdateSpec = new UpdateItemSpec().
-      withPrimaryKey(IdKey, id, InstanceKey, instance.id).
-      withUpdateExpression(expression).
-      withReturnValues(ReturnValue.ALL_NEW).
-      withValueMap(valueMap.orNull)
-
-    val updateSpec = lastModifiedKey.map { key =>
-      DynamoDB.addLastModifiedUpdate(baseUpdateSpec, key, DateTime.now)
-    }.getOrElse(baseUpdateSpec)
-
-    table.updateItem(updateSpec)
-  } map asJsObject
-
-
-  // FIXME: surely there must be a better way to convert?
-  def asJsObject(item: Item): JsObject =
-    jsonWithNullAsEmptyString(Json.parse(item.toJSON)).as[JsObject] - IdKey - InstanceKey
-
   def asJsObject(doc: EnhancedDocument): JsObject =
     jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject] - IdKey - InstanceKey
-
-  def asJsObject(outcome: UpdateItemOutcome): JsObject =
-    Option(outcome.getItem) map asJsObject getOrElse Json.obj()
 
   // FIXME: Dynamo accepts `null`, but not `""`. This is a well documented issue
   // around the community. This guard keeps the introduction of `null` fairly
