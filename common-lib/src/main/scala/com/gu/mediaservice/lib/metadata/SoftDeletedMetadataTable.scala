@@ -1,11 +1,10 @@
 package com.gu.mediaservice.lib.metadata
 
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.model.ImageStatusRecord
 import org.scanamo._
-import org.scanamo.syntax._
 import org.scanamo.generic.auto._
+import org.scanamo.syntax._
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
 import scala.concurrent.{ExecutionContext, Future}
