@@ -169,6 +169,7 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
 
       whenReady(eventualResult) { result =>
         result.get.usageId should be(usageId)
+        result.get should be(usage)
       }
     }
 
