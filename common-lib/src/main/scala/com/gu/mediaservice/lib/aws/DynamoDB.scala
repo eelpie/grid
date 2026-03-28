@@ -38,8 +38,6 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
     .build()
   lazy val table2 = dynamo2.table(tableName, tableSchema)
 
-  lazy val dynamo = new AwsDynamoDB(client)
-
   private val IdKey = "id"
 
   private def itemKey(key: String) = Key.builder().partitionValue(key).build()
