@@ -35,7 +35,7 @@ class UsageTable(
           "#rangeKeyName" -> rangeKeyName
         ).asJava)
         .expressionAttributeValues(Map(
-          ":hashKey" -> AttributeValueV2.fromS(tableFullKey.hashKey),
+          ":hashKey" -> AttributeValueV2.fromS(instanceAwareHashKey(tableFullKey.hashKey)),
           ":rangeKey" -> AttributeValueV2.fromS(tableFullKey.rangeKey)
         ).asJava)
         .build()
@@ -144,7 +144,7 @@ class UsageTable(
     val request = DeleteItemRequest.builder()
       .tableName(tableName)
       .key(Map(
-        hashKeyName -> AttributeValueV2.fromS(mediaUsage.grouping),
+        hashKeyName -> AttributeValueV2.fromS(instanceAwareHashKey(mediaUsage.grouping)),
         rangeKeyName -> AttributeValueV2.fromS(mediaUsage.usageId.toString)
       ).asJava)
       .build()
