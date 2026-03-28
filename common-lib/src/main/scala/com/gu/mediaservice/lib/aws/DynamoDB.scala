@@ -1,11 +1,10 @@
 package com.gu.mediaservice.lib.aws
 
-import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
+import com.amazonaws.services.dynamodbv2.document._
 import com.amazonaws.services.dynamodbv2.document.spec._
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
-import com.amazonaws.services.dynamodbv2.document.{DynamoDB => AwsDynamoDB, _}
-import com.amazonaws.services.dynamodbv2.model.{AttributeValue, KeysAndAttributes, ReturnValue}
+import com.amazonaws.services.dynamodbv2.model.{AttributeValue, KeysAndAttributes}
 import com.gu.mediaservice.lib.aws.DynamoDB.{deleteExpr, setExpr}
 import com.gu.mediaservice.lib.logging.GridLogging
 import org.joda.time.DateTime
@@ -13,9 +12,8 @@ import play.api.libs.json._
 import software.amazon.awssdk.enhanced.dynamodb._
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.{QueryRequest, UpdateItemRequest, AttributeValue => AttributeValueV2, ReturnValue => ReturnValueV2}
+import software.amazon.awssdk.services.dynamodb.model.{BatchGetItemRequest, QueryRequest, UpdateItemRequest, AttributeValue => AttributeValueV2, KeysAndAttributes => KeysAndAttributesV2, ReturnValue => ReturnValueV2}
 
-import java.util
 import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
@@ -120,7 +118,7 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
           logger.info(s"Got responses of $responses")
           val results = responses.get(tableName).asScala.toList
             .flatMap(att => {
-              val attributes: util.Map[String, AnyRef] = ItemUtils.toSimpleMapValue(att)
+              val attributes: java.util.Map[String, AnyRef] = ItemUtils.toSimpleMapValue(att)
               logger.info(s"Obtained attributes of $attributes from response $att")
               val json = asJsObject(Item.fromMap(attributes))
               val maybeT = (json \ attributeKey).asOpt[T]
@@ -141,6 +139,46 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
       .map(chunkIterator => chunkIterator.fold(Map.empty)((acc, result) => acc ++ result))
   }
 
+  def batchGetV2(ids: List[String], attributeKey: String)
+                (implicit ex: ExecutionContext, rjs: Reads[T]): Future[Map[String, T]] = {
+    val keyChunkList = ids
+      .map(k => Map(IdKey -> AttributeValueV2.fromS(k)).asJava)
+      .grouped(100)
+
+    Future.traverse(keyChunkList) { keyChunk => {
+        val keysAndAttributes: KeysAndAttributesV2 = KeysAndAttributesV2.builder().keys(keyChunk.asJava).build()
+
+        @tailrec
+        def nextPageOfBatch(request: java.util.Map[String, KeysAndAttributesV2], acc: List[(String, T)])
+                           (implicit ex: ExecutionContext, rjs: Reads[T]): List[(String, T)] = {
+          if (request.isEmpty) acc
+          else {
+            logger.info(s"Fetching records for $request")
+            val response = client2.batchGetItem(BatchGetItemRequest.builder().requestItems(request).build())
+            val responses = response.responses()
+            logger.info(s"Got responses of $responses")
+            val results = responses.get(tableName).asScala.toList
+              .flatMap(att => {
+                logger.info(s"Obtained attributes of $att from response")
+                val json = asJsObject(EnhancedDocument.fromAttributeValueMap(att))
+                val maybeT = (json \ attributeKey).asOpt[T]
+                logger.info(s"Obtained a T of $maybeT from json $json")
+                maybeT.map(
+                  att.get(IdKey).s() -> _
+                )
+              })
+            logger.info(s"Got $results for request")
+            nextPageOfBatch(response.unprocessedKeys(), acc ::: results)
+          }
+        }
+
+        Future {
+          nextPageOfBatch(Map(tableName -> keysAndAttributes).asJava, Nil).toMap
+        }
+      }
+      }
+      .map(chunkIterator => chunkIterator.fold(Map.empty)((acc, result) => acc ++ result))
+  }
 
   // We cannot update, so make sure you send over the WHOLE document
   def jsonAddV2(id: String, key: String, value: Map[String, JsValue])
