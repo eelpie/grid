@@ -63,13 +63,6 @@ class DynamoDB[T](client: AmazonDynamoDBAsync, client2: DynamoDbClient, tableNam
     }
   }
 
-  def removeKey(id: String, key: String)
-               (implicit ex: ExecutionContext): Future[JsObject] =
-    update(
-      id,
-      s"REMOVE $key"
-    )
-
   def removeKeyV2(id: String, key: String)(implicit ex: ExecutionContext) = Future{
     updateV2(id, DynamoDB.removeExpr(key, lastModifiedKey))
   }
