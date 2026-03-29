@@ -4,12 +4,13 @@ import controllers.{EditsApi, EditsController, SyndicationController}
 import lib._
 import play.api.ApplicationLoader.Context
 import router.Routes
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 
 class MetadataEditorComponents(context: Context) extends GridComponents(context, new EditsConfig(_)) {
   final override val buildInfo = utils.buildinfo.BuildInfo
 
-  val editsStore = new EditsStore(config)
-  val syndicationStore = new SyndicationStore(config)
+  val editsStore = new EditsStore(config.withAWSCredentials(DynamoDbClient.builder()).build(), config.editsTable)
+  val syndicationStore = new SyndicationStore(config.withAWSCredentials(DynamoDbClient.builder()).build(), config.syndicationTable)
   val notifications = new Notifications(config)
 
   val metrics = new MetadataEditorMetrics(config, actorSystem, applicationLifecycle)
