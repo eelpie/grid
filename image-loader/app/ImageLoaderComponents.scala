@@ -2,7 +2,6 @@ import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{Bedrock, S3Vectors, SimpleSqsMessageConsumer, Embedder}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
-import com.gu.mediaservice.lib.management.InnerServiceStatusCheckController
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.{ImageLoaderController, ImageLoaderManagement, UploadStatusController}
 import lib._
@@ -51,8 +50,7 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val controller = new ImageLoaderController(
     auth, downloader, store, maybeIngestQueue, uploadStatusTable, notifications, config, uploader, quarantineUploader, projector, controllerComponents, gridClient, authorisation, metrics, applicationLifecycle)
   val uploadStatusController = new UploadStatusController(auth, uploadStatusTable, config, controllerComponents, authorisation)
-  val InnerServiceStatusCheckController = new InnerServiceStatusCheckController(auth, controllerComponents, config.services, wsClient)
   val imageLoaderManagement = new ImageLoaderManagement(controllerComponents, buildInfo, controller.maybeIngestQueueAndProcessor)
 
-  override lazy val router = new Routes(httpErrorHandler, controller, uploadStatusController, imageLoaderManagement, InnerServiceStatusCheckController)
+  override lazy val router = new Routes(httpErrorHandler, controller, uploadStatusController, imageLoaderManagement)
 }
