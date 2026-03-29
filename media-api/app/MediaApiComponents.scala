@@ -1,5 +1,5 @@
-import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, S3, S3Vectors, SimpleSqsMessageConsumer, ThrallMessageSender}
-import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, InnerServiceStatusCheckController, Management}
+import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, Management}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers._
@@ -38,7 +38,6 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   val elasticSearchHealthCheck = new ElasticSearchHealthCheck(controllerComponents, elasticSearch)
   val healthcheckController = new Management(controllerComponents, buildInfo)
   val configurationController = new ConfigurationController(controllerComponents)
-  val InnerServiceStatusCheckController = new InnerServiceStatusCheckController(auth, controllerComponents, config.services, wsClient)
 
   override val router = new Routes(
     httpErrorHandler,
@@ -48,7 +47,6 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
     usageController,
     configurationController,
     elasticSearchHealthCheck,
-    healthcheckController,
-    InnerServiceStatusCheckController
+    healthcheckController
   )
 }
