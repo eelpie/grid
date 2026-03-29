@@ -28,8 +28,6 @@ trait Services {
 
   def thrallBaseUri: String
 
-  def allInternalUris: Seq[String]
-
   def corsAllowedDomains: Set[String]
 
   def redirectUriParam: String
@@ -38,6 +36,7 @@ trait Services {
 
   def loginUriTemplate: String
 
+  def allInternalUris: Seq[String]
 }
 
 class SingleHostServices(val rootUrl: String) extends Services {
@@ -66,6 +65,12 @@ class SingleHostServices(val rootUrl: String) extends Services {
 
   val thrallBaseUri: String =  subpathedServiceBaseUri("thrall")
 
+  val corsAllowedDomains: Set[String] = Set(kahunaBaseUri, apiBaseUri, thrallBaseUri)
+
+  val redirectUriParam = "redirectUri"
+  val redirectUriPlaceholder = s"{?$redirectUriParam}"
+  val loginUriTemplate = s"$authBaseUri/login$redirectUriPlaceholder"
+
   val allInternalUris: Seq[String] = Seq(
     kahunaBaseUri,
     apiBaseUri,
@@ -78,12 +83,6 @@ class SingleHostServices(val rootUrl: String) extends Services {
     authBaseUri,
     thrallBaseUri
   )
-
-  val corsAllowedDomains: Set[String] = Set(kahunaBaseUri, apiBaseUri, thrallBaseUri)
-
-  val redirectUriParam = "redirectUri"
-  val redirectUriPlaceholder = s"{?$redirectUriParam}"
-  val loginUriTemplate = s"$authBaseUri/login$redirectUriPlaceholder"
 
   private def subpathedServiceBaseUri(serviceName: String): String = s"$rootUrl/$serviceName"
 }
