@@ -1,4 +1,3 @@
-import com.gu.contentapi.client.ScheduledExecutor
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.UsageApi
@@ -14,10 +13,7 @@ class UsageComponents(context: Context) extends GridComponents(context, new Usag
 
   final override val buildInfo = utils.buildinfo.BuildInfo
 
-  val usageMetadataBuilder = new UsageMetadataBuilder(config)
-  val mediaWrapper = new MediaWrapperOps(usageMetadataBuilder)
-  val liveContentApi = new LiveContentApi(config)(ScheduledExecutor())
-  val usageGroupOps = new UsageGroupOps(config, mediaWrapper)
+  val usageGroupOps = new UsageGroupOps(config)
   val usageTable = new UsageTable(
     config.withAWSCredentials(AmazonDynamoDBAsyncClientBuilder.standard()).build(),
     config.withAWSCredentialsV2(DynamoDbClient.builder()).build(),
@@ -28,18 +24,13 @@ class UsageComponents(context: Context) extends GridComponents(context, new Usag
   val usageRecorder = new UsageRecorder(usageMetrics, usageTable, usageNotifier, usageNotifier)
   val notifications = new Notifications(config)
 
-  if(!config.apiOnly) {
-    val crierReader = new CrierStreamReader(config, usageGroupOps, executionContext)
-    crierReader.start()
-  }
-
   usageRecorder.start()
   context.lifecycle.addStopHook(() => {
     usageRecorder.stop()
     Future.successful(())
   })
 
-  val controller = new UsageApi(auth, authorisation, usageTable, usageGroupOps, notifications, config, usageRecorder.usageApiSubject, liveContentApi, controllerComponents, playBodyParsers)
+  val controller = new UsageApi(auth, authorisation, usageTable, usageGroupOps, notifications, config, usageRecorder.usageApiSubject, controllerComponents, playBodyParsers)
 
 
   override lazy val router = new Routes(httpErrorHandler, controller, management)
