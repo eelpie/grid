@@ -1,4 +1,3 @@
-import com.gu.mediaservice.lib.management.InnerServiceStatusCheckController
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.{EditsApi, EditsController, SyndicationController}
 import lib._
@@ -26,9 +25,8 @@ class MetadataEditorComponents(context: Context) extends GridComponents(context,
     auth, authorisation, editsStore, syndicationStore, notifications, config, controllerComponents
   )
   val controller = new EditsApi(auth, config, authorisation, controllerComponents)
-  val InnerServiceStatusCheckController = new InnerServiceStatusCheckController(auth, controllerComponents, config.services, wsClient)
 
 
 
-  override val router = new Routes(httpErrorHandler, controller, editsController, syndicationController, management, InnerServiceStatusCheckController)
+  override val router = new Routes(httpErrorHandler, controller, editsController, syndicationController, management)
 }
