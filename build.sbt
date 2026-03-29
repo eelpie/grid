@@ -128,7 +128,7 @@ lazy val commonLib = project("common-lib").settings(
     "software.amazon.awssdk" % "bedrockruntime" % awsSdkV2Version,
     "software.amazon.awssdk" % "s3vectors" % awsSdkV2Version,
     ws,
-    "org.testcontainers" % "elasticsearch" % "1.21.4" % Test
+    "org.testcontainers" % "testcontainers-elasticsearch" % "2.0.2" % Test,
   ),
   dependencyOverrides += "ch.qos.logback" % "logback-classic" % "1.2.13" % Test
 )
@@ -184,7 +184,7 @@ lazy val thrall = playProject("thrall", 9002)
       "software.amazon.awssdk" % "kinesis" % awsSdkV2Version,
       "software.amazon.awssdk" % "dynamodb" % awsSdkV2Version,
       "com.gu" %% "kcl-pekko-stream" % "0.1.2",
-      "org.testcontainers" % "elasticsearch" % "1.19.2" % Test,
+      "org.testcontainers" % "testcontainers-elasticsearch" % "2.0.2" % Test,
       "com.google.protobuf" % "protobuf-java" % "3.19.6"
     ),
     dependencyOverrides ++= Seq(
