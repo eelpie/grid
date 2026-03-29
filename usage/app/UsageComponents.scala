@@ -6,6 +6,7 @@ import lib._
 import model._
 import play.api.ApplicationLoader.Context
 import router.Routes
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 
 import scala.concurrent.Future
 
@@ -17,7 +18,10 @@ class UsageComponents(context: Context) extends GridComponents(context, new Usag
   val mediaWrapper = new MediaWrapperOps(usageMetadataBuilder)
   val liveContentApi = new LiveContentApi(config)(ScheduledExecutor())
   val usageGroupOps = new UsageGroupOps(config, mediaWrapper)
-  val usageTable = new UsageTable(config)
+  val usageTable = new UsageTable(
+    config.withAWSCredentials(DynamoDbClient.builder()).build(),
+    config.usageRecordTable
+  )
   val usageMetrics = new UsageMetrics(config, actorSystem, applicationLifecycle)
   val usageNotifier = new UsageNotifier(config, usageTable)
   val usageRecorder = new UsageRecorder(usageMetrics, usageTable, usageNotifier, usageNotifier)

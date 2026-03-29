@@ -1,7 +1,6 @@
 package com.gu.mediaservice.lib.aws
 
 import com.gu.mediaservice.lib.aws.DynamoDB.{deleteExpr, jsonWithNullAsEmptyString, setExpr}
-import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.GridLogging
 import org.joda.time.DateTime
 import play.api.libs.json._
@@ -18,13 +17,12 @@ object NoItemFound extends Throwable("item not found")
 
 /**
   * A lightweight wrapper around AWS dynamo SDK for undertaking various operations
-  * @param config Common grid config including AWS credentials
+  * @param client DynamoDbClient client
   * @param tableName the table name for this instance of the dynamoDB wrapper
   * @param lastModifiedKey if set to a string the wrapper will maintain a last modified with that name on any update
   * @tparam T The type of this table
   */
-class DynamoDB[T](config: CommonConfig, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
-  lazy val client: DynamoDbClient = config.withAWSCredentials(DynamoDbClient.builder()).build()
+class DynamoDB[T](client: DynamoDbClient, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
   lazy val dynamo: DynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(client).build()
   lazy val tableSchema = TableSchema.documentSchemaBuilder()
     .addIndexPartitionKey(TableMetadata.primaryIndexName(), IdKey, AttributeValueType.S)
