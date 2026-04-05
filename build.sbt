@@ -275,15 +275,10 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "eclipse-temurin:11",
+      dockerBaseImage := "eu.gcr.io/grid-301122/jdk-vips:25-8.18",
       dockerExposedPorts := Seq(port),
       dockerCommands ++= Seq(
-        Cmd("USER", "root"), Cmd("RUN", "apt-get", "update"),
-        Cmd("RUN", "apt-get", "install", "-y", "apt-utils"),
-        Cmd("RUN", "apt-get", "install", "-y", "graphicsmagick"),
-        Cmd("RUN", "apt-get", "install", "-y", "graphicsmagick-imagemagick-compat"),
-        Cmd("RUN", "apt-get", "install", "-y", "pngquant"),
-        Cmd("RUN", "apt-get", "install", "-y", "libimage-exiftool-perl")
+        Cmd("ENV", "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so")
       ),
       playDefaultPort := port,
 
