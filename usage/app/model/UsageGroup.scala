@@ -18,12 +18,13 @@ case class UsageGroup(
 class UsageGroupOps(config: UsageConfig)
   extends GridLogging {
 
-  def buildId(digitalMediaUsageRecord: DigitalMediaUsageRecord): String =
+  def buildId(digitalMediaUsageRecord: DigitalMediaUsageRecord): String = s"digital/${
     MD5.hash(List(
       digitalMediaUsageRecord.mediaId,
       digitalMediaUsageRecord.metadata.webUrl,
       digitalMediaUsageRecord.dateAdded.getMillis.toString
     ).mkString("_"))
+  }"
 
   def buildId(printUsage: PrintUsageRecord) = s"print/${MD5.hash(List(
     Some(printUsage.mediaId),
