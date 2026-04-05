@@ -1,6 +1,5 @@
 GET     /                                               controllers.UsageApi.index
 
-GET     /usages/:id                                     controllers.UsageApi.forUsage(id: String)
 GET     /usages/media/:mediaId                          controllers.UsageApi.forMedia(mediaId: String)
 DELETE  /usages/media/:mediaId                          controllers.UsageApi.deleteUsages(mediaId: String)
 DELETE  /usages/media/:mediaId/*usageId                 controllers.UsageApi.deleteSingleUsage(mediaId: String, usageId: String)
@@ -10,6 +9,7 @@ POST    /usages/front                                   controllers.UsageApi.set
 POST    /usages/download                                controllers.UsageApi.setDownloadUsages()
 PUT     /usages/status/update/:mediaId/*usageId         controllers.UsageApi.updateUsageStatus(mediaId: String, usageId: String)
 GET     /usages/digital/content/*contentId/reindex      controllers.UsageApi.reindexForContent(contentId: String)
+GET     /usages/$id<.+>                                 controllers.UsageApi.forUsage(id: String)
 
 # Management
 GET     /management/healthcheck                         com.gu.mediaservice.lib.management.Management.healthCheck
