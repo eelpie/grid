@@ -300,7 +300,7 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "eu.gcr.io/grid-301122/jdk-imageloader:25",
+      dockerBaseImage := "eu.gcr.io/grid-301122/jdk-imageloader-vips:25-8.18.7",
       dockerExposedPorts := Seq(port),
       playDefaultPort := port,
 
