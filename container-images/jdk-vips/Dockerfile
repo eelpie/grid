@@ -25,18 +25,18 @@ RUN apt -y --no-install-suggests install \
     libheif-dev
 
 WORKDIR /tmp
-RUN wget https://github.com/libvips/libvips/releases/download/v8.18.0/vips-8.18.0.tar.xz
-RUN tar xf vips-8.18.0.tar.xz
-WORKDIR /tmp/vips-8.18.0
+RUN wget https://github.com/libvips/libvips/releases/download/v8.18.2/vips-8.18.2.tar.xz
+RUN tar xf vips-8.18.2.tar.xz
+WORKDIR /tmp/vips-8.18.2
 RUN meson setup build
-WORKDIR /tmp/vips-8.18.0/build
+WORKDIR /tmp/vips-8.18.2/build
 RUN meson compile
 RUN meson test
 RUN meson install
 RUN ldconfig
 
-RUN rm /tmp/vips-8.18.0.tar.xz
-RUN rm -r /tmp/vips-8.18.0/
+RUN rm /tmp/vips-8.18.2.tar.xz
+RUN rm -r /tmp/vips-8.18.2/
 
 RUN apt -y --no-install-suggests install \
   pngquant \
