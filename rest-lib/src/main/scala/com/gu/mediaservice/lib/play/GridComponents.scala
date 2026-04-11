@@ -60,7 +60,7 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
       .build()
     sqsClient.getQueueUrl(getQueueRequest).queueUrl
   }
-  val events = new UsageEvents(actorSystem, applicationLifecycle, sqsClient, usageEventsQueueUrl)
+  val events = new UsageEvents(actorSystem, applicationLifecycle, sqsClient, usageEventsQueueUrl, sendUsageEvents = config.sendUsageEvents)
 
   private val authProviderResources = AuthenticationProviderResources(
     commonConfig = config,
