@@ -154,6 +154,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val myInstancesEndpoint: String = string("instance.service.my")
 
   val usageEventsQueueName: String = string("usageEvents.queue.name")
+  val sendUsageEvents: Boolean = boolean("usageEvents.send")
 
   /**
    * Load in a list of external staff photographers, internal staff photographers, contracted photographers,

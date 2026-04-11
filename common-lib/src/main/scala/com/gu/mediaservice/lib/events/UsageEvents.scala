@@ -14,7 +14,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageRequest
 import scala.concurrent.duration.DurationInt
 import scala.util.Random
 
-class UsageEvents(actorSystem: ActorSystem, applicationLifecycle: ApplicationLifecycle, sqsClient: SqsClient, queueUrl: String) {
+class UsageEvents(actorSystem: ActorSystem, applicationLifecycle: ApplicationLifecycle, sqsClient: SqsClient, queueUrl: String, sendUsageEvents: Boolean) {
 
   private val random = new Random()
   private val usageEventsActor = actorSystem.actorOf(UsageEventsActor.props(sqsClient, queueUrl), s"usageeventsactor-${random.alphanumeric.take(8).mkString}")
@@ -22,43 +22,43 @@ class UsageEvents(actorSystem: ActorSystem, applicationLifecycle: ApplicationLif
   applicationLifecycle.addStopHook(() => (usageEventsActor ? UsageEventsActor.Shutdown)(Timeout(5.seconds)))
 
   def successfulIngestFromQueue(instance: Instance, image: String, filesize: Long): Unit = {
-    usageEventsActor ! UsageEvent(`type` = "imageIngest", instance = instance.id, image = Some(image), filesize = Some(filesize))
+    if (sendUsageEvents) usageEventsActor ! UsageEvent(`type` = "imageIngest", instance = instance.id, image = Some(image), filesize = Some(filesize))
   }
 
   def prepareUpload(instance: Instance, image: String, apiKey: Option[String], user: Option[String]): Unit = {
-    usageEventsActor ! UsageEvent(`type` = "prepareUpload", instance = instance.id, image = Some(image), apiKey = apiKey, user = user)
+    if (sendUsageEvents) usageEventsActor ! UsageEvent(`type` = "prepareUpload", instance = instance.id, image = Some(image), apiKey = apiKey, user = user)
   }
 
   def uploadImage(instance: Instance, image: String, filesize: Long, apiKey: Option[String], user: Option[String]): Unit = {
-    usageEventsActor ! UsageEvent(`type` = "imageUpload", instance = instance.id, image = Some(image), filesize = Some(filesize), apiKey = apiKey, user = user)
+    if (sendUsageEvents) usageEventsActor ! UsageEvent(`type` = "imageUpload", instance = instance.id, image = Some(image), filesize = Some(filesize), apiKey = apiKey, user = user)
   }
 
   def downloadOriginal(instance: Instance, image: String, filesize: Option[Long], apiKey: Option[String], user: Option[String]): Unit = {
-    usageEventsActor ! UsageEvent(`type` = "downloadOriginal", instance = instance.id, image = Some(image), filesize = filesize, apiKey = apiKey, user = user)
+    if (sendUsageEvents) usageEventsActor ! UsageEvent(`type` = "downloadOriginal", instance = instance.id, image = Some(image), filesize = filesize, apiKey = apiKey, user = user)
   }
 
   def softDelete(instance: Instance, image: String): Unit = {
-    usageEventsActor ! UsageEvent(`type` = "softDelete", instance = instance.id, image = Some(image), filesize = None, apiKey = None, user = None)
+    if (sendUsageEvents) usageEventsActor ! UsageEvent(`type` = "softDelete", instance = instance.id, image = Some(image), filesize = None, apiKey = None, user = None)
   }
 
   def unsoftDelete(instance: Instance, image: String): Unit = {
-    usageEventsActor ! UsageEvent(`type` = "unsoftDelete", instance = instance.id, image = Some(image), filesize = None, apiKey = None, user = None)
+    if (sendUsageEvents) usageEventsActor ! UsageEvent(`type` = "unsoftDelete", instance = instance.id, image = Some(image), filesize = None, apiKey = None, user = None)
   }
 
   def deleteImage(instance: Instance, image: String): Unit = {
-    usageEventsActor ! UsageEvent(`type` = "deleteImage", instance = instance.id, image = Some(image), filesize = None, apiKey = None, user = None)
+    if (sendUsageEvents) usageEventsActor ! UsageEvent(`type` = "deleteImage", instance = instance.id, image = Some(image), filesize = None, apiKey = None, user = None)
   }
 
   def hardDeleteImage(instance: Instance, image: String) = {
-    usageEventsActor ! UsageEvent(`type` = "hardDeleteImage", instance = instance.id, image = Some(image), filesize = None, apiKey = None, user = None)
+    if (sendUsageEvents) usageEventsActor ! UsageEvent(`type` = "hardDeleteImage", instance = instance.id, image = Some(image), filesize = None, apiKey = None, user = None)
   }
 
   def apiKeyUsed(instance: Instance, apiKey: String) = {
-    usageEventsActor ! UsageEvent(`type` = "apiKeyUsed", instance = instance.id, apiKey = Some(apiKey))
+    if (sendUsageEvents) usageEventsActor ! UsageEvent(`type` = "apiKeyUsed", instance = instance.id, apiKey = Some(apiKey))
   }
 
   def userAuthed(instance: Instance, user: String) = {
-    usageEventsActor ! UsageEvent(`type` = "userAuthed", instance = instance.id, user = Some(user))
+    if (sendUsageEvents) usageEventsActor ! UsageEvent(`type` = "userAuthed", instance = instance.id, user = Some(user))
   }
 }
 
