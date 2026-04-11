@@ -80,7 +80,8 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
     auth,
     instanceMessageSender,
     events,
-    messageSender
+    messageSender,
+    config.processMessages
   )
 
   val thrallStreamProcessor = new ThrallStreamProcessor(

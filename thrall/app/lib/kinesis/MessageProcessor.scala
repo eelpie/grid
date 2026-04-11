@@ -36,37 +36,44 @@ class MessageProcessor(
   auth: Authentication,
   instanceMessageSender: InstanceMessageSender,
   usageEvents: UsageEvents,
-  messageSender: ThrallMessageSender
+  messageSender: ThrallMessageSender,
+  processMessages: Boolean
 ) extends GridLogging with MessageSubjects {
 
   def process(updateMessage: ThrallMessage, logMarker: LogMarker)(implicit ec: ExecutionContext): Future[Any] = {
-    updateMessage match {
-      case message: ImageMessage => indexImage(message, logMarker)
-      case message: DeleteImageMessage => deleteImage(message, logMarker)
-      case message: SoftDeleteImageMessage => softDeleteImage(message, logMarker)
-      case message: UnSoftDeleteImageMessage => unSoftDeleteImage(message, logMarker)
-      case message: DeleteImageExportsMessage => deleteImageExports(message, logMarker)
-      case message: UpdateImageExportsMessage => updateImageExports(message, logMarker)
-      case message: UpdateImageUserMetadataMessage => updateImageUserMetadata(message, logMarker)
-      case message: UpdateImageUsagesMessage => updateImageUsages(message, logMarker)
-      case message: ReplaceImageLeasesMessage => replaceImageLeases(message, logMarker)
-      case message: AddImageLeaseMessage => addImageLease(message, logMarker)
-      case message: RemoveImageLeaseMessage => removeImageLease(message, logMarker)
-      case message: SetImageCollectionsMessage => setImageCollections(message, logMarker)
-      case message: DeleteUsagesMessage => deleteAllUsages(message, logMarker)
-      case message: DeleteSingleUsageMessage => deleteSingleUsage(message, logMarker)
-      case message: UpdateImageSyndicationMetadataMessage => upsertSyndicationRightsOnly(message, logMarker)
-      case message: UpdateImagePhotoshootMetadataMessage => updateImagePhotoshoot(message, logMarker)
-      case message: CreateMigrationIndexMessage => createMigrationIndex(message, logMarker)
-      case message: MigrateImageMessage => migrateImage(message, logMarker)
-      case message: UpsertFromProjectionMessage => upsertImageFromProjection(message, logMarker)
-      case message: UpdateUsageStatusMessage => updateUsageStatus(message, logMarker)
-      case message: CompleteMigrationMessage => completeMigration(message, logMarker)
-      case message: CreateInstanceMessage => setupNewInstance(message, logMarker)
-      case message: ReindexImageMessage => reindexImage(message, logMarker)
-      case _ =>
-        logger.info(s"Unmatched ThrallMessage type: ${updateMessage.subject}; ignoring")
-        Future.successful(())
+    if (processMessages) {
+      updateMessage match {
+        case message: ImageMessage => indexImage(message, logMarker)
+        case message: DeleteImageMessage => deleteImage(message, logMarker)
+        case message: SoftDeleteImageMessage => softDeleteImage(message, logMarker)
+        case message: UnSoftDeleteImageMessage => unSoftDeleteImage(message, logMarker)
+        case message: DeleteImageExportsMessage => deleteImageExports(message, logMarker)
+        case message: UpdateImageExportsMessage => updateImageExports(message, logMarker)
+        case message: UpdateImageUserMetadataMessage => updateImageUserMetadata(message, logMarker)
+        case message: UpdateImageUsagesMessage => updateImageUsages(message, logMarker)
+        case message: ReplaceImageLeasesMessage => replaceImageLeases(message, logMarker)
+        case message: AddImageLeaseMessage => addImageLease(message, logMarker)
+        case message: RemoveImageLeaseMessage => removeImageLease(message, logMarker)
+        case message: SetImageCollectionsMessage => setImageCollections(message, logMarker)
+        case message: DeleteUsagesMessage => deleteAllUsages(message, logMarker)
+        case message: DeleteSingleUsageMessage => deleteSingleUsage(message, logMarker)
+        case message: UpdateImageSyndicationMetadataMessage => upsertSyndicationRightsOnly(message, logMarker)
+        case message: UpdateImagePhotoshootMetadataMessage => updateImagePhotoshoot(message, logMarker)
+        case message: CreateMigrationIndexMessage => createMigrationIndex(message, logMarker)
+        case message: MigrateImageMessage => migrateImage(message, logMarker)
+        case message: UpsertFromProjectionMessage => upsertImageFromProjection(message, logMarker)
+        case message: UpdateUsageStatusMessage => updateUsageStatus(message, logMarker)
+        case message: CompleteMigrationMessage => completeMigration(message, logMarker)
+        case message: CreateInstanceMessage => setupNewInstance(message, logMarker)
+        case message: ReindexImageMessage => reindexImage(message, logMarker)
+        case _ =>
+          logger.info(s"Unmatched ThrallMessage type: ${updateMessage.subject}; ignoring")
+          Future.successful(())
+      }
+
+    } else {
+      logger.info(s"Message processing is disabled; ignoring ThrallMessage type: ${updateMessage.subject}")
+      Future.successful(())
     }
   }
 
