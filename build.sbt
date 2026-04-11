@@ -90,6 +90,7 @@ val maybeBBCLib: Option[sbt.ProjectReference] = if(bbcBuildProcess) Some(bbcProj
 
 lazy val commonLib = project("common-lib").settings(
   libraryDependencies ++= Seq(
+    "com.google.guava" % "guava" % "33.5.0-jre",
     "com.gu" %% "editorial-permissions-client" % "4.0.0",
     "com.gu" %% "pan-domain-auth-play_3-0" % "9.0.0",
     "com.amazonaws" % "aws-java-sdk-iam" % awsSdkVersion,
