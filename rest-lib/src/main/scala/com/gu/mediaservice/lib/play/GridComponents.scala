@@ -54,13 +54,13 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
     .region(Region.EU_WEST_1)
     .build()
 
-  private val usageEventsQueueUrl: String = {
+  val usageEventsQueueUrl: String = {
     val getQueueRequest = GetQueueUrlRequest.builder()
       .queueName(config.usageEventsQueueName)
       .build()
     sqsClient.getQueueUrl(getQueueRequest).queueUrl
   }
-  val events = new UsageEvents(actorSystem, applicationLifecycle, sqsClient, usageEventsQueueUrl, sendUsageEvents = config.sendUsageEvents)
+  val events = new UsageEvents(actorSystem, applicationLifecycle, sqsClient, usageEventsQueueUrl, sendUsageEvents = true)
 
   private val authProviderResources = AuthenticationProviderResources(
     commonConfig = config,

@@ -1,6 +1,7 @@
 import com.gu.kinesis.{KinesisRecord, KinesisSource, ConsumerConfig => KclPekkoStreamConfig}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{S3, S3Vectors, ThrallMessageSender}
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.instances.{Instances, InstancesClient}
 import com.gu.mediaservice.lib.logging.MarkerMap
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -70,6 +71,8 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val automationSource: Source[KinesisRecord, Future[Done]] = KinesisSource(lowPriorityKinesisConfig)
   val migrationSourceWithSender: MigrationSourceWithSender = new MigrationSourceWithSenderFactory(materializer, auth.innerServiceCall, es, gridClient, config.projectionParallelism, new InstancesClient(config, wsClient)).build()
 
+  val thrallUsageEvents = new UsageEvents(actorSystem, applicationLifecycle, sqsClient, usageEventsQueueUrl, sendUsageEvents = config.sendUsageEvents)
+
   val thrallEventConsumer = new ThrallEventConsumer(
     es,
     thrallMetrics,
@@ -79,7 +82,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
     gridClient,
     auth,
     instanceMessageSender,
-    events,
+    thrallUsageEvents,
     messageSender,
     config.processMessages
   )
@@ -126,7 +129,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val maybeCustomReapableEligibility = config.maybeReapableEligibilityClass(applicationLifecycle)
 
   val thrallController = new ThrallController(es, store, migrationSourceWithSender.send, messageSender, actorSystem, auth, config.services, controllerComponents, gridClient, s3, config.imageBucket, lowPriorityMessageSender)
-  val reaperController = new ReaperController(es, store, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents, wsClient, events)
+  val reaperController = new ReaperController(es, store, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents, wsClient, thrallUsageEvents)
   val healthCheckController = new HealthCheck(es, streamRunning.isCompleted, config, controllerComponents)
 
   override lazy val router = new Routes(httpErrorHandler, thrallController, reaperController, healthCheckController, management, assets).withPrefix("/thrall/")
