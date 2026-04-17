@@ -6,6 +6,7 @@ import com.gu.mediaservice.lib.instances.{Instances, InstancesClient}
 import com.gu.mediaservice.lib.logging.MarkerMap
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
+import com.gu.mediaservice.model.Instance
 import com.typesafe.scalalogging.StrictLogging
 import controllers.{AssetsComponents, HealthCheck, ReaperController, ThrallController}
 import instances.{InstanceMessageSender, InstanceUsageMessage}
@@ -102,26 +103,28 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   Source.repeat(()).throttle(1, per = 5.minute).map(_ => {
     implicit val logMarker: MarkerMap = MarkerMap()
-    getInstances().map { instances =>
-      // Foreach instance; query elastic for number image and total file size
-      instances.foreach { instance =>
-        logger.info("Checking usage for: " + instance)
-        implicit val i = instance
-        val eventualImagesCount = es.countTotal(isSoftedDeleted = false)
-        val eventualSoftDeletedCount = es.countTotal(isSoftedDeleted = true)
-        val eventualTotalImageSize = es.countTotalImageSize()
-        for {
-          imageCount <- eventualImagesCount
-          softDeletedCount <- eventualSoftDeletedCount
-          totalImageSize <- eventualTotalImageSize
-        } yield {
-          logger.info(s"Instance ${instance.id} has $imageCount/$softDeletedCount images with total size: " + totalImageSize)
-          instanceMessageSender.send(InstanceUsageMessage(instance = instance.id, imageCount = imageCount, softDeletedCount = softDeletedCount, totalImageSize = totalImageSize))
+    if (config.sendUsageEvents) {
+      getInstances().map { instances =>
+        // Foreach instance; query elastic for number image and total file size
+        instances.foreach { implicit instance =>
+          logger.info("Checking usage for: " + instance)
+          val eventualImagesCount = es.countTotal(isSoftedDeleted = false)
+          val eventualSoftDeletedCount = es.countTotal(isSoftedDeleted = true)
+          val eventualTotalImageSize = es.countTotalImageSize()
+          for {
+            imageCount <- eventualImagesCount
+            softDeletedCount <- eventualSoftDeletedCount
+            totalImageSize <- eventualTotalImageSize
+          } yield {
+            logger.info(s"Instance ${instance.id} has $imageCount/$softDeletedCount images with total size: " + totalImageSize)
+            instanceMessageSender.send(InstanceUsageMessage(instance = instance.id, imageCount = imageCount, softDeletedCount = softDeletedCount, totalImageSize = totalImageSize))
+          }
         }
       }
+    } else {
+      logger.info("Skipping instance usage because sendUsageEvents is disabled")
     }
     // TODO Block?
-
   }).run()
 
 
