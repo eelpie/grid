@@ -36,7 +36,7 @@ class ThrallEventConsumer(es: ElasticSearch,
   private val attempts = 2
   private val timeout = attemptTimeout * attempts + delay * (attempts - 1)
 
-  private val messageProcessor = new MessageProcessor(es, store, metadataEditorNotifications, gridClient, auth, instanceMessageSender, usageEvents, messageSender, processMessages)
+  private val messageProcessor = new MessageProcessor(es, store, metadataEditorNotifications, gridClient, auth, instanceMessageSender, usageEvents, messageSender, !processMessages)
 
   private implicit val implicitActorSystem: ActorSystem = actorSystem
 
