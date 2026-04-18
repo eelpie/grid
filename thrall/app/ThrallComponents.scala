@@ -131,7 +131,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
   val maybeCustomReapableEligibility = config.maybeReapableEligibilityClass(applicationLifecycle)
 
-  val thrallController = new ThrallController(es, store, migrationSourceWithSender.send, messageSender, actorSystem, auth, config.services, controllerComponents, gridClient, s3, config.imageBucket, lowPriorityMessageSender)
+  val thrallController = new ThrallController(es, store, migrationSourceWithSender.send, messageSender, actorSystem, auth, config.services, controllerComponents, gridClient, s3, config.imageBucket, lowPriorityMessageSender, config)
   val reaperController = new ReaperController(es, store, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents, wsClient, thrallUsageEvents)
   val healthCheckController = new HealthCheck(es, streamRunning.isCompleted, config, controllerComponents)
 

@@ -7,13 +7,22 @@
 @import com.gu.mediaservice.lib.elasticsearch.NotRunning
 @import com.gu.mediaservice.lib.elasticsearch.CompletionPreview
 @(currentAlias: String,
-  currentIndex: String,
-  currentIndexCount: String,
-  migrationAlias: String,
-  migrationIndexCount: String,
-  migrationStatus: MigrationStatus,
-  hasHistoricalIndex: Boolean
+    currentIndex: String,
+    currentIndexCount: String,
+    migrationAlias: String,
+    migrationIndexCount: String,
+    migrationStatus: MigrationStatus,
+    hasHistoricalIndex: Boolean,
+    elasticSearchUrl: String,
+    kinesisAppName: String,
+    kinesisLowPriorityAppName: String,
+    isInFollowerMode: Boolean
 )
+
+elasticSearchUrl: @elasticSearchUrl
+kinesisAppName: @kinesisAppName
+kinesisLowPriorityAppName: @kinesisLowPriorityAppName
+isInFollowerMode @isInFollowerMode
 
 @migrationIndexCell = {
     @migrationStatus match {
