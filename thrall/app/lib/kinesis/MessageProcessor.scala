@@ -37,44 +37,38 @@ class MessageProcessor(
   instanceMessageSender: InstanceMessageSender,
   usageEvents: UsageEvents,
   messageSender: ThrallMessageSender,
-  processMessages: Boolean
+  isInFollowerMode: Boolean
 ) extends GridLogging with MessageSubjects {
 
   def process(updateMessage: ThrallMessage, logMarker: LogMarker)(implicit ec: ExecutionContext): Future[Any] = {
-    if (processMessages) {
-      logger.info("Processing message: " + updateMessage.subject)
-      updateMessage match {
-        case message: ImageMessage => indexImage(message, logMarker)
-        case message: DeleteImageMessage => deleteImage(message, logMarker)
-        case message: SoftDeleteImageMessage => softDeleteImage(message, logMarker)
-        case message: UnSoftDeleteImageMessage => unSoftDeleteImage(message, logMarker)
-        case message: DeleteImageExportsMessage => deleteImageExports(message, logMarker)
-        case message: UpdateImageExportsMessage => updateImageExports(message, logMarker)
-        case message: UpdateImageUserMetadataMessage => updateImageUserMetadata(message, logMarker)
-        case message: UpdateImageUsagesMessage => updateImageUsages(message, logMarker)
-        case message: ReplaceImageLeasesMessage => replaceImageLeases(message, logMarker)
-        case message: AddImageLeaseMessage => addImageLease(message, logMarker)
-        case message: RemoveImageLeaseMessage => removeImageLease(message, logMarker)
-        case message: SetImageCollectionsMessage => setImageCollections(message, logMarker)
-        case message: DeleteUsagesMessage => deleteAllUsages(message, logMarker)
-        case message: DeleteSingleUsageMessage => deleteSingleUsage(message, logMarker)
-        case message: UpdateImageSyndicationMetadataMessage => upsertSyndicationRightsOnly(message, logMarker)
-        case message: UpdateImagePhotoshootMetadataMessage => updateImagePhotoshoot(message, logMarker)
-        case message: CreateMigrationIndexMessage => createMigrationIndex(message, logMarker)
-        case message: MigrateImageMessage => migrateImage(message, logMarker)
-        case message: UpsertFromProjectionMessage => upsertImageFromProjection(message, logMarker)
-        case message: UpdateUsageStatusMessage => updateUsageStatus(message, logMarker)
-        case message: CompleteMigrationMessage => completeMigration(message, logMarker)
-        case message: CreateInstanceMessage => setupNewInstance(message, logMarker)
-        case message: ReindexImageMessage => reindexImage(message, logMarker)
-        case _ =>
-          logger.info(s"Unmatched ThrallMessage type: ${updateMessage.subject}; ignoring")
-          Future.successful(())
-      }
-
-    } else {
-      logger.info(s"Message processing is disabled; ignoring ThrallMessage type: ${updateMessage.subject}")
-      Future.successful(())
+    logger.info("Processing message: " + updateMessage.subject)
+    (updateMessage, isInFollowerMode) match {
+      case (message: ImageMessage, _) => indexImage(message, logMarker)
+      case (message: DeleteImageMessage, _) => deleteImage(message, logMarker)
+      case (message: SoftDeleteImageMessage, _) => softDeleteImage(message, logMarker)
+      case (message: UnSoftDeleteImageMessage, _) => unSoftDeleteImage(message, logMarker)
+      case (message: DeleteImageExportsMessage, _) => deleteImageExports(message, logMarker)
+      case (message: UpdateImageExportsMessage, _) => updateImageExports(message, logMarker)
+      case (message: UpdateImageUserMetadataMessage, _) => updateImageUserMetadata(message, logMarker)
+      case (message: UpdateImageUsagesMessage, _) => updateImageUsages(message, logMarker)
+      case (message: ReplaceImageLeasesMessage, _) => replaceImageLeases(message, logMarker)
+      case (message: AddImageLeaseMessage, _) => addImageLease(message, logMarker)
+      case (message: RemoveImageLeaseMessage, _) => removeImageLease(message, logMarker)
+      case (message: SetImageCollectionsMessage, _) => setImageCollections(message, logMarker)
+      case (message: DeleteUsagesMessage, _) => deleteAllUsages(message, logMarker)
+      case (message: DeleteSingleUsageMessage, _) => deleteSingleUsage(message, logMarker)
+      case (message: UpdateImageSyndicationMetadataMessage, _) => upsertSyndicationRightsOnly(message, logMarker)
+      case (message: UpdateImagePhotoshootMetadataMessage, _) => updateImagePhotoshoot(message, logMarker)
+      case (message: CreateMigrationIndexMessage, _) => createMigrationIndex(message, logMarker)
+      case (message: MigrateImageMessage, false) => migrateImage(message, logMarker)
+      case (message: UpsertFromProjectionMessage, _) => upsertImageFromProjection(message, logMarker)
+      case (message: UpdateUsageStatusMessage, _) => updateUsageStatus(message, logMarker)
+      case (message: CompleteMigrationMessage, false) => completeMigration(message, logMarker)
+      case (message: CreateInstanceMessage, false) => setupNewInstance(message, logMarker)
+      case (message: ReindexImageMessage, false) => reindexImage(message, logMarker)
+      case _ =>
+        logger.info(s"Unmatched ThrallMessage type: ${updateMessage.subject}; ignoring")
+        Future.successful(())
     }
   }
 
@@ -196,11 +190,13 @@ class MessageProcessor(
       es.deleteImage(message.id).map { requests =>
         requests.map {
           _: ElasticSearchDeleteResponse =>
-            store.deleteOriginal(message.id)
-            store.deleteThumbnail(message.id)
-            store.deletePNG(message.id)
-            metadataEditorNotifications.publishImageDeletion(message.id, message.instance)
-            usageEvents.deleteImage(instance = message.instance, image = message.id)
+            if (!isInFollowerMode) {
+              store.deleteOriginal(message.id)
+              store.deleteThumbnail(message.id)
+              store.deletePNG(message.id)
+              metadataEditorNotifications.publishImageDeletion(message.id, message.instance)
+              usageEvents.deleteImage(instance = message.instance, image = message.id)
+            }
             EsResponse(s"Image deleted: ${message.id}")
         } recoverWith {
           case ImageNotDeletable =>
