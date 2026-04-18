@@ -10,7 +10,7 @@ import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects.ReindexImage
 import lib.elasticsearch.ElasticSearch
-import lib.{MigrationRequest, OptionalFutureRunner, Paging, ThrallStore}
+import lib.{MigrationRequest, OptionalFutureRunner, Paging, ThrallConfig, ThrallStore}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Sink, Source}
@@ -42,7 +42,8 @@ class ThrallController(
   gridClient: GridClient,
   s3: S3,
   imageBucket: S3Bucket,
-  lowPriorityMessageSender: ThrallMessageSender
+  lowPriorityMessageSender: ThrallMessageSender,
+  thrallConfig: ThrallConfig
 )(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging with InstanceForRequest {
 
   private val numberFormatter: Long => String = java.text.NumberFormat.getIntegerInstance().format
@@ -72,7 +73,11 @@ class ThrallController(
         migrationAlias = es.imagesMigrationAlias(instance),
         migrationIndexCount = migrationIndexCountFormatted,
         migrationStatus = es.migrationStatus,
-        hasHistoricalIndex = historicalIndex.isDefined
+        hasHistoricalIndex = historicalIndex.isDefined,
+        elasticSearchUrl = thrallConfig.esConfig.url,
+        kinesisAppName = thrallConfig.kinesisConfig.appName,
+        kinesisLowPriorityAppName = thrallConfig.kinesisLowPriorityConfig.appName,
+        isInFollowerMode = thrallConfig.isInFollowerMode
       ))
     }
   }
