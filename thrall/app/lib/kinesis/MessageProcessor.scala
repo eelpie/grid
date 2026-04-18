@@ -42,6 +42,7 @@ class MessageProcessor(
 
   def process(updateMessage: ThrallMessage, logMarker: LogMarker)(implicit ec: ExecutionContext): Future[Any] = {
     if (processMessages) {
+      logger.info("Processing message: " + updateMessage.subject)
       updateMessage match {
         case message: ImageMessage => indexImage(message, logMarker)
         case message: DeleteImageMessage => deleteImage(message, logMarker)
