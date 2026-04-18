@@ -55,8 +55,8 @@ class ReaperController(
     }
   }
 
-  config.maybeReaperCountPerRun match {
-    case Some(countOfImagesToReap) =>
+  (config.maybeReaperCountPerRun, config.isInFollowerMode) match {
+    case (Some(countOfImagesToReap), false) =>
       // We always want the reaps to occur at predictable times (e.g. on the hour, then 15, 30, 45 minutes past)
       // However, if the first reap is imminent, then skip it, to avoid double reaps during deployment when both
       // instances are up and running simultaneously

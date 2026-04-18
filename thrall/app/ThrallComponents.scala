@@ -72,7 +72,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   val automationSource: Source[KinesisRecord, Future[Done]] = KinesisSource(lowPriorityKinesisConfig)
   val migrationSourceWithSender: MigrationSourceWithSender = new MigrationSourceWithSenderFactory(materializer, auth.innerServiceCall, es, gridClient, config.projectionParallelism, new InstancesClient(config, wsClient)).build()
 
-  val thrallUsageEvents = new UsageEvents(actorSystem, applicationLifecycle, sqsClient, usageEventsQueueUrl, sendUsageEvents = config.sendUsageEvents)
+  val thrallUsageEvents = new UsageEvents(actorSystem, applicationLifecycle, sqsClient, usageEventsQueueUrl, sendUsageEvents = !config.isInFollowerMode)
 
   val thrallEventConsumer = new ThrallEventConsumer(
     es,
@@ -85,7 +85,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
     instanceMessageSender,
     thrallUsageEvents,
     messageSender,
-    config.processMessages
+    config.isInFollowerMode
   )
 
   val thrallStreamProcessor = new ThrallStreamProcessor(
@@ -103,7 +103,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   Source.repeat(()).throttle(1, per = 5.minute).map(_ => {
     implicit val logMarker: MarkerMap = MarkerMap()
-    if (config.sendUsageEvents) {
+    if (!config.isInFollowerMode) {
       getInstances().map { instances =>
         // Foreach instance; query elastic for number image and total file size
         instances.foreach { implicit instance =>
