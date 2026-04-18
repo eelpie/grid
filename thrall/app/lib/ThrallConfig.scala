@@ -82,6 +82,5 @@ class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElast
 
   val instanceUsageQueueName: String = string("instance.usage.queue.name")
 
-  val processMessages: Boolean = boolean("thrall.process.messages")
-  val sendUsageEvents: Boolean = boolean("thrall.usageEvents.send")
+  val isInFollowerMode: Boolean = boolean("thrall.followerMode")
 }
