@@ -60,6 +60,10 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
       }
     }
   }
+
+  {
+    logger.info("Thrall settings: " + Seq(config.esConfig.url, config.kinesisConfig.appName, config.kinesisLowPriorityConfig.appName, config.isInFollowerMode).mkString(", "))
+  }
   Await.ready(ensureIndexes(), 60 seconds)
 
   val messageSender = new ThrallMessageSender(config.thrallKinesisStreamConfig)
