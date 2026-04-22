@@ -125,7 +125,7 @@ class ThrallStreamProcessor(
   }
 
   def createAutomationStream(): Source[(TaggedRecord[ThrallMessage], Stopwatch, ThrallMessage), Future[Done]] = {
-    automationKinesisSource.mapAsync(20) { result =>
+    automationKinesisSource.mapAsync(5) { result =>
       val stopwatch = Stopwatch.start
       consumer.processMessage(result.payload)
         .recover { case _ => () }
