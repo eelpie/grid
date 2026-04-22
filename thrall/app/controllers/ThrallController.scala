@@ -386,13 +386,22 @@ class ThrallController(
         .file("csv")
         .map { csv =>
           implicit val instance: Instance = instanceOf(request)
-          val imageIds: Seq[String] = scala.io.Source.fromFile(csv.ref.toFile).getLines().toList
-          imageIds.foreach { imageId =>
-            val reindexImageMessage = ReindexImageMessage(id = imageId, lastModified = DateTime.now(DateTimeZone.UTC), instance = instance)
-            messageSender.publish(reindexImageMessage)
+          val mediaIds: Seq[String] = scala.io.Source.fromFile(csv.ref.toFile).getLines().toList
+
+          val batches = mediaIds.grouped(100)
+          batches.foreach { batch =>
+            val messages = batch.map { mediaId =>
+              UpdateMessage(
+                subject = ReindexImage,
+                id = Some(mediaId),
+                instance = instance
+              )
+            }
+            lowPriorityMessageSender.publish(messages)
           }
+
           Future.successful {
-            Ok(s"reindex request for ${imageIds.size} images submitted")
+            Ok(s"reindex request for ${mediaIds.size} images submitted")
           }
         }
         .getOrElse {
