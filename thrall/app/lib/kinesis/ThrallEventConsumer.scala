@@ -31,9 +31,9 @@ class ThrallEventConsumer(es: ElasticSearch,
   isInFollowerMode: Boolean,
 ) extends PlayJsonHelpers with GridLogging {
 
-  private val attemptTimeout = FiniteDuration(20, SECONDS)
-  private val delay = FiniteDuration(1, MILLISECONDS)
-  private val attempts = 2
+  private val attemptTimeout = FiniteDuration(60, SECONDS)
+  private val delay = FiniteDuration(1000, MILLISECONDS)
+  private val attempts = 3
   private val timeout = attemptTimeout * attempts + delay * (attempts - 1)
 
   private val messageProcessor = new MessageProcessor(es, store, metadataEditorNotifications, gridClient, auth, instanceMessageSender, usageEvents, messageSender, isInFollowerMode)
