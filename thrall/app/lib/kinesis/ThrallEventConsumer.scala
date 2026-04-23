@@ -7,7 +7,7 @@ import com.gu.mediaservice.lib.aws.{ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.json.{JsonByteArrayUtil, PlayJsonHelpers}
 import com.gu.mediaservice.lib.logging._
-import com.gu.mediaservice.model.{ExternalThrallMessage, ThrallMessage}
+import com.gu.mediaservice.model.{ExternalThrallMessage, ReindexImageMessage, ThrallMessage}
 import instances.InstanceMessageSender
 import lib._
 import lib.elasticsearch._
@@ -84,6 +84,11 @@ class ThrallEventConsumer(es: ElasticSearch,
               combineMarkers(marker, stopwatch.elapsed),
               s"Failed to process ${message.subject} message; message will be ignored:", e
             )
+            message match {
+              case r: ReindexImageMessage =>
+                logger.error("Failed to process reindex of: " + r.id)
+              case _ => ()
+            }
             Failure(e)
           }
         }
