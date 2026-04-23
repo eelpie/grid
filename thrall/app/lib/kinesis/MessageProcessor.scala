@@ -291,9 +291,9 @@ class MessageProcessor(
         true
       }
     }.recover {
-      case _: Throwable =>
+      case t: Throwable =>
         logger.warn(s"Error while reindexing ${instance.id} / $mediaId - Image has not been reindexed!")
-        false
+        throw t
     }
   }
 
