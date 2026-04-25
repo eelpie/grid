@@ -1,15 +1,15 @@
 package lib
 
-import org.apache.pekko.stream.scaladsl.Source
-import org.apache.pekko.stream.{Materializer, OverflowStrategy, QueueOfferResult}
-import org.apache.pekko.{Done, NotUsed}
 import com.gu.mediaservice.GridClient
-import com.gu.mediaservice.lib.elasticsearch.{InProgress, Paused}
-import com.gu.mediaservice.lib.instances.{InstancesClient, Instances}
+import com.gu.mediaservice.lib.elasticsearch.{InProgress, Paused, ScrolledSearchResults}
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.{Instance, MigrateImageMessage, MigrationMessage}
 import com.sksamuel.elastic4s.requests.searches.SearchHit
-import lib.elasticsearch.{ElasticSearch, ScrolledSearchResults}
+import lib.elasticsearch.ElasticSearch
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.stream.{Materializer, QueueOfferResult}
+import org.apache.pekko.{Done, NotUsed}
 import play.api.libs.ws.WSRequest
 
 import java.time.Instant
