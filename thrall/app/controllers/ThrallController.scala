@@ -380,7 +380,7 @@ class ThrallController(
     Ok(views.html.reindexFromCsv())
   }
 
-  def getAllDocumentIds(): Action[AnyContent] = withLoginRedirectAsync { implicit request =>
+  def getAllDocumentIds(): Action[AnyContent] = Action.async { implicit request =>
     implicit val instance: Instance = instanceOf(request)
 
     def collectIds(results: ScrolledSearchResults, accumulated: List[String]): Future[List[String]] = {
