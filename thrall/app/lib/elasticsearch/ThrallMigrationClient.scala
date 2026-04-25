@@ -1,28 +1,22 @@
 package lib.elasticsearch
 
-import com.gu.mediaservice.lib.elasticsearch.{CompletionPreview, ElasticSearchClient, InProgress, MigrationAlreadyRunningError, MigrationNotRunningError, MigrationStatus, MigrationStatusProvider, NotRunning, Paused, Running}
+import com.gu.mediaservice.lib.elasticsearch.{CompletionPreview, ElasticSearchClient, InProgress, MigrationAlreadyRunningError, MigrationNotRunningError, MigrationStatus, MigrationStatusProvider, NotRunning, Paused, Running, ScrolledSearchResults}
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model.{Image, Instance}
 import com.sksamuel.elastic4s.ElasticApi.{existsQuery, matchQuery, not}
 import com.sksamuel.elastic4s.ElasticDsl
 import com.sksamuel.elastic4s.ElasticDsl.{addAlias, aliases, removeAlias, _}
-import com.sksamuel.elastic4s.requests.searches.SearchHit
 import com.sksamuel.elastic4s.requests.searches.aggs.responses.bucket.Terms
 import com.sksamuel.elastic4s.requests.searches.aggs.responses.metrics.TopHits
 import lib.{FailedMigrationDetails, FailedMigrationSummary, FailedMigrationsGrouping, FailedMigrationsOverview}
 import play.api.libs.json.{JsObject, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
 
 
-final case class ScrolledSearchResults(hits: List[SearchHit], scrollId: Option[String])
-
 trait ThrallMigrationClient extends MigrationStatusProvider {
   self: ElasticSearchClient =>
-
-  private val scrollKeepAlive = 5.minutes
 
   def startScrollingImageIdsToMigrate(migrationIndexName: String)
                                      (implicit ex: ExecutionContext, logMarker: LogMarker = MarkerMap(), instance: Instance) = {
@@ -35,19 +29,6 @@ trait ThrallMigrationClient extends MigrationStatusProvider {
       ScrolledSearchResults(response.result.hits.hits.toList, response.result.scrollId)
     }
   }
-  def continueScrolling(scrollId: String)(implicit ex: ExecutionContext, logMarker: LogMarker = MarkerMap()) = {
-    val query = searchScroll(scrollId).keepAlive(scrollKeepAlive)
-    executeAndLog(query, "retrieving next batch of image ids to migrate, continuation of scroll").map { response =>
-      ScrolledSearchResults(response.result.hits.hits.toList, response.result.scrollId)
-    }
-  }
-  def closeScroll(scrollId: String)(implicit ex: ExecutionContext, logMarker: LogMarker = MarkerMap()) = {
-    val close = clearScroll(scrollId)
-    executeAndLog(close, s"Closing unwanted scroll").failed.foreach { e =>
-      logger.error(logMarker, "ES closeScroll request failed", e)
-    }
-  }
-
   private def adjustMigrationAlias(action: String)(handleIfApplicable: PartialFunction[MigrationStatus, Unit])
                                   (implicit instance: Instance): Unit = {
     handleIfApplicable.applyOrElse(
