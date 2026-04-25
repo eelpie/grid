@@ -74,7 +74,7 @@ class MigrationSourceWithSenderFactory(
               case (InProgress(migrationIndexName), None) =>
                 es.startScrollingImageIdsToMigrate(migrationIndexName).map(handleScrollResponse)
               case (InProgress(_), Some(scrollId)) =>
-                es.continueScrollingImageIdsToMigrate(scrollId).map(handleScrollResponse)
+                es.continueScrolling(scrollId).map(handleScrollResponse)
               case _ => Future.successful(List.empty)
             }).recover { case _ =>
               // close existing scroll if it exists
