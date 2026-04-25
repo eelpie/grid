@@ -384,7 +384,10 @@ class ThrallController(
     implicit val instance: Instance = instanceOf(request)
 
     def collectIds(results: ScrolledSearchResults, accumulated: List[String]): Future[List[String]] = {
-      val ids = accumulated ++ results.hits.map(_.id)
+      val idsInTheScroll = results.hits.map(_.id)
+      val ids = accumulated ++ idsInTheScroll
+      logger.info("Scrolled up to: " + idsInTheScroll.lastOption)
+
       results.scrollId match {
         case Some(scrollId) if results.hits.nonEmpty =>
           es.continueScrolling(scrollId).flatMap(next => collectIds(next, ids))
