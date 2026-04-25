@@ -35,7 +35,7 @@ trait ThrallMigrationClient extends MigrationStatusProvider {
       ScrolledSearchResults(response.result.hits.hits.toList, response.result.scrollId)
     }
   }
-  def continueScrollingImageIdsToMigrate(scrollId: String)(implicit ex: ExecutionContext, logMarker: LogMarker = MarkerMap()) = {
+  def continueScrolling(scrollId: String)(implicit ex: ExecutionContext, logMarker: LogMarker = MarkerMap()) = {
     val query = searchScroll(scrollId).keepAlive(scrollKeepAlive)
     executeAndLog(query, "retrieving next batch of image ids to migrate, continuation of scroll").map { response =>
       ScrolledSearchResults(response.result.hits.hits.toList, response.result.scrollId)
