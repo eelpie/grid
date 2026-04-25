@@ -400,7 +400,7 @@ class ThrallController(
       val tmpFile = java.io.File.createTempFile("grid-document-ids-", ".json")
       java.nio.file.Files.writeString(tmpFile.toPath, ids.mkString("\n"))
       logger.info(s"getAllDocumentIds wrote ${ids.size} IDs to ${tmpFile.getAbsolutePath}")
-      Ok(Json.toJson(ids))
+      Ok(Json.toJson(ids.size))
     }
   }
 
