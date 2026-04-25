@@ -18,6 +18,13 @@ import scala.util.{Failure, Success}
 trait ThrallMigrationClient extends MigrationStatusProvider {
   self: ElasticSearchClient =>
 
+  def startScrollingAllImageIds()(implicit ex: ExecutionContext, logMarker: LogMarker = MarkerMap(), instance: Instance): Future[ScrolledSearchResults] = {
+    val query = search(imagesCurrentAlias(instance)).scroll(scrollKeepAlive).size(1000).fetchSource(false)
+    executeAndLog(query, "retrieving first batch of all image ids").map { response =>
+      ScrolledSearchResults(response.result.hits.hits.toList, response.result.scrollId)
+    }
+  }
+
   def startScrollingImageIdsToMigrate(migrationIndexName: String)
                                      (implicit ex: ExecutionContext, logMarker: LogMarker = MarkerMap(), instance: Instance) = {
     // TODO create constant for field name "esInfo.migration.migratedTo"
