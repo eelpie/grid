@@ -1,19 +1,20 @@
 package lib
 
+import com.gu.kinesis.KinesisRecord
+import com.gu.mediaservice.GridClient
+import com.gu.mediaservice.lib.aws.UpdateMessage
+import com.gu.mediaservice.lib.elasticsearch.ScrolledSearchResults
+import com.gu.mediaservice.lib.instances.InstancesClient
+import com.gu.mediaservice.lib.json.JsonByteArrayUtil
+import com.gu.mediaservice.model.{Instance, MigrateImageMessage, StaffPhotographer, ThrallMessage}
+import helpers.Fixtures
+import lib.elasticsearch.ElasticSearch
+import lib.kinesis.ThrallEventConsumer
 import org.apache.pekko.Done
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import org.apache.pekko.util.ByteString
-import com.gu.kinesis.KinesisRecord
-import com.gu.mediaservice.GridClient
-import com.gu.mediaservice.lib.aws.UpdateMessage
-import com.gu.mediaservice.lib.instances.InstancesClient
-import com.gu.mediaservice.lib.json.JsonByteArrayUtil
-import com.gu.mediaservice.model.{Instance, MigrateImageMessage, StaffPhotographer, ThrallMessage}
-import helpers.Fixtures
-import lib.elasticsearch.{ElasticSearch, ScrolledSearchResults}
-import lib.kinesis.ThrallEventConsumer
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.scalatest.BeforeAndAfterAll
@@ -110,7 +111,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
       .thenReturn(Future.successful(Some(projectedImage)))
 
     lazy val mockEs = mock[ElasticSearch]
-    when(mockEs.continueScrolling(any())(any(), any()))
+    when(mockEs.continueScrolling(any())(any()))
       .thenReturn(Future.successful(ScrolledSearchResults(List.empty, None)))
     when(mockEs.startScrollingImageIdsToMigrate(any())(any(), any(), any()))
     .thenReturn(Future.successful(ScrolledSearchResults(List.empty, None)))
