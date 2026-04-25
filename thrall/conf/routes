@@ -29,6 +29,8 @@ POST    /previewMigrationCompletion                   controllers.ThrallControll
 POST    /unPreviewMigrationCompletion                 controllers.ThrallController.unPreviewMigrationCompletion
 
 +nocsrf
+GET     /documentIds                                  controllers.ThrallController.getAllDocumentIds()
+
 GET     /reindex                                      controllers.ThrallController.reindex()
 +nocsrf
 POST    /reindex                                      controllers.ThrallController.reindexImage()
