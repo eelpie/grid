@@ -7,10 +7,13 @@ import com.sksamuel.elastic4s.http.JavaClient
 import com.sksamuel.elastic4s.requests.common.HealthStatus
 import com.sksamuel.elastic4s.requests.indexes.CreateIndexResponse
 import com.sksamuel.elastic4s.requests.indexes.admin.IndexExistsResponse
+import com.sksamuel.elastic4s.requests.searches.SearchHit
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+
+case class ScrolledSearchResults(hits: List[SearchHit], scrollId: Option[String])
 
 case class ElasticSearchImageCounts(
   catCount: Long,
@@ -23,6 +26,7 @@ trait ElasticSearchClient extends ElasticSearchExecutions with GridLogging {
 
   private val tenSeconds = Duration(10, SECONDS)
   private val thirtySeconds = Duration(30, SECONDS)
+  protected val scrollKeepAlive = 5.minutes
 
   def url: String
 
@@ -182,6 +186,20 @@ trait ElasticSearchClient extends ElasticSearchExecutions with GridLogging {
       )
     }, tenSeconds)
     logger.info("Got alias action response: " + aliasActionResponse)
+  }
+
+  def continueScrolling(scrollId: String)(implicit logMarker: LogMarker = MarkerMap()) = {
+    val query = searchScroll(scrollId).keepAlive(scrollKeepAlive)
+    executeAndLog(query, "retrieving next batch of image ids to migrate, continuation of scroll").map { response =>
+      ScrolledSearchResults(response.result.hits.hits.toList, response.result.scrollId)
+    }
+  }
+
+  def closeScroll(scrollId: String)(implicit logMarker: LogMarker = MarkerMap()) = {
+    val close = clearScroll(scrollId)
+    executeAndLog(close, s"Closing unwanted scroll").failed.foreach { e =>
+      logger.error(logMarker, "ES closeScroll request failed", e)
+    }
   }
 
   def removeAliasFrom(index: String, alias: String) = {
