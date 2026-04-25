@@ -29,7 +29,7 @@ POST    /previewMigrationCompletion                   controllers.ThrallControll
 POST    /unPreviewMigrationCompletion                 controllers.ThrallController.unPreviewMigrationCompletion
 
 +nocsrf
-GET     /documentIds                                  controllers.ThrallController.getAllDocumentIds()
+GET     /documentIds                                  controllers.ThrallController.getAllDocumentIds(instance: String)
 
 GET     /reindex                                      controllers.ThrallController.reindex()
 +nocsrf
