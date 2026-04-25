@@ -5,7 +5,7 @@ import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.{Authentication, BaseControllerWithLoginRedirects}
 import com.gu.mediaservice.lib.aws.{S3, S3Bucket, ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
-import com.gu.mediaservice.lib.elasticsearch.{NotRunning, Running}
+import com.gu.mediaservice.lib.elasticsearch.{NotRunning, Running, ScrolledSearchResults}
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects.ReindexImage
@@ -378,6 +378,27 @@ class ThrallController(
 
   def reindexFromCsvPage: Action[AnyContent] = withLoginRedirect { implicit request =>
     Ok(views.html.reindexFromCsv())
+  }
+
+  def getAllDocumentIds(): Action[AnyContent] = withLoginRedirectAsync { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
+
+    def collectIds(results: ScrolledSearchResults, accumulated: List[String]): Future[List[String]] = {
+      val ids = accumulated ++ results.hits.map(_.id)
+      results.scrollId match {
+        case Some(scrollId) if results.hits.nonEmpty =>
+          es.continueScrolling(scrollId).flatMap(next => collectIds(next, ids))
+        case Some(scrollId) =>
+          es.closeScroll(scrollId)
+          Future.successful(ids)
+        case None =>
+          Future.successful(ids)
+      }
+    }
+
+    es.startScrollingAllImageIds().flatMap(initial => collectIds(initial, List.empty)).map { ids =>
+      Ok(Json.toJson(ids))
+    }
   }
 
   def reindexFromCsv: Action[MultipartFormData[Files.TemporaryFile]] =
