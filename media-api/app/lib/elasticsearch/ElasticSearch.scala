@@ -64,7 +64,11 @@ class ElasticSearch(
     maybeAgencyPicksExtraCount
   ).flatten.toMap
 
-  lazy val url = elasticSearchConfig.url8.getOrElse(elasticSearchConfig.url)
+  lazy val url = {
+    val u = elasticSearchConfig.url8.getOrElse(elasticSearchConfig.url)
+    logger.info("Media API Elastic URL is: " + u + " based on: " + elasticSearchConfig)
+    u
+  }
   lazy val shards = elasticSearchConfig.shards
   lazy val replicas = elasticSearchConfig.replicas
 
