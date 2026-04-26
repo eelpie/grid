@@ -64,7 +64,7 @@ class ElasticSearch(
     maybeAgencyPicksExtraCount
   ).flatten.toMap
 
-  lazy val url = elasticSearchConfig.url
+  lazy val url = elasticSearchConfig.url8.getOrElse(elasticSearchConfig.url)
   lazy val shards = elasticSearchConfig.shards
   lazy val replicas = elasticSearchConfig.replicas
 

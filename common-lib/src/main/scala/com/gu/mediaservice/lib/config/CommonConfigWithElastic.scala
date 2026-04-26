@@ -11,7 +11,8 @@ class CommonConfigWithElastic(resources: GridConfigResources) extends CommonConf
     ),
     url = string("es6.url"),
     shards = string("es6.shards").toInt,
-    replicas = string("es6.replicas").toInt
+    replicas = string("es6.replicas").toInt,
+    url8 = stringOpt("es8.url"),
   )
 
   // note this will match any part of the collection path, e.g. "bar" will match "bar", "foo/bar", "bar/baz"
