@@ -3,6 +3,8 @@ package model
 import com.gu.mediaservice.lib.Files.createTempFile
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, S3Object, UpdateMessage}
+import com.gu.mediaservice.lib.{BrowserViewableImage, ImageStorageProps, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
+import com.gu.mediaservice.lib.aws.{Embedder, S3Bucket, S3Object, S3Vectors, UpdateMessage}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.formatting._
 import com.gu.mediaservice.lib.imaging.ImageOperations
@@ -64,8 +66,8 @@ case class ImageUploadOpsCfg(
   thumbWidth: Int,
   thumbQuality: Double,
   transcodedMimeTypes: List[MimeType],
-  originalFileBucket: String,
-  thumbBucket: String
+  originalFileBucket: S3Bucket,
+  thumbBucket: S3Bucket,
 )
 
 case class ImageUploadOpsDependencies(
@@ -93,7 +95,7 @@ object Uploader extends GridLogging {
       config.thumbQuality,
       config.transcodedMimeTypes,
       config.imageBucket,
-      config.thumbnailBucket
+      config.thumbnailBucket,
     )
   }
 

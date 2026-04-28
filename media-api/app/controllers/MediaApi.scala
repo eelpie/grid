@@ -8,6 +8,9 @@ import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsa
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider
 import com.gu.mediaservice.lib.aws.{ContentDisposition, Embedder, ThrallMessageSender, UpdateMessage}
+import com.gu.mediaservice.lib.aws.{ContentDisposition, S3, ThrallMessageSender, UpdateMessage}
+import com.gu.mediaservice.lib.aws.{ContentDisposition, ThrallMessageSender, UpdateMessage}
+import com.gu.mediaservice.lib.aws.{ContentDisposition, S3, ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.formatting.printDateTime
@@ -43,13 +46,13 @@ class MediaApi(
                 imageResponse: ImageResponse,
                 config: MediaApiConfig,
                 override val controllerComponents: ControllerComponents,
-                s3Client: S3Client,
+                s3: S3,
                 mediaApiMetrics: MediaApiMetrics,
                 ws: WSClient,
                 authorisation: Authorisation,
                 embedder: Embedder,
                 events: UsageEvents,
-              )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition with InstanceForRequest {
+)(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition with InstanceForRequest {
 
   private val gridClient: GridClient = GridClient(config.services)(ws)
 
@@ -307,7 +310,8 @@ class MediaApi(
         val maybeResult = for {
           export <- source.exports.find(_.id.contains(exportId))
           asset <- export.assets.find(_.dimensions.exists(_.width == width))
-          s3Object <- Try(s3Client.getObject(config.imgPublishingBucket, asset.file)).toOption
+          key = config.imgPublishingBucket.keyFromS3URL(asset.file)
+          s3Object <- Try(s3.getObject(config.imgPublishingBucket, key)).toOption
           file = StreamConverters.fromInputStream(() => s3Object.getObjectContent)
           entity = HttpEntity.Streamed(file, asset.size, asset.mimeType.map(_.name))
           result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset, config.shortenDownloadFilename))
@@ -435,7 +439,8 @@ class MediaApi(
         val apiKey = request.user.accessor
         logger.info(logMarker, s"Download original image: $id from user: ${Authentication.getIdentity(request.user)}")
         mediaApiMetrics.incrementImageDownload(apiKey, mediaApiMetrics.OriginalDownloadType)
-        val s3Object = s3Client.getObject(config.imageBucket, image.source.file)
+        val key = config.imageBucket.keyFromS3URL(image.source.file)
+        val s3Object = s3.getObject(config.imageBucket, key)
         val file = StreamConverters.fromInputStream(() => s3Object.getObjectContent)
         val entity = HttpEntity.Streamed(file, image.source.size, image.source.mimeType.map(_.name))
 
@@ -498,8 +503,9 @@ class MediaApi(
         logger.info(logMarker, s"Download optimised image: $id from user: ${Authentication.getIdentity(request.user)}")
         mediaApiMetrics.incrementImageDownload(apiKey, mediaApiMetrics.OptimisedDownloadType)
 
+        val key = config.imageBucket.keyFromS3URL(image.optimisedPng.getOrElse(image.source).file)
         val sourceImageUri =
-          new URI(s3Client.signUrl(config.imageBucket, image.optimisedPng.getOrElse(image.source).file, image, imageType = image.optimisedPng match {
+          new URI(s3.signUrl(config.imageBucket, key, image, imageType = image.optimisedPng match {
             case Some(_) => OptimisedPng
             case _ => Source
           }))
