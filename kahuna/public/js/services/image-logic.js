@@ -43,6 +43,17 @@ imageLogic.factory('imageLogic', ['imageAccessor', function(imageAccessor) {
             staffCategories.includes(image.data.usageRights.category);
     }
 
+    function isStaffIllustrator(image) {
+        const illustratorCategories = [
+            'staff-illustrator',
+            'contract-illustrator',
+            'commissioned-illustrator'
+        ];
+
+        return image.data.usageRights &&
+            illustratorCategories.includes(image.data.usageRights.category);
+    }
+
 
   function isAgencyPick(image) {
     return Object.entries(window._clientConfig.agencyPicksIngredients || {}).some(([field, values]) => values.some(value => {
@@ -125,6 +136,7 @@ imageLogic.factory('imageLogic', ['imageAccessor', function(imageAccessor) {
         getArchivedState,
         getPersistenceExplanation,
         isStaffPhotographer,
+        isStaffIllustrator,
         isAgencyPick,
         getSyndicationStatus,
         getSyndicationReason,
