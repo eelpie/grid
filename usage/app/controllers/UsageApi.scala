@@ -4,9 +4,11 @@ import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.{EntityResponse, Link, Action => ArgoAction}
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
 import com.gu.mediaservice.lib.aws.UpdateMessage
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.lib.usage.UsageBuilder
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.usage.{MediaUsage, Usage, UsageNotice, UsageStatus}
 import com.gu.mediaservice.syntax.MessageSubjects
 import lib._
@@ -27,37 +29,37 @@ class UsageApi(
   usageGroupOps: UsageGroupOps,
   notifications: Notifications,
   config: UsageConfig,
-  usageApiSubject: Subject[WithLogMarker[UsageGroup]],
+  usageApiSubject: Subject[WithLogMarker[(UsageGroup, Instance)]],
   override val controllerComponents: ControllerComponents,
   playBodyParsers: PlayBodyParsers
 )(
   implicit val ec: ExecutionContext
-) extends BaseController with MessageSubjects with ArgoHelpers {
+) extends BaseController with MessageSubjects with ArgoHelpers with InstanceForRequest {
 
   private val AuthenticatedAndAuthorisedToDelete = auth andThen authorisation.CommonActionFilters.authorisedForDeleteCropsOrUsages
 
-  private def wrapUsage(usage: Usage): EntityResponse[Usage] = {
+  private def wrapUsage(usage: Usage)(implicit instance: Instance): EntityResponse[Usage] = {
     EntityResponse(
       uri = usageUri(usage.id),
       data = usage
     )
   }
 
-  private def usageUri(usageId: String): Option[URI] = {
+  private def usageUri(usageId: String)(implicit instance: Instance): Option[URI] = {
     val encodedUsageId = UriEncoding.encodePathSegment(usageId, "UTF-8")
-    Try { URI.create(s"${config.usageUri}/usages/$encodedUsageId") }.toOption
+    Try { URI.create(s"${config.usageUri(instance)}/usages/$encodedUsageId") }.toOption
   }
 
-  val indexResponse = {
+  def indexResponse()(implicit instance: Instance) = {
     val indexData = Map("description" -> "This is the Usage Recording service")
     val indexLinks = List(
-      Link("usages-by-media", s"${config.usageUri}/usages/media/{id}"),
-      Link("usages-by-id", s"${config.usageUri}/usages/{id}")
+      Link("usages-by-media", s"${config.usageUri(instance)}/usages/media/{id}"),
+      Link("usages-by-id", s"${config.usageUri(instance)}/usages/{id}")
     )
 
-    val digitalPostUri = URI.create(s"${config.usageUri}/usages/digital")
-    val printPostUri = URI.create(s"${config.usageUri}/usages/print")
-    val syndicationPostUri = URI.create(s"${config.usageUri}/usages/syndication")
+    val digitalPostUri = URI.create(s"${config.usageUri(instance)}/usages/digital")
+    val printPostUri = URI.create(s"${config.usageUri(instance)}/usages/print")
+    val syndicationPostUri = URI.create(s"${config.usageUri(instance)}/usages/syndication")
     val actions = List(
       ArgoAction("digital-usage", digitalPostUri, "POST"),
       ArgoAction("print-usage", printPostUri, "POST"),
@@ -66,9 +68,13 @@ class UsageApi(
 
     respond(indexData, indexLinks, actions)
   }
-  def index = auth { indexResponse }
+  def index = auth { request =>
+    implicit val instance: Instance = instanceOf(request)
+    indexResponse()
+  }
 
   def forUsage(usageId: String) = auth.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "get-usage",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
@@ -86,8 +92,8 @@ class UsageApi(
 
         val uri = usageUri(usage.id)
         val links = List(
-          Link("media", s"${config.services.apiBaseUri}/images/$mediaId"),
-          Link("media-usage", s"${config.services.usageBaseUri}/usages/media/$mediaId")
+          Link("media", s"${config.services.apiBaseUri(instance)}/images/$mediaId"),
+          Link("media-usage", s"${config.services.usageBaseUri(instance)}/usages/media/$mediaId")
         )
 
         respond[Usage](data = usage, uri = uri, links = links)
@@ -100,6 +106,7 @@ class UsageApi(
   }
 
   def forMedia(mediaId: String) = auth.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "usages-for-media-id",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
@@ -114,15 +121,15 @@ class UsageApi(
       usages match {
         case Nil => respondNotFound("No usages found.")
         case _ =>
-          val uri = Try { URI.create(s"${config.services.usageBaseUri}/usages/media/$mediaId") }.toOption
+          val uri = Try { URI.create(s"${config.services.usageBaseUri(instance)}/usages/media/$mediaId") }.toOption
           val links = List(
-            Link("media", s"${config.services.apiBaseUri}/images/$mediaId")
+            Link("media", s"${config.services.apiBaseUri(instance)}/images/$mediaId")
           )
 
           respondCollection[EntityResponse[Usage]](
             uri = uri,
             links = links,
-            data = usages.map(wrapUsage)
+            data = usages.map(u => wrapUsage(u))
           )
       }
     }).recover {
@@ -139,7 +146,7 @@ class UsageApi(
   val setDigitalRequestBodyParser: BodyParser[JsValue] = playBodyParsers.json(maxLength = maxDigitalRequestLength)
 
   def setDigitalUsages = auth(setDigitalRequestBodyParser) { req => {
-
+    val instance = instanceOf(req)
     val digitalMediaUsageRequestResult = req.body.validate[DigitalMediaUsageRequest]
     digitalMediaUsageRequestResult.fold(
       e => {
@@ -151,7 +158,7 @@ class UsageApi(
           "requestId" -> RequestLoggingFilter.getRequestId(req),
         )
         val usageGroups = usageGroupOps.buildFromDigitalMediaUsageRecords(digitalMediaUsageRequest.digitalMediaUsageRecords)
-        usageGroups.map(ug => WithLogMarker.includeUsageGroup(ug)).foreach(usageApiSubject.onNext)
+        usageGroups.map(ug => WithLogMarker.includeUsageGroup(ug, instance)).foreach(usageApiSubject.onNext)
 
         Accepted
       }
@@ -162,7 +169,7 @@ class UsageApi(
   val setPrintRequestBodyParser: BodyParser[JsValue] = playBodyParsers.json(maxLength = maxPrintRequestLength)
 
   def setPrintUsages = auth(setPrintRequestBodyParser) { req => {
-
+    val instance = instanceOf(req)
     val printUsageRequestResult = req.body.validate[PrintUsageRequest]
     printUsageRequestResult.fold(
       e => {
@@ -174,7 +181,7 @@ class UsageApi(
           "requestId" -> RequestLoggingFilter.getRequestId(req),
         )
         val usageGroups = usageGroupOps.buildFromPrintUsageRecords(printUsageRequest.printUsageRecords)
-        usageGroups.map(WithLogMarker.includeUsageGroup).foreach(usageApiSubject.onNext)
+        usageGroups.map(ug => WithLogMarker.includeUsageGroup(ug, instance)).foreach(usageApiSubject.onNext)
 
         Accepted
       }
@@ -182,7 +189,7 @@ class UsageApi(
   }}
 
   def setSyndicationUsages() = auth(parse.json) { req => {
-
+    val instance = instanceOf(req)
     val syndicationUsageRequest = (req.body \ "data").validate[SyndicationUsageRequest]
     syndicationUsageRequest.fold(
       e => respondError(
@@ -199,14 +206,14 @@ class UsageApi(
 
         logger.info(logMarker, "recording syndication usage")
         val group = usageGroupOps.build(sur)
-        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group))
+        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group, instance))
         Accepted
       }
     )
   }}
 
   def setFrontUsages() = auth(parse.json) { req => {
-
+    val instance = instanceOf(req)
     val request = (req.body \ "data").validate[FrontUsageRequest]
     request.fold(
       e => respondError(
@@ -222,14 +229,14 @@ class UsageApi(
         ) ++ apiKeyMarkers(req.user.accessor)
         logger.info(logMarker, "recording front usage")
         val group = usageGroupOps.build(fur)
-        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group))
+        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group, instance))
         Accepted
       }
     )
   }}
 
   def setDownloadUsages() = auth(parse.json) { req => {
-
+    val instance = instanceOf(req)
     val request = (req.body \ "data").validate[DownloadUsageRequest]
     request.fold(
       e => respondError(
@@ -245,13 +252,14 @@ class UsageApi(
         ) ++ apiKeyMarkers(req.user.accessor)
         logger.info(logMarker, "recording download usage")
         val group = usageGroupOps.build(usageRequest)
-        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group))
+        usageApiSubject.onNext(WithLogMarker.includeUsageGroup(group, instance))
         Accepted
       }
     )
   }}
 
   def updateUsageStatus(mediaId: String, usageId: String) = auth.async(parse.json) {req => {
+    implicit val instance: Instance = instanceOf(req)
     val request = (req.body \ "data").validate[UsageStatus]
     request.fold(
       e => Future.successful(
@@ -276,10 +284,13 @@ class UsageApi(
             val updatedStatusMediaUsage = mediaUsage.copy(status = usageStatus)
             usageTable.update(updatedStatusMediaUsage)
             val usageNotice = UsageNotice(mediaId,
-              JsArray(Seq(Json.toJson(UsageBuilder.build(updatedStatusMediaUsage)))))
+              JsArray(Seq(Json.toJson(UsageBuilder.build(updatedStatusMediaUsage)))),
+              instanceOf(req)
+            )
             val updateMessage = UpdateMessage(
               subject = UpdateUsageStatus, id = Some(mediaId),
-              usageNotice = Some(usageNotice)
+              usageNotice = Some(usageNotice),
+              instance = instanceOf(req)
             )
             notifications.publish(updateMessage)
             Ok
@@ -291,6 +302,7 @@ class UsageApi(
   }}
 
   def deleteSingleUsage(mediaId: String, usageId: String) = AuthenticatedAndAuthorisedToDelete.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "delete-usage",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
@@ -301,7 +313,7 @@ class UsageApi(
     usageTable.queryByUsageId(usageId).map {
       case Some(mediaUsage) =>
         usageTable.deleteRecord(mediaUsage)
-        val updateMessage = UpdateMessage(subject = DeleteSingleUsage, id = Some(mediaId), usageId = Some(usageId))
+        val updateMessage = UpdateMessage(subject = DeleteSingleUsage, id = Some(mediaId), usageId = Some(usageId), instance = instanceOf(req))
         notifications.publish(updateMessage)
         Ok
       case None =>
@@ -311,6 +323,7 @@ class UsageApi(
   }
 
   def deleteUsages(mediaId: String) = AuthenticatedAndAuthorisedToDelete.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "delete-usages",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
@@ -327,8 +340,9 @@ class UsageApi(
         respondError(InternalServerError, "image-usage-delete-failed", error.getMessage)
     }
 
-    val updateMessage = UpdateMessage(subject = DeleteUsages, id = Some(mediaId))
+    val updateMessage = UpdateMessage(subject = DeleteUsages, id = Some(mediaId), instance = instanceOf(req))
     notifications.publish(updateMessage)
     Future.successful(Ok)
   }
+
 }

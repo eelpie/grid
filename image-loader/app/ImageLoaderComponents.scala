@@ -1,5 +1,6 @@
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{Bedrock, S3Vectors, SimpleSqsMessageConsumer, Embedder}
+import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.play.GridComponents
@@ -48,7 +49,7 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val metrics = new ImageLoaderMetrics(config, actorSystem, applicationLifecycle)
 
   val controller = new ImageLoaderController(
-    auth, downloader, store, maybeIngestQueue, uploadStatusTable, notifications, config, uploader, quarantineUploader, projector, controllerComponents, gridClient, authorisation, metrics, applicationLifecycle)
+    auth, downloader, store, maybeIngestQueue, uploadStatusTable, config, uploader, quarantineUploader, projector, controllerComponents, gridClient, authorisation, metrics, events, wsClient, applicationLifecycle)
   val uploadStatusController = new UploadStatusController(auth, uploadStatusTable, config, controllerComponents, authorisation)
   val imageLoaderManagement = new ImageLoaderManagement(controllerComponents, buildInfo, controller.maybeIngestQueueAndProcessor)
 

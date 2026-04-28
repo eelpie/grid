@@ -21,9 +21,9 @@ class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(res
   val thumbWidth: Int = 256
   val thumbQuality: Double = 85d // out of 100
 
-  val rootUri: String = services.loaderBaseUri
-  val apiUri: String = services.apiBaseUri
-  val kahunaUri: String = services.kahunaBaseUri
+  val rootUri: Instance => String = services.loaderBaseUri
+  val apiUri: Instance => String = services.apiBaseUri
+  val kahunaUri: Instance => String = services.kahunaBaseUri
 
   val transcodedMimeTypes: List[MimeType] = getStringSet("transcoded.mime.types").toList.map(MimeType(_))
   val supportedMimeTypes: List[MimeType] = List(Jpeg, Png) ::: transcodedMimeTypes
@@ -33,6 +33,7 @@ class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(res
 
   val shouldEmbed: Boolean = boolean("s3.vectors.shouldEmbed")
   val maybeImageEmbedderQueueUrl: Option[String] = stringOpt("sqs.image.embedder.queue.url")
+
   /**
     * Load in the chain of image processors from config. This can be a list of
     * companion objects, class names, both with and without config.
