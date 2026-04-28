@@ -36,6 +36,7 @@ imageService.factory('imageService', ['imageLogic', function(imageLogic) {
             canArchive: imageLogic.canBeArchived(image),
             persistedReasons: imageLogic.getPersistenceExplanation(image).join('; '),
             isStaffPhotographer: imageLogic.isStaffPhotographer(image),
+            isStaffIllustrator: imageLogic.isStaffIllustrator(image),
             isAgencyPick: imageLogic.isAgencyPick(image),
             syndicationStatus: imageLogic.getSyndicationStatus(image),
             syndicationReason: imageLogic.getSyndicationReason(image),
