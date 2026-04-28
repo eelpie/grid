@@ -94,6 +94,7 @@ lazy val commonLib = project("common-lib").settings(
     "com.gu" %% "thrift-serializer" % "5.0.2",
     "org.scalaz" %% "scalaz-core" % "7.3.8",
     "org.im4java" % "im4java" % "1.4.0",
+    "app.photofox.vips-ffm" % "vips-ffm-core" % "1.9.5",
     "com.gu" % "kinesis-logback-appender" % "1.4.4",
     "net.logstash.logback" % "logstash-logback-encoder" % "5.0",
     logback, // play-logback; needed when running the scripts
@@ -240,7 +241,7 @@ def playProject(projectName: String, port: Int, path: Option[String] = None): Pr
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "eclipse-temurin:11",
+      dockerBaseImage := "eclipse-temurin:25",
       dockerExposedPorts := Seq(port),
       playDefaultPort := port,
 
@@ -283,6 +284,6 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
         "-Dpidfile.path=/dev/null",
         s"-Dconfig.file=/opt/docker/conf/application.conf",
         s"-Dlogger.file=/opt/docker/conf/logback.xml",
-        "-XX:+PrintCommandLineFlags"
+        "-XX:+PrintCommandLineFlags", "-XX:MaxRAMPercentage=20"
   )))
 }

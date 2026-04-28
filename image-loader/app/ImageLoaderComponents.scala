@@ -1,3 +1,4 @@
+import app.photofox.vipsffm.{Vips, VipsHelper}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{Bedrock, S3, S3Vectors, SimpleSqsMessageConsumer, Embedder}
 import com.gu.mediaservice.lib.imaging.ImageOperations
@@ -6,6 +7,7 @@ import com.gu.mediaservice.lib.play.GridComponents
 import controllers.{ImageLoaderController, ImageLoaderManagement, UploadStatusController}
 import lib._
 import lib.storage.{ImageLoaderStore, QuarantineStore}
+import model.upload.OptimiseWithPngQuant
 import model.{Projector, QuarantineUploader, Uploader}
 import play.api.ApplicationLoader.Context
 import router.Routes
@@ -22,7 +24,11 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val store = new ImageLoaderStore(config)
   val maybeIngestQueue = config.maybeIngestSqsQueueUrl.map(queueUrl => new SimpleSqsMessageConsumer(queueUrl, config))
   val uploadStatusTable = new UploadStatusTable(config)
-  val imageOperations = new ImageOperations(context.environment.rootPath.getAbsolutePath)
+  val imageOperations = {
+    Vips.init()
+    VipsHelper.cache_set_max(0)
+    new ImageOperations(context.environment.rootPath.getAbsolutePath)
+  }
   val notifications = new Notifications(config)
   val downloader = new Downloader()(ec,wsClient)
 
@@ -37,9 +43,10 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
     )
   }
 
-  val uploader = new Uploader(store, config, imageOperations, notifications, maybeEmbedder, imageProcessor)
+  val optimiseOps = new OptimiseWithPngQuant(imageOperations)
+  val uploader = new Uploader(store, config, imageOperations, notifications, maybeEmbedder, imageProcessor, optimiseOps)
   val s3 = new S3(config)
-  val projector = Projector(config, imageOperations, imageProcessor, auth, maybeEmbedder, s3)
+  val projector = Projector(config, imageOperations, imageProcessor, auth, maybeEmbedder, s3, optimiseOps)
   val quarantineUploader: Option[QuarantineUploader] = config.maybeQuarantineBucket.map(_ =>
     new QuarantineUploader(new QuarantineStore(config), config)
   )

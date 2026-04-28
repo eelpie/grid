@@ -1,3 +1,4 @@
+import app.photofox.vipsffm.{Vips, VipsHelper}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.imaging.ImageOperations
@@ -12,7 +13,11 @@ class CropperComponents(context: Context) extends GridComponents(context, new Cr
   final override val buildInfo = utils.buildinfo.BuildInfo
 
   val store = new CropStore(config)
-  val imageOperations = new ImageOperations(context.environment.rootPath.getAbsolutePath)
+  val imageOperations = {
+    Vips.init()
+    VipsHelper.cache_set_max(0)
+    new ImageOperations(context.environment.rootPath.getAbsolutePath)
+  }
   val s3 = new S3(config)
 
   val crops = new Crops(config, store, imageOperations, config.imageBucket, s3)
