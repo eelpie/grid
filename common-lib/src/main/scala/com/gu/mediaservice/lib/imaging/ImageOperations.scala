@@ -1,26 +1,27 @@
 package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
-import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
+import app.photofox.vipsffm.jextract.VipsRaw
+import app.photofox.vipsffm.{VBlob, VImage, VipsHelper, VipsOption}
+import com.adobe.internal.xmp.options.SerializeOptions
+import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
-import com.gu.mediaservice.lib.Files._
 import com.gu.mediaservice.lib.imaging.ImageOperations.thumbMimeType
-import com.gu.mediaservice.lib.imaging.im4jwrapper.{ExifTool, ImageMagick}
+import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.model._
 import org.im4java.core.IMOperation
 
 import java.io._
 import java.lang.foreign.Arena
+import java.nio.charset.StandardCharsets
 import scala.concurrent.{ExecutionContext, Future}
-import scala.sys.process._
 
 
 case class ExportResult(id: String, masterCrop: Asset, othersizings: List[Asset])
 class UnsupportedCropOutputTypeException extends Exception
 
 class ImageOperations(playPath: String) extends GridLogging {
-  import ExifTool._
   import ImageMagick._
 
   private def profilePath(fileName: String): String = s"$playPath/$fileName"
@@ -38,97 +39,108 @@ class ImageOperations(playPath: String) extends GridLogging {
     "Greyscale" -> profilePath("grayscale.icc")
   )
 
-  private def tagFilter(metadata: ImageMetadata) = {
-    Map[String, Option[String]](
-      "Copyright" -> metadata.copyright,
-      "Credit" -> metadata.credit,
-      "OriginalTransmissionReference" -> metadata.suppliersReference
-    ).collect { case (key, Some(value)) => (key, value) }
+  def cropImageVips(
+                     sourceFile: File,
+                     bounds: Bounds,
+                     metadata: ImageMetadata,
+                     orientationMetadata: Option[OrientationMetadata]
+                   )(implicit logMarker: LogMarker, arena: Arena): VImage = {
+    // Read source image
+    val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+
+    // Orient
+    val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+      image.rotate(angle)
+    }.getOrElse {
+      image
+    }
+
+    val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
+
+    // If we saw and ICC profile than we will need to transform
+    val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
+    val correctedForICCProfile = if (needsICCTransform) {
+      cropped.iccTransform("srgb",
+        VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL), // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
+      )
+    } else {
+      // LAB gets corrupted by a needless icc_transform
+      cropped
+    }
+
+    // Apply crop metadata
+    // https://developers.google.com/search/docs/appearance/structured-data/image-license-metadata#iptc-photo-metadata
+    makeXmpBlog(metadata).foreach { xmpBlob =>
+      logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
+      VipsHelper.image_set_blob_copy(arena, correctedForICCProfile.getUnsafeStructAddress, "xmp-data", VBlob.newFromBytes(arena, xmpBlob).getUnsafeDataAddress, xmpBlob.length)
+    }
+
+    correctedForICCProfile
   }
 
-  private def applyOutputProfile(base: IMOperation, optimised: Boolean = false) = profile(base)(rgbProfileLocation(optimised))
+  private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
+    val mappings: Seq[(String, String, String)] = Seq(metadata.byline.map { creator =>
+      (XMPConst.NS_DC, "creator", creator)
+    },
+    metadata.credit.map { credit =>
+      (XMPConst.NS_PHOTOSHOP, "Credit", credit)
+    },
+    metadata.copyright.map { copyright =>
+      (XMPConst.NS_DC, "rights", copyright)
+    },
+    metadata.suppliersReference.map { suppliersReference =>
+      (XMPConst.NS_PHOTOSHOP, "TransmissionReference",  suppliersReference)
+    }).flatten
 
-  // Optionally apply transforms to the base operation if the colour space
-  // in the ICC profile doesn't match the colour model of the image data
-  private def correctColour(base: IMOperation)(iccColourSpace: Option[String], colourModel: Option[String], isTransformedFromSource: Boolean)(implicit logMarker: LogMarker): IMOperation = {
-    (iccColourSpace, colourModel, isTransformedFromSource) match {
-      // If matching, all is well, just pass through
-      case (icc, model, _) if icc == model => base
-      // If no colour model detected, we can't do anything anyway so just hope all is well
-      case (_,  None, _) => base
-      // Do not correct colour if file has already been transformed (ie. source file was TIFF) as correctColour has already been run
-      case (_, _, true) => base
-      // If mismatching, strip any (incorrect) ICC profile and inject a profile matching the model
-      // Note: Strip both ICC and ICM (Windows variant?) to be safe
-      case (icc, Some(model), _) =>
-        profileLocations.get(model) match {
-          // If this is a supported model, strip profile from base and add profile for model
-          case Some(location) => profile(stripProfile(base)("icm,icc"))(location)
-          // Do not attempt to correct colour if we don't support that colour model
-          case None =>
-            logger.warn(
-              logMarker,
-              s"Wanted to update colour model where iccColourSpace=$icc and colourModel=$model but we don't have a profile file for that model"
-            )
-            base
+    mappings.headOption.map { _ =>
+      val xmpMeta = XMPMetaFactory.create()
+      mappings.foreach { mapping =>
+        xmpMeta.setProperty(mapping._1, mapping._2, mapping._3)
+      }
+
+      val serializeOptions = new SerializeOptions()
+      serializeOptions.setUseCompactFormat(true)
+      serializeOptions.setUseCanonicalFormat(false)
+      val xmpXml = XMPMetaFactory.serializeToString(xmpMeta, serializeOptions)
+      xmpXml.getBytes(StandardCharsets.UTF_8)
+    }
+  }
+
+  def createCrops(sourceImage: VImage, dimensionList: List[Dimensions], imageId: String, bounds: Bounds, cropType: MimeType, tempDir: File, cropQuality: Int
+                 )(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Future[Seq[(File, String, Dimensions)]] = {
+      Stopwatch(s"Resizing crops for $imageId") {
+        logger.info("Starting resizes")
+        val resizes = dimensionList.map { dimensions =>
+          val outputFile = File.createTempFile(s"resize-", s"${cropType.fileExtension}", tempDir) // TODO function for this
+
+          resizeImageVips(sourceImage, dimensions, cropQuality, outputFile, cropType).map { f =>
+            def outputFilename(imageId: String, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false, instance: Instance): String = { // TODO push back to Crops
+              val masterString: String = if (isMaster) "master/" else ""
+              instance.id + "/" + s"$imageId/${Crop.getCropId(bounds)}/$masterString$outputWidth${fileType.fileExtension}"
+            }
+
+            val filename = outputFilename(imageId, bounds, dimensions.width, cropType, instance = instance)
+            (f, filename, dimensions)
+          }
         }
-    }
+        logger.info("Done resizes")
+        Future.sequence(resizes)
+      }
   }
 
-  def cropImage(
-    sourceFile: File,
-    sourceMimeType: Option[MimeType],
-    bounds: Bounds,
-    qual: Double = 100d,
-    tempDir: File,
-    iccColourSpace: Option[String],
-    colourModel: Option[String],
-    fileType: MimeType,
-    isTransformedFromSource: Boolean,
-    orientationMetadata: Option[OrientationMetadata]
-  )(implicit logMarker: LogMarker): Future[File] = Stopwatch.async("magick crop image") {
-    for {
-      outputFile <- createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir)
-      cropSource    = addImage(sourceFile)
-      oriented      = orient(cropSource, orientationMetadata)
-      qualified     = quality(oriented)(qual)
-      corrected     = correctColour(qualified)(iccColourSpace, colourModel, isTransformedFromSource)
-      converted     = applyOutputProfile(corrected)
-      stripped      = stripMeta(converted)
-      profiled      = applyOutputProfile(stripped)
-      cropped       = crop(profiled)(bounds)
-      depthAdjusted = depth(cropped)(8)
-      addOutput     = addDestImage(depthAdjusted)(outputFile)
-      _             <- runConvertCmd(addOutput, useImageMagick = sourceMimeType.contains(Tiff))
-      _             <- checkForOutputFileChange(outputFile)
-    }
-    yield outputFile
-  }
+  def resizeImageVips(
+                       sourceImage: VImage,
+                       dimensions: Dimensions,
+                       quality: Int = 100,
+                       outputFile: File,
+                       fileType: MimeType
+                     )(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
+    Future {
+      val scale = dimensions.width.toDouble / sourceImage.getWidth.toDouble
+      val resized = sourceImage.resize(scale)
 
-  // Updates metadata on existing file
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = {
-    runExiftoolCmd(
-      setTags(tagSource(sourceFile))(tagFilter(metadata))
-      ).map(_ => sourceFile)
-  }
-
-  def resizeImage(
-    sourceFile: File,
-    sourceMimeType: Option[MimeType],
-    dimensions: Dimensions,
-    qual: Double = 100d,
-    tempDir: File,
-    fileType: MimeType
-  )(implicit logMarker: LogMarker): Future[File] = Stopwatch.async("magick resize image") {
-    for {
-      outputFile  <- createTempFile(s"resize-", s".${fileType.fileExtension}", tempDir)
-      resizeSource = addImage(sourceFile)
-      qualified    = quality(resizeSource)(qual)
-      resized      = scale(qualified)(dimensions)
-      addOutput    = addDestImage(resized)(outputFile)
-      _           <- runConvertCmd(addOutput, useImageMagick = sourceMimeType.contains(Tiff))
+      saveImageToFile(resized, fileType, quality, outputFile, quantise = true, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
     }
-    yield outputFile
   }
 
   private def orient(op: IMOperation, orientationMetadata: Option[OrientationMetadata]): IMOperation = {
@@ -137,27 +149,6 @@ class ImageOperations(playPath: String) extends GridLogging {
       case Some(angle) => rotate(op)(angle)
       case _ => op
     }
-  }
-
-  def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = mediaType match {
-    case Png =>
-      val fileName: String = resizedFile.getAbsolutePath
-
-      val optimisedImageName: String = fileName.split('.')(0) + "optimised.png"
-      Stopwatch("pngquant") {
-        Seq("pngquant", "-s10", "--quality", "1-85", fileName, "--output", optimisedImageName).!
-      }
-
-      new File(optimisedImageName)
-    case Jpeg => resizedFile
-
-    // This should never happen as we only ever crop as PNG or JPEG. See `Crops.cropType` and `CropsTest`
-    // TODO We should create a `CroppingMimeType` to enforce this at the type level.
-    //  However we'd need to change the `Asset` model as source image and crop use this model
-    //  and a source can legally be a `Tiff`. It's not a small change...
-    case Tiff =>
-      logger.error("Attempting to optimize a Tiff crop. Cropping as Tiff is not supported.")
-      throw new UnsupportedCropOutputTypeException
   }
 
   val interlacedHow = "Line"
@@ -219,18 +210,19 @@ class ImageOperations(playPath: String) extends GridLogging {
     }
   }
 
-  def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File, quantise: Boolean = false): File = {
-    logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
+  def saveImageToFile(image: VImage, mimeType: MimeType, quality: Int, outputFile: File, quantise: Boolean = false, keep: Option[Int] = None): File = {
+    val k = keep.getOrElse(VipsRaw.VIPS_FOREIGN_KEEP_NONE)
     mimeType match {
       case Jpeg =>
         image.jpegsave(outputFile.getAbsolutePath,
-          VipsOption.Int("Q", qual.toInt),
+          VipsOption.Int("Q", quality),
           //VipsOption.Boolean("optimize-scans", true),
           VipsOption.Boolean("optimize-coding", true),
           //VipsOption.Boolean("interlace", true),
           //VipsOption.Boolean("trellis-quant", true),
           // VipsOption.Int("quant-table", 3),
-          VipsOption.Boolean("strip", true)
+          VipsOption.Boolean("strip", true),
+          VipsOption.Int("keep", k)
         )
         outputFile
 
@@ -239,16 +231,17 @@ class ImageOperations(playPath: String) extends GridLogging {
         if (quantise) {
           image.pngsave(outputFile.getAbsolutePath,
             VipsOption.Boolean("palette", true),
-            VipsOption.Int("Q", qual.toInt),
+            VipsOption.Int("Q", quality),
             VipsOption.Int("effort", 1),
             //VipsOption.Int("compression", 6),
-            VipsOption.Int("bitdepth", 8),
-            VipsOption.Boolean("strip", true)
+            VipsOption.Boolean("strip", true),
+            VipsOption.Int("keep", k)
           )
         } else {
           image.pngsave(outputFile.getAbsolutePath,
             //VipsOption.Int("compression", 6),
-            VipsOption.Boolean("strip", true)
+            VipsOption.Boolean("strip", true),
+            VipsOption.Int("keep", k)
           )
         }
         outputFile
@@ -258,38 +251,6 @@ class ImageOperations(playPath: String) extends GridLogging {
         throw new UnsupportedCropOutputTypeException
     }
   }
-
-  // When a layered tiff is unpacked, the temp file (blah.something) is moved
-  // to blah-0.something and contains the composite layer (which is what we want).
-  // Other layers are then saved as blah-1.something etc.
-  // As the file has been renamed, the file object still exists, but has the wrong name
-  // We will need to put it back where it is expected to be found, and clean up the other
-  // files.
-  private def checkForOutputFileChange(f: File): Future[Unit] = Future {
-    val fileBits = f.getAbsolutePath.split("\\.").toList
-    val mainPart = fileBits.dropRight(1).mkString(".")
-    val extension = fileBits.last
-
-    // f2 is the blah-0 name that gets created from a layered tiff.
-    val f2 = new File(List(s"$mainPart-0", extension).mkString("."))
-    if (f2.exists()) {
-      // f HAS been renamed to blah-0.  Rename it right back!
-      f2.renameTo(f)
-      // Tidy up any other files (blah-1,2,3 etc will be created for each subsequent layer)
-      cleanUpLayerFiles(mainPart, extension, 1)
-    }
-  }
-
-  @scala.annotation.tailrec
-  private def cleanUpLayerFiles(mainPart: String, extension: String, index: Int):Unit = {
-     val newFile = List(s"$mainPart-$index", extension).mkString(".")
-     val f3 = new File(newFile)
-     if (f3.exists()) {
-       f3.delete()
-       cleanUpLayerFiles(mainPart, extension, index+1)
-     }
-  }
-
 }
 
 object ImageOperations extends GridLogging {
@@ -304,7 +265,7 @@ object ImageOperations extends GridLogging {
       var colourModel: Option[String] = None
       var colourModelInformation: Map[String, String] = Map.empty
 
-      val arena = Arena.ofConfined
+      implicit val arena: Arena = Arena.ofConfined
       try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
@@ -316,8 +277,9 @@ object ImageOperations extends GridLogging {
         ))
         maybeExifOrientationWhichTransformsImage = Seq(orientation).flatten.find(_.transformsImage())
 
+        val interpretationRawValue = VipsHelper.image_get_interpretation(image.getUnsafeStructAddress)
         // TODO better way to go straight from int to enum?
-        val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == VipsHelper.image_get_interpretation(image.getUnsafeStructAddress))
+        val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == interpretationRawValue)
         colourModel = maybeInterpretation match {
           case Some(VipsInterpretation.INTERPRETATION_B_W) => Some("Greyscale")
           case Some(VipsInterpretation.INTERPRETATION_CMYK) => Some("CMYK")
@@ -329,11 +291,12 @@ object ImageOperations extends GridLogging {
         }
 
         colourModelInformation = Map {
-          "hasAlpha" -> image.hasAlpha.toString
+          "hasAlpha" -> hasAlpha(image).toString
         }
       } catch {
         case e: Exception =>
           logger.error("Error during getImageInformation", e)
+          arena.close()
           throw e
       }
       arena.close()
@@ -345,4 +308,19 @@ object ImageOperations extends GridLogging {
     }
   }
 
+  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
+
+  def isGraphicVips(image: VImage)(implicit arena: Arena): Boolean = {
+    val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
+   logger.info("Number of bands: " + numberOfBands)
+    // Indexed plus alpha would be 2 bands
+
+    val format = VipsHelper.image_get_format(image.getUnsafeStructAddress)
+    logger.info("Format: " + format)
+
+    val paletteType = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "palette")
+    logger.info("Palette type: " + paletteType)
+
+    paletteType > 0 || numberOfBands < 3
+  }
 }

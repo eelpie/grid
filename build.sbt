@@ -112,6 +112,7 @@ lazy val commonLib = project("common-lib").settings(
     // declare explicit dependency on desired version of aws sdk v2 bedrock runtime
     "software.amazon.awssdk" % "bedrockruntime" % awsSdkV2Version,
     "software.amazon.awssdk" % "s3vectors" % awsSdkV2Version,
+    "com.adobe.xmp" % "xmpcore" % "6.1.11",
     ws,
     "org.testcontainers" % "testcontainers-elasticsearch" % "2.0.2" % Test,
   ),

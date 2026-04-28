@@ -1,21 +1,18 @@
 package com.gu.mediaservice.lib.imaging
 
+import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VImage, Vips}
-import app.photofox.vipsffm.Vips
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Bounds, Dimensions, ImageMetadata, Instance, Jpeg, Png, Tiff}
-import org.scalatest.time.{Millis, Span}
-import com.gu.mediaservice.model.{Dimensions, Instance, Tiff}
+import com.gu.mediaservice.model._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 
 import java.io.File
+import java.lang.foreign.Arena
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.{Duration, SECONDS}
 
 // This test is disabled for now as it doesn't run on our CI environment, because GraphicsMagick is not present...
 class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
@@ -24,6 +21,12 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
   implicit override val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(1000, Millis), interval = Span(25, Millis))
   implicit val logMarker: LogMarker = MarkerMap()
+
+  private val metadata = ImageMetadata(
+    credit = Some("Tony McCrae"),
+    copyright = Some("Eel Pie Consulting Ltd"),
+    suppliersReference = Some("eelpie-123")
+  )
 
   describe("thumbnail") {
     it("should write thumbnail to output file") {
@@ -84,6 +87,118 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
+    }
+  }
+
+  describe("resize") {
+    it("should output resized image to file in chosen format") {
+      implicit val arena: Arena = Arena.ofShared()
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
+      val imageOperations = new ImageOperations("")
+
+      val outputFile = new File("/Users/tony/Desktop/out5.jpg")
+
+      val eventuallyResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(1000, 800), 95, outputFile, Jpeg)
+
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    it("render LAB colour spaces correctly in sRGB") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/out6.jpg")
+
+      val eventuallyResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    it("render LAB colour spaces correctly as PNG") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/out7.png")
+
+      val eventuallyResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png)
+
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    it("render LAB 16 bit colour spaces correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB16.tif").getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/out8.jpg")
+
+      val eventuallyResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    it("render PNG with alpha correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val image = fileAt("with-alpha.png")
+      val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/resized-png-with-alpha.png")
+
+      val eventuallyResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png)
+
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    it("render LAB TIFF with alpha correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val imageOperations = new ImageOperations("")
+
+      val image = fileAt("lab8-with-alpha.tif")
+      val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
+      val outputFile = new File("/Users/tony/Desktop/out13.jpg")
+
+      val eventuallyResized = imageOperations.resizeImageVips(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+  }
+
+  describe("alpha") {
+    it("should return false for RGB for a Jpeg with no alpha") {
+      implicit val arena: Arena = Arena.ofShared
+      val image =  VImage.newFromFile(arena, fileAt("rgb-wo-profile.jpg").getAbsolutePath)
+      val hasAlpha = ImageOperations.hasAlpha(image)
+      arena.close()
+      hasAlpha should be(false)
+    }
+
+    it("should return true for PNG with alpha") {
+      implicit val arena: Arena = Arena.ofShared
+      val image = VImage.newFromFile(arena, fileAt("with-alpha.png").getAbsolutePath)
+      val hasAlpha = ImageOperations.hasAlpha(image)
+      arena.close()
+      hasAlpha should be(true)
     }
   }
 
@@ -218,7 +333,91 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
     }
   }
 
-  // TODO: test cropImage and its conversions
+  describe("graphic detection") {
+    it("should return not graphic for true colour jpeg") {
+      val arena = Arena.ofConfined
+      val image = VImage.newFromFile(arena, fileAt("exif-orientated-no-rotation.jpg").getAbsolutePath)
+      ImageOperations.isGraphicVips(image)(arena) should be(false)
+      arena.close()
+    }
+
+    it("should return is graphic for depth 2 tiff") {
+      val arena = Arena.ofConfined
+      val image = VImage.newFromFile(arena, fileAt("flower.tif").getAbsolutePath)
+      ImageOperations.isGraphicVips(image)(arena) should be(true)
+      arena.close()
+    }
+
+    it("should return is graphic for depth 4 png with alpha") {
+      val arena = Arena.ofConfined
+      val image = VImage.newFromFile(arena, fileAt("schaik.com_pngsuite/tbbn0g04.png").getAbsolutePath)
+      ImageOperations.isGraphicVips(image)(arena) should be(true)
+      arena.close()
+    }
+
+    it("should return is graphic for depth 8 indexed png") {
+      val arena = Arena.ofConfined
+      val image = VImage.newFromFile(arena, fileAt("schaik.com_pngsuite/basn3p08.png").getAbsolutePath)
+      ImageOperations.isGraphicVips(image)(arena) should be(true)
+      arena.close()
+    }
+
+  }
+
+  describe("cropping") {
+    val operations = new ImageOperations("")
+
+    it("should create unscaled master crop to resize from full sized images") {
+      implicit val arena: Arena = Arena.ofConfined
+      //val fullsizedImage = fileAt("Lab 16bpc (7d0b7c7b8e890d7e5d369093aa437bd833e20f71).tiff")
+      val fullsizedImage = fileAt("IMG_4403.jpg")
+      val metadata = ImageMetadata()
+
+      val masterCrop = operations.cropImageVips(fullsizedImage, Bounds(100, 100, 2000, 2400), metadata, None)
+
+      val outputFile = new File("/Users/tony/Desktop/master.jpg")
+      operations.saveImageToFile(masterCrop, Jpeg, 95, outputFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
+      arena.close()
+    }
+
+    it("should create unscaled master crop from CMYK full sized image") {
+      implicit val arena: Arena = Arena.ofConfined
+      val fullsizedImage = fileAt("CMYK-with-profile.jpg")
+      val metadata = ImageMetadata()
+
+      val masterCrop = operations.cropImageVips(fullsizedImage, Bounds(100, 100, 2000, 2400), metadata, None)
+
+      val outputFile = new File("/Users/tony/Desktop/master-from-cmyk.jpg")
+      operations.saveImageToFile(masterCrop, Jpeg, 95, outputFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
+
+      arena.close()
+    }
+
+    it("should create files foreach crop size") {
+      implicit val arena: Arena = Arena.ofShared()
+      val fullsizedImage = fileAt("CMYK-with-profile.jpg")
+      val metadata = ImageMetadata()
+
+      val masterCrop = operations.cropImageVips(fullsizedImage, Bounds(100, 100, 3000, 2000), metadata, None)
+      val landscapeCropSizingWidths = Seq(
+        Dimensions(140, 100),
+        Dimensions(320, 200),
+        Dimensions(800, 600),
+        Dimensions(1000, 1200),
+        Dimensions(2000, 3000),
+      )
+      implicit val i: Instance = Instance("id")
+
+      val crops = operations.createCrops(masterCrop, landscapeCropSizingWidths.toList, "test-image-id",
+        Bounds(0, 0, 1000, 1200),
+        Jpeg,
+        new File("/Users/tony/tmp/crops"),
+        75
+      )
+
+      arena.close()
+    }
+  }
 
   def fileAt(resourcePath: String): File = {
     new File(getClass.getResource(s"/$resourcePath").toURI)
