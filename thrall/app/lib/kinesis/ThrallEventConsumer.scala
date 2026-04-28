@@ -31,8 +31,8 @@ class ThrallEventConsumer(es: ElasticSearch,
 
   private val attemptTimeout = FiniteDuration(20, SECONDS)
   private val delay = FiniteDuration(1, MILLISECONDS)
-  private val attempts = 2
-  private val timeout = attemptTimeout * attempts + delay * (attempts - 1)
+  private val retries = 2
+  private val timeout = attemptTimeout * retries + delay * (retries - 1)
 
   private val messageProcessor = new MessageProcessor(es, store, metadataEditorNotifications, gridClient, auth, instanceMessageSender, usageEvents)
 
@@ -55,7 +55,7 @@ class ThrallEventConsumer(es: ElasticSearch,
            */
           (marker) => {
             messageProcessor.process(message, marker)
-          }, attempts, attemptTimeout, delay, marker
+          }, retries, attemptTimeout, delay, marker
         ).transform {
           case Success(_) => {
             logger.info(
