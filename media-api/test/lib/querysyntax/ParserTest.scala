@@ -490,8 +490,8 @@ class ParserTest extends AnyFunSpec with Matchers with BeforeAndAfter with Image
     it("should find review status images") {
       Parser.run("syndicationStatus:review") should be (List(
         Match(SingleField(getFieldPath("syndicationStatus")), SyndicationStatusValue("review")),
-        Negation(Match(IsField,IsValue("deleted")))
-      ))
+        Negation(Match(IsField,IsValue("deleted"))),
+        NegationNested(Nested(SingleField("usages"), SingleField("usages.status"), Phrase("replaced")))))
     }
   }
 
