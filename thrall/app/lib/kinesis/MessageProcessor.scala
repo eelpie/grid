@@ -60,7 +60,6 @@ class MessageProcessor(
       case message: UpdateUsageStatusMessage => updateUsageStatus(message, logMarker)
       case message: CompleteMigrationMessage => completeMigration(message, logMarker)
       case message: UpdateEmbeddingMessage => updateEmbedding(message, logMarker)
-      case message: CreateInstanceMessage => ensureIndex(message, logMarker)
       case message: CreateInstanceMessage => setupNewInstance(message, logMarker)
       case _ =>
         logger.info(s"Unmatched ThrallMessage type: ${updateMessage.subject}; ignoring")
