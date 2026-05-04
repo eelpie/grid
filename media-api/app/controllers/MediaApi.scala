@@ -186,6 +186,7 @@ class MediaApi(
   }
 
   def uploadedBy(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "uploaded-by",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -261,6 +262,7 @@ class MediaApi(
   }
 
   def getImageExport(imageId: String, exportId: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "get-image-export",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -323,13 +325,14 @@ class MediaApi(
   }
 
   def hardDeleteImage(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "hard-delete-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
       "imageId" -> id,
     ) ++ RequestLoggingFilter.loggablePrincipal(request.user)
 
-    elasticSearch.getImageById(id) map {  // TODO with instance!
+    elasticSearch.getImageById(id) map {
       case Some(image) if isVisibleToAccessor(request.user, image) =>
         val imageCanBeDeleted = imageResponse.canBeDeleted(image)
 
@@ -352,6 +355,7 @@ class MediaApi(
   }
 
   def deleteImage(id: String) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "delete-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -391,6 +395,7 @@ class MediaApi(
   }
 
   def unSoftDeleteImage(id: String) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "soft-undelete-image",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
