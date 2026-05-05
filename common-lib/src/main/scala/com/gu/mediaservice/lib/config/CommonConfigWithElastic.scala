@@ -16,14 +16,11 @@ class CommonConfigWithElastic(resources: GridConfigResources) extends CommonConf
     replicas = string("es6.replicas").toInt
   )
 
-  private val persistenceIdentifier = string("persistence.identifier")
   val persistenceIdentifiers = NonEmptyList(
-    persistenceIdentifier,
     ImageStorageProps.derivativeOfMediaIdsIdentifierKey,
     ImageStorageProps.replacesMediaIdIdentifierKey
   )
   val queriableIdentifiers = Seq(
-    persistenceIdentifier,
     ImageStorageProps.derivativeOfMediaIdsIdentifierKey,
   )
 

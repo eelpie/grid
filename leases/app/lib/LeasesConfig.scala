@@ -1,23 +1,24 @@
 package lib
 
 import com.gu.mediaservice.lib.argo.model.Link
-import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
+import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, InstanceForRequest}
+import com.gu.mediaservice.model.Instance
 
 import java.net.URI
 import scala.util.Try
 
-class LeasesConfig(resources: GridConfigResources) extends CommonConfig(resources) {
+class LeasesConfig(resources: GridConfigResources) extends CommonConfig(resources) with InstanceForRequest {
   val leasesTable = string("dynamo.tablename.leasesTable")
 
-  val rootUri: String = services.leasesBaseUri
+  def rootUri: Instance => String = services.leasesBaseUri
 
   private def uri(u: String) = URI.create(u)
 
-  private val leasesUri = uri(s"$rootUri/leases")
+  private def leasesUri(instance: Instance) = uri(s"${rootUri(instance)}/leases")
 
-  def leaseUri(leaseId: String): Option[URI] = Try { URI.create(s"$leasesUri/$leaseId") }.toOption
-  def leasesMediaUri(mediaId: String) = Try { URI.create(s"$leasesUri/media/$mediaId") }.toOption
+  def leaseUri(leaseId: String)(implicit instance: Instance): Option[URI] = Try { URI.create(s"${leasesUri(instance)}/$leaseId") }.toOption
+  def leasesMediaUri(mediaId: String)(implicit instance: Instance) = Try { URI.create(s"${leasesUri(instance)}/media/$mediaId") }.toOption
 
-  private def mediaApiUri(id: String) = s"${services.apiBaseUri}/images/$id"
-  def mediaApiLink(id: String) = Link("media", mediaApiUri(id))
+  private def mediaApiUri(id: String)(implicit instance: Instance) = s"${services.apiBaseUri(instance)}/images/$id"
+  def mediaApiLink(id: String)(implicit instance: Instance) = Link("media", mediaApiUri(id))
 }

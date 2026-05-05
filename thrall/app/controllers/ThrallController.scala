@@ -6,10 +6,10 @@ import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.{Authentication, BaseControllerWithLoginRedirects}
 import com.gu.mediaservice.lib.aws.ThrallMessageSender
-import com.gu.mediaservice.lib.config.Services
+import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
 import com.gu.mediaservice.lib.elasticsearch.{NotRunning, Running}
 import com.gu.mediaservice.lib.logging.GridLogging
-import com.gu.mediaservice.model.{CompleteMigrationMessage, CreateMigrationIndexMessage, UpsertFromProjectionMessage}
+import com.gu.mediaservice.model.{CompleteMigrationMessage, CreateMigrationIndexMessage, Instance, UpsertFromProjectionMessage}
 import lib.elasticsearch.ElasticSearch
 import lib.{MigrationRequest, OptionalFutureRunner, Paging, ThrallStore}
 import org.joda.time.{DateTime, DateTimeZone}
@@ -34,39 +34,42 @@ class ThrallController(
   override val services: Services,
   override val controllerComponents: ControllerComponents,
   gridClient: GridClient
-)(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging {
+)(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging with InstanceForRequest {
 
   private val numberFormatter: Long => String = java.text.NumberFormat.getIntegerInstance().format
 
-  def index = withLoginRedirectAsync {
+  def index = withLoginRedirectAsync { request =>
+    implicit val instance: Instance = instanceOf(request)
+
     val countDocsInIndex = OptionalFutureRunner.run(es.countImages) _
     for {
-      currentIndex <- es.getIndexForAlias(es.imagesCurrentAlias)
+      currentIndex <- es.getIndexForAlias(es.imagesCurrentAlias(instance))
       currentIndexName = currentIndex.map(_.name)
       currentIndexCount <- countDocsInIndex(currentIndexName)
 
-      migrationIndex <- es.getIndexForAlias(es.imagesMigrationAlias)
+      migrationIndex <- es.getIndexForAlias(es.imagesMigrationAlias(instance))
       migrationIndexName = migrationIndex.map(_.name)
       migrationIndexCount <- countDocsInIndex(migrationIndexName)
 
-      historicalIndex <- es.getIndexForAlias(es.imagesHistoricalAlias)
+      historicalIndex <- es.getIndexForAlias(es.imagesHistoricalAlias(instance))
 
       currentIndexCountFormatted = currentIndexCount.map(_.catCount).map(numberFormatter).getOrElse("!")
       migrationIndexCountFormatted = migrationIndexCount.map(_.catCount).map(numberFormatter).getOrElse("-")
     } yield {
       Ok(views.html.index(
-        currentAlias = es.imagesCurrentAlias,
+        currentAlias = es.imagesCurrentAlias(instance),
         currentIndex = currentIndexName.getOrElse("ERROR - No index found! Please investigate this!"),
         currentIndexCount = currentIndexCountFormatted,
-        migrationAlias = es.imagesMigrationAlias,
+        migrationAlias = es.imagesMigrationAlias(instance),
         migrationIndexCount = migrationIndexCountFormatted,
         migrationStatus = es.migrationStatus,
-        hasHistoricalIndex = historicalIndex.isDefined,
+        hasHistoricalIndex = historicalIndex.isDefined
       ))
     }
   }
 
   def upsertProjectPage(imageId: Option[String]) = withLoginRedirectAsync { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     imageId match {
       case Some(id) if store.doesOriginalExist(id) =>
         gridClient.getProjectionDiff(id, auth.innerServiceCall).map {
@@ -78,51 +81,53 @@ class ThrallController(
     }
   }
 
-  def migrationFailuresOverview(): Action[AnyContent] = withLoginRedirectAsync {
-    es.migrationStatus match {
+  def migrationFailuresOverview(): Action[AnyContent] = withLoginRedirectAsync { request =>
+    implicit val instance: Instance = instanceOf(request)
+    es.migrationStatus(instance) match {
       case running: Running =>
-        es.getMigrationFailuresOverview(es.imagesCurrentAlias, running.migrationIndexName).map(failuresOverview =>
+        es.getMigrationFailuresOverview(es.imagesCurrentAlias(instance), running.migrationIndexName).map(failuresOverview =>
           Ok(views.html.migrationFailuresOverview(
             failuresOverview,
-            apiBaseUrl = services.apiBaseUri,
-            uiBaseUrl = services.kahunaBaseUri,
+            apiBaseUrl = services.apiBaseUri(instance),
+            uiBaseUrl = services.kahunaBaseUri(instance)
           ))
         )
       case _ => for {
-        currentIndex <- es.getIndexForAlias(es.imagesCurrentAlias)
-        currentIndexName <- currentIndex.map(_.name).map(Future.successful).getOrElse(Future.failed(new Exception(s"No index found for '${es.imagesCurrentAlias}' alias")))
-        failuresOverview <- es.getMigrationFailuresOverview(es.imagesHistoricalAlias, currentIndexName)
+        currentIndex <- es.getIndexForAlias(es.imagesCurrentAlias(instance))
+        currentIndexName <- currentIndex.map(_.name).map(Future.successful).getOrElse(Future.failed(new Exception(s"No index found for '${es.imagesCurrentAlias(instance)}' alias")))
+        failuresOverview <- es.getMigrationFailuresOverview(currentIndexName, es.imagesMigrationAlias(instance))
         response = Ok(views.html.migrationFailuresOverview(
           failuresOverview,
-          apiBaseUrl = services.apiBaseUri,
-          uiBaseUrl = services.kahunaBaseUri,
+          apiBaseUrl = services.apiBaseUri(instance),
+          uiBaseUrl = services.kahunaBaseUri(instance),
         ))
       } yield response
     }
   }
 
-  def migrationFailures(filter: String, maybePage: Option[Int]): Action[AnyContent] = withLoginRedirectAsync {
+  def migrationFailures(filter: String, maybePage: Option[Int]): Action[AnyContent] = withLoginRedirectAsync { request =>
+    implicit val instance: Instance = instanceOf(request)
     Paging.withPaging(maybePage) { paging =>
       es.migrationStatus match {
         case running: Running =>
-          es.getMigrationFailures(es.imagesCurrentAlias, running.migrationIndexName, paging.from, paging.pageSize, filter).map(failures =>
+          es.getMigrationFailures(es.imagesCurrentAlias(instance), running.migrationIndexName, paging.from, paging.pageSize, filter).map(failures =>
             Ok(views.html.migrationFailures(
               failures,
-              apiBaseUrl = services.apiBaseUri,
-              uiBaseUrl = services.kahunaBaseUri,
+              apiBaseUrl = services.apiBaseUri(instance),
+              uiBaseUrl = services.kahunaBaseUri(instance),
               filter,
               paging.page,
               shouldAllowReattempts = true
             ))
           )
         case _ => for {
-          currentIndex <- es.getIndexForAlias(es.imagesCurrentAlias)
-          currentIndexName <- currentIndex.map(_.name).map(Future.successful).getOrElse(Future.failed(new Exception(s"No index found for '${es.imagesCurrentAlias}' alias")))
-          failures <- es.getMigrationFailures(es.imagesHistoricalAlias, currentIndexName, paging.from, paging.pageSize, filter)
+          currentIndex <- es.getIndexForAlias(es.imagesCurrentAlias(instance))
+          currentIndexName <- currentIndex.map(_.name).map(Future.successful).getOrElse(Future.failed(new Exception(s"No index found for '${es.imagesCurrentAlias(instance)}' alias")))
+          failures <- es.getMigrationFailures(es.imagesHistoricalAlias(instance), currentIndexName, paging.from, paging.pageSize, filter)
           response = Ok(views.html.migrationFailures(
             failures,
-            apiBaseUrl = services.apiBaseUri,
-            uiBaseUrl = services.kahunaBaseUri,
+            apiBaseUrl = services.apiBaseUri(instance),
+            uiBaseUrl = services.kahunaBaseUri(instance),
             filter,
             paging.page,
             shouldAllowReattempts = false
@@ -135,31 +140,33 @@ class ThrallController(
   implicit val pollingMaterializer: Materializer = Materializer.matFromSystem(actorSystem)
 
   def startMigration = withLoginRedirectAsync { implicit request =>
+    val instance = instanceOf(request)
 
     if(Form(single("start-confirmation" -> text)).bindFromRequest().get != "start"){
       Future.successful(BadRequest("you did not enter 'start' in the text box"))
     } else {
-      val msgFailedToFetchIndex = s"Could not fetch ES index details for alias '${es.imagesMigrationAlias}'"
-      es.getIndexForAlias(es.imagesMigrationAlias) recover { case error: Throwable =>
+      val msgFailedToFetchIndex = s"Could not fetch ES index details for alias '${es.imagesMigrationAlias(instance)}'"
+      es.getIndexForAlias(es.imagesMigrationAlias(instance)) recover { case error: Throwable =>
         logger.error(msgFailedToFetchIndex, error)
         InternalServerError(msgFailedToFetchIndex)
       } map {
         case Some(index) =>
-          BadRequest(s"There is already an index '${index}' for alias '${es.imagesMigrationAlias}', and thus a migration underway.")
+          BadRequest(s"There is already an index '$index' for alias '${es.imagesMigrationAlias(instance)}', and thus a migration underway.")
         case None =>
           messageSender.publish(CreateMigrationIndexMessage(
             migrationStart = DateTime.now(DateTimeZone.UTC),
-            gitHash = utils.buildinfo.BuildInfo.gitCommitId
+            gitHash = utils.buildinfo.BuildInfo.gitCommitId,
+            instance
           ))
           // poll until images migration alias is created, giving up after 10 seconds
           Await.result(
             Source(1 to 20)
               .throttle(1, 500 millis)
-              .mapAsync(parallelism = 1)(_ => es.getIndexForAlias(es.imagesMigrationAlias))
+              .mapAsync(parallelism = 1)(_ => es.getIndexForAlias(es.imagesMigrationAlias(instance)))
               .takeWhile(_.isEmpty, inclusive = true)
               .runWith(Sink.last)
               .map(_.fold {
-                val timedOutMessage = s"Still no index for alias '${es.imagesMigrationAlias}' after 10 seconds."
+                val timedOutMessage = s"Still no index for alias '${es.imagesMigrationAlias(instance)}' after 10 seconds."
                 logger.error(timedOutMessage)
                 InternalServerError(timedOutMessage)
               } { _ =>
@@ -176,19 +183,20 @@ class ThrallController(
   }
 
   def completeMigration(): Action[AnyContent] = withLoginRedirectAsync { implicit request =>
-
+    val instance = instanceOf(request)
     if(Form(single("complete-confirmation" -> text)).bindFromRequest().get != "complete"){
       Future.successful(BadRequest("you did not enter 'complete' in the text box"))
     } else {
-      es.refreshAndRetrieveMigrationStatus() match {
+      es.refreshAndRetrieveMigrationStatus(instance) match {
         case _: Running =>
           messageSender.publish(CompleteMigrationMessage(
             lastModified = DateTime.now(DateTimeZone.UTC),
+            instance
           ))
           // poll until images migration status is not running or error, giving up after 10 seconds
           Source(1 to 20)
             .throttle(1, 500 millis)
-            .map(_ => es.refreshAndRetrieveMigrationStatus())
+            .map(_ => es.refreshAndRetrieveMigrationStatus(instance))
             .takeWhile(_.isInstanceOf[Running], inclusive = true)
             .runWith(Sink.last)
             .map {
@@ -206,54 +214,61 @@ class ThrallController(
     }
   }
 
-  private def adjustMigration(action: () => Unit) = withLoginRedirect {
-    action()
-    es.refreshAndRetrieveMigrationStatus()
+  private def adjustMigration(action: Instance => Unit) = withLoginRedirect { request =>
+    val instance = instanceOf(request)
+    action(instance)
+    es.refreshAndRetrieveMigrationStatus(instance)
     Redirect(routes.ThrallController.index)
   }
-  def pauseMigration = adjustMigration(es.pauseMigration _)
-  def resumeMigration = adjustMigration(es.resumeMigration _)
-  def previewMigrationCompletion = adjustMigration(es.previewMigrationCompletion _)
-  def unPreviewMigrationCompletion = adjustMigration(es.unPreviewMigrationCompletion _)
+  def pauseMigration = {
+    adjustMigration(es.pauseMigration)
+  }
+  def resumeMigration = adjustMigration(es.resumeMigration)
+  def previewMigrationCompletion = adjustMigration(es.previewMigrationCompletion)
+  def unPreviewMigrationCompletion = adjustMigration(es.unPreviewMigrationCompletion)
 
   def migrateSingleImage: Action[AnyContent] = withLoginRedirectAsync { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     val imageId = migrateSingleImageFormReader.bindFromRequest().get.id
 
     es.getImageVersion(imageId) flatMap {
 
       case Some(version) =>
-        sendMigrationRequest(MigrationRequest(imageId, version)).map {
-          case true => Ok(s"Image migration queued successfully with id:$imageId")
-          case false => InternalServerError(s"Failed to send migrate image message $imageId")
+        sendMigrationRequest(MigrationRequest(imageId, version, instance)).map {
+          case true => Ok(s"Image migration queued successfully with id:$imageId for instance ${instance.id}")
+          case false => InternalServerError(s"Failed to send migrate image message $imageId for instance ${instance.id}")
         }
       case None =>
-        Future.successful(InternalServerError(s"Failed to send migrate image message $imageId"))
+        Future.successful(InternalServerError(s"Failed to send migrate image message $imageId for instance ${instance.id}"))
     }
   }
 
   def upsertFromProjectionSingleImage: Action[AnyContent] = withLoginRedirectAsync { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     val imageId = migrateSingleImageFormReader.bindFromRequest().get.id
 
     for {
       maybeImage <- gridClient.getImageLoaderProjection(imageId, auth.innerServiceCall)
     } yield { maybeImage match {
       case Some(projectedImage) =>
-        messageSender.publish(UpsertFromProjectionMessage(imageId, projectedImage, DateTime.now))
+        messageSender.publish(UpsertFromProjectionMessage(imageId, projectedImage, DateTime.now,
+          instance))
         Ok(s"upsert request for $imageId submitted")
       case None => NotFound("")
     }}
   }
 
   def restoreFromReplica: Action[AnyContent] = withLoginRedirect {implicit request =>
-    Ok(views.html.restoreFromReplica(s"${services.loaderBaseUri}/images/restore")) //FIXME figure out imageId bit
+    Ok(views.html.restoreFromReplica(s"${services.loaderBaseUri(instanceOf(request))}/images/restore")) //FIXME figure out imageId bit
   }
 
   def reattemptMigrationFailures(filter: String, page: Int): Action[AnyContent] = withLoginRedirectAsync { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     Paging.withPaging(Some(page)) { paging =>
       es.migrationStatus match {
         case running: Running =>
-          val migrationRequestsF = es.getMigrationFailures(es.imagesCurrentAlias, running.migrationIndexName, paging.from, paging.pageSize, filter).map(failures =>
-            failures.details.map(detail => MigrationRequest(detail.imageId, detail.version))
+          val migrationRequestsF = es.getMigrationFailures(es.imagesCurrentAlias(instance), running.migrationIndexName, paging.from, paging.pageSize, filter).map(failures =>
+            failures.details.map(detail => MigrationRequest(detail.imageId, detail.version, instance))
           )
           for {
             migrationRequests <- migrationRequestsF

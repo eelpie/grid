@@ -4,11 +4,12 @@ import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model._
 import org.joda.time.DateTime
 import play.api.libs.ws.WSRequest
+import play.api.mvc.RequestHeader
 
 import scala.concurrent.{ExecutionContext, Future}
 
 object ImageDataMerger extends GridLogging {
-  def aggregate(image: Image, gridClient: GridClient, authFunction: WSRequest => WSRequest)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
+  def aggregate(image: Image, gridClient: GridClient, authFunction: WSRequest => WSRequest)(implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Image] = {
     logger.info(logMarker, s"starting to aggregate image")
     val mediaId = image.id
     // NB original metadata should already be added, cleaned, and copied to metadata.

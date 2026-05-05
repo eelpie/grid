@@ -5,12 +5,12 @@ import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.auth.Authentication.getIdentity
 import com.gu.mediaservice.lib.aws.{NoItemFound, UpdateMessage}
 import com.gu.mediaservice.lib.collections.CollectionsManager
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.net.{URI => UriOps}
-import com.gu.mediaservice.model.{ActionData, Collection}
+import com.gu.mediaservice.model.{ActionData, Collection, Instance}
 import com.gu.mediaservice.syntax.MessageSubjects
-import lib.{CollectionsConfig, Notifications}
+import lib.Notifications
 import org.joda.time.DateTime
-import play.api.libs.json.Json
 import play.api.mvc.{BaseController, ControllerComponents}
 import store.ImageCollectionsStore
 
@@ -18,14 +18,15 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-class ImageCollectionsController(authenticated: Authentication, config: CollectionsConfig, notifications: Notifications,
+class ImageCollectionsController(authenticated: Authentication, notifications: Notifications,
                                  imageCollectionsStore: ImageCollectionsStore,
                                  override val controllerComponents: ControllerComponents)
-  extends BaseController with MessageSubjects with ArgoHelpers {
+  extends BaseController with MessageSubjects with ArgoHelpers with InstanceForRequest {
 
   import CollectionsManager.onlyLatest
 
   def getCollections(id: String) = authenticated.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     imageCollectionsStore.get(id).map { collections =>
       respond(onlyLatest(collections))
     } recover {
@@ -34,6 +35,7 @@ class ImageCollectionsController(authenticated: Authentication, config: Collecti
   }
 
   def addCollection(id: String) = authenticated.async(parse.json) { req =>
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").asOpt[List[String]].map { path =>
       val collection = Collection.build(path, ActionData(getIdentity(req.user), DateTime.now()))
         imageCollectionsStore.add(id, collection)
@@ -44,6 +46,7 @@ class ImageCollectionsController(authenticated: Authentication, config: Collecti
 
 
   def removeCollection(id: String, collectionString: String) = authenticated.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     val path = CollectionsManager.uriToPath(UriOps.encodePlus(collectionString))
     // We do a get to be able to find the index of the current collection, then remove it.
     // Given that we're using Dynamo Lists this seemed like a decent way to do it.
@@ -63,9 +66,9 @@ class ImageCollectionsController(authenticated: Authentication, config: Collecti
     }
   }
 
-  def publish(id: String)(collections: List[Collection]): List[Collection] = {
+  def publish(id: String)(collections: List[Collection])(implicit instance: Instance): List[Collection] = {
     val onlyLatestCollections = onlyLatest(collections)
-    val updateMessage = UpdateMessage(subject = SetImageCollections, id = Some(id), collections = Some(onlyLatestCollections))
+    val updateMessage = UpdateMessage(subject = SetImageCollections, id = Some(id), collections = Some(onlyLatestCollections), instance = instance)
     notifications.publish(updateMessage)
     onlyLatestCollections
   }
