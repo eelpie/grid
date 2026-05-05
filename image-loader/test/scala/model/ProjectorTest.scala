@@ -15,6 +15,7 @@ import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model.{Instance, _}
 import com.gu.mediaservice.model.leases.LeasesByMedia
 import lib.DigestedFile
+import model.upload.OptimiseWithPngQuant
 import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{times, verify, when}
@@ -43,13 +44,13 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
   private val imageOperations = new ImageOperations(ctxPath)
 
   private val mockS3Client = mock[AmazonS3]
-  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, Nil, S3Bucket("img-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client), S3Bucket("thumb-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client))
+  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, S3Bucket("img-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client), S3Bucket("thumb-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client))
 
   private val maybeEmbedder = None
 
   private val s3 = mock[S3]
   private val auth = mock[Authentication]
-  private val projector = new Projector(config, s3, imageOperations, ImageProcessor.identity, auth, maybeEmbedder)
+  private val projector = new Projector(config, s3, imageOperations, ImageProcessor.identity, auth, maybeEmbedder, new OptimiseWithPngQuant(imageOperations))
 
   private implicit val instance: Instance = Instance("an-instance")
 
