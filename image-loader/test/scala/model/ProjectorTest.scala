@@ -1,12 +1,14 @@
 package model
 
+import com.amazonaws.services.s3.AmazonS3
+
 import java.io.File
 import java.net.URI
-import java.util.{Date, UUID}
-import com.amazonaws.services.s3.AmazonS3
+import java.util.Date
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication
+import com.gu.mediaservice.lib.aws.{Embedder, S3, S3Bucket, S3Vectors}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
@@ -23,7 +25,6 @@ import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.libs.json.{JsArray, JsString}
 import software.amazon.awssdk.services.s3vectors.model.PutVectorsResponse
-import play.api.mvc.RequestHeader
 import test.lib.ResourceHelpers
 
 import java.nio.file.Path
@@ -41,11 +42,12 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val imageOperations = new ImageOperations(ctxPath)
 
-  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, Nil, "img-bucket", "thumb-bucket")
+  private val mockS3Client = mock[AmazonS3]
+  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, Nil, S3Bucket("img-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client), S3Bucket("thumb-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client))
 
   private val maybeEmbedder = None
 
-  private val s3 = mock[AmazonS3]
+  private val s3 = mock[S3]
   private val auth = mock[Authentication]
   private val projector = new Projector(config, s3, imageOperations, ImageProcessor.identity, auth, maybeEmbedder)
 

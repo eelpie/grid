@@ -1,5 +1,7 @@
 package lib
 
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
+
 import java.io.File
 import com.gu.mediaservice.lib.cleanup.{ComposedImageProcessor, ImageProcessor, ImageProcessorResources}
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, ImageProcessorLoader}
@@ -10,11 +12,13 @@ import play.api.inject.ApplicationLifecycle
 import scala.concurrent.duration.FiniteDuration
 
 class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(resources) with StrictLogging {
-  val imageBucket: String = string("s3.image.bucket")
 
   val maybeImageReplicaBucket: Option[String] = stringOpt("s3.image.replicaBucket")
 
-  val thumbnailBucket: String = string("s3.thumb.bucket")
+  private val quarantineBucketEndpoint = S3.AmazonAwsS3Endpoint
+  val quarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map { bucket =>
+    S3Bucket(bucket, quarantineBucketEndpoint, usesPathStyleURLs = false, clientFor(quarantineBucketEndpoint))
+  }
 
   val tempDir: File = new File(stringDefault("upload.tmp.dir", "/tmp"))
 
