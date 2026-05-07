@@ -84,7 +84,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     val key: Key = url.getPath.drop(1)
 
     val request = new GeneratePresignedUrlRequest(bucket, key).withExpiration(expiration.toDate)
-    legacySigningClient.generatePresignedUrl(request)
+    client.generatePresignedUrl(request)
   }
 
   def getObject(bucket: Bucket, url: URI): model.S3Object = {
