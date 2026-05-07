@@ -472,6 +472,7 @@ class Uploader(
       ))
       // TODO: centralise where all these URLs are constructed
     } yield {
+      /*
       config.maybeLowerEnvironmentQueueBucketToSampleInto.foreach { lowerEnvironmentQueueBucket =>
         if (math.random() < config.lowerEnvironmentSamplingPercentageAsDecimal) {
           val mediaId = imageUpload.image.id
@@ -487,7 +488,7 @@ class Uploader(
           }
         }
       }
-
+      */
       UploadStatusUri(s"${config.rootUri(instance)}/uploadStatus/${uploadRequest.imageId}")
     }
 
