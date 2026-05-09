@@ -100,7 +100,21 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
         r._1.isFile should be(true)
       }
     }
+  }
 
+  describe("embeddings") {
+    it("should produce embedding sources from original images") {
+      implicit val arena: Arena = Arena.ofShared()
+      val fullSizedImage = fileAt("IMG_4403.jpg")
+      val imageOperations = new ImageOperations("")
+
+      val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = None)
+
+      whenReady(eventualEmbeddingSource) { source =>
+        arena.close()
+        source.length > 100 should be(true)
+      }
+    }
   }
 
   describe("resize") {

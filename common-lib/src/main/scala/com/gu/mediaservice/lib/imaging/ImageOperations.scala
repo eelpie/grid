@@ -210,6 +210,49 @@ class ImageOperations(playPath: String) extends GridLogging {
     }
   }
 
+  // Given the path to an original image return a rendering of it which
+  // can be ingested by an embedding prediction end point.
+  def createEmbeddingSource(originalImageFile: File,
+                            orientationMetadata: Option[OrientationMetadata]
+                           ): Future[Array[Byte]] = {
+    Future {
+      val arena = Arena.ofConfined
+
+      val embeddingLongestAxis = 2000
+      val embeddingFormat = Jpeg
+
+      try {
+        val thumbnail = VImage.thumbnail(arena, originalImageFile.getAbsolutePath, embeddingLongestAxis,
+          VipsOption.Boolean("auto-rotate", false),
+          VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL),
+          VipsOption.String("export-profile", "srgb")
+        )
+        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+          logger.info("Rotating thumbnail: " + angle)
+          thumbnail.rotate(angle)
+        }.getOrElse {
+          thumbnail
+        }
+        logger.info("Created embedding source: " + rotated.getWidth + "x" + rotated.getHeight)
+
+        // Extract to image bytes
+        val buffer = new ByteArrayOutputStream()
+        thumbnail.writeToStream(buffer, embeddingFormat.fileExtension)
+        buffer.toByteArray
+
+      } catch {
+        case e: Throwable =>
+          arena.close()
+          throw e
+      }
+
+    }.recoverWith {
+      case e: Throwable =>
+        logger.error("Error creating embedding source", e)
+        Future.failed(e)
+    }
+  }
+
   def saveImageToFile(image: VImage, mimeType: MimeType, quality: Int, outputFile: File, quantise: Boolean = false, keep: Option[Int] = None): File = {
     val k = keep.getOrElse(VipsRaw.VIPS_FOREIGN_KEEP_NONE)
     mimeType match {
