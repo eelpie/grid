@@ -8,6 +8,7 @@ import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.formatting._
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.imaging.ImageOperations.{optimisedMimeType, thumbMimeType}
@@ -25,6 +26,7 @@ import model.upload.{OptimiseOps, UploadRequest}
 import org.joda.time.DateTime
 
 import java.io.File
+import java.lang
 import java.nio.file.Files
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -170,6 +172,8 @@ object Uploader extends GridLogging {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
       }
+      embeddings <- createEmbeddings(browserViewableImage, sourceOrientationMetadata, deps)
+
     } yield {
       val fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
       val metadata = ImageMetadataConverter.fromFileMetadata(fullFileMetadata, s3Source.metadata.objectMetadata.lastModified)
@@ -187,6 +191,7 @@ object Uploader extends GridLogging {
         metadata
       )
       val processedImage = processor(baseImage)
+      logger.info("By the way we got embeddings as well: " + embeddings)
 
       logger.info(addLogMarkers(fileMetadata.toLogMarker), s"Ending image ops")
       // FIXME: dirty hack to sync the originalUsageRights and originalMetadata as well
@@ -287,6 +292,16 @@ object Uploader extends GridLogging {
       (browserViewableImage
         .copy(file = thumb, mimeType = thumbMimeType)
         .asStorableThumbImage, thumbDimensions)
+    }
+  }
+
+  private def createEmbeddings(browserViewableImage: BrowserViewableImage,
+                               orientationMetadata: Option[OrientationMetadata],
+                               deps: ImageUploadOpsDependencies,
+                              )(implicit ec: ExecutionContext): Future[Seq[Float]] = {
+    import deps._
+    imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata).map { source =>
+      new GoogleCloudEmbedding().getImageEmbeddings(source)
     }
   }
 
