@@ -3,6 +3,7 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VImage, Vips}
 import com.gu.mediaservice.lib.BrowserViewableImage
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
 import org.apache.commons.io.FileUtils
