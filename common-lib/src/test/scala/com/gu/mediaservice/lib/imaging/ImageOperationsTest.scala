@@ -3,6 +3,7 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VImage, Vips}
 import com.gu.mediaservice.lib.BrowserViewableImage
+import com.gu.mediaservice.lib.aws.EmbeddingSourceImageFormat
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
 import org.scalatest.concurrent.ScalaFutures
@@ -100,7 +101,25 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
         r._1.isFile should be(true)
       }
     }
+  }
 
+  describe("embeddings") {
+    it("should produce embedding sources from original images") {
+      implicit val arena: Arena = Arena.ofShared()
+      val fullSizedImage = fileAt("IMG_4403.jpg")
+      val imageOperations = new ImageOperations("")
+
+      val format = EmbeddingSourceImageFormat(
+        longestAxis = 1000, format = Jpeg, letterBox = false
+      )
+
+      val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = None, embeddingSourceImageFormat = format)
+
+      whenReady(eventualEmbeddingSource) { source =>
+        arena.close()
+        source.length > 100 should be(true)
+      }
+    }
   }
 
   describe("resize") {

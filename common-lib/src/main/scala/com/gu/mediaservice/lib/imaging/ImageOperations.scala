@@ -6,6 +6,7 @@ import app.photofox.vipsffm.{VBlob, VImage, VipsHelper, VipsOption}
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
+import com.gu.mediaservice.lib.aws.EmbeddingSourceImageFormat
 import com.gu.mediaservice.lib.imaging.ImageOperations.thumbMimeType
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
@@ -206,6 +207,54 @@ class ImageOperations(playPath: String) extends GridLogging {
     }.recoverWith {
       case e: Throwable =>
         logger.error("Error creating thumbnail", e)
+        Future.failed(e)
+    }
+  }
+
+  // Given the path to an original image return a rendering of it which
+  // can be ingested by an embedding prediction end point.
+  def createEmbeddingSource(originalImageFile: File,
+                            orientationMetadata: Option[OrientationMetadata],
+                            embeddingSourceImageFormat: EmbeddingSourceImageFormat
+                           ): Future[Array[Byte]] = {
+    Future {
+      val arena = Arena.ofConfined
+
+      val embeddingLongestAxis = embeddingSourceImageFormat.longestAxis
+      val embeddingFormat = embeddingSourceImageFormat.format
+
+      try {
+        val thumbnail = VImage.thumbnail(arena, originalImageFile.getAbsolutePath, embeddingLongestAxis,
+          VipsOption.Boolean("auto-rotate", false),
+          VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL),
+          VipsOption.String("export-profile", "srgb")
+        )
+        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+          logger.info("Rotating thumbnail: " + angle)
+          thumbnail.rotate(angle)
+        }.getOrElse {
+          thumbnail
+        }
+        logger.info("Created embedding source: " + rotated.getWidth + "x" + rotated.getHeight)
+
+        // Extract to image bytes
+        val buffer = new ByteArrayOutputStream()
+        thumbnail.writeToStream(buffer, embeddingFormat.fileExtension)
+
+        val bytes = buffer.toByteArray
+        val embeddingSource = bytes
+        logger.info("Created embedding source with length: " + embeddingSource.length)
+        embeddingSource
+
+      } catch {
+        case e: Throwable =>
+          arena.close()
+          throw e
+      }
+
+    }.recoverWith {
+      case e: Throwable =>
+        logger.error("Error creating embedding source", e)
         Future.failed(e)
     }
   }
