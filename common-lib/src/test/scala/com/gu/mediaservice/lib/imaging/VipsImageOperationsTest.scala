@@ -4,6 +4,7 @@ import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VImage, Vips}
 import app.photofox.vipsffm.Vips
 import com.gu.mediaservice.lib.BrowserViewableImage
+import com.gu.mediaservice.lib.embeddings.EmbeddingSourceImageFormat
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
 import org.scalatest.concurrent.ScalaFutures
@@ -14,7 +15,6 @@ import org.scalatest.time.{Millis, Span}
 import java.io.File
 import java.lang.foreign.Arena
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
@@ -102,6 +102,25 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
+      }
+    }
+  }
+
+  describe("embeddings") {
+    it("should produce embedding sources from original images") {
+      implicit val arena: Arena = Arena.ofShared()
+      val fullSizedImage = fileAt("IMG_4403.jpg")
+      val imageOperations = new ImageOperations("")
+
+      val format = EmbeddingSourceImageFormat(
+        longestAxis = 1000, format = Jpeg, letterBox = false
+      )
+
+      val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = None, embeddingSourceImageFormat = format)
+
+      whenReady(eventualEmbeddingSource) { source =>
+        arena.close()
+        source.length > 100 should be(true)
       }
     }
   }
