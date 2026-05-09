@@ -110,22 +110,20 @@ object Uploader extends GridLogging {
 
     logger.info(logMarker, "Starting image ops")
 
-    val fileMetadataFuture = toFileMetadata(uploadRequest.tempFile, uploadRequest.imageId, uploadRequest.mimeType)
 
     logger.info(logMarker, "Have read file headers")
 
-    fileMetadataFuture.flatMap(fileMetadata => {
-      uploadAndStoreImage(
-        storeOrProjectOriginalFile,
-        storeOrProjectThumbFile,
-        storeOrProjectOptimisedImage,
-        storeEmbeddingSource,
-        optimiseOps,
-        uploadRequest,
-        deps,
-        processor)(ec, addLogMarkers(fileMetadata.toLogMarker))
-    })
+    uploadAndStoreImage(
+      storeOrProjectOriginalFile,
+      storeOrProjectThumbFile,
+      storeOrProjectOptimisedImage,
+      storeEmbeddingSource,
+      optimiseOps,
+      uploadRequest,
+      deps,
+      processor)
   }
+
 
   private[model] def uploadAndStoreImage(storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object],
                                          storeOrProjectThumbFile: StorableThumbImage => Future[S3Object],
