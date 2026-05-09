@@ -92,7 +92,8 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
     )
 
     // Assertions; Failure will auto-fail
-    futureImage.map(i => {
+    futureImage.map(ie => {
+      val i = ie._1
       // Assertions on original request
       assert(i.id == randomId, "Correct id comes back")
       assert(i.source.mimeType.contains(expectedOriginalMimeType), "Should have the correct mime type")

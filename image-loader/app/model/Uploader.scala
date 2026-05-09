@@ -30,7 +30,7 @@ import java.lang
 import java.nio.file.Files
 import scala.concurrent.{ExecutionContext, Future}
 
-case class ImageUpload(uploadRequest: UploadRequest, image: Image)
+case class ImageUpload(uploadRequest: UploadRequest, image: Image, embeddings: Seq[Float])
 
 case object ImageUpload {
 
@@ -98,7 +98,7 @@ object Uploader extends GridLogging {
   }
 
   def fromUploadRequestShared(uploadRequest: UploadRequest, deps: ImageUploadOpsDependencies, processor: ImageProcessor, optimiseOps: OptimiseOps)
-                             (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
+                             (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(Image, Seq[Float])] = {
 
     import deps._
 
@@ -195,10 +195,11 @@ object Uploader extends GridLogging {
 
       logger.info(addLogMarkers(fileMetadata.toLogMarker), s"Ending image ops")
       // FIXME: dirty hack to sync the originalUsageRights and originalMetadata as well
-      processedImage.copy(
+      val image = processedImage.copy(
         originalMetadata = processedImage.metadata,
         originalUsageRights = processedImage.usageRights
       )
+      (image, embeddings)
     }
     eventualImage.onComplete{ _ =>
       tempDirForRequest.listFiles().map(f => f.delete())
@@ -381,7 +382,7 @@ class Uploader(
         case (ImageStorageProps.replacesMediaIdIdentifierKey, mediaIdToAddUsageTo) =>
           addChildUsageToParentImage(uploadRequest, isReplacement = true)(mediaIdToAddUsageTo)
       }
-      finalImage.map(img => ImageUpload(uploadRequest, img))
+      finalImage.map(img => ImageUpload(uploadRequest, img._1, img._2))
     }
   }
 
@@ -447,7 +448,12 @@ class Uploader(
     for {
       imageUpload <- fromUploadRequest(uploadRequest)
       updateMessage = UpdateMessage(subject = Image, image = Some(imageUpload.image), instance = uploadRequest.instance)
-      _ <- Future { notifications.publish(updateMessage) }
+      updatedEmbeddings = Embedding(cohereEmbedEnglishV3 = None, cohereEmbedV4 = Some(CohereV4Embedding(image = imageUpload.embeddings.map(_.toDouble).toList)))
+      updateEmbeddingsMessage = UpdateEmbeddingMessage(id = imageUpload.image.id, lastModified = DateTime.now, embedding = updatedEmbeddings, instance = uploadRequest.instance)
+      _ <- Future {
+        notifications.publish(updateMessage)
+        notifications.publish(updateEmbeddingsMessage)
+      }
       // Send the optimised PNG to the embedder if there is one (e.g. for TIFFs),
       // otherwise send the original image.
       assetForEmbedder = imageUpload.image.optimisedPng match {
