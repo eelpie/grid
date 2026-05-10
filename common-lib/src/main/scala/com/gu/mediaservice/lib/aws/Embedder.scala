@@ -1,5 +1,6 @@
 package com.gu.mediaservice.lib.aws
 import com.amazonaws.services.sqs.model.SendMessageResult
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import play.api.libs.json.{Json, OFormat}
 import software.amazon.awssdk.services.s3vectors.model.QueryVectorsResponse
@@ -18,8 +19,9 @@ class Embedder(bedrock: Bedrock, sqs: SimpleSqsMessageConsumer)(implicit ec: Exe
 
   def createQueryEmbedding(query: String)(implicit logMarker: LogMarker): Future[List[Float]] = {
     logger.info(logMarker, s"Creating text embedding for query: $query")
+    val googleCloudEmbedding = new GoogleCloudEmbedding()
     for {
-      embedding <- bedrock.createTextEmbedding(query)
+      embedding <- googleCloudEmbedding.createTextEmbedding(query)
     } yield embedding
   }
 
