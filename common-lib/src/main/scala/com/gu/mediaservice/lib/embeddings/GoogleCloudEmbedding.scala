@@ -35,6 +35,13 @@ class GoogleCloudEmbedding {
     }
   }
 
+  def createTextEmbedding(query: String)(implicit ec: ExecutionContext): Future[List[Float]] = {
+    Future {
+      val response = client.models.embedContent(modelId, query, embedContentConfig)
+      firstEmbeddingFromResponse(response)
+    }
+  }
+
   private def firstEmbeddingFromResponse(response: EmbedContentResponse): List[Float] = {
     val a: Seq[ContentEmbedding] = response.embeddings().asScala.map(_.asScala.toSeq).getOrElse(Seq.empty)
     val v = a.head.values().asScala.map(_.asScala).getOrElse(Seq.empty).toSeq
