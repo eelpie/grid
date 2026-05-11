@@ -699,7 +699,7 @@ class MediaApi(
           maybeEmbedding = maybeImage
             .filter(image => isVisibleToAccessor(request.user, image))
             .flatMap(_.embedding)
-            .flatMap(_.cohereEmbedV4)
+            .flatMap(_.geminiEmbedding2)
             .map(_.image)
           searchResults <- maybeEmbedding match {
             // If we have an embedding, perform the KNN search. If not, return an empty result set.
