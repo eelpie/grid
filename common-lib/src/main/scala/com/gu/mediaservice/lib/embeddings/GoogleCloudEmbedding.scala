@@ -21,19 +21,21 @@ class GoogleCloudEmbedding {
     .build()
 
 
-  def getImageEmbeddings(source: Array[Byte]): List[Float] = {
-    val p: Part = Part.fromBytes(source, "image/jpeg")
+  def createImageEmbeddings(source: Array[Byte])(implicit ec: ExecutionContext): Future[List[Float]] = {
+    Future {
+      val p: Part = Part.fromBytes(source, "image/jpeg")
 
-    val content: Content = Content.builder().
-      parts(p).
-      build()
+      val content: Content = Content.builder().
+        parts(p).
+        build()
 
-    val response = models.embedContent(modelId, content, embedContentConfig)
+      val response = models.embedContent(modelId, content, embedContentConfig)
 
-    firstEmbeddingFromResponse(response)
+      firstEmbeddingFromResponse(response)
+    }
   }
 
-  def createTextEmbedding(query: String)(implicit ec: ExecutionContext): Future[List[Float]] = {
+  def createQueryEmbedding(query: String)(implicit ec: ExecutionContext): Future[List[Float]] = {
     Future {
       val response = models.embedContent(modelId, query, embedContentConfig)
       firstEmbeddingFromResponse(response)

@@ -301,8 +301,8 @@ object Uploader extends GridLogging {
                                deps: ImageUploadOpsDependencies,
                               )(implicit ec: ExecutionContext): Future[Seq[Float]] = {
     import deps._
-    imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata).map { source =>
-      new GoogleCloudEmbedding().getImageEmbeddings(source)
+    imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata).flatMap { source =>
+      new GoogleCloudEmbedding().createImageEmbeddings(source)
     }
   }
 

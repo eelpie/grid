@@ -21,7 +21,7 @@ class Embedder(bedrock: Bedrock, sqs: SimpleSqsMessageConsumer)(implicit ec: Exe
     logger.info(logMarker, s"Creating text embedding for query: $query")
     val googleCloudEmbedding = new GoogleCloudEmbedding()
     for {
-      embedding <- googleCloudEmbedding.createTextEmbedding(query)
+      embedding <- googleCloudEmbedding.createQueryEmbedding(query)
     } yield embedding
   }
 
