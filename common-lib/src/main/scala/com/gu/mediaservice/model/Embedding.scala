@@ -7,7 +7,8 @@ import play.api.libs.json.OFormat
 // We currently only write V4 to ES, see the Embedding type in image-embedder-lambda
 case class Embedding(
     cohereEmbedEnglishV3: Option[CohereV3Embedding] = None,
-    cohereEmbedV4: Option[CohereV4Embedding] = None
+    cohereEmbedV4: Option[CohereV4Embedding] = None,
+    geminiEmbedding2: Option[GeminiEmbedding2] = None,
 )
 
 case class CohereV3Embedding(
@@ -24,6 +25,14 @@ case class CohereV4Embedding(
 
 object CohereV4Embedding {
   implicit val format: OFormat[CohereV4Embedding] = Json.format[CohereV4Embedding]
+}
+
+case class GeminiEmbedding2(
+  image: List[Double]
+)
+
+object GeminiEmbedding2 {
+  implicit val format: OFormat[GeminiEmbedding2] = Json.format[GeminiEmbedding2]
 }
 
 object Embedding {

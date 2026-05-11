@@ -191,7 +191,6 @@ object Uploader extends GridLogging {
         metadata
       )
       val processedImage = processor(baseImage)
-      logger.info("By the way we got embeddings as well: " + embeddings)
 
       logger.info(addLogMarkers(fileMetadata.toLogMarker), s"Ending image ops")
       // FIXME: dirty hack to sync the originalUsageRights and originalMetadata as well
@@ -448,7 +447,7 @@ class Uploader(
     for {
       imageUpload <- fromUploadRequest(uploadRequest)
       updateMessage = UpdateMessage(subject = Image, image = Some(imageUpload.image), instance = uploadRequest.instance)
-      updatedEmbeddings = Embedding(cohereEmbedEnglishV3 = None, cohereEmbedV4 = Some(CohereV4Embedding(image = imageUpload.embeddings.map(_.toDouble).toList)))
+      updatedEmbeddings = Embedding(geminiEmbedding2 = Some(GeminiEmbedding2(image = imageUpload.embeddings.map(_.toDouble).toList)))
       updateEmbeddingsMessage = UpdateEmbeddingMessage(id = imageUpload.image.id, lastModified = DateTime.now, embedding = updatedEmbeddings, instance = uploadRequest.instance)
       _ <- Future {
         notifications.publish(updateMessage)
