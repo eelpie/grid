@@ -173,7 +173,7 @@ class ElasticSearch(
 
   def knnSearch(queryEmbedding: List[Float], k: Int, numCandidates: Int)
                (implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[SearchResults] = {
-    val knn = Knn("embedding.cohereEmbedV4.image")
+    val knn = Knn("embedding.geminiEmbedding2.image")
         .queryVector(queryEmbedding.map(_.toDouble))
         .k(k)
         .numCandidates(numCandidates)
