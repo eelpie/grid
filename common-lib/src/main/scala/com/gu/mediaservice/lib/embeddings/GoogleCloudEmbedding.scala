@@ -1,7 +1,7 @@
 package com.gu.mediaservice.lib.embeddings
 
 import com.google.genai.Client
-import com.google.genai.types.{Content, ContentEmbedding, EmbedContentConfig, Part}
+import com.google.genai.types._
 
 import scala.compat.java8.OptionConverters.RichOptionalGeneric
 import scala.concurrent.{ExecutionContext, Future}
@@ -21,7 +21,7 @@ class GoogleCloudEmbedding {
     .build()
 
 
-  def getImageEmbeddings(source: Array[Byte]): Seq[Float] = {
+  def getImageEmbeddings(source: Array[Byte]): List[Float] = {
     val p: Part = Part.fromBytes(source, "image/jpeg")
 
     val content: Content = Content.builder().
@@ -30,18 +30,20 @@ class GoogleCloudEmbedding {
 
     val response = models.embedContent(modelId, content, embedContentConfig)
 
-    val a: Seq[ContentEmbedding] = response.embeddings().asScala.map(_.asScala.toSeq).getOrElse(Seq.empty)
-    val v = a.head.values().asScala.map(_.asScala).getOrElse(Seq.empty).toSeq
-    v.map(_.floatValue())
+    firstEmbeddingFromResponse(response)
   }
 
-   def createTextEmbedding(query: String)(implicit ec: ExecutionContext): Future[List[Float]] = {
-     Future {
-       val response = models.embedContent(modelId, query, embedContentConfig)
-       val a: Seq[ContentEmbedding] = response.embeddings().asScala.map(_.asScala.toSeq).getOrElse(Seq.empty)
-       val v = a.head.values().asScala.map(_.asScala).getOrElse(Seq.empty).toSeq
-       v.map(_.floatValue()).toList
-     }
+  def createTextEmbedding(query: String)(implicit ec: ExecutionContext): Future[List[Float]] = {
+    Future {
+      val response = models.embedContent(modelId, query, embedContentConfig)
+      firstEmbeddingFromResponse(response)
+    }
+  }
+
+  private def firstEmbeddingFromResponse(response: EmbedContentResponse): List[Float] = {
+    val a: Seq[ContentEmbedding] = response.embeddings().asScala.map(_.asScala.toSeq).getOrElse(Seq.empty)
+    val v = a.head.values().asScala.map(_.asScala).getOrElse(Seq.empty).toSeq
+    v.map(_.floatValue()).toList
   }
 
 }
