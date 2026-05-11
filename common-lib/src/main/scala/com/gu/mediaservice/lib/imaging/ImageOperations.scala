@@ -218,7 +218,7 @@ class ImageOperations(playPath: String) extends GridLogging {
     Future {
       val arena = Arena.ofConfined
 
-      val embeddingLongestAxis = 2000
+      val embeddingLongestAxis = 384  // gemini-2-embedding small image / 258 tokens
       val embeddingFormat = Jpeg
 
       try {
