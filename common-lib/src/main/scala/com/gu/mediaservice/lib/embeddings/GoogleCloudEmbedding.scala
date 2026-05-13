@@ -37,7 +37,8 @@ class GoogleCloudEmbedding {
 
   def createTextEmbedding(query: String)(implicit ec: ExecutionContext): Future[List[Double]] = {
     Future {
-      val response = client.models.embedContent(modelId, query, embedContentConfig)
+      val q = "task: search result | query: " +  query
+      val response = client.models.embedContent(modelId, q, embedContentConfig)
       firstEmbeddingFromResponse(response)
     }
   }
