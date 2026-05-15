@@ -172,12 +172,11 @@ object Uploader extends GridLogging {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
       }
-      embeddings <- createEmbeddings(browserViewableImage, sourceOrientationMetadata, deps)
+      fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
+      metadata = ImageMetadataConverter.fromFileMetadata(fullFileMetadata, s3Source.metadata.objectMetadata.lastModified)
+      embeddings <- createEmbeddings(browserViewableImage, sourceOrientationMetadata, deps, metadata)
 
     } yield {
-      val fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
-      val metadata = ImageMetadataConverter.fromFileMetadata(fullFileMetadata, s3Source.metadata.objectMetadata.lastModified)
-
       val sourceAsset = Asset.fromS3Object(s3Source, sourceDimensions, sourceOrientationMetadata)
       val thumbAsset = Asset.fromS3Object(s3Thumb, thumbDimensions)
 
@@ -298,10 +297,11 @@ object Uploader extends GridLogging {
   private def createEmbeddings(browserViewableImage: BrowserViewableImage,
                                orientationMetadata: Option[OrientationMetadata],
                                deps: ImageUploadOpsDependencies,
+                               metadata: ImageMetadata
                               )(implicit ec: ExecutionContext): Future[Seq[Float]] = {
     import deps._
     imageOps.createEmbeddingSource(browserViewableImage.file, Png, orientationMetadata).flatMap { source =>
-      new GoogleCloudEmbedding().createImageEmbeddings(source)
+      new GoogleCloudEmbedding().createImageEmbeddings(source, Some(metadata))
     }
   }
 

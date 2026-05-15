@@ -2,10 +2,11 @@ package com.gu.mediaservice.lib.embeddings
 
 import com.google.genai.Client
 import com.google.genai.types._
+import com.gu.mediaservice.model.ImageMetadata
 
 import scala.compat.java8.OptionConverters.RichOptionalGeneric
 import scala.concurrent.{ExecutionContext, Future}
-import scala.jdk.CollectionConverters.CollectionHasAsScala
+import scala.jdk.CollectionConverters._
 
 
 class GoogleCloudEmbedding {
@@ -21,12 +22,16 @@ class GoogleCloudEmbedding {
     .build()
 
 
-  def createImageEmbeddings(source: Array[Byte])(implicit ec: ExecutionContext): Future[List[Float]] = {
+  def createImageEmbeddings(source: Array[Byte], maybeMetadata: Option[ImageMetadata])(implicit ec: ExecutionContext): Future[List[Float]] = {
     Future {
-      val p: Part = Part.fromBytes(source, "image/jpeg")
+      val imagePart = Some(Part.fromBytes(source, "image/jpeg"))
+      val titlePart = maybeMetadata.flatMap(_.title.map(Part.fromText))
+      val descriptionPart = maybeMetadata.flatMap(_.description.map(Part.fromText))
 
-      val content: Content = Content.builder().
-        parts(p).
+      val parts = List(imagePart, titlePart, descriptionPart).flatten.asJava
+
+      val content = Content.builder().
+        parts(parts).
         build()
 
       val response = models.embedContent(modelId, content, embedContentConfig)
