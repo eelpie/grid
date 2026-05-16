@@ -329,8 +329,7 @@ class ElasticSearch(
       .size(params.length)
 
     val withKnn = similarTo.map { knn =>
-      // TODO apply filer to the knn clause as well
-      searchRequest.knn(knn)
+      searchRequest.knn(knn.filter(withFilter))
 
     }.getOrElse {
       searchRequest.sortBy(sort)
