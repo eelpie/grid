@@ -177,12 +177,16 @@ class ElasticSearch(
         .queryVector(queryEmbedding.map(_.toDouble))
         .k(k)
         .numCandidates(numCandidates)
+        .similarity(0.85f)
 
     val searchRequest = ElasticDsl.search(imagesCurrentAlias(instance))
       .knn(knn)
       .size(k)
 
     executeAndLog(withSearchQueryTimeout(searchRequest), "knn search").map { r =>
+      r.result.hits.hits.foreach { h =>
+        logger.info("Score: " + h.score);
+      }
       val imageHits = r.result.hits.hits.map(resolveHit).toSeq.flatten.map(i => (i.instance.id, i))
       SearchResults(hits = imageHits, total = r.result.totalHits, extraCounts = None)
     }
