@@ -37,7 +37,7 @@ class GoogleCloudEmbedding {
 
   def createQueryEmbedding(query: String)(implicit ec: ExecutionContext): Future[List[Float]] = {
     Future {
-      val q = "task: search result | query: " +  query
+      val q = query
       val response = models.embedContent(modelId, q, embedContentConfig)
       firstEmbeddingFromResponse(response)
     }
