@@ -601,7 +601,7 @@ class MediaApi(
   }
 
 
-  def imageSearch() = auth.async { implicit request =>
+  def imageSearch() = auth.async { implicit request: Authentication.Request[AnyContent] =>
     implicit val instance: Instance = instanceOf(request)
     val shouldFlagGraphicImages = request.cookies.get("SHOULD_BLUR_GRAPHIC_IMAGES")
       .map(_.value).getOrElse(config.defaultShouldBlurGraphicImages.toString) == "true"
@@ -670,13 +670,10 @@ class MediaApi(
     }
 
     def semanticSearchByImage(imageId: String, k: Int): Future[SearchResults] = {
+      val eventualMaybeEmbedding = embeddingForImageId(imageId)
+
       for {
-        maybeImage <- elasticSearch.getImageById(imageId)
-        maybeEmbedding = maybeImage
-          .filter(image => isVisibleToAccessor(request.user, image))
-          .flatMap(_.embedding)
-          .flatMap(_.geminiEmbedding2)
-          .map(_.image.map(_.toFloat))
+        maybeEmbedding: Option[List[Float]] <- eventualMaybeEmbedding
         searchResults <- maybeEmbedding match {
           // If we have an embedding, perform the KNN search. If not, return an empty result set.
           case Some(embedding) =>
@@ -738,13 +735,42 @@ class MediaApi(
       } else {
         _searchParams
       }
-      SearchParams.validate(searchParams).fold(
+
+      val x: Future[Result] = SearchParams.validate(searchParams).fold(
         // TODO: respondErrorCollection?
         errors => Future.successful(respondError(UnprocessableEntity, InvalidUriParams.errorKey,
           errors.map(_.message).mkString(", "))
-        ),
-        params => performSearchAndRespond(params)
+        ), { params: SearchParams =>
+          // Extract the similar parameter from the AI branch
+          val x: Option[AiSearchMode] = searchParams.query match {
+            case Some(q) if !q.isBlank => Some(parseAiSearchMode(q))
+            case _ => None
+          }
+
+          val similarToImageId: Option[String] = x.flatMap {
+            case s: SimilarSearch => Some(s.imageId)
+            case _ => None
+          }
+          logger.info("Saw similarToImageId: " + similarToImageId)
+
+
+          performSearchAndRespond(params)
+        }
       )
+      x
+    }
+  }
+
+  private def embeddingForImageId(imageId: String)(implicit logMarker: LogMarker, instance: Instance, request: Authentication.Request[AnyContent]): Future[Option[List[Float]]] = {
+    for {
+      maybeImage <- elasticSearch.getImageById(imageId)
+      maybeEmbedding: Option[List[Float]] = maybeImage
+        .filter(image => isVisibleToAccessor(request.user, image))
+        .flatMap(_.embedding)
+        .flatMap(_.geminiEmbedding2)
+        .map(_.image.map(_.toFloat))
+    } yield {
+      maybeEmbedding
     }
   }
 

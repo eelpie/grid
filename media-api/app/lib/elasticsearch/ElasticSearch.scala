@@ -173,11 +173,7 @@ class ElasticSearch(
 
   def knnSearch(queryEmbedding: List[Float], k: Int, numCandidates: Int)
                (implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[SearchResults] = {
-    val knn = Knn("embedding.geminiEmbedding2.image")
-        .queryVector(queryEmbedding.map(_.toDouble))
-        .k(k)
-        .numCandidates(numCandidates)
-        .similarity(0.85f)
+    val knn = knnSimilarClause(queryEmbedding, k, numCandidates)
 
     val searchRequest = ElasticDsl.search(imagesCurrentAlias(instance))
       .knn(knn)
@@ -190,6 +186,14 @@ class ElasticSearch(
       val imageHits = r.result.hits.hits.map(resolveHit).toSeq.flatten.map(i => (i.instance.id, i))
       SearchResults(hits = imageHits, total = r.result.totalHits, extraCounts = None)
     }
+  }
+
+  private def knnSimilarClause(queryEmbedding: List[Float], k: Int, numCandidates: Int) = {
+    Knn("embedding.geminiEmbedding2.image")
+      .queryVector(queryEmbedding.map(_.toDouble))
+      .k(k)
+      .numCandidates(numCandidates)
+      .similarity(0.85f)
   }
 
   def search(params: SearchParams)(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
@@ -211,7 +215,7 @@ class ElasticSearch(
     val missingIdentifier = params.missingIdentifier.map(idName => filters.missing(NonEmptyList(identifierField(idName))))
     val uploadedByFilter = params.uploadedBy.map(uploadedBy => filters.terms("uploadedBy", NonEmptyList(uploadedBy)))
     val simpleCostFilter = params.free.flatMap(free => if (free) searchFilters.freeFilter else searchFilters.nonFreeFilter)
-    val costFilter = params.payType match {
+    val costFilter: Option[Query] = params.payType match {
       case Some(PayType.Free) => searchFilters.freeFilter
       case Some(PayType.MaybeFree) => searchFilters.maybeFreeFilter
       case Some(PayType.Pay) => searchFilters.nonFreeFilter
@@ -252,7 +256,12 @@ class ElasticSearch(
       }
     }
 
-    val filterOpt = (
+    val similarToVector = None
+    val similarTo: Option[Knn] = similarToVector.map { s =>
+      knnSimilarClause(s, 200, 200)
+    }
+
+    val filterOpt: Option[Query] = (
       metadataFilter.toOption.toList
         ++ persistFilter
         ++ labelFilter.toOption
@@ -274,8 +283,8 @@ class ElasticSearch(
         ++ printUsageFilter
       ).toNel.map(filter => filter.list.toList.reduceLeft(filters.and(_, _))).toOption
 
-    val withFilter = filterOpt.map { f =>
-      boolQuery() must (query) filter f
+    val withFilter: Query = filterOpt.map { f =>
+      boolQuery() must query filter f
     }.getOrElse(query)
 
     val sort = params.orderBy match {
@@ -319,11 +328,18 @@ class ElasticSearch(
       })
       .from(params.offset)
       .size(params.length)
-      .sortBy(sort)
 
-    executeAndLog(searchRequest, "image search").
+    val withKnn = similarTo.map { knn =>
+      // TODO apply filer to the knn clause as well
+      searchRequest.knn(knn)
+
+    }.getOrElse {
+      searchRequest.sortBy(sort)
+    }
+
+    executeAndLog(withKnn, "image search").
       toMetric(Some(mediaApiMetrics.searchQueries), List(mediaApiMetrics.searchTypeDimension("results")))(_.result.took).map { r =>
-      logSearchQueryIfTimedOut(searchRequest, r.result)
+      logSearchQueryIfTimedOut(withKnn, r.result)
       val imageHits = r.result.hits.hits.map(resolveHit).toSeq.flatten.map(i => (i.instance.id, i))
       // setting trackTotalHits to false means we don't get any hit count at all.
       // Requester has explicitly opted into not caring about the total hits, so give them what they want (nothing).
