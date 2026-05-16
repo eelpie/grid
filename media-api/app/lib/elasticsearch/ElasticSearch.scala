@@ -193,7 +193,7 @@ class ElasticSearch(
       .queryVector(queryEmbedding.map(_.toDouble))
       .k(k)
       .numCandidates(numCandidates)
-      .similarity(0.85f)
+      .similarity(0.7f)
   }
 
   def search(params: SearchParams, maybeSimilarToVector: Option[Seq[Float]])(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
@@ -330,10 +330,10 @@ class ElasticSearch(
 
     val withKnn = similarTo.map { knn =>
       searchRequest.knn(knn.filter(withFilter))
-
     }.getOrElse {
       searchRequest.sortBy(sort)
     }
+    logger.info("withKnn: " + withKnn)
 
     executeAndLog(withKnn, "image search").
       toMetric(Some(mediaApiMetrics.searchQueries), List(mediaApiMetrics.searchTypeDimension("results")))(_.result.took).map { r =>
