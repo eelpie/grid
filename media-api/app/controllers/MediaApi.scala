@@ -724,11 +724,12 @@ class MediaApi(
       EmbeddedEntity(uri = imageUri, data = Some(imageData), imageLinks, imageActions)
     }
 
-    def performSearchAndRespond(searchParams: SearchParams)(implicit instance: Instance) = for {
+    def performSearchAndRespond(searchParams: SearchParams, maybeSimilarToVector: Option[Seq[Float]])(implicit instance: Instance) = for {
       SearchResults(hits, totalCount, extraCounts) <- elasticSearch.search(
         searchParams.copy(
           shouldFlagGraphicImages = shouldFlagGraphicImages,
-        )
+        ),
+        maybeSimilarToVector
       )
       imageEntities = hits map (hitToImageEntity _).tupled
       prevLink = getPrevLink(searchParams)
@@ -934,15 +935,25 @@ class MediaApi(
             errors => Future.successful(respondError(UnprocessableEntity, InvalidUriParams.errorKey,
               errors.map(_.message).mkString(", "))
             ), { params: SearchParams =>
-            // Extract the similar parameter from the structured query
+              // Extract the similar parameter from the structured query
               val maybeSimilarImageId = params.structuredQuery.flatMap {
-              case Match(SimilarField, SimilarValue(imageId)) =>
-                logger.info("Saw similar parameter: " + imageId)
-                Some(imageId)
-              case _ => None
-            }.headOption
+                case Match(SimilarField, SimilarValue(imageId)) =>
+                  logger.info("Saw similar parameter: " + imageId)
+                  Some(imageId)
+                case _ => None
+              }.headOption
 
-            performSearchAndRespond(params)
+              val eventualMaybeSimilarToVector = maybeSimilarImageId.map { imageId =>
+                embeddingForImageId(imageId)
+              }.getOrElse {
+                Future {
+                  None
+                }
+              }
+
+              eventualMaybeSimilarToVector.flatMap { maybeSimilarToVector =>
+                performSearchAndRespond(params, maybeSimilarToVector)
+              }
             }
           )
         }
