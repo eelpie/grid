@@ -401,13 +401,12 @@ class ElasticSearch(
       .similarity(0.85f)
   }
 
-  def search(params: SearchParams)(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
+  def search(params: SearchParams, maybeSimilarToVector: Option[Seq[Float]] = None)(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
     val query: Query = queryBuilder.makeQuery(params.structuredQuery)
 
 
-    val similarToVector = None
-    val similarTo: Option[Knn] = similarToVector.map { s =>
-      knnSimilarClause(s, 200, 200)
+    val similarTo: Option[Knn] = maybeSimilarToVector.map { s =>
+      knnSimilarClause(s.toList, 200, 200)
     }
 
     val filterOpt: Option[Query] = queryBuilder.buildFilterOpt(params, searchFilters, syndicationFilter)
