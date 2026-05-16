@@ -110,7 +110,7 @@ object Mappings {
     nonDynamicObjectField("geminiEmbedding2").copy(properties = Seq(
       new DenseVectorField(
         name = "image",
-        dims = Some(768),
+        dims = Some(256),
         index = Some(true),
         similarity = Some(Cosine),
         indexOptions = Some(DenseVectorIndexOptions(

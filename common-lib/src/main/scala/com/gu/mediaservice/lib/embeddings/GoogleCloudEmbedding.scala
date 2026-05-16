@@ -17,7 +17,7 @@ class GoogleCloudEmbedding {
   private val modelId = "gemini-embedding-2"
 
   private val embedContentConfig = EmbedContentConfig.builder()
-    .outputDimensionality(768)
+    .outputDimensionality(256)
     .build()
 
 
