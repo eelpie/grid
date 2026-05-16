@@ -599,11 +599,12 @@ class MediaApi(
       EmbeddedEntity(uri = imageUri, data = Some(imageData), imageLinks, imageActions)
     }
 
-    def performSearchAndRespond(searchParams: SearchParams)(implicit instance: Instance) = for {
+    def performSearchAndRespond(searchParams: SearchParams, maybeSimilarToVector: Option[Seq[Float]])(implicit instance: Instance) = for {
       SearchResults(hits, totalCount, extraCounts) <- elasticSearch.search(
         searchParams.copy(
           shouldFlagGraphicImages = shouldFlagGraphicImages,
-        )
+        ),
+        maybeSimilarToVector
       )
       imageEntities = hits map (hitToImageEntity _).tupled
       prevLink = getPrevLink(searchParams)
@@ -761,7 +762,17 @@ class MediaApi(
             case _ => None
           }.headOption
 
-          performSearchAndRespond(params)
+          val eventualMaybeSimilarToVector = maybeSimilarImageId.map { imageId =>
+            embeddingForImageId(imageId)
+          }.getOrElse {
+            Future {
+              None
+            }
+          }
+
+          eventualMaybeSimilarToVector.flatMap { maybeSimilarToVector =>
+            performSearchAndRespond(params, maybeSimilarToVector)
+          }
         }
       )
       x
