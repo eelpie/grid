@@ -10,8 +10,8 @@ import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.requests.common.Operator
 import com.sksamuel.elastic4s.requests.searches.queries.Query
 import com.sksamuel.elastic4s.requests.searches.queries.matches.{MultiMatchQuery, MultiMatchQueryBuilderType}
-import lib.querysyntax._
 import lib.MediaApiConfig
+import lib.querysyntax.{SimilarField, _}
 import scalaz.NonEmptyList
 import scalaz.syntax.std.list._
 
@@ -116,7 +116,16 @@ class QueryBuilder(matchFields: Seq[String], overQuotaAgencies: () => List[Agenc
 
         }.toList
 
-      val queryWithNormal = normal.foldLeft(boolQuery()) {
+      val withoutSimilar = normal.filter {
+        case Match(field, _) =>
+          field match {
+            case SimilarField => false
+            case _ => true
+          }
+        case _ => true
+      }
+
+      val queryWithNormal = withoutSimilar.foldLeft(boolQuery()) {
         case (query, Negation(cond)) => query.withNot(makeQueryBit(cond))
         case (query, cond@Match(_, _)) => query.withMust(makeQueryBit(cond))
         case (query, _) => query
