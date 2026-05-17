@@ -193,7 +193,7 @@ class ElasticSearch(
       .queryVector(queryEmbedding.map(_.toDouble))
       .k(k)
       .numCandidates(1000)
-      .similarity(0.8f)
+      .similarity(0.7f)
   }
 
   def search(params: SearchParams, maybeSimilarToVector: Option[Seq[Float]])(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
