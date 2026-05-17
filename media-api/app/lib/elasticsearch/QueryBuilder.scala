@@ -1,7 +1,6 @@
 package lib.elasticsearch
 
 import com.gu.mediaservice.lib.ImageFields
-import com.gu.mediaservice.lib.elasticsearch.IndexSettings
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.{Agency, SyndicationStatus}
@@ -112,7 +111,16 @@ class QueryBuilder(matchFields: Seq[String], overQuotaAgencies: () => List[Agenc
 
         }.toList
 
-      val queryWithNormal = normal.foldLeft(boolQuery()) {
+      val withoutSimilar = normal.filter {
+        case Match(field, _) =>
+          field match {
+            case SingleField(name) => name != "similar"
+            case _ => true
+          }
+        case _ => true
+      }
+
+      val queryWithNormal = withoutSimilar.foldLeft(boolQuery()) {
         case (query, Negation(cond)) => query.withNot(makeQueryBit(cond))
         case (query, cond@Match(_, _)) => query.withMust(makeQueryBit(cond))
         case (query, _) => query
