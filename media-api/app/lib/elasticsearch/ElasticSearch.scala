@@ -166,7 +166,7 @@ class ElasticSearch(
   def lookupIds(ids: List[String], offset: Int, length: Int)(implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[SearchResults] = {
     val query = filters.pinnedIds(ids)
 
-    val searchRequest = prepareSearch(query)
+    val searchRequest = prepareSearch(query, None)
       .trackTotalHits(true)
       .storedFields("_source")
       .from(offset)
@@ -445,7 +445,7 @@ class ElasticSearch(
         Seq.empty
       }
 
-    val searchRequest = prepareSearch(withFilter)
+    val searchRequest: SearchRequest = prepareSearch(withFilter, similarTo)
       .trackTotalHits(trackTotalHits)
       .runtimeMappings(runtimeMappings)
       .storedFields("_source") // this needs to be explicit when using script fields
@@ -454,9 +454,8 @@ class ElasticSearch(
       .from(params.offset)
       .size(params.length)
 
-    val withKnn = similarTo.map { knn =>
-      searchRequest.knn(knn.filter(withFilter))
-
+    val withKnn: SearchRequest = similarTo.map { _ =>
+      searchRequest
     }.getOrElse {
       searchRequest.sortBy(sort)
     }
@@ -516,7 +515,7 @@ class ElasticSearch(
 
     val query = boolQuery().must(matchAllQuery()).filter(boolQuery().must(beSupplier, haveNestedUsage))
 
-    val search = prepareSearch(query) size 0
+    val search = prepareSearch(query, None) size 0
 
     executeAndLog(search, s"$id usage search").map { r =>
       import r.result
@@ -590,7 +589,7 @@ class ElasticSearch(
           )
       )
 
-    val search = prepareSearch(query).size(0).aggs(composerQuotaAgg, frontsQuotaAgg, printQuotaAgg)
+    val search = prepareSearch(query, None).size(0).aggs(composerQuotaAgg, frontsQuotaAgg, printQuotaAgg)
 
     executeAndLog(search, s"$id quota count by supplier search").map { r =>
       import r.result
@@ -644,7 +643,7 @@ class ElasticSearch(
 
     val query = boolQuery().must(matchAllQuery()).filter(boolQuery().must(beSupplier, haveQualifyingUsage))
 
-    val search = prepareSearch(query).trackTotalHits(true).from(offset).size(length)
+    val search = prepareSearch(query, None).trackTotalHits(true).from(offset).size(length)
 
     def isQualifyingUsage(usage: Usage): Boolean =
       UsageStore.countQualifyingStatuses.contains(usage.status) &&
@@ -698,7 +697,7 @@ class ElasticSearch(
   )(implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[AggregateSearchResults] = {
     logger.info(logMarker, "aggregate search: " + name + " / " + params + " / " + aggregation)
     val query = queryBuilder.makeQuery(params.structuredQuery)
-    val search = prepareSearch(query) aggregations aggregation size 0
+    val search = prepareSearch(query, None) aggregations aggregation size 0
 
     executeAndLog(search, s"$name aggregate search")
       .toMetric(Some(mediaApiMetrics.searchQueries), List(mediaApiMetrics.searchTypeDimension("aggregate")))(_.result.took).map { r =>
@@ -734,7 +733,7 @@ class ElasticSearch(
 
   def withSearchQueryTimeout(sr: SearchRequest): SearchRequest = sr timeout SearchQueryTimeout
 
-  private def prepareSearch(query: Query)(implicit instance: Instance): SearchRequest = {
+  private def prepareSearch(query: Query, maybeSimilarTo: Option[Knn])(implicit instance: Instance): SearchRequest = {
     val indexes = migrationStatus match {
       case completionPreview: CompletionPreview => List(completionPreview.migrationIndexName)
       case running: Running => List(imagesCurrentAlias(instance), running.migrationIndexName)
@@ -744,7 +743,13 @@ class ElasticSearch(
       case running: Running => filters.and(query, filters.mustNot(filters.term("esInfo.migration.migratedTo", running.migrationIndexName)))
       case _ => query
     }
-    val searchRequest = ElasticDsl.search(indexes) query migrationAwareQuery
+
+    val searchRequest = maybeSimilarTo.map { knn =>
+      ElasticDsl.search(indexes).knn(knn.filter(migrationAwareQuery))
+    }.getOrElse {
+      ElasticDsl.search(indexes) query migrationAwareQuery
+    }
+
     withSearchQueryTimeout(searchRequest)
   }
 
