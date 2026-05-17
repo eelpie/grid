@@ -192,8 +192,8 @@ class ElasticSearch(
     Knn("embedding.geminiEmbedding2.image")
       .queryVector(queryEmbedding.map(_.toDouble))
       .k(k)
-      .numCandidates(numCandidates)
-      .similarity(0.7f)
+      .numCandidates(1000)
+      .similarity(0.8f)
   }
 
   def search(params: SearchParams, maybeSimilarToVector: Option[Seq[Float]])(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
