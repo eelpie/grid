@@ -24,6 +24,7 @@ import com.gu.mediaservice.syntax.MessageSubjects
 import com.gu.mediaservice.{GridClient, JsonDiff}
 import lib._
 import lib.elasticsearch._
+import lib.querysyntax.{Match, SingleField, Words}
 import org.apache.http.entity.ContentType
 import org.apache.pekko.stream.scaladsl.StreamConverters
 import org.http4s.UriTemplate
@@ -742,19 +743,18 @@ class MediaApi(
         errors => Future.successful(respondError(UnprocessableEntity, InvalidUriParams.errorKey,
           errors.map(_.message).mkString(", "))
         ), { params: SearchParams =>
-          // Extract the similar parameter from the AI branch
-          val x: Option[AiSearchMode] = searchParams.query match {
-            case Some(q) if !q.isBlank => Some(parseAiSearchMode(q))
+          // Extract the similar parameter from the structured query
+          val maybeSimilarImageId = params.structuredQuery.flatMap {
+            case Match(SingleField(name), Words(value)) =>
+              if (name == "similar") {
+                Some(value)
+              } else {
+                None
+              }
             case _ => None
-          }
+          }.headOption
 
-          val similarToImageId: Option[String] = x.flatMap {
-            case s: SimilarSearch => Some(s.imageId)
-            case _ => None
-          }
-          logger.info("Saw similarToImageId: " + similarToImageId)
-
-          val eventualMaybeSimilarToVector: Future[Option[List[Float]]] = similarToImageId.map { imageId =>
+          val eventualMaybeSimilarToVector = maybeSimilarImageId.map { imageId =>
             embeddingForImageId(imageId)
           }.getOrElse {
             Future {
