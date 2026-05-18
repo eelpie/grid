@@ -12,7 +12,8 @@ moreLikeThis.controller('MoreLikeThisCtrl', [
     let ctrl = this;
 
     ctrl.$onInit = () => {
-      ctrl.showMoreLikeThis = window._clientConfig.aiSearchEnabled;
+      const imageHasEmbedding = !!(ctrl.image.data.embedding && ctrl.image.data.embedding.geminiEmbedding2 && ctrl.image.data.embedding.geminiEmbedding2.image);
+      ctrl.showMoreLikeThis = imageHasEmbedding;
       ctrl.getMoreLikeThisQuery = function() {
         return `similar:${ctrl.image.data.id}`;
       };
