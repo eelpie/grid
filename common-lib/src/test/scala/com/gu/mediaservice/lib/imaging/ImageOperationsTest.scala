@@ -6,6 +6,7 @@ import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.aws.EmbeddingSourceImageFormat
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
+import org.apache.commons.io.FileUtils
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
@@ -106,17 +107,20 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
   describe("embeddings") {
     it("should produce embedding sources from original images") {
       implicit val arena: Arena = Arena.ofShared()
-      val fullSizedImage = fileAt("IMG_4403.jpg")
+      val fullSizedImage = fileAt("exif-orientated.jpg")
       val imageOperations = new ImageOperations("")
 
       val format = EmbeddingSourceImageFormat(
         longestAxis = 1000, format = Jpeg, letterBox = false
       )
 
-      val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = None, embeddingSourceImageFormat = format)
+      val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = Some(OrientationMetadata(exifOrientation = Some(6))), embeddingSourceImageFormat = format)
 
       whenReady(eventualEmbeddingSource) { source =>
         arena.close()
+        val outputFile = new File("/Users/tony/Desktop/embedding-source.jpg")
+        FileUtils.writeByteArrayToFile(outputFile, source)
+
         source.length > 100 should be(true)
       }
     }
