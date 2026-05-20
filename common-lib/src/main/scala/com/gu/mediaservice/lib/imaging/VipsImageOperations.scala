@@ -1,7 +1,7 @@
 package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm._
-import app.photofox.vipsffm.enums.{VipsForeignHeifCompression, VipsIntent, VipsInterpretation}
+import app.photofox.vipsffm.enums.{VipsCompassDirection, VipsForeignHeifCompression, VipsIntent, VipsInterpretation}
 import app.photofox.vipsffm.jextract.VipsRaw
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
@@ -189,9 +189,20 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         }
         logger.info("Created embedding source: " + rotated.getWidth + "x" + rotated.getHeight)
 
+        // Letter box to preserve aspect ratio of subjects
+        val letterBoxed = if (embeddingSourceImageFormat.letterBox) {
+          rotated.gravity(
+            VipsCompassDirection.COMPASS_DIRECTION_CENTRE,
+            embeddingLongestAxis,
+            embeddingLongestAxis,
+          )
+        } else {
+          rotated
+        }
+
         // Extract to image bytes
         val buffer = new ByteArrayOutputStream()
-        thumbnail.writeToStream(buffer, embeddingFormat.fileExtension, VipsOption.Boolean("strip", true))
+        letterBoxed.writeToStream(buffer, embeddingFormat.fileExtension, VipsOption.Boolean("strip", true))
         val bytes = buffer.toByteArray
         buffer.close()
         arena.close()
