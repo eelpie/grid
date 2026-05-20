@@ -213,13 +213,14 @@ class ImageOperations(playPath: String) extends GridLogging {
   // Given the path to an original image return a rendering of it which
   // can be ingested by an embedding prediction end point.
   def createEmbeddingSource(originalImageFile: File,
-                            orientationMetadata: Option[OrientationMetadata]
+                            mineType: MimeType,
+                            orientationMetadata: Option[OrientationMetadata],
                            ): Future[Array[Byte]] = {
     Future {
       val arena = Arena.ofConfined
 
       val embeddingLongestAxis = 768
-      val embeddingFormat = Jpeg
+      val embeddingFormat = mineType
 
       try {
         val thumbnail = VImage.thumbnail(arena, originalImageFile.getAbsolutePath, embeddingLongestAxis,

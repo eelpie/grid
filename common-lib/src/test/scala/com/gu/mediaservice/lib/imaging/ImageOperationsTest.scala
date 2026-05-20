@@ -110,11 +110,11 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val fullSizedImage = fileAt("exif-orientated.jpg")
       val imageOperations = new ImageOperations("")
 
-      val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = Some(OrientationMetadata(exifOrientation = Some(6))))
+      val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, Png, orientationMetadata = Some(OrientationMetadata(exifOrientation = Some(6))))
 
       whenReady(eventualEmbeddingSource) { source: Array[Byte] =>
         arena.close()
-        val outputFile = new File("/Users/tony/Desktop/embedding-source.jpg")
+        val outputFile = new File("/Users/tony/Desktop/embedding-source.png")
         FileUtils.writeByteArrayToFile(outputFile, source)
 
         source.length > 100 should be(true)
