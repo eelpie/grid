@@ -192,7 +192,7 @@ class ElasticSearch(
     Knn("embedding.geminiEmbedding2.image")
       .queryVector(queryEmbedding.map(_.toDouble))
       .k(k)
-      .numCandidates(2000)
+      .numCandidates(numCandidates)
       .similarity(0.80f)
   }
 
