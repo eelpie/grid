@@ -267,7 +267,9 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3, usageQuota: UsageQuota
     val signed = new String(Base64.encodeBase64URLSafe(source.getBytes), "UTF-8")
     val resizingComponents = Seq(config.imgopsUri(instance), "no-signature",
       "auto_rotate:false", "strip_metadata:true", "strip_color_profile:true",
-      "resize:fit:{w}:{h}", "quality:{q}")
+      "resize:fit:{w}:{h}", "quality:{q}",
+      "format:avif"
+    )
     val orientationCorrection = orientationMetadata.map(o => Seq("rotate:" + normaliseRotation(o.orientationCorrection()))).getOrElse(Seq.empty)
     val withOrientationCorrection = resizingComponents ++ orientationCorrection :+ signed
     val resizingUrl = withOrientationCorrection.mkString("/")
