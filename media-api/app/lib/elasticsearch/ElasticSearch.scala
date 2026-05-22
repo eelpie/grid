@@ -176,7 +176,7 @@ class ElasticSearch(
 
   def knnSearch(queryEmbedding: List[Float], k: Int, numCandidates: Int, filterOpt: Option[Query])
                (implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[SearchResults] = {
-    val knn = knnSimilarClause(queryEmbedding, k, numCandidates)
+    val knn = knnSimilarClause(queryEmbedding, k, numCandidates, None)
 
     val searchRequest = ElasticDsl.search(imagesCurrentAlias(instance))
       .knn(knn)
@@ -277,12 +277,13 @@ class ElasticSearch(
     }
   }
 
-  private def knnSimilarClause(queryEmbedding: List[Float], k: Int, numCandidates: Int) = {
-    Knn(knnSearchFieldName)
+  private def knnSimilarClause(queryEmbedding: List[Float], k: Int, numCandidates: Int, similarity: Option[Float]) = {
+    val knn = Knn(knnSearchFieldName)
       .queryVector(queryEmbedding.map(_.toDouble))
       .k(k)
       .numCandidates(numCandidates)
-      .similarity(0.85f)
+
+    similarity.map(knn.similarity(_)).getOrElse(knn)
   }
 
   def search(params: SearchParams, maybeSimilarToVector: Option[Seq[Float]])(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
@@ -290,7 +291,7 @@ class ElasticSearch(
 
 
     val similarTo: Option[Knn] = maybeSimilarToVector.map { s =>
-      knnSimilarClause(s.toList, 1000, 2000)
+      knnSimilarClause(s.toList, 1000, 2000, Some(0.8f))
     }
 
     val filterOpt: Option[Query] = queryBuilder.buildFilterOpt(params, searchFilters, syndicationFilter)
