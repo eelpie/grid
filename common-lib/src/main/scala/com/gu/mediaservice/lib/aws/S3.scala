@@ -115,20 +115,6 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     clientV2.getObject(GetObjectRequestV2.builder().key(key).bucket(bucket).build())
   }
 
-  def getObjectAsString(bucket: Bucket, key: String): Option[String] = {
-    val content = client.getObject(new GetObjectRequest(bucket, key))
-    val stream = content.getObjectContent
-    try {
-      Some(IOUtils.toString(stream).trim)
-    } catch {
-      case e: AmazonServiceException if e.getErrorCode == "NoSuchKey" =>
-        logger.warn(s"Cannot find key: $key in bucket: $bucket")
-        None
-    }
-    finally {
-      stream.close()
-    }
-  }
   def getObjectAsStringV2(bucket: Bucket, key: String): Option[String] = {
     try {
       val stream = clientV2.getObject(GetObjectRequestV2.builder().key(key).bucket(bucket).build());
@@ -188,18 +174,6 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     }
   }
 
-  def list(bucket: Bucket, prefixDir: String)
-          (implicit ex: ExecutionContext): Future[List[S3Object]] =
-    Future {
-      val req = new ListObjectsRequest().withBucketName(bucket).withPrefix(s"$prefixDir/")
-      val listing = client.listObjects(req)
-      val summaries = listing.getObjectSummaries.asScala
-      summaries.map(summary => (summary.getKey, summary)).foldLeft(List[S3Object]()) {
-        case (memo: List[S3Object], (key: String, summary: S3ObjectSummary)) =>
-          S3Object(bucket, key, summary.getSize, getMetadata(bucket, key)) :: memo
-      }
-    }
-
   def listV2(bucket: Bucket, prefixDir: String)
             (implicit ex: ExecutionContext): Future[List[S3Object]] =
     Future {
@@ -221,20 +195,6 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     S3Metadata(meta)
   }
 
-  def getUserMetadata(bucket: Bucket, key: Key): Map[Bucket, Bucket] =
-    client.getObjectMetadata(bucket, key).getUserMetadata.asScala.toMap
-
-  def syncFindKey(bucket: Bucket, prefixName: String): Option[Key] = {
-    val req = new ListObjectsRequest().withBucketName(bucket).withPrefix(s"$prefixName-")
-    val listing = client.listObjects(req)
-    val summaries = listing.getObjectSummaries.asScala
-    summaries.headOption.map(_.getKey)
-  }
-  def syncFindKeyV2(bucket: Bucket, prefixName: String): Option[Key] = {
-    val req = ListObjectsV2Request.builder().bucket(bucket).prefix(s"$prefixName-").build()
-    val objects = clientV2.listObjectsV2(req).contents().asScala.toList
-    objects.headOption.map(_.key())
-  }
   def doesObjectExistV2(bucket: Bucket, key: String) = {
     try {
       clientV2.headObject(
