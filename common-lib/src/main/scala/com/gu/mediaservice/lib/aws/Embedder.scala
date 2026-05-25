@@ -17,9 +17,10 @@ object EmbedderMessage {
 
 class Embedder(bedrock: Bedrock, sqs: SimpleSqsMessageConsumer)(implicit ec: ExecutionContext) extends GridLogging {
 
+  private val googleCloudEmbedding = new GoogleCloudEmbedding() // TODO push up
+
   def createQueryEmbedding(query: String)(implicit logMarker: LogMarker): Future[List[Float]] = {
     logger.info(logMarker, s"Creating text embedding for query: $query")
-    val googleCloudEmbedding = new GoogleCloudEmbedding()
     for {
       embedding <- googleCloudEmbedding.createQueryEmbedding(query)
     } yield embedding
