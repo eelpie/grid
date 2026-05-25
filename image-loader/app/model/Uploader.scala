@@ -87,6 +87,8 @@ case class UploadStatusUri (uri: String) extends AnyVal {
 
 object Uploader extends GridLogging {
 
+  private val googleCloudEmbedding = new GoogleCloudEmbedding() // TODO push up
+
   def toImageUploadOpsCfg(config: ImageLoaderConfig): ImageUploadOpsCfg = {
     ImageUploadOpsCfg(
       config.tempDir,
@@ -301,7 +303,7 @@ object Uploader extends GridLogging {
                               )(implicit ec: ExecutionContext): Future[Seq[Float]] = {
     import deps._
     imageOps.createEmbeddingSource(browserViewableImage.file, Png, orientationMetadata).flatMap { source =>
-      new GoogleCloudEmbedding().createImageEmbeddings(source, Some(metadata))
+      googleCloudEmbedding.createImageEmbeddings(source, Some(metadata))
     }
   }
 
