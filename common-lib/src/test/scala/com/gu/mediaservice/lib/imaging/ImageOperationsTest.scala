@@ -3,8 +3,10 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VImage, Vips}
 import com.gu.mediaservice.lib.BrowserViewableImage
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
+import org.apache.commons.io.FileUtils
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
@@ -100,7 +102,24 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
         r._1.isFile should be(true)
       }
     }
+  }
 
+  describe("embeddings") {
+    it("should produce embedding sources from original images") {
+      implicit val arena: Arena = Arena.ofShared()
+      val fullSizedImage = fileAt("exif-orientated.jpg")
+      val imageOperations = new ImageOperations("")
+
+      val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, Png, orientationMetadata = Some(OrientationMetadata(exifOrientation = Some(6))))
+
+      whenReady(eventualEmbeddingSource) { source: Array[Byte] =>
+        arena.close()
+        val outputFile = new File("/Users/tony/Desktop/embedding-source.png")
+        FileUtils.writeByteArrayToFile(outputFile, source)
+
+        source.length > 100 should be(true)
+      }
+    }
   }
 
   describe("resize") {

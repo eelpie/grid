@@ -1,6 +1,6 @@
 package com.gu.mediaservice.lib.imaging
 
-import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
+import app.photofox.vipsffm.enums.{VipsCompassDirection, VipsIntent, VipsInterpretation}
 import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VBlob, VImage, VipsHelper, VipsOption}
 import com.adobe.internal.xmp.options.SerializeOptions
@@ -206,6 +206,61 @@ class ImageOperations(playPath: String) extends GridLogging {
     }.recoverWith {
       case e: Throwable =>
         logger.error("Error creating thumbnail", e)
+        Future.failed(e)
+    }
+  }
+
+  // Given the path to an original image return a rendering of it which
+  // can be ingested by an embedding prediction end point.
+  def createEmbeddingSource(originalImageFile: File,
+                            mineType: MimeType,
+                            orientationMetadata: Option[OrientationMetadata],
+                           ): Future[Array[Byte]] = {
+    Future {
+      val arena = Arena.ofConfined
+
+      val embeddingLongestAxis = 768
+      val embeddingFormat = mineType
+
+      try {
+        val thumbnail = VImage.thumbnail(arena, originalImageFile.getAbsolutePath, embeddingLongestAxis,
+          VipsOption.Boolean("auto-rotate", false),
+          VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL),
+          VipsOption.String("export-profile", "srgb")
+        )
+        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+          logger.info("Rotating thumbnail: " + angle)
+          thumbnail.rotate(angle)
+        }.getOrElse {
+          thumbnail
+        }
+        logger.info("Created embedding source: " + rotated.getWidth + "x" + rotated.getHeight)
+
+        // Letter box to preserve aspect ratio of subjects
+        val letterBoxed = rotated.gravity(
+          VipsCompassDirection.COMPASS_DIRECTION_CENTRE,
+          embeddingLongestAxis,
+          embeddingLongestAxis,
+        )
+
+        // Extract to image bytes
+        val buffer = new ByteArrayOutputStream()
+        letterBoxed.writeToStream(buffer, embeddingFormat.fileExtension, VipsOption.Boolean("strip", true))
+        val bytes = buffer.toByteArray
+
+        val embeddingSource = bytes
+        logger.info("Created embedding source with length: " + embeddingSource.length)
+        embeddingSource
+
+      } catch {
+        case e: Throwable =>
+          arena.close()
+          throw e
+      }
+
+    }.recoverWith {
+      case e: Throwable =>
+        logger.error("Error creating embedding source", e)
         Future.failed(e)
     }
   }

@@ -8,6 +8,7 @@ import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.formatting._
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.imaging.ImageOperations.{optimisedMimeType, thumbMimeType}
@@ -25,10 +26,11 @@ import model.upload.{OptimiseOps, UploadRequest}
 import org.joda.time.DateTime
 
 import java.io.File
+import java.lang
 import java.nio.file.Files
 import scala.concurrent.{ExecutionContext, Future}
 
-case class ImageUpload(uploadRequest: UploadRequest, image: Image)
+case class ImageUpload(uploadRequest: UploadRequest, image: Image, embeddings: Seq[Float])
 
 case object ImageUpload {
 
@@ -85,6 +87,8 @@ case class UploadStatusUri (uri: String) extends AnyVal {
 
 object Uploader extends GridLogging {
 
+  private val googleCloudEmbedding = new GoogleCloudEmbedding() // TODO push up
+
   def toImageUploadOpsCfg(config: ImageLoaderConfig): ImageUploadOpsCfg = {
     ImageUploadOpsCfg(
       config.tempDir,
@@ -96,7 +100,7 @@ object Uploader extends GridLogging {
   }
 
   def fromUploadRequestShared(uploadRequest: UploadRequest, deps: ImageUploadOpsDependencies, processor: ImageProcessor, optimiseOps: OptimiseOps)
-                             (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
+                             (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(Image, Seq[Float])] = {
 
     import deps._
 
@@ -170,10 +174,11 @@ object Uploader extends GridLogging {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
       }
-    } yield {
-      val fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
-      val metadata = ImageMetadataConverter.fromFileMetadata(fullFileMetadata, s3Source.metadata.objectMetadata.lastModified)
+      fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
+      metadata = ImageMetadataConverter.fromFileMetadata(fullFileMetadata, s3Source.metadata.objectMetadata.lastModified)
+      embeddings <- createEmbeddings(browserViewableImage, sourceOrientationMetadata, deps, metadata)
 
+    } yield {
       val sourceAsset = Asset.fromS3Object(s3Source, sourceDimensions, sourceOrientationMetadata)
       val thumbAsset = Asset.fromS3Object(s3Thumb, thumbDimensions)
 
@@ -190,10 +195,11 @@ object Uploader extends GridLogging {
 
       logger.info(addLogMarkers(fileMetadata.toLogMarker), s"Ending image ops")
       // FIXME: dirty hack to sync the originalUsageRights and originalMetadata as well
-      processedImage.copy(
+      val image = processedImage.copy(
         originalMetadata = processedImage.metadata,
         originalUsageRights = processedImage.usageRights
       )
+      (image, embeddings)
     }
     eventualImage.onComplete{ _ =>
       tempDirForRequest.listFiles().map(f => f.delete())
@@ -290,6 +296,17 @@ object Uploader extends GridLogging {
     }
   }
 
+  private def createEmbeddings(browserViewableImage: BrowserViewableImage,
+                               orientationMetadata: Option[OrientationMetadata],
+                               deps: ImageUploadOpsDependencies,
+                               metadata: ImageMetadata
+                              )(implicit ec: ExecutionContext): Future[Seq[Float]] = {
+    import deps._
+    imageOps.createEmbeddingSource(browserViewableImage.file, Png, orientationMetadata).flatMap { source =>
+      googleCloudEmbedding.createImageEmbeddings(source, Some(metadata))
+    }
+  }
+
   private def createBrowserViewableFileFuture(
     uploadRequest: UploadRequest
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[BrowserViewableImage] = {
@@ -366,7 +383,7 @@ class Uploader(
         case (ImageStorageProps.replacesMediaIdIdentifierKey, mediaIdToAddUsageTo) =>
           addChildUsageToParentImage(uploadRequest, isReplacement = true)(mediaIdToAddUsageTo)
       }
-      finalImage.map(img => ImageUpload(uploadRequest, img))
+      finalImage.map(img => ImageUpload(uploadRequest, img._1, img._2))
     }
   }
 
@@ -432,7 +449,12 @@ class Uploader(
     for {
       imageUpload <- fromUploadRequest(uploadRequest)
       updateMessage = UpdateMessage(subject = Image, image = Some(imageUpload.image), instance = uploadRequest.instance)
-      _ <- Future { notifications.publish(updateMessage) }
+      updatedEmbeddings = Embedding(geminiEmbedding2 = Some(GeminiEmbedding2(image = imageUpload.embeddings.map(_.toDouble).toList)))
+      updateEmbeddingsMessage = UpdateEmbeddingMessage(id = imageUpload.image.id, lastModified = DateTime.now, embedding = updatedEmbeddings, instance = uploadRequest.instance)
+      _ <- Future {
+        notifications.publish(updateMessage)
+        notifications.publish(updateEmbeddingsMessage)
+      }
       // Send the optimised PNG to the embedder if there is one (e.g. for TIFFs),
       // otherwise send the original image.
       assetForEmbedder = imageUpload.image.optimisedPng match {

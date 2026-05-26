@@ -182,7 +182,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
       tryFetchOptimisedFile = fetchOptimisedFile
     )
 
-    fromUploadRequestShared(uploadRequest, dependenciesWithProjectionsOnly, processor, optimiseOps)
+    fromUploadRequestShared(uploadRequest, dependenciesWithProjectionsOnly, processor, optimiseOps).map(_._1)
   }
 
   private def projectOriginalFileAsS3Model(storableOriginalImage: StorableOriginalImage) =
