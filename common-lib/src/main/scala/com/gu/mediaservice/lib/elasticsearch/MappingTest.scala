@@ -257,7 +257,8 @@ object MappingTest {
     embedding = Some(
       Embedding(
         cohereEmbedEnglishV3 = Some(CohereV3Embedding(image = (0 until 1024).map(_ * 0.001).toList)),
-        cohereEmbedV4 = Some(CohereV4Embedding(image = (0 until 256).map(_ * 0.001).toList))
+        cohereEmbedV4 = Some(CohereV4Embedding(image = (0 until 256).map(_ * 0.001).toList)),
+        geminiEmbedding2 = Some(GeminiEmbedding2(image = (0 until 768).map(_ * 0.001).toList)),
       )
     )
   )
