@@ -41,7 +41,7 @@ class ElasticSearch(
   val instancesClient: InstancesClient,
 ) extends ElasticSearchClient with ImageFields with MatchFields with FutureSyntax with GridLogging with MigrationStatusProvider {
 
-  private val knnSearchFieldName = "embedding.cohereEmbedV4.image"
+  private val knnSearchFieldName = "embedding.geminiEmbedding2.image"
 
   private val maybeOrgOwnedExtraCount: Option[(String, ExtraCountConfig)] =
     if (config.shouldDisplayOrgOwnedCountAndFilterCheckbox)
