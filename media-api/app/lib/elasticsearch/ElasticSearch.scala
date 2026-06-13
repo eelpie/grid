@@ -45,6 +45,8 @@ class ElasticSearch(
   val instancesClient: InstancesClient,
 ) extends ElasticSearchClient with ImageFields with MatchFields with FutureSyntax with GridLogging with MigrationStatusProvider {
 
+  private val knnSearchFieldName = "embedding.cohereEmbedV4.image"
+
   private val maybeOrgOwnedExtraCount: Option[(String, ExtraCountConfig)] =
     if (config.shouldDisplayOrgOwnedCountAndFilterCheckbox)
       Some(s"owned" -> ExtraCountConfig(
@@ -183,7 +185,7 @@ class ElasticSearch(
       logger.warn(logMarker, "knnSearch called but includeDenseVectorMappings=false, returning empty results")
       Future.successful(SearchResults(Nil, total = 0, extraCounts = None))
     } else {
-      val knn = Knn("embedding.cohereEmbedV4.image", filter = filterOpt)
+      val knn = Knn(knnSearchFieldName, filter = filterOpt)
         .queryVector(queryEmbedding.map(_.toDouble))
         .k(k)
         .numCandidates(numCandidates)
@@ -247,7 +249,7 @@ class ElasticSearch(
   )(implicit instance: Instance): SearchRequest =
     ElasticDsl
       .search(imagesCurrentAlias(instance))
-      .knn(Knn("embedding.cohereEmbedV4.image", filter = filterOpt)
+      .knn(Knn(knnSearchFieldName, filter = filterOpt)
         .queryVector(queryEmbedding)
         .k(k)
         .numCandidates(numCandidates)
