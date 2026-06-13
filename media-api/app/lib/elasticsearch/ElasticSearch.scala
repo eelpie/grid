@@ -176,7 +176,7 @@ class ElasticSearch(
 
   def knnSearch(queryEmbedding: List[Float], k: Int, numCandidates: Int, filterOpt: Option[Query])
                (implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[SearchResults] = {
-    val knn = knnSimilarClause(queryEmbedding, k, numCandidates, None)
+    val knn = knnSimilarClause(queryEmbedding, k, numCandidates, Some(0.8f))
 
     val searchRequest = ElasticDsl.search(imagesCurrentAlias(instance))
       .knn(knn)
