@@ -184,7 +184,7 @@ class ElasticSearch(
 
     executeAndLog(withSearchQueryTimeout(searchRequest), "knn search").map { r =>
       val imageHits = r.result.hits.hits.map(resolveHit).toSeq.flatten.map(i => (i.instance.id, i))
-      SearchResults(hits = imageHits, total = imageHits.length, extraCounts = None)
+      SearchResults(hits = imageHits, total = r.result.totalHits, extraCounts = None)
     }
   }
 
@@ -274,7 +274,7 @@ class ElasticSearch(
       result <- executeAndLog(withSearchQueryTimeout(searchRequest), "hybrid search")
     } yield {
       val imageHits = result.result.hits.hits.map(resolveHit).toSeq.flatten.map(i => (i.instance.id, i))
-      SearchResults(hits = imageHits, total = imageHits.length, extraCounts = None)
+      SearchResults(hits = imageHits, total = result.result.totalHits, extraCounts = None)
     }
   }
 
