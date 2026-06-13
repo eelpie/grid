@@ -289,11 +289,6 @@ class ElasticSearch(
   def search(params: SearchParams, maybeSimilarToVector: Option[Seq[Float]])(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
     val query: Query = queryBuilder.makeQuery(params.structuredQuery)
 
-
-    val similarTo: Option[Knn] = maybeSimilarToVector.map { s =>
-      knnSimilarClause(s.toList, 1000, 2000, Some(0.8f))
-    }
-
     val filterOpt: Option[Query] = queryBuilder.buildFilterOpt(params, searchFilters, syndicationFilter)
 
     val withFilter = filterOpt.map { f =>
@@ -330,7 +325,12 @@ class ElasticSearch(
         Seq.empty
       }
 
-    val searchRequest: SearchRequest = prepareSearch(withFilter, similarTo)
+    val mayBeKnn: Option[Knn] = maybeSimilarToVector.map { s =>
+      logger.info("Building knn clause")
+      knnSimilarClause(s.toList, 1000, 2000, Some(0.8f))
+    }
+
+    val searchRequest: SearchRequest = prepareSearch(withFilter, mayBeKnn)
       .trackTotalHits(trackTotalHits)
       .runtimeMappings(runtimeMappings)
       .storedFields("_source") // this needs to be explicit when using script fields
@@ -342,15 +342,15 @@ class ElasticSearch(
       .from(params.offset)
       .size(params.length)
 
-    val withKnn: SearchRequest = similarTo.map { _ =>
+    val withSort: SearchRequest = mayBeKnn.map { _ =>
       searchRequest
     }.getOrElse {
       searchRequest.sortBy(sort)
     }
 
-    executeAndLog(withKnn, "image search").
+    executeAndLog(withSort, "image search").
       toMetric(Some(mediaApiMetrics.searchQueries), List(mediaApiMetrics.searchTypeDimension("results")))(_.result.took).map { r =>
-      logSearchQueryIfTimedOut(withKnn, r.result)
+      logSearchQueryIfTimedOut(withSort, r.result)
       val imageHits = r.result.hits.hits.map(resolveHit).toSeq.flatten.map(i => (i.instance.id, i))
       // setting trackTotalHits to false means we don't get any hit count at all.
       // Requester has explicitly opted into not caring about the total hits, so give them what they want (nothing).
@@ -472,7 +472,7 @@ class ElasticSearch(
 
   def withSearchQueryTimeout(sr: SearchRequest): SearchRequest = sr timeout SearchQueryTimeout
 
-  private def prepareSearch(query: Query, maybeSimilarTo: Option[Knn])(implicit instance: Instance): SearchRequest = {
+  private def prepareSearch(query: Query, maybeKnn: Option[Knn])(implicit instance: Instance): SearchRequest = {
     val indexes = migrationStatus match {
       case completionPreview: CompletionPreview => List(completionPreview.migrationIndexName)
       case running: Running => List(imagesCurrentAlias(instance), running.migrationIndexName)
@@ -483,9 +483,11 @@ class ElasticSearch(
       case _ => query
     }
 
-    val searchRequest = maybeSimilarTo.map { knn =>
+    val searchRequest = maybeKnn.map { knn =>
+      logger.info("Choosing knn search")
       ElasticDsl.search(indexes).knn(knn.filter(migrationAwareQuery))
     }.getOrElse {
+      logger.info("Choosing normal search")
       ElasticDsl.search(indexes) query migrationAwareQuery
     }
 
