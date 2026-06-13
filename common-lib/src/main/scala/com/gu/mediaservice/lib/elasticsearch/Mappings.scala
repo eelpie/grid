@@ -106,6 +106,19 @@ object Mappings {
           efConstruction = Some(100)
         ))
       )
+    )),
+    nonDynamicObjectField("geminiEmbedding2").copy(properties = Seq(
+      new DenseVectorField(
+        name = "image",
+        dims = Some(768),
+        index = Some(true),
+        similarity = Some(Cosine),
+        indexOptions = Some(DenseVectorIndexOptions(
+          `type` = DenseVectorField.Int8Hnsw,
+          m = Some(16),
+          efConstruction = Some(100)
+        ))
+      )
     ))
   ))
 
