@@ -273,6 +273,7 @@ class ElasticSearch(
       searchRequest = makeHybridSearchRequest(query, queryEmbeddingDouble, k, numCandidates, vecWeight, maxScore, filterOpt)
       result <- executeAndLog(withSearchQueryTimeout(searchRequest), "hybrid search")
     } yield {
+      logger.info("hybridSearch returned " + result.result.hits.total + " / " + result.result.hits.hits.length)
       val imageHits = result.result.hits.hits.map(resolveHit).toSeq.flatten.map(i => (i.instance.id, i))
       result.result.hits.hits.foreach { h =>
         logger.info("Score: " + h.score);
