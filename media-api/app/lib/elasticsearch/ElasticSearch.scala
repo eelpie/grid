@@ -218,7 +218,7 @@ class ElasticSearch(
   }
 
   private def makeHybridSearchRequest(
-    query: String,
+    params: SearchParams,
     queryEmbedding: List[Double],
     k: Int,
     numCandidates: Int,
@@ -247,15 +247,15 @@ class ElasticSearch(
 
     logger.info(logMarker, s"Scaling factor for BM25 score is $scalingFactor, multi-match boost is $multiMatchBoost")
 
-    val multiMatchQuery = createMultiMatchQuery(query, boost = Some(multiMatchBoost))
+    val normalQuery = queryBuilder.buildFilterOpt(params, searchFilters, syndicationFilter).get
 
     ElasticDsl.search(imagesCurrentAlias(instance))
-      .bool(BoolQuery().should(Seq(multiMatchQuery, knn)).filter(filterOpt))
+      .bool(BoolQuery().should(Seq(normalQuery, knn)).filter(filterOpt))
       .size(k)
   }
 
   def hybridSearch(
-    query: String,
+    params: SearchParams,
     queryEmbedding: List[Float],
     k: Int,
     numCandidates: Int,
@@ -269,8 +269,8 @@ class ElasticSearch(
     val queryEmbeddingDouble: List[Double] = queryEmbedding.map(_.toDouble)
 
     for {
-      maxScore <- fetchMaxBm25Score(query, filterOpt)
-      searchRequest = makeHybridSearchRequest(query, queryEmbeddingDouble, k, numCandidates, vecWeight, maxScore, filterOpt)
+      maxScore <- fetchMaxBm25Score(params.query.get, filterOpt)
+      searchRequest = makeHybridSearchRequest(params, queryEmbeddingDouble, k, numCandidates, vecWeight, maxScore, filterOpt)
       result <- executeAndLog(withSearchQueryTimeout(searchRequest), "hybrid search")
     } yield {
       logger.info("hybridSearch returned " + result.result.hits.total + " / " + result.result.hits.hits.length)

@@ -725,7 +725,7 @@ class MediaApi(
           for {
             embedding <- embeddingFuture
             searchResults <- elasticSearch.hybridSearch(
-              query = semanticQuery,
+              params = params,
               queryEmbedding = embedding,
               k = k,
               numCandidates = k * 2,
