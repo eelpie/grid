@@ -252,7 +252,8 @@ class ElasticSearch(
     logger.info("Normal query is: " + normalQuery)
     ElasticDsl.search(imagesCurrentAlias(instance))
       .bool(BoolQuery().should(Seq(normalQuery, knn)).filter(filterOpt))
-      .size(k)
+      .size(k).
+      trackTotalHits(true)
   }
 
   def hybridSearch(
