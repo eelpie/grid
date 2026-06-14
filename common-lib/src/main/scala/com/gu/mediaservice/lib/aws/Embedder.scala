@@ -1,6 +1,7 @@
 package com.gu.mediaservice.lib.aws
 import com.amazonaws.services.sqs.model.SendMessageResult
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.model.ImageMetadata
 import play.api.libs.json.{Json, OFormat}
 import software.amazon.awssdk.services.s3vectors.model.QueryVectorsResponse
 import software.amazon.awssdk.services.s3vectors.model.{QueryOutputVector, QueryVectorsResponse, VectorData}
@@ -21,6 +22,11 @@ class Embedder(bedrock: Bedrock, sqs: SimpleSqsMessageConsumer)(implicit ec: Exe
     for {
       embedding <- bedrock.createTextEmbedding(query)
     } yield embedding
+  }
+
+  def createImageEmbedding(source: Array[Byte], maybeMetadata: Option[ImageMetadata])(implicit logMarker: LogMarker): Future[List[Float]] = {
+    logger.info(logMarker, s"Creating image embedding")
+    embedding.createImageEmbeddings(source, maybeMetadata)
   }
 
   def queueImageToEmbed(message: EmbedderMessage)(implicit logMarker: LogMarker) = {
