@@ -19,7 +19,7 @@ import com.sksamuel.elastic4s.requests.searches.aggs.responses.bucket.{DateHisto
 import com.sksamuel.elastic4s.requests.searches.knn.Knn
 import com.sksamuel.elastic4s.requests.searches.queries.Query
 import com.sksamuel.elastic4s.requests.searches.queries.compound.BoolQuery
-import com.sksamuel.elastic4s.requests.searches.queries.matches.MultiMatchQueryBuilderType.BEST_FIELDS
+import com.sksamuel.elastic4s.requests.searches.queries.matches.MultiMatchQueryBuilderType.{BEST_FIELDS, PHRASE}
 import com.sksamuel.elastic4s.requests.searches.queries.matches.{FieldWithOptionalBoost, MultiMatchQuery}
 import lib.querysyntax.Parser
 import lib.{MediaApiConfig, MediaApiMetrics, SupplierUsageSummary}
@@ -192,8 +192,8 @@ class ElasticSearch(
     MultiMatchQuery(
       text = query,
       fields = matchFields.map(field => FieldWithOptionalBoost(field, None)),
-      `type` = Some(BEST_FIELDS),
-      fuzziness = Some("AUTO"),
+      `type` = Some(PHRASE),
+      //fuzziness = Some("AUTO"),
       maxExpansions = Some(50),
       operator = Some(And),
       prefixLength = Some(1),
