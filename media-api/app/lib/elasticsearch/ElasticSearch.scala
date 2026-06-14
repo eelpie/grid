@@ -247,7 +247,7 @@ class ElasticSearch(
 
     logger.info(logMarker, s"Scaling factor for BM25 score is $scalingFactor, multi-match boost is $multiMatchBoost")
 
-    val normalQuery = queryBuilder.buildFilterOpt(params, searchFilters, syndicationFilter).get
+    val normalQuery = queryBuilder.makeQuery(params.structuredQuery)
 
     ElasticDsl.search(imagesCurrentAlias(instance))
       .bool(BoolQuery().should(Seq(normalQuery, knn)).filter(filterOpt))
