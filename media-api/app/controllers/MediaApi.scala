@@ -728,7 +728,7 @@ class MediaApi(
               query = semanticQuery,
               queryEmbedding = embedding,
               k = k,
-              numCandidates = Math.max(k * 2, 100),
+              numCandidates = k * 2,
               vecWeight = weight,
               filterOpt = filterOpt
             )
