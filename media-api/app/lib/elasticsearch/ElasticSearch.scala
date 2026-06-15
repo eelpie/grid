@@ -204,15 +204,15 @@ class ElasticSearch(
   // than cosine similarity (knn). So we get the max BM25 score for the query and use that to calculate
   // the scaling factor for the lexical part of the query, so that BM25 and knn scores are both between 0-1 scale
   // and can be effectively combined in a hybrid query.
-  private def fetchMaxBm25Score(query: String, filterOpt: Option[Query])(implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Double] = {
-    val baseQuery = createMultiMatchQuery(query)
+  private def fetchMaxBm25Score(params: SearchParams, filterOpt: Option[Query])(implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Double] = {
+    val baseQuery = queryBuilder.makeQuery(params.structuredQuery)
     val filteredQuery = filterOpt.map(filter => boolQuery().must(baseQuery).filter(filter)).getOrElse(baseQuery)
 
     val maxScoreRequest = ElasticDsl.search(imagesCurrentAlias(instance))
       .query(filteredQuery)
 
     executeAndLog(withSearchQueryTimeout(maxScoreRequest), "max BM25 score").map { r =>
-      logger.info(logMarker, s"Max BM25 score for query '$query' is ${r.result.hits.maxScore}")
+      logger.info(logMarker, s"Max BM25 score for query '${params.query}' is ${r.result.hits.maxScore}")
       if (r.result.hits.hits.isEmpty) 1.0 else r.result.hits.maxScore
     }
   }
