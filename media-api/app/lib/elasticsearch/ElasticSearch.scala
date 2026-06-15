@@ -188,18 +188,6 @@ class ElasticSearch(
     }
   }
 
-  private def createMultiMatchQuery(query: String, boost: Option[Double] = None): MultiMatchQuery =
-    MultiMatchQuery(
-      text = query,
-      fields = matchFields.map(field => FieldWithOptionalBoost(field, None)),
-      `type` = Some(PHRASE),
-      //fuzziness = Some("AUTO"),
-      maxExpansions = Some(50),
-      operator = Some(And),
-      prefixLength = Some(1),
-      boost = boost
-    )
-
   // BM25 scores are unbounded [0,inf] and typically much larger in magnitude
   // than cosine similarity (knn). So we get the max BM25 score for the query and use that to calculate
   // the scaling factor for the lexical part of the query, so that BM25 and knn scores are both between 0-1 scale
@@ -273,7 +261,7 @@ class ElasticSearch(
     val queryEmbeddingDouble: List[Double] = queryEmbedding.map(_.toDouble)
 
     for {
-      maxScore <- fetchMaxBm25Score(params.query.get, filterOpt)
+      maxScore <- fetchMaxBm25Score(params, filterOpt)
       searchRequest = makeHybridSearchRequest(params, queryEmbeddingDouble, k, numCandidates, vecWeight, maxScore, filterOpt)
       result <- executeAndLog(withSearchQueryTimeout(searchRequest), "hybrid search")
     } yield {
