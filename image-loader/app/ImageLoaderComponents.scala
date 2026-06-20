@@ -1,6 +1,7 @@
 import app.photofox.vipsffm.{Vips, VipsHelper}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.play.GridComponents
@@ -34,11 +35,15 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val notifications = new Notifications(config)
   val downloader = new Downloader()(ec,wsClient)
 
+  private val gcpProjectId = "eelpie-cloud-registry"
+  private val vertexApiLocation = "eu"
+  private val googleCloudEmbedding = new GoogleCloudEmbedding(projectId = gcpProjectId, location = vertexApiLocation)
+
   val maybeEmbedder: Option[Embedder] = config.maybeImageEmbedderQueueUrl
     .filter(_ => config.shouldEmbed)
     .map {queueUrl =>
       logger.info("Image loader is configured to queue embedding requests to: " + queueUrl)
-      new Embedder(new Bedrock(config), new SimpleSqsMessageConsumer(queueUrl, config))
+      new Embedder(googleCloudEmbedding, new SimpleSqsMessageConsumer(queueUrl, config))
     }
 
   val optimiseOps = new OptimiseWithPngQuant(imageOperations)

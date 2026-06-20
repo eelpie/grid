@@ -1,6 +1,7 @@
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, Management}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
@@ -31,7 +32,12 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   val imageResponse = new ImageResponse(config, s3, usageQuota)
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
-  val embedder = new Embedder(new Bedrock(config), new SimpleSqsMessageConsumer(config.queueUrl, config))
+
+  private val gcpProjectId = "eelpie-cloud-registry"
+  private val vertexApiLocation = "eu"
+  private val googleCloudEmbedding = new GoogleCloudEmbedding(projectId = gcpProjectId, location = vertexApiLocation)
+
+  val embedder = new Embedder(googleCloudEmbedding, new SimpleSqsMessageConsumer(config.queueUrl, config))
 
   val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3, mediaApiMetrics, wsClient, authorisation, embedder, usageEvents)
   val suggestionController = new SuggestionController(auth, elasticSearch, controllerComponents)
