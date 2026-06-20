@@ -186,10 +186,14 @@ lazy val thrall = playProject("thrall", 9002)
       "com.gu" %% "kcl-pekko-stream" % "0.1.2",
       "org.testcontainers" % "testcontainers-elasticsearch" % "2.0.2" % Test,
       "com.google.protobuf" % "protobuf-java" % "3.19.6",
-      "software.amazon.awssdk" % "sqs" % awsSdkV2Version
+      "software.amazon.awssdk" % "sqs" % awsSdkV2Version,
+      "org.apache.pekko" %% "pekko-connectors-sqs" % "1.0.2"
     ),
     dependencyOverrides ++= Seq(
-      "org.apache.pekko" %% "pekko-stream" % "1.0.3"
+      "org.apache.pekko" %% "pekko-stream" % "1.0.3",
+      "org.apache.pekko" %% "pekko-http" % "1.0.1",
+      "org.apache.pekko" %% "pekko-http-core" % "1.0.1",
+      "org.apache.pekko" %% "pekko-parsing" % "1.0.1"
     )
   )
 
