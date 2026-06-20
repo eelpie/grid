@@ -1,6 +1,6 @@
-import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, S3Vectors, ThrallMessageSender}
-import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, Management}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
@@ -32,7 +32,15 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
 
-  private val maybeEmbedding = Some(new Bedrock(config))
+  private val maybeGcpProjectId = config.gcpProjectId
+  private val vertexApiLocation = "eu"
+  private val maybeGoogleCloudEmbedding = for {
+    gcpProjectId <- maybeGcpProjectId
+  } yield {
+    new GoogleCloudEmbedding(projectId = gcpProjectId, location = vertexApiLocation)
+  }
+
+  private val maybeEmbedding = maybeGoogleCloudEmbedding
 
   val maybeEmbedder: Option[Embedder] = for {
     embedding <- maybeEmbedding
