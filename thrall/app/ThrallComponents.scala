@@ -11,12 +11,13 @@ import instances.{InstanceMessageSender, InstanceUsageMessage}
 import lib._
 import lib.elasticsearch._
 import lib.kinesis.{KinesisConfig, ThrallEventConsumer}
+import lib.sqs.EmbeddingSqsConsumer
 import org.apache.pekko.Done
 import org.apache.pekko.stream.scaladsl.Source
 import play.api.ApplicationLoader.Context
 import router.Routes
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.sqs.SqsClient
+import software.amazon.awssdk.services.sqs.{SqsAsyncClient, SqsClient}
 import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest
 
 import scala.concurrent.{Await, Future}
@@ -117,6 +118,15 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   }).run()
 
+
+  private val sqsAsyncClient: SqsAsyncClient = SqsAsyncClient.builder()
+    .region(Region.EU_WEST_1)
+    .build()
+
+  config.embeddingsQueueUrl.foreach { queueUrl =>
+    logger.info("Listening for embedding requests on queue: " + queueUrl)
+    new EmbeddingSqsConsumer(queueUrl, sqsAsyncClient)(actorSystem, materializer, executionContext).start()
+  }
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
   val maybeCustomReapableEligibility = config.maybeReapableEligibilityClass(applicationLifecycle)
