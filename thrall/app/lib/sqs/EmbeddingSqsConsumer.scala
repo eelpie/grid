@@ -28,6 +28,17 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
         val maybeParsed = Json.parse(message.body()).validate[EmbedderMessage].asOpt
         logger.info("Parsed: " + maybeParsed)
 
+        maybeParsed.foreach { parsed =>
+          // TODO check file exists
+          val s3Object = thrallStore.getEmbeddingStoreImage(parsed.s3Key) // TODO imageid to keep knowledge of path in the store
+          val bytes =
+            try s3Object.readAllBytes()
+            finally s3Object.close()
+        }
+        // Load embedding source image from bucket
+        // Create the embedding
+        // Issue an UpdateEmbbedding message
+
         MessageAction.delete(message)
       }
       .via(SqsAckFlow(queueUrl)(sqsClient))
