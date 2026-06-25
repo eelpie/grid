@@ -1,12 +1,13 @@
 package com.gu.mediaservice.lib
 
-
 import com.gu.mediaservice.lib.aws.{S3Bucket, S3Object}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model.{Instance, MimeType}
 import com.typesafe.scalalogging.StrictLogging
 import org.joda.time.DateTime
+import software.amazon.awssdk.core.ResponseInputStream
+import software.amazon.awssdk.services.s3.model.GetObjectResponse
 
 import java.io.File
 import scala.concurrent.Future
@@ -62,6 +63,10 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, em
     logger.info(s"Storing embedding source to instance specific key: ${embeddingSourceBucket.name} / $instanceSpecificKey")
     storeImage(embeddingSourceBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
       overwrite = true)
+  }
+
+  def getEmbeddingStoreImage(key: String): ResponseInputStream[GetObjectResponse] = {
+    getObject(embeddingSourceBucket, key)
   }
 
   private def bulkDelete(bucket: S3Bucket, keys: List[String]): Future[Map[String, Boolean]] = keys match {
