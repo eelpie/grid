@@ -1,5 +1,6 @@
 package com.gu.mediaservice.lib
 
+import com.amazonaws.services.s3.model
 import com.amazonaws.services.s3.model.MultiObjectDeleteException
 
 import java.io.File
@@ -64,6 +65,10 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, em
     logger.info(s"Storing embedding source to instance specific key: ${embeddingSourceBucket.bucket} / $instanceSpecificKey")
     storeImage(embeddingSourceBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
       overwrite = true)
+  }
+
+  def getEmbeddingStoreImage(key: String): model.S3Object = {
+    getObject(embeddingSourceBucket, key)
   }
 
   private def bulkDelete(bucket: S3Bucket, keys: List[String]): Future[Map[String, Boolean]] = keys match {
