@@ -1,5 +1,6 @@
 package lib.sqs
 
+import com.amazonaws.util.IOUtils
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage}
 import com.typesafe.scalalogging.StrictLogging
 import lib.ThrallStore
@@ -11,6 +12,7 @@ import org.apache.pekko.stream.scaladsl.{Keep, Sink}
 import play.api.libs.json.Json
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
+import java.io.ByteArrayOutputStream
 import scala.concurrent.{ExecutionContext, Future}
 
 class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder: Embedder, thrallStore: ThrallStore)
@@ -27,6 +29,20 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
 
         val maybeParsed = Json.parse(message.body()).validate[EmbedderMessage].asOpt
         logger.info("Parsed: " + maybeParsed)
+
+        maybeParsed.foreach { parsed =>
+          // TODO check file exists
+          val s3Object = thrallStore.getEmbeddingStoreImage(parsed.s3Key) // TODO imageid to keep knowledge of path in the store
+          val bos = new ByteArrayOutputStream()
+          try {
+            IOUtils.copy(s3Object, bos)
+          } finally {
+            s3Object.close()
+          }
+        }
+        // Load embedding source image from bucket
+        // Create the embedding
+        // Issue an UpdateEmbbedding message
 
         MessageAction.delete(message)
       }
