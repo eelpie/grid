@@ -469,6 +469,7 @@ class Uploader(
         mimeTypeForEmbedder,
         s3BucketForEmbedder,
         s3KeyForEmbedder,
+        instance.id
       ))
       // TODO: centralise where all these URLs are constructed
     } yield {
