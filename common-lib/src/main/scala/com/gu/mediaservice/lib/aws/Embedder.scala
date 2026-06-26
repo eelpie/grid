@@ -10,7 +10,7 @@ import java.nio.file.{Files, Path}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
-case class EmbedderMessage(imageId: String, fileType: String, s3Bucket: String, s3Key: String)
+case class EmbedderMessage(imageId: String, fileType: String, s3Bucket: String, s3Key: String, instance: String)
 
 object EmbedderMessage {
   implicit val format: OFormat[EmbedderMessage] = Json.format[EmbedderMessage]
