@@ -41,7 +41,8 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
     queueUrl <- config.maybeImageEmbedderQueueUrl.filter(_ => config.shouldEmbed)
   } yield {
 
-    new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
+    logger.info("Image loader is configured to queue embedding requests to: " + queueUrl)
+      new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
   }
 
   val optimiseOps = new OptimiseWithPngQuant(imageOperations)
