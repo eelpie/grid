@@ -3,11 +3,11 @@ package com.gu.mediaservice.lib.embeddings
 import com.google.genai.Client
 import com.google.genai.types._
 import com.gu.mediaservice.lib.logging.LogMarker
-import com.gu.mediaservice.model.{Embedding, GeminiEmbedding2}
+import com.gu.mediaservice.model.{Embedding, GeminiEmbedding2, ImageMetadata}
 
 import scala.compat.java8.OptionConverters.RichOptionalGeneric
 import scala.concurrent.{ExecutionContext, Future}
-import scala.jdk.CollectionConverters.CollectionHasAsScala
+import scala.jdk.CollectionConverters._
 
 class GoogleCloudEmbedding {
 
@@ -20,12 +20,16 @@ class GoogleCloudEmbedding {
     .outputDimensionality(768)
     .build()
 
-  def createImageEmbeddings(source: Array[Byte])(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Embedding] = {
+  def createImageEmbeddings(source: Array[Byte], maybeMetadata: Option[ImageMetadata])(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Embedding] = {
     Future {
-      val p: Part = Part.fromBytes(source, "image/png")
+      val imagePart = Some(Part.fromBytes(source, "image/png"))
+      val titlePart = maybeMetadata.flatMap(_.title.map(Part.fromText))
+      val descriptionPart = maybeMetadata.flatMap(_.description.map(Part.fromText))
 
-      val content: Content = Content.builder().
-        parts(p).
+      val parts = List(imagePart, titlePart, descriptionPart).flatten.asJava
+
+      val content = Content.builder().
+        parts(parts).
         build()
 
       val response = client.models.embedContent(modelId, content, embedContentConfig)
