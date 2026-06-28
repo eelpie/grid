@@ -40,6 +40,7 @@ trait Fixtures {
     "s3.image.bucket",
     "s3.thumb.bucket",
     "publishing.image.bucket",
+    "s3.embedding.bucket",
     "grid.stage",
     "grid.appName",
     "instance.service.my",
