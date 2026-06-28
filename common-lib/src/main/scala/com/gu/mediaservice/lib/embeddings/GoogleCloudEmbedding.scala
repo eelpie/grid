@@ -9,8 +9,7 @@ import scala.compat.java8.OptionConverters.RichOptionalGeneric
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
-
-class GoogleCloudEmbedding(projectId: String, location: String) {
+class GoogleCloudEmbedding(projectId: String, location: String) extends EmbeddingImplementation {
   private val client = Client.builder().vertexAI(true).project(projectId).location(location).build()
 
   private val modelId = "gemini-embedding-2"
