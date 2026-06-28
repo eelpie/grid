@@ -2,6 +2,7 @@ package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.VImage
 import com.gu.mediaservice.lib.BrowserViewableImage
+import com.gu.mediaservice.lib.embeddings.EmbeddingSourceImageFormat
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model._
 
@@ -16,6 +17,11 @@ object ImageOperations {
 trait ImageOperations {
 
   def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage
+
+  def createEmbeddingSource(originalImageFile: File,
+                            orientationMetadata: Option[OrientationMetadata],
+                            embeddingSourceImageFormat: EmbeddingSourceImageFormat
+                           ): Future[Option[Array[Byte]]]
 
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                       width: Int,
