@@ -1,4 +1,5 @@
 package com.gu.mediaservice.lib.aws
+import com.gu.mediaservice.lib.embeddings.EmbeddingImplementation
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model.{Embedding, ImageMetadata, MimeType}
 import play.api.libs.json.{Json, OFormat}
@@ -12,18 +13,18 @@ object EmbedderMessage {
   implicit val format: OFormat[EmbedderMessage] = Json.format[EmbedderMessage]
 }
 
-class Embedder(bedrock: Bedrock, sqs: SimpleSqsMessageConsumer)(implicit ec: ExecutionContext) extends GridLogging {
+class Embedder(embedding: EmbeddingImplementation, sqs: SimpleSqsMessageConsumer)(implicit ec: ExecutionContext) extends GridLogging {
 
   def createQueryEmbedding(query: String)(implicit logMarker: LogMarker): Future[List[Double]] = {
     logger.info(logMarker, s"Creating text embedding for query: $query")
     for {
-      embedding <- bedrock.createTextEmbedding(query)
+      embedding <- embedding.createTextEmbedding(query)
     } yield embedding
   }
 
   def createImageEmbedding(source: Array[Byte], mimeType: MimeType, maybeMetadata: Option[ImageMetadata])(implicit logMarker: LogMarker): Future[Embedding] = {
     logger.info(logMarker, s"Creating image embedding")
-    bedrock.createImageEmbeddings(source, mimeType, maybeMetadata)
+    embedding.createImageEmbeddings(source, mimeType, maybeMetadata)
   }
 
   def queueImageToEmbed(message: EmbedderMessage)(implicit logMarker: LogMarker): Unit = {
