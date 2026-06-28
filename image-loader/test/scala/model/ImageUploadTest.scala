@@ -1,11 +1,11 @@
 package model
 
 import com.drew.imaging.ImageProcessingException
-import com.gu.mediaservice.lib.aws.{S3Bucket, S3Metadata, S3Object, S3ObjectMetadata}
+import com.gu.mediaservice.lib.aws.{S3Metadata, S3Object, S3ObjectMetadata}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.LogMarker
-import com.gu.mediaservice.lib.{StorableImage, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
+import com.gu.mediaservice.lib._
 import com.gu.mediaservice.model._
 import lib.imaging.MimeTypeDetection
 import model.upload.{OptimiseWithPngQuant, UploadRequest}
@@ -32,7 +32,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, ResourceHelpers.dummyBucket("img-bucket"), ResourceHelpers.dummyBucket("thumb-bucket"))
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, ResourceHelpers.dummyBucket("img-bucket"), ResourceHelpers.dummyBucket("thumb-bucket"), ResourceHelpers.dummyBucket("embedding-bucket"))
 
   /**
     * @todo: I flailed about until I found a path that worked, but
@@ -56,9 +56,15 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
         mockS3Object
       )
 
+    def mockOptionalStore = (a: Option[StorableImage]) =>
+      Future.successful(
+        a.map(a => mockS3Object)
+      )
+
     def storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object] = mockStore
     def storeOrProjectThumbFile: StorableThumbImage => Future[S3Object] = mockStore
     def storeOrProjectOptimisedPNG: StorableOptimisedImage => Future[S3Object] = mockStore
+    def storeOrProjectEmbeddingSource: Option[StorableEmbeddingSourceImage] => Future[Option[S3Object]] = mockOptionalStore
 
     val mockDependencies = ImageUploadOpsDependencies(
       config = mockConfig,
@@ -66,6 +72,8 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       storeOrProjectOriginalFile = storeOrProjectOriginalFile,
       storeOrProjectThumbFile = storeOrProjectThumbFile,
       storeOrProjectOptimisedImage = storeOrProjectOptimisedPNG,
+      storeEmbeddingSource = storeOrProjectEmbeddingSource,
+      maybeEmbedder = None
     )
 
     val tempFile = ResourceHelpers.fileAt(fileName)
@@ -86,14 +94,17 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       storeOrProjectOriginalFile = mockDependencies.storeOrProjectOriginalFile,
       storeOrProjectThumbFile = mockDependencies.storeOrProjectThumbFile,
       storeOrProjectOptimisedFile = mockDependencies.storeOrProjectOptimisedImage,
+      storeEmbeddingSource = mockDependencies.storeEmbeddingSource,
       uploadRequest = uploadRequest,
       deps = mockDependencies,
       processor = ImageProcessor.identity,
-      new OptimiseWithPngQuant(imageOps)
+      new OptimiseWithPngQuant(imageOps),
+
     )
 
     // Assertions; Failure will auto-fail
-    futureImage.map(i => {
+    futureImage.map( ie => {
+      val i = ie._1
       // Assertions on original request
       assert(i.id == randomId, "Correct id comes back")
       assert(i.source.mimeType.contains(expectedOriginalMimeType), "Should have the correct mime type")
