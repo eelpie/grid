@@ -21,7 +21,7 @@ object ImageIngestOperations {
   private def snippetForId(id: String) = id.take(6).mkString("/") + "/" + id
 }
 
-class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, config: CommonConfig, isVersionedS3: Boolean = false)
+class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, embeddingSourceBucket: S3Bucket, config: CommonConfig, isVersionedS3: Boolean = false)
   extends S3ImageStorage(config) with StrictLogging {
 
   import ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
@@ -31,6 +31,7 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, co
     case s:StorableOriginalImage => storeOriginalImage(s)
     case s:StorableThumbImage => storeThumbnailImage(s)
     case s:StorableOptimisedImage => storeOptimisedImage(s)
+    case s:StorableEmbeddingSourceImage => storeEmbeddingSourceImage(s)
   }
 
   private def storeOriginalImage(storableImage: StorableOriginalImage)
@@ -54,6 +55,14 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, co
     val instanceSpecificKey = optimisedPngKeyFromId(storableImage.id)(storableImage.instance)
     logger.info(s"Storing optimised image to instance specific key: $thumbnailBucket / $instanceSpecificKey")
     storeImage(imageBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
+      overwrite = true)
+  }
+
+  private def storeEmbeddingSourceImage(storableImage: StorableEmbeddingSourceImage)
+                                       (implicit logMarker: LogMarker): Future[S3Object] = {
+    val instanceSpecificKey = fileKeyFromId(storableImage.id)(storableImage.instance)
+    logger.info(s"Storing embedding source to instance specific key: ${embeddingSourceBucket.bucket} / $instanceSpecificKey")
+    storeImage(embeddingSourceBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
       overwrite = true)
   }
 
@@ -157,7 +166,16 @@ case class StorableOptimisedImage(id: String, file: File, mimeType: MimeType, me
     meta = meta
   )
 }
-
+case class StorableEmbeddingSourceImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage {
+  override def toProjectedS3Object(embeddingSourcesBucket: S3Bucket): S3Object = S3Object(
+    embeddingSourcesBucket,
+    ImageIngestOperations.fileKeyFromId(id)(instance),
+    file,
+    Some(mimeType),
+    lastModified = None,
+    meta = meta
+  )
+}
 
 /**
   * @param id
@@ -171,5 +189,6 @@ case class StorableOptimisedImage(id: String, file: File, mimeType: MimeType, me
 case class BrowserViewableImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, isTransformedFromSource: Boolean = false, instance: Instance) extends ImageWrapper {
   def asStorableOptimisedImage = StorableOptimisedImage(id, file, mimeType, meta, instance)
   def asStorableThumbImage = StorableThumbImage(id, file, mimeType, meta, instance)
+  def asStorableEmbeddingSourceImage = StorableEmbeddingSourceImage(id, file, mimeType, meta, instance)
 }
 

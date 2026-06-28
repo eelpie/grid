@@ -109,6 +109,9 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   private val thumbBucketEndpoint = string("s3.thumb.bucket.endpoint")
   val thumbnailBucket: S3Bucket = S3Bucket(string("s3.thumb.bucket.name"), thumbBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.thumb.bucket.pathStyleURLs").getOrElse(false), clientFor(thumbBucketEndpoint))
 
+  private val embeddingSourceBucketEndpoint = string("s3.embedding.bucket.endpoint")
+  val embeddingSourceBucket: S3Bucket = S3Bucket(string("s3.embedding.bucket.name"), embeddingSourceBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.embedding.bucket.pathStyleURLs").getOrElse(false), clientFor(embeddingSourceBucketEndpoint))
+
   /**
    * Load in a list of domain metadata specifications from configuration. For example:
    * {{{
