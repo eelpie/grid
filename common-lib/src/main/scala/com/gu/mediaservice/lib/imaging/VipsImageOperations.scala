@@ -245,7 +245,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
 
         // Extract to image bytes
         val buffer = new ByteArrayOutputStream()
-        thumbnail.writeToStream(buffer, embeddingFormat.fileExtension)
+        thumbnail.writeToStream(buffer, embeddingFormat.fileExtension, VipsOption.Boolean("strip", true))
         val bytes = buffer.toByteArray
         buffer.close()
         arena.close()
