@@ -239,7 +239,7 @@ class ImageOperations(playPath: String) extends GridLogging {
 
         // Extract to image bytes
         val buffer = new ByteArrayOutputStream()
-        thumbnail.writeToStream(buffer, embeddingFormat.fileExtension)
+        thumbnail.writeToStream(buffer, embeddingFormat.fileExtension, VipsOption.Boolean("strip", true))
 
         val bytes = buffer.toByteArray
         val embeddingSource = bytes
