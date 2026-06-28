@@ -193,7 +193,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
   def createEmbeddingSource(originalImageFile: File,
                             orientationMetadata: Option[OrientationMetadata],
                             embeddingSourceImageFormat: EmbeddingSourceImageFormat
-                           ): Future[Array[Byte]] = {
+                           ): Future[Option[Array[Byte]]] = {
     Future {
       val arena = Arena.ofConfined
 
@@ -237,7 +237,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
 
         val embeddingSource = bytes
         logger.info("Created embedding source with length: " + embeddingSource.length)
-        embeddingSource
+        Some(embeddingSource)
 
       } catch {
         case e: Throwable =>
