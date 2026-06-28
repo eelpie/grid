@@ -5,6 +5,7 @@ import com.gu.mediaservice.lib.embeddings.EmbeddingImplementation
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model.{ImageMetadata, Jpeg, MimeType}
 import org.apache.commons.codec.binary.Base64
+import com.gu.mediaservice.model.{ImageMetadata, Jpeg}
 import play.api.libs.json.OFormat.oFormatFromReadsAndOWrites
 import play.api.libs.json._
 import software.amazon.awssdk.core.SdkBytes
@@ -129,7 +130,7 @@ class Bedrock(config: CommonConfig)
   def createImageEmbeddings(source: Array[Byte], maybe_Metadata: Option[ImageMetadata])(implicit ec: ExecutionContext, logMarker: LogMarker): Future[List[Float]] = {
     val base64ImageData = Base64.encodeBase64String(source)
     val requestBody = createImageSearchDocumentRequestBody(
-      base64ImageData, Jpeg
+      base64ImageData, embeddingSourceImageFormat().format
     )
     val bedrockFuture = Future {
       sendBedrockEmbeddingRequest(requestBody)
@@ -147,4 +148,5 @@ class Bedrock(config: CommonConfig)
     }
   }
 
+  override def embeddingSourceImageFormat(): EmbeddingSourceImageFormat = EmbeddingSourceImageFormat(longestAxis = 3000, format = Jpeg, letterBox = false)
 }
