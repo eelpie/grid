@@ -1,6 +1,7 @@
 package com.gu.mediaservice.lib.aws
 
 import com.gu.mediaservice.lib.config.CommonConfig
+import com.gu.mediaservice.lib.embeddings.EmbeddingImplementation
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model.{ImageMetadata, Jpeg, MimeType}
 import org.apache.commons.codec.binary.Base64
@@ -34,7 +35,7 @@ object Bedrock {
 }
 
 class Bedrock(config: CommonConfig)
-  extends AwsClientV2BuilderUtils {
+  extends EmbeddingImplementation with AwsClientV2BuilderUtils {
 
   // TODO: figure out what the more usual pattern for turning off localstack behaviour is
   override def awsLocalEndpointUri: Option[URI] = None
