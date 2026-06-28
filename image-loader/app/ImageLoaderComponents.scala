@@ -37,6 +37,7 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val maybeEmbedder: Option[Embedder] = config.maybeImageEmbedderQueueUrl
     .filter(_ => config.shouldEmbed)
     .map {queueUrl =>
+      logger.info("Image loader is configured to queue embedding requests to: " + queueUrl)
       new Embedder(new Bedrock(config), new SimpleSqsMessageConsumer(queueUrl, config))
     }
 

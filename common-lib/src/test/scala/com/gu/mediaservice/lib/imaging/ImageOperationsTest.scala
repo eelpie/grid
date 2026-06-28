@@ -104,12 +104,12 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
       val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = Some(OrientationMetadata(exifOrientation = Some(6))), embeddingSourceImageFormat = format)
 
-      whenReady(eventualEmbeddingSource) { source =>
+      whenReady(eventualEmbeddingSource) { maybeSource =>
         arena.close()
-        val outputFile = new File("/Users/tony/Desktop/embedding-source.jpg")
-        FileUtils.writeByteArrayToFile(outputFile, source)
+        maybeSource.get.length > 100 should be(true)
 
-        source.length > 100 should be(true)
+        val outputFile = new File("/Users/tony/Desktop/embedding-source.jpg")
+        FileUtils.writeByteArrayToFile(outputFile, maybeSource.get)
       }
     }
   }
