@@ -3,7 +3,7 @@ package com.gu.mediaservice.lib.embeddings
 import com.google.genai.Client
 import com.google.genai.types._
 import com.gu.mediaservice.lib.logging.LogMarker
-import com.gu.mediaservice.model.{Embedding, GeminiEmbedding2, ImageMetadata}
+import com.gu.mediaservice.model.{Embedding, GeminiEmbedding2, ImageMetadata, Png}
 
 import scala.compat.java8.OptionConverters.RichOptionalGeneric
 import scala.concurrent.{ExecutionContext, Future}
@@ -21,7 +21,7 @@ class GoogleCloudEmbedding(projectId: String, location: String) {
 
   def createImageEmbeddings(source: Array[Byte], maybeMetadata: Option[ImageMetadata])(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Embedding] = {
     Future {
-      val imagePart = Some(Part.fromBytes(source, "image/png"))
+      val imagePart = Some(Part.fromBytes(source, embeddingSourceImageFormat().format.name))
       val titlePart = maybeMetadata.flatMap(_.title.map(Part.fromText))
       val descriptionPart = maybeMetadata.flatMap(_.description.map(Part.fromText))
 
@@ -38,13 +38,15 @@ class GoogleCloudEmbedding(projectId: String, location: String) {
     }
   }
 
-  def createTextEmbedding(query: String)(implicit ec: ExecutionContext): Future[List[Double]] = {
+  def createTextEmbedding(query: String)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[List[Double]] = {
     Future {
       val q = query
       val response = client.models.embedContent(modelId, q, embedContentConfig)
       firstEmbeddingFromResponse(response)
     }
   }
+
+  def embeddingSourceImageFormat(): EmbeddingSourceImageFormat = EmbeddingSourceImageFormat(longestAxis = 768, format = Png, letterBox = true)
 
   private def firstEmbeddingFromResponse(response: EmbedContentResponse): List[Double] = {
     val a: Seq[ContentEmbedding] = response.embeddings().asScala.map(_.asScala.toSeq).getOrElse(Seq.empty)
