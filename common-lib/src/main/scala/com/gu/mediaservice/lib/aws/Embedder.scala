@@ -2,6 +2,7 @@ package com.gu.mediaservice.lib.aws
 import com.amazonaws.services.sqs.model.SendMessageResult
 import com.gu.mediaservice.lib.embeddings.EmbeddingImplementation
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.model.{Jpeg, MimeType}
 import com.gu.mediaservice.model.ImageMetadata
 import play.api.libs.json.{Json, OFormat}
 
@@ -12,6 +13,8 @@ case class EmbedderMessage(imageId: String, fileType: String, s3Bucket: String, 
 object EmbedderMessage {
   implicit val format: OFormat[EmbedderMessage] = Json.format[EmbedderMessage]
 }
+
+case class EmbeddingSourceImageFormat(longestAxis: Int, format: MimeType = Jpeg, letterBox: Boolean)
 
 class Embedder(embedding: EmbeddingImplementation, sqs: SimpleSqsMessageConsumer)(implicit ec: ExecutionContext) extends GridLogging {
 
@@ -32,4 +35,7 @@ class Embedder(embedding: EmbeddingImplementation, sqs: SimpleSqsMessageConsumer
     val result: SendMessageResult = sqs.sendMessage(messageBody)
     logger.info(logMarker, s"Queued image for embedding with message ID: ${result.getMessageId}")
   }
+
+  def embeddingSourceImageFormat(): EmbeddingSourceImageFormat = embedding.embeddingSourceImageFormat()
+
 }
