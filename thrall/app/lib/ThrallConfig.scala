@@ -56,10 +56,6 @@ object KinesisReceiverConfig {
 }
 
 class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElastic(resources) {
-  val imageBucket: S3Bucket = S3Bucket(bucket = string("s3.image.bucket.name"), endPoint = string("s3.image.bucket.endpoint"), usesPathStyleURLs = booleanOpt("s3.image.bucket.pathStyleURLs").getOrElse(false),  client = s3Client)
-
-  val thumbnailBucket: S3Bucket = S3Bucket(bucket = string("s3.thumb.bucket.name"), endPoint = string("s3.thumb.bucket.endpoint"), usesPathStyleURLs = booleanOpt("s3.thumb.bucket.pathStyleURLs").getOrElse(false),  client = s3Client)
-
   val maybeReaperBucket: Option[S3Bucket] = for {
     reaperBucketName <- stringOpt("s3.reaper.bucket.name")
     reaperBucketEndpoint <- stringOpt("s3.reaper.bucket.endpoint")

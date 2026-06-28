@@ -33,19 +33,6 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
     s3Client
   )
 
-  val imageBucket: S3Bucket = S3Bucket(
-    string("s3.image.bucket.name"),
-    string("s3.image.bucket.endpoint"),
-    boolean("s3.image.bucket.pathStyleURLs"),
-    s3Client
-  )
-  val thumbBucket: S3Bucket = S3Bucket(
-    string("s3.thumb.bucket.name"),
-    string("s3.thumb.bucket.endpoint"),
-    boolean("s3.thumb.bucket.pathStyleURLs"),
-    s3Client
-  )
-
   val cloudFrontDomainThumbBucket: Option[String]   = stringOpt("cloudfront.domain.thumbbucket")
   val cloudFrontPrivateKeyBucket: Option[String]    = stringOpt("cloudfront.private-key.bucket")
   val cloudFrontPrivateKeyBucketKey: Option[String] = stringOpt("cloudfront.private-key.key")

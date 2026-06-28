@@ -97,6 +97,14 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   val services = new SingleHostServices(domainRoot)
 
+  private val imageBucketEndpoint = string("s3.image.bucket.endpoint")
+  val imageBucket: S3Bucket = S3Bucket(string("s3.image.bucket.name"), imageBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.image.bucket.pathStyleURLs").getOrElse(false), s3Client)
+  private val thumbBucketEndpoint = string("s3.thumb.bucket.endpoint")
+  val thumbnailBucket: S3Bucket = S3Bucket(string("s3.thumb.bucket.name"), thumbBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.thumb.bucket.pathStyleURLs").getOrElse(false), s3Client)
+
+  private val embeddingSourceBucketEndpoint = string("s3.embedding.bucket.endpoint")
+  val embeddingSourceBucket: S3Bucket = S3Bucket(string("s3.embedding.bucket.name"), embeddingSourceBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.embedding.bucket.pathStyleURLs").getOrElse(false), s3Client)
+
   /**
    * Load in a list of domain metadata specifications from configuration. For example:
    * {{{

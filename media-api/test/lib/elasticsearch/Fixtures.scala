@@ -39,6 +39,8 @@ trait Fixtures {
     "s3.image.bucket.endpoint",
     "s3.thumb.bucket.name",
     "s3.thumb.bucket.endpoint",
+    "s3.embedding.bucket.name",
+    "s3.embedding.bucket.endpoint",
     "grid.stage",
     "grid.appName",
     "instance.service.my",
