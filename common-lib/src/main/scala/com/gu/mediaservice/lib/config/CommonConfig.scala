@@ -73,6 +73,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
   val imageBucket: S3Bucket = S3Bucket(string("s3.image.bucket"), this)
   val thumbnailBucket: S3Bucket = S3Bucket(string("s3.thumb.bucket"), this)
   val imgPublishingBucket: S3Bucket = S3Bucket(string("publishing.image.bucket"), this)
+  val embeddingSourcesBucket: S3Bucket = S3Bucket(string("s3.embeddingSources.bucket"), this)
 
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
   val maybeIngestBucket: Option[S3Bucket] = stringOpt("s3.ingest.bucket").map(S3Bucket(_, this))
