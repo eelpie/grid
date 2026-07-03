@@ -1,16 +1,16 @@
 package com.gu.mediaservice.lib.aws
 
-import software.amazon.awssdk.services.bedrockruntime.model._
-import software.amazon.awssdk.services.bedrockruntime._
 import com.gu.mediaservice.lib.config.CommonConfig
-import play.api.libs.json.Json
-import software.amazon.awssdk.core.SdkBytes
-
-import java.net.URI
 import com.gu.mediaservice.lib.logging.LogMarker
+import com.gu.mediaservice.model.{ImageMetadata, Jpeg, MimeType}
+import org.apache.commons.codec.binary.Base64
 import play.api.libs.json.OFormat.oFormatFromReadsAndOWrites
 import play.api.libs.json._
+import software.amazon.awssdk.core.SdkBytes
+import software.amazon.awssdk.services.bedrockruntime._
+import software.amazon.awssdk.services.bedrockruntime.model._
 
+import java.net.URI
 import scala.concurrent.{ExecutionContext, Future}
 
 object Bedrock {
@@ -22,6 +22,15 @@ object Bedrock {
   )
 
   private implicit val bedrockTextRequestFormat: OFormat[BedrockTextRequest] = Json.format[BedrockTextRequest]
+
+  case class BedrockImageRequest(
+    input_type: String,
+    embedding_types: List[String],
+    images: List[String],
+    output_dimension: Int
+  )
+
+  private implicit val bedrockImageRequestFormat: OFormat[BedrockImageRequest] = Json.format[BedrockImageRequest]
 }
 
 class Bedrock(config: CommonConfig)
@@ -37,13 +46,37 @@ class Bedrock(config: CommonConfig)
       .build()
   }
 
-  private def createRequestBody(inputData: String): InvokeModelRequest = {
+  private def createSearchQueryRequestBody(inputData: String): InvokeModelRequest = {
     val body = Bedrock.BedrockTextRequest(
       input_type = "search_query",
       embedding_types = List("float"),
       texts = List(inputData),
       output_dimension = 256
     )
+    val jsonBody = Json.toJson(body).toString()
+
+    val request: InvokeModelRequest = {
+      InvokeModelRequest
+        .builder()
+        .accept("*/*")
+        .body(SdkBytes.fromUtf8String(jsonBody))
+        .contentType("application/json")
+        .modelId("global.cohere.embed-v4:0")
+        .build()
+    }
+    request
+  }
+
+  private def createImageSearchDocumentRequestBody(base64Image: String, imageMimeType: MimeType): InvokeModelRequest = {
+    val body = Bedrock.BedrockImageRequest(
+      input_type = "search_document",
+      embedding_types = List("float"),
+      images = List(
+        s"`data:${imageMimeType.name};base64,$base64Image`"
+      ),
+      output_dimension = 1536
+    )
+
     val jsonBody = Json.toJson(body).toString()
 
     val request: InvokeModelRequest = {
@@ -77,7 +110,7 @@ class Bedrock(config: CommonConfig)
   }
 
   def createTextEmbedding(inputData: String)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[List[Float]] = {
-    val requestBody = createRequestBody(inputData)
+    val requestBody = createSearchQueryRequestBody(inputData)
     val bedrockFuture = Future { sendBedrockEmbeddingRequest(requestBody) }
     bedrockFuture.map { response =>
       val responseBody = response.body().asUtf8String()
@@ -91,4 +124,26 @@ class Bedrock(config: CommonConfig)
       embedding
     }
   }
+
+  def createImageEmbeddings(source: Array[Byte], maybe_Metadata: Option[ImageMetadata])(implicit ec: ExecutionContext, logMarker: LogMarker): Future[List[Float]] = {
+    val base64ImageData = Base64.encodeBase64String(source)
+    val requestBody = createImageSearchDocumentRequestBody(
+      base64ImageData, Jpeg
+    )
+    val bedrockFuture = Future {
+      sendBedrockEmbeddingRequest(requestBody)
+    }
+    bedrockFuture.map { response =>
+      val responseBody = response.body().asUtf8String()
+      val json = Json.parse(responseBody)
+      // Extract the embedding array (first element since it's an array of arrays)
+      val embedding = (json \ "embeddings" \ "float")(0).as[List[Float]]
+      logger.info(
+        logMarker,
+        s"Successfully extracted text embedding. Vector size: ${embedding.size}"
+      )
+      embedding
+    }
+  }
+
 }
