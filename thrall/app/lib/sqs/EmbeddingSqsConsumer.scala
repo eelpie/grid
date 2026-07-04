@@ -1,11 +1,13 @@
 package lib.sqs
 
+import com.gu.mediaservice.lib.aws.EmbedderMessage
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.connectors.sqs.scaladsl.{SqsAckFlow, SqsSource}
 import org.apache.pekko.stream.connectors.sqs.{MessageAction, SqsSourceSettings}
 import org.apache.pekko.stream.scaladsl.{Keep, Sink}
+import play.api.libs.json.Json
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -21,6 +23,10 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient)
     SqsSource(queueUrl, sourceSettings)(sqsClient)
       .map { message =>
         logger.info(s"Received SQS message id=${message.messageId()} body=${message.body()}")
+
+        val maybeParsed = Json.parse(message.body()).validate[EmbedderMessage].asOpt
+        logger.info("Parsed: " + maybeParsed)
+
         MessageAction.delete(message)
       }
       .via(SqsAckFlow(queueUrl)(sqsClient))
