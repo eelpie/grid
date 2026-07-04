@@ -3,9 +3,8 @@ package com.gu.mediaservice.lib.aws
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.embeddings.EmbeddingImplementation
 import com.gu.mediaservice.lib.logging.LogMarker
-import com.gu.mediaservice.model.{ImageMetadata, Jpeg, MimeType}
+import com.gu.mediaservice.model.{CohereV4Embedding, Embedding, ImageMetadata, Jpeg, MimeType}
 import org.apache.commons.codec.binary.Base64
-import com.gu.mediaservice.model.{ImageMetadata, Jpeg}
 import play.api.libs.json.OFormat.oFormatFromReadsAndOWrites
 import play.api.libs.json._
 import software.amazon.awssdk.core.SdkBytes
@@ -127,7 +126,7 @@ class Bedrock(config: CommonConfig)
     }
   }
 
-  def createImageEmbeddings(source: Array[Byte], maybe_Metadata: Option[ImageMetadata])(implicit ec: ExecutionContext, logMarker: LogMarker): Future[List[Float]] = {
+  def createImageEmbeddings(source: Array[Byte], maybe_Metadata: Option[ImageMetadata])(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Embedding] = {
     val base64ImageData = Base64.encodeBase64String(source)
     val requestBody = createImageSearchDocumentRequestBody(
       base64ImageData, embeddingSourceImageFormat().format
@@ -139,12 +138,16 @@ class Bedrock(config: CommonConfig)
       val responseBody = response.body().asUtf8String()
       val json = Json.parse(responseBody)
       // Extract the embedding array (first element since it's an array of arrays)
-      val embedding = (json \ "embeddings" \ "float")(0).as[List[Float]]
+      val embeddings = (json \ "embeddings" \ "float")(0).as[List[Float]]
       logger.info(
         logMarker,
-        s"Successfully extracted text embedding. Vector size: ${embedding.size}"
+        s"Successfully created image embedding. Vector size: ${embeddings.size}"
       )
-      embedding
+      embeddings
+    }.map { embeddings =>
+      Embedding(
+        cohereEmbedV4 = Some(CohereV4Embedding(embeddings.map(_.toDouble)))
+      )
     }
   }
 

@@ -43,15 +43,9 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
           } finally {
             s3Object.close()
           }
-          val eventualEmbeddings = embedder.createImageEmbedding(bos.toByteArray, None)
-          val eventualEmbedding = eventualEmbeddings.map { embeddings =>
-            logger.info("Got embeddings: " + embeddings)
-            Embedding(
-              cohereEmbedV4 = Some(CohereV4Embedding(embeddings.map(_.toDouble)))
-            )
-          }
-
+          val eventualEmbedding = embedder.createImageEmbedding(bos.toByteArray, None)
           eventualEmbedding.map { embedding =>
+            logger.info("Got embedding: " + embedding)
             // Issue an UpdateEmbedding message
             val updateEmbeddingMessage = UpdateEmbeddingMessage(
               id = parsed.imageId,
