@@ -2,8 +2,7 @@ package com.gu.mediaservice.lib.aws
 import com.amazonaws.services.sqs.model.SendMessageResult
 import com.gu.mediaservice.lib.embeddings.EmbeddingImplementation
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
-import com.gu.mediaservice.model.{Jpeg, MimeType}
-import com.gu.mediaservice.model.ImageMetadata
+import com.gu.mediaservice.model.{Embedding, ImageMetadata, Jpeg, MimeType}
 import play.api.libs.json.{Json, OFormat}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -25,7 +24,7 @@ class Embedder(embedding: EmbeddingImplementation, sqs: SimpleSqsMessageConsumer
     } yield embedding
   }
 
-  def createImageEmbedding(source: Array[Byte], maybeMetadata: Option[ImageMetadata])(implicit logMarker: LogMarker): Future[List[Float]] = {
+  def createImageEmbedding(source: Array[Byte], maybeMetadata: Option[ImageMetadata])(implicit logMarker: LogMarker): Future[Embedding] = {
     logger.info(logMarker, s"Creating image embedding")
     embedding.createImageEmbeddings(source, maybeMetadata)
   }
