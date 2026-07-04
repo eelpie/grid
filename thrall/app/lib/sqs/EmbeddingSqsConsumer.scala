@@ -1,7 +1,8 @@
 package lib.sqs
 
-import com.gu.mediaservice.lib.aws.EmbedderMessage
+import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage}
 import com.typesafe.scalalogging.StrictLogging
+import lib.ThrallStore
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.connectors.sqs.scaladsl.{SqsAckFlow, SqsSource}
@@ -12,7 +13,7 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient)
+class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder: Embedder, thrallStore: ThrallStore)
                           (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext)
   extends StrictLogging {
 
