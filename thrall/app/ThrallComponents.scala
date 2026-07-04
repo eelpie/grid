@@ -1,6 +1,6 @@
 import com.gu.kinesis.{KinesisRecord, KinesisSource, ConsumerConfig => KclPekkoStreamConfig}
 import com.gu.mediaservice.GridClient
-import com.gu.mediaservice.lib.aws.{S3Ops, S3Vectors, ThrallMessageSender}
+import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.instances.{Instances, InstancesClient}
 import com.gu.mediaservice.lib.logging.MarkerMap
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -17,11 +17,11 @@ import org.apache.pekko.stream.scaladsl.Source
 import play.api.ApplicationLoader.Context
 import router.Routes
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.sqs.{SqsAsyncClient, SqsClient}
 import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest
+import software.amazon.awssdk.services.sqs.{SqsAsyncClient, SqsClient}
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 
 class ThrallComponents(context: Context) extends GridComponents(context, new ThrallConfig(_)) with StrictLogging with AssetsComponents
@@ -119,6 +119,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   }).run()
 
+  private val bedrock = new Bedrock(config)
 
   private val sqsAsyncClient: SqsAsyncClient = SqsAsyncClient.builder()
     .region(Region.EU_WEST_1)
@@ -126,7 +127,8 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   config.embeddingsQueueUrl.foreach { queueUrl =>
     logger.info("Listening for embedding requests on queue: " + queueUrl)
-    new EmbeddingSqsConsumer(queueUrl, sqsAsyncClient)(actorSystem, materializer, executionContext).start()
+    val embedder = new Embedder(bedrock, new SimpleSqsMessageConsumer(queueUrl, config))
+    new EmbeddingSqsConsumer(queueUrl, sqsAsyncClient, embedder, store)(actorSystem, materializer, executionContext).start()
   }
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
