@@ -119,6 +119,8 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   }).run()
 
+  private val lowPriorityMessageSender = new ThrallMessageSender(config.thrallKinesisLowPriorityStreamConfig)
+
   private val bedrock = new Bedrock(config)
 
   private val sqsAsyncClient: SqsAsyncClient = SqsAsyncClient.builder()
@@ -128,7 +130,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   config.embeddingsQueueUrl.foreach { queueUrl =>
     logger.info("Listening for embedding requests on queue: " + queueUrl)
     val embedder = new Embedder(bedrock, new SimpleSqsMessageConsumer(queueUrl, config))
-    new EmbeddingSqsConsumer(queueUrl, sqsAsyncClient, embedder, store)(actorSystem, materializer, executionContext).start()
+    new EmbeddingSqsConsumer(queueUrl, sqsAsyncClient, embedder, store, lowPriorityMessageSender)(actorSystem, materializer, executionContext).start()
   }
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
