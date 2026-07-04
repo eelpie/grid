@@ -1,9 +1,9 @@
 package lib.sqs
 
 import com.amazonaws.util.IOUtils
-import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage}
+import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, ThrallMessageSender}
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{CohereV4Embedding, Embedding}
+import com.gu.mediaservice.model.{CohereV4Embedding, Embedding, Instance, UpdateEmbeddingMessage}
 import com.typesafe.scalalogging.StrictLogging
 import lib.ThrallStore
 import org.apache.pekko.actor.ActorSystem
@@ -11,13 +11,14 @@ import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.connectors.sqs.scaladsl.{SqsAckFlow, SqsSource}
 import org.apache.pekko.stream.connectors.sqs.{MessageAction, SqsSourceSettings}
 import org.apache.pekko.stream.scaladsl.{Keep, Sink}
+import org.joda.time.DateTime
 import play.api.libs.json.Json
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
 import java.io.ByteArrayOutputStream
 import scala.concurrent.{ExecutionContext, Future}
 
-class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder: Embedder, thrallStore: ThrallStore)
+class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder: Embedder, thrallStore: ThrallStore, lowPriorityMessageSender: ThrallMessageSender)
                           (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext)
   extends StrictLogging {
 
@@ -49,7 +50,18 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
               cohereEmbedV4 = Some(CohereV4Embedding(embeddings.map(_.toDouble)))
             )
           }
-          eventualEmbedding
+
+          eventualEmbedding.map { embedding =>
+            // Issue an UpdateEmbedding message
+            val updateEmbeddingMessage = UpdateEmbeddingMessage(
+              id = parsed.imageId,
+              lastModified = DateTime.now, // TODO check this against the lambda
+              embedding = embedding,
+              instance = Instance(id = parsed.instance)
+            )
+            lowPriorityMessageSender.publish(updateEmbeddingMessage)
+            ()
+          }
 
         }.getOrElse {
           Future.successful(())
