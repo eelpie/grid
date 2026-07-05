@@ -189,6 +189,7 @@ class ElasticSearch(
         .queryVector(queryEmbedding.map(_.toDouble))
         .k(k)
         .numCandidates(numCandidates)
+        .similarity(0.85f)
 
       val searchRequest = ElasticDsl.search(imagesCurrentAlias(instance))
         .knn(knn)
