@@ -182,11 +182,7 @@ class ElasticSearch(
       logger.warn(logMarker, "knnSearch called but includeDenseVectorMappings=false, returning empty results")
       Future.successful(SearchResults(Nil, total = 0, extraCounts = None))
     } else {
-      val knn = Knn(knnSearchFieldName, filter = filterOpt)
-        .queryVector(queryEmbedding.map(_.toDouble))
-        .k(k)
-        .numCandidates(numCandidates)
-        .similarity(0.85f)
+      val knn = knnSimilarClause(queryEmbedding, k, numCandidates)
 
       val searchRequest = ElasticDsl.search(imagesCurrentAlias(instance))
         .knn(knn)
@@ -394,10 +390,28 @@ class ElasticSearch(
     }
   }
 
+  private def knnSimilarClause(queryEmbedding: List[Float], k: Int, numCandidates: Int) = {
+    Knn(knnSearchFieldName)
+      .queryVector(queryEmbedding.map(_.toDouble))
+      .k(k)
+      .numCandidates(numCandidates)
+      .similarity(0.85f)
+  }
+
   def search(params: SearchParams)(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
     val query: Query = queryBuilder.makeQuery(params.structuredQuery)
 
+
+    val similarToVector = None
+    val similarTo: Option[Knn] = similarToVector.map { s =>
+      knnSimilarClause(s, 200, 200)
+    }
+
     val filterOpt: Option[Query] = queryBuilder.buildFilterOpt(params, searchFilters, syndicationFilter)
+
+    val withFilter = filterOpt.map { f =>
+      boolQuery() must query filter f
+    }.getOrElse(query)
 
     val sort = params.orderBy match {
       case Some("dateAddedToCollection") => sorts.dateAddedToCollectionDescending
@@ -429,7 +443,7 @@ class ElasticSearch(
         Seq.empty
       }
 
-    val searchRequest = prepareSearch(maybeWithFilter(query, filterOpt))
+    val searchRequest = prepareSearch(withFilter)
       .trackTotalHits(trackTotalHits)
       .runtimeMappings(runtimeMappings)
       .storedFields("_source") // this needs to be explicit when using script fields
@@ -437,11 +451,18 @@ class ElasticSearch(
       .aggregations(extraCountAggregations)
       .from(params.offset)
       .size(params.length)
-      .sortBy(sort)
 
-    executeAndLog(searchRequest, "image search").
+    val withKnn = similarTo.map { knn =>
+      // TODO apply filer to the knn clause as well
+      searchRequest.knn(knn)
+
+    }.getOrElse {
+      searchRequest.sortBy(sort)
+    }
+
+    executeAndLog(withKnn, "image search").
       toMetric(Some(mediaApiMetrics.searchQueries), List(mediaApiMetrics.searchTypeDimension("results")))(_.result.took).map { r =>
-      logSearchQueryIfTimedOut(searchRequest, r.result)
+      logSearchQueryIfTimedOut(withKnn, r.result)
       val imageHits = r.result.hits.hits.map(resolveHit).toSeq.flatten.map(i => (i.instance.id, i))
       // setting trackTotalHits to false means we don't get any hit count at all.
       // Requester has explicitly opted into not caring about the total hits, so give them what they want (nothing).
