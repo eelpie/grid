@@ -9,10 +9,6 @@ import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsa
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider
 import com.gu.mediaservice.lib.aws._
-import com.gu.mediaservice.lib.aws.{ContentDisposition, Embedder, ThrallMessageSender, UpdateMessage}
-import com.gu.mediaservice.lib.aws.{ContentDisposition, S3, ThrallMessageSender, UpdateMessage}
-import com.gu.mediaservice.lib.aws.{ContentDisposition, ThrallMessageSender, UpdateMessage}
-import com.gu.mediaservice.lib.aws.{ContentDisposition, S3, ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.formatting.printDateTime
@@ -25,6 +21,7 @@ import com.gu.mediaservice.{GridClient, JsonDiff}
 import com.sksamuel.elastic4s.requests.searches.queries.Query
 import lib._
 import lib.elasticsearch._
+import lib.querysyntax.{Match, SimilarField, SimilarValue}
 import org.apache.http.entity.ContentType
 import org.apache.pekko.stream.scaladsl.StreamConverters
 import org.http4s.UriTemplate
@@ -683,14 +680,10 @@ class MediaApi(
 
     def semanticSearchByImage(imageId: String, k: Int, params: SearchParams): Future[SearchResults] = {
       val filterOpt = buildAiFilter(params)
+      val eventualMaybeEmbedding = embeddingForImageId(imageId)
 
       for {
-        maybeImage <- elasticSearch.getImageById(imageId)
-        maybeEmbedding = maybeImage
-          .filter(image => isVisibleToAccessor(request.user, image))
-          .flatMap(_.embedding)
-          .flatMap(_.geminiEmbedding2)
-          .map(_.image.map(_.toFloat))
+        maybeEmbedding: Option[List[Float]] <- eventualMaybeEmbedding
         searchResults <- maybeEmbedding match {
           // If we have an embedding, perform the KNN search. If not, return an empty result set.
           case Some(embedding) =>
@@ -777,13 +770,37 @@ class MediaApi(
       } else {
         _searchParams
       }
-      SearchParams.validate(searchParams).fold(
+
+      val x: Future[Result] = SearchParams.validate(searchParams).fold(
         // TODO: respondErrorCollection?
         errors => Future.successful(respondError(UnprocessableEntity, InvalidUriParams.errorKey,
           errors.map(_.message).mkString(", "))
-        ),
-        params => performSearchAndRespond(params)
+        ), { params: SearchParams =>
+          // Extract the similar parameter from the structured query
+          val maybeSimilarImageId = params.structuredQuery.flatMap {
+            case Match(SimilarField, SimilarValue(imageId)) =>
+                logger.info("Saw similar parameter: " + imageId)
+                Some(imageId)
+            case _ => None
+          }.headOption
+
+          performSearchAndRespond(params)
+        }
       )
+      x
+    }
+  }
+
+  private def embeddingForImageId(imageId: String)(implicit logMarker: LogMarker, instance: Instance, request: Authentication.Request[AnyContent]): Future[Option[List[Float]]] = {
+    for {
+      maybeImage <- elasticSearch.getImageById(imageId)
+      maybeEmbedding: Option[List[Float]] = maybeImage
+        .filter(image => isVisibleToAccessor(request.user, image))
+        .flatMap(_.embedding)
+        .flatMap(_.geminiEmbedding2)
+        .map(_.image.map(_.toFloat))
+    } yield {
+      maybeEmbedding
     }
   }
 
