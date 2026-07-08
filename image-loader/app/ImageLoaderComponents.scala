@@ -34,11 +34,15 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val notifications = new Notifications(config)
   val downloader = new Downloader()(ec,wsClient)
 
-  val maybeEmbedder: Option[Embedder] = config.maybeImageEmbedderQueueUrl
-    .filter(_ => config.shouldEmbed)
-    .map {queueUrl =>
-      new Embedder(new Bedrock(config), new SimpleSqsMessageConsumer(queueUrl, config))
-    }
+  private val maybeEmbedding = Some(new Bedrock(config))
+
+  val maybeEmbedder: Option[Embedder] = for {
+    embedding <- maybeEmbedding
+    queueUrl <- config.maybeImageEmbedderQueueUrl.filter(_ => config.shouldEmbed)
+  } yield {
+
+    new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
+  }
 
   private val s3 = new S3(config)
 
