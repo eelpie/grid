@@ -70,7 +70,7 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
 
   val restrictDownload: Boolean = boolean("restrictDownload")
 
-  val queueUrl: String = stringOpt("sqs.embedder.queue.url").getOrElse("")
+  val embedderQueueUrl: Option[String] = stringOpt("sqs.embedder.queue.url")
 
   val aiSearchResultLimit: Int = intOpt("ai.search.resultLimit").getOrElse(200)
   val aiSearchEmbeddingCacheMaxSize: Int = intOpt("ai.search.embeddingCache.maxSize").getOrElse(500)
