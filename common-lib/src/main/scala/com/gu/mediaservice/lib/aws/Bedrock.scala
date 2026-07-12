@@ -126,7 +126,7 @@ class Bedrock(config: CommonConfig)
     }
   }
 
-  def createImageEmbeddings(source: Array[Byte], maybe_Metadata: Option[ImageMetadata])(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Embedding] = {
+  def createImageEmbeddings(source: Array[Byte], mimeType: MimeType, maybeMetadata: Option[ImageMetadata])(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Embedding] = {
     val base64ImageData = Base64.encodeBase64String(source)
     val requestBody = createImageSearchDocumentRequestBody(
       base64ImageData, embeddingSourceImageFormat().format

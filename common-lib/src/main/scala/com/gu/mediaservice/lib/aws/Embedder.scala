@@ -24,9 +24,9 @@ class Embedder(embedding: EmbeddingImplementation, sqs: SimpleSqsMessageConsumer
     } yield embedding
   }
 
-  def createImageEmbedding(source: Array[Byte], maybeMetadata: Option[ImageMetadata])(implicit logMarker: LogMarker): Future[Embedding] = {
+  def createImageEmbedding(source: Array[Byte], mimeType: MimeType, maybeMetadata: Option[ImageMetadata])(implicit logMarker: LogMarker): Future[Embedding] = {
     logger.info(logMarker, s"Creating image embedding")
-    embedding.createImageEmbeddings(source, maybeMetadata)
+    embedding.createImageEmbeddings(source, mimeType, maybeMetadata)
   }
 
   def queueImageToEmbed(message: EmbedderMessage)(implicit logMarker: LogMarker) = {
