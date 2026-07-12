@@ -47,21 +47,26 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
 
           // Take the source image mimeType from S3 metadata for embedders who want it
           val maybeMimeTypeHeader = Option(s3Object.getObjectMetadata.getContentType)
-          val maymeMimeType =  maybeMimeTypeHeader.map(MimeType(_))
+          val maymeMimeType =  maybeMimeTypeHeader.map(MimeType(_)) // TODO recover to None
           logger.info(s"Got embedding source with mineType $maybeMimeTypeHeader / $maymeMimeType")
 
-          val eventualEmbedding = embedder.createImageEmbedding(bos.toByteArray, None)
-          eventualEmbedding.map { embedding =>
-            logger.info("Got embedding: " + embedding)
-            // Issue an UpdateEmbedding message
-            val updateEmbeddingMessage = UpdateEmbeddingMessage(
-              id = parsed.imageId,
-              lastModified = DateTime.now, // TODO check this against the lambda
-              embedding = embedding,
-              instance = Instance(id = parsed.instance)
-            )
-            lowPriorityMessageSender.publish(updateEmbeddingMessage)
-            ()
+          maymeMimeType.map { mimeType =>
+            val eventualEmbedding = embedder.createImageEmbedding(bos.toByteArray, mimeType, None)
+            eventualEmbedding.map { embedding =>
+              logger.info("Got embedding: " + embedding)
+              // Issue an UpdateEmbedding message
+              val updateEmbeddingMessage = UpdateEmbeddingMessage(
+                id = parsed.imageId,
+                lastModified = DateTime.now, // TODO check this against the lambda
+                embedding = embedding,
+                instance = Instance(id = parsed.instance)
+              )
+              lowPriorityMessageSender.publish(updateEmbeddingMessage)
+              ()
+            }
+          }.getOrElse {
+            logger.warn("Skipping embedding source with missing mimeType: " + s3Object.getKey)
+            Future.successful(())
           }
 
         }.getOrElse {
