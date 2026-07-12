@@ -2,6 +2,7 @@ package lib.sqs
 
 import com.amazonaws.util.IOUtils
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage}
+import com.gu.mediaservice.model.MimeType
 import com.typesafe.scalalogging.StrictLogging
 import lib.ThrallStore
 import org.apache.pekko.actor.ActorSystem
@@ -39,6 +40,12 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
           } finally {
             s3Object.close()
           }
+
+          // Take the source image mimeType from S3 metadata for embedders who want it
+          val maybeMimeTypeHeader = Option(s3Object.getObjectMetadata.getContentType)
+          val maybeMimeType =  maybeMimeTypeHeader.map(MimeType(_))
+          logger.info(s"Got embedding source with mineType $maybeMimeTypeHeader / $maybeMimeType")
+
         }
         // Load embedding source image from bucket
         // Create the embedding
