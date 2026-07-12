@@ -487,7 +487,6 @@ class Uploader(
       _ = imageUpload.embeddingSource.foreach { embeddingSource =>
         queueImageToEmbed(EmbedderMessage(
           uploadRequest.imageId,
-          Png.fileExtension,
           config.embeddingSourceBucket.bucket,
           config.embeddingSourceBucket.keyFromS3URL(embeddingSource.uri),
           instance.id
