@@ -1,6 +1,7 @@
 import com.gu.kinesis.{KinesisRecord, KinesisSource, ConsumerConfig => KclPekkoStreamConfig}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.instances.{Instances, InstancesClient}
 import com.gu.mediaservice.lib.logging.MarkerMap
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -120,15 +121,32 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   private val lowPriorityMessageSender = new ThrallMessageSender(config.thrallKinesisLowPriorityStreamConfig)
 
-  private val bedrock = new Bedrock(config)
-
   private val sqsAsyncClient: SqsAsyncClient = SqsAsyncClient.builder()
     .region(Region.EU_WEST_1)
     .build()
 
-  config.embeddingsQueueUrl.foreach { queueUrl =>
+  private val maybeGcpProjectId = config.gcpProjectId
+  private val vertexApiLocation = "eu"
+  private val maybeGoogleCloudEmbedding = for {
+    gcpProjectId <- maybeGcpProjectId
+  } yield {
+    new GoogleCloudEmbedding(projectId = gcpProjectId, location = vertexApiLocation)
+  }
+
+  private val maybeEmbedding = maybeGoogleCloudEmbedding
+
+  private val maybeEmbedder = for {
+    embedding <- maybeEmbedding
+    queueUrl <- config.embeddingsQueueUrl // TODO name inconsistant with imageloader
+  } yield {
+    new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
+  }
+
+  for {
+    queueUrl <- config.embeddingsQueueUrl
+    embedder <- maybeEmbedder // This could be the embedding direct?
+  } yield {
     logger.info("Listening for embedding requests on queue: " + queueUrl)
-    val embedder = new Embedder(bedrock, new SimpleSqsMessageConsumer(queueUrl, config))
     new EmbeddingSqsConsumer(queueUrl, sqsAsyncClient, embedder, store, lowPriorityMessageSender)(actorSystem, materializer, executionContext).start()
   }
 
