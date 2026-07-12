@@ -1,6 +1,7 @@
 package lib.sqs
 
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage}
+import com.gu.mediaservice.model.MimeType
 import com.typesafe.scalalogging.StrictLogging
 import lib.ThrallStore
 import org.apache.pekko.actor.ActorSystem
@@ -31,10 +32,18 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
         maybeParsed.foreach { parsed =>
           // TODO check file exists
           val s3Object = thrallStore.getEmbeddingStoreImage(parsed.s3Key) // TODO imageid to keep knowledge of path in the store
+          val response = s3Object.response()
           val bytes =
             try s3Object.readAllBytes()
             finally s3Object.close()
+
+          // Take the source image mimeType from S3 metadata for embedders who want it
+          val maybeMimeTypeHeader = Option(response.contentType())
+            .filterNot(_.equalsIgnoreCase("application/octet-stream"))
+          val maybeMimeType =  maybeMimeTypeHeader.map(MimeType(_))
+          logger.info(s"Got embedding source with mimeType $maybeMimeTypeHeader / $maybeMimeType")
         }
+
         // Load embedding source image from bucket
         // Create the embedding
         // Issue an UpdateEmbbedding message
