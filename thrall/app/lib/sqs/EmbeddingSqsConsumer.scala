@@ -1,5 +1,6 @@
 package lib.sqs
 
+import com.amazonaws.services.s3.model.{ObjectMetadata, S3Object}
 import com.amazonaws.util.IOUtils
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, ThrallMessageSender}
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
@@ -43,6 +44,11 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
           } finally {
             s3Object.close()
           }
+
+          // Take the source image mimeType from S3 metadata for embedders who want it
+          val maybeMimeType = Option(s3Object.getObjectMetadata.getContentType)
+          logger.info(s"Got embedding source with mineType $maybeMimeType")
+
           val eventualEmbedding = embedder.createImageEmbedding(bos.toByteArray, None)
           eventualEmbedding.map { embedding =>
             logger.info("Got embedding: " + embedding)
