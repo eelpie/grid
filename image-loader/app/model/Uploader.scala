@@ -482,11 +482,17 @@ class Uploader(
       }
       // Send the embed source to the embedder
       _ = imageUpload.embeddingSource.foreach { embeddingSource =>
+
+        val imageMetadata = imageUpload.image.metadata
+        val imageMetadataJson = Json.prettyPrint(Json.toJson(imageMetadata))
+        logger.info("Putting imageMetadata onto EmbedderMessage: " + imageMetadataJson.length)
+
         queueImageToEmbed(EmbedderMessage(
           uploadRequest.imageId,
           config.embeddingSourceBucket.bucket,
           config.embeddingSourceBucket.keyFromS3URL(embeddingSource.uri),
-          instance.id
+          instance.id,
+          Some(imageMetadata)  // TODO SQS size limit and billing optimization
         ))
       }
 
