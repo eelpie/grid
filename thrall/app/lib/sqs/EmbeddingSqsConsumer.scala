@@ -4,7 +4,7 @@ import com.amazonaws.services.s3.model.{ObjectMetadata, S3Object}
 import com.amazonaws.util.IOUtils
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, ThrallMessageSender}
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{CohereV4Embedding, Embedding, Instance, UpdateEmbeddingMessage}
+import com.gu.mediaservice.model.{CohereV4Embedding, Embedding, Instance, MimeType, UpdateEmbeddingMessage}
 import com.typesafe.scalalogging.StrictLogging
 import lib.ThrallStore
 import org.apache.pekko.actor.ActorSystem
@@ -46,8 +46,9 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
           }
 
           // Take the source image mimeType from S3 metadata for embedders who want it
-          val maybeMimeType = Option(s3Object.getObjectMetadata.getContentType)
-          logger.info(s"Got embedding source with mineType $maybeMimeType")
+          val maybeMimeTypeHeader = Option(s3Object.getObjectMetadata.getContentType)
+          val maymeMimeType =  maybeMimeTypeHeader.map(MimeType(_))
+          logger.info(s"Got embedding source with mineType $maybeMimeTypeHeader / $maymeMimeType")
 
           val eventualEmbedding = embedder.createImageEmbedding(bos.toByteArray, None)
           eventualEmbedding.map { embedding =>
