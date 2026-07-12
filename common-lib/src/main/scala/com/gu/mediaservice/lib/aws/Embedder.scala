@@ -7,7 +7,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class EmbedderMessage(imageId: String, s3Bucket: String, s3Key: String, instance: String)
+case class EmbedderMessage(imageId: String, s3Bucket: String, s3Key: String, instance: String, imageMetadata: Option[ImageMetadata])
 
 object EmbedderMessage {
   implicit val format: OFormat[EmbedderMessage] = Json.format[EmbedderMessage]
