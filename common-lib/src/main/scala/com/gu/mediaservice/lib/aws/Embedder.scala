@@ -29,7 +29,7 @@ class Embedder(embedding: EmbeddingImplementation, sqs: SimpleSqsMessageConsumer
     embedding.createImageEmbeddings(source, mimeType, maybeMetadata)
   }
 
-  def queueImageToEmbed(message: EmbedderMessage)(implicit logMarker: LogMarker) = {
+  def queueImageToEmbed(message: EmbedderMessage)(implicit logMarker: LogMarker): Unit = {
     val messageBody = Json.stringify(Json.toJson(message))
     val result: SendMessageResult = sqs.sendMessage(messageBody)
     logger.info(logMarker, s"Queued image for embedding with message ID: ${result.getMessageId}")
