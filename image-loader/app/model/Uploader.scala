@@ -478,20 +478,24 @@ class Uploader(
       _ <- Future {
         notifications.publish(updateMessage)
       }
+
       // Send the embed source to the embedder
-      _ = imageUpload.embeddingSource.foreach { embeddingSource =>
+      _ = if (instance.id != "tortoise-live") {
+        imageUpload.embeddingSource.foreach { embeddingSource =>
 
-        val imageMetadata = imageUpload.image.metadata
-        val imageMetadataJson = Json.prettyPrint(Json.toJson(imageMetadata))
-        logger.info("Putting imageMetadata onto EmbedderMessage: " + imageMetadataJson.length)
+          val imageMetadata = imageUpload.image.metadata
+          val imageMetadataJson = Json.prettyPrint(Json.toJson(imageMetadata))
+          logger.info("Putting imageMetadata onto EmbedderMessage: " + imageMetadataJson.length)
 
-        queueImageToEmbed(EmbedderMessage(
-          uploadRequest.imageId,
-          config.embeddingSourceBucket.bucket,
-          config.embeddingSourceBucket.keyFromS3URL(embeddingSource.uri),
-          instance.id,
-          Some(imageMetadata)  // TODO SQS size limit and billing optimization
-        ))
+
+          queueImageToEmbed(EmbedderMessage(
+            uploadRequest.imageId,
+            config.embeddingSourceBucket.bucket,
+            config.embeddingSourceBucket.keyFromS3URL(embeddingSource.uri),
+            instance.id,
+            Some(imageMetadata) // TODO SQS size limit and billing optimization
+          ))
+        }
       }
 
     } yield {
