@@ -251,8 +251,9 @@ class ImageOperations(playPath: String) extends GridLogging {
         // Extract to image bytes
         val buffer = new ByteArrayOutputStream()
         letterBoxed.writeToStream(buffer, embeddingFormat.fileExtension, VipsOption.Boolean("strip", true))
-
         val bytes = buffer.toByteArray
+        buffer.close()
+
         val embeddingSource = bytes
         logger.info("Created embedding source with length: " + embeddingSource.length)
         Some(embeddingSource)
