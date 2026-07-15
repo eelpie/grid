@@ -210,12 +210,13 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     }
   }
 
-  // Given the path to an original image return a rendering of it which
+  // Given an original image return a rendering of it which
   // can be ingested by an embedding prediction end point.
   def createEmbeddingSource(originalImageFile: File,
                             orientationMetadata: Option[OrientationMetadata],
-                            embeddingSourceImageFormat: EmbeddingSourceImageFormat
-                           ): Future[Option[Array[Byte]]] = {
+                            embeddingSourceImageFormat: EmbeddingSourceImageFormat,
+                            outputFile: File
+                           ): Future[File] = {
     Future {
       val arena = Arena.ofConfined
 
@@ -254,16 +255,11 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
           rotated
         }
 
-        // Extract to image bytes
-        val buffer = new ByteArrayOutputStream()
-        letterBoxed.writeToStream(buffer, embeddingFormat.fileExtension, VipsOption.Boolean("strip", true))
-        val bytes = buffer.toByteArray
-        buffer.close()
+        saveImageToFile(letterBoxed, embeddingFormat, 90, outputFile)
         arena.close()
 
-        val embeddingSource = bytes
-        logger.info("Created embedding source with length: " + embeddingSource.length)
-        Some(embeddingSource)
+        logger.info("Created embedding source with length: " + outputFile.length())
+        outputFile
 
       } catch {
         case e: Throwable =>
