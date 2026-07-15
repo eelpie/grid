@@ -249,7 +249,7 @@ class ImageOperations(playPath: String) extends GridLogging {
           rotated
         }
 
-        saveImageToFile(rotated, embeddingFormat, 90, outputFile)
+        saveImageToFile(letterBoxed, embeddingFormat, 90, outputFile)
 
         logger.info("Created embedding source with length: " + outputFile.length())
         outputFile
