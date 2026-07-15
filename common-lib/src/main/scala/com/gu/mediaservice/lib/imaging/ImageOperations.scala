@@ -250,6 +250,7 @@ class ImageOperations(playPath: String) extends GridLogging {
         }
 
         saveImageToFile(letterBoxed, embeddingFormat, 90, outputFile)
+        arena.close()
 
         logger.info("Created embedding source with length: " + outputFile.length())
         outputFile
