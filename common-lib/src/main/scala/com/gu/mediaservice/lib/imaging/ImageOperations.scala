@@ -22,8 +22,9 @@ trait ImageOperations {
 
   def createEmbeddingSource(originalImageFile: File,
                             orientationMetadata: Option[OrientationMetadata],
-                            embeddingSourceImageFormat: EmbeddingSourceImageFormat
-                           ): Future[Option[Array[Byte]]]
+                            embeddingSourceImageFormat: EmbeddingSourceImageFormat,
+                            outputFile: File
+                           ): Future[File]
 
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                       width: Int,
