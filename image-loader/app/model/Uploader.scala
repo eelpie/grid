@@ -28,7 +28,7 @@ import java.io.File
 import java.nio.file.Files
 import scala.concurrent.{ExecutionContext, Future}
 
- case class ImageUpload(uploadRequest: UploadRequest, image: Image, embeddingSource: Option[S3Object])
+ case class ImageUpload(uploadRequest: UploadRequest, image: Image, maybeEmbeddingSource: Option[S3Object])
 
 case object ImageUpload {
 
@@ -178,8 +178,8 @@ object Uploader extends GridLogging {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
       }
-      embeddingSource <- createEmbeddingsSource(browserViewableImage, sourceOrientationMetadata, tempDirForRequest, deps)
-      storedEmbeddingSource <- storeEmbeddingSource(embeddingSource)
+      maybeEmbeddingSource <- createEmbeddingsSource(browserViewableImage, sourceOrientationMetadata, tempDirForRequest, deps, uploadRequest.instance)
+      maybeStoredEmbeddingSource <- storeEmbeddingSource(maybeEmbeddingSource)
 
     } yield {
       val fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
@@ -206,7 +206,7 @@ object Uploader extends GridLogging {
         originalUsageRights = processedImage.usageRights
       )
 
-      (image, storedEmbeddingSource)
+      (image, maybeStoredEmbeddingSource)
     }
     eventualImage.onComplete{ _ =>
       tempDirForRequest.listFiles().map(f => f.delete())
@@ -307,17 +307,23 @@ object Uploader extends GridLogging {
                                      orientationMetadata: Option[OrientationMetadata],
                                      tempDir: File,
                                      deps: ImageUploadOpsDependencies,
+                                     instance: Instance
                                     )(implicit ec: ExecutionContext): Future[Option[StorableEmbeddingSourceImage]] = {
     import deps._
     maybeEmbedder.map { embedder =>
-      createTempFile("embeddingsource-", embedder.embeddingSourceImageFormat().format.fileExtension, tempDir).flatMap { tempFile =>
-        val eventualEmbeddingSource = imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata, embedder.embeddingSourceImageFormat(), tempFile)
-        eventualEmbeddingSource.map { embeddingSource =>
-          Some(browserViewableImage.copy(
-            file = embeddingSource,
-            mimeType = embedder.embeddingSourceImageFormat().format
-          ).asStorableEmbeddingSourceImage)
+      if (instance.id != "tortoise-live") {
+        createTempFile("embeddingsource-", embedder.embeddingSourceImageFormat().format.fileExtension, tempDir).flatMap { tempFile =>
+          val eventualEmbeddingSource = imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata, embedder.embeddingSourceImageFormat(), tempFile)
+          eventualEmbeddingSource.map { embeddingSource =>
+            Some(browserViewableImage.copy(
+              file = embeddingSource,
+              mimeType = embedder.embeddingSourceImageFormat().format
+            ).asStorableEmbeddingSourceImage)
+          }
         }
+      } else {
+        logger.info("Skipping createEmbeddingsSource for this instance")
+        Future.successful(None)
       }
 
     }.getOrElse {
@@ -480,22 +486,19 @@ class Uploader(
       }
 
       // Send the embed source to the embedder
-      _ = if (instance.id != "tortoise-live") {
-        imageUpload.embeddingSource.foreach { embeddingSource =>
-
-          val imageMetadata = imageUpload.image.metadata
-          val imageMetadataJson = Json.prettyPrint(Json.toJson(imageMetadata))
-          logger.info("Putting imageMetadata onto EmbedderMessage: " + imageMetadataJson.length)
+      _ = imageUpload.maybeEmbeddingSource.foreach { embeddingSource =>
+        val imageMetadata = imageUpload.image.metadata
+        val imageMetadataJson = Json.prettyPrint(Json.toJson(imageMetadata))
+        logger.info("Putting imageMetadata onto EmbedderMessage: " + imageMetadataJson.length)
 
 
-          queueImageToEmbed(EmbedderMessage(
-            uploadRequest.imageId,
-            config.embeddingSourceBucket.bucket,
-            config.embeddingSourceBucket.keyFromS3URL(embeddingSource.uri),
-            instance.id,
-            Some(imageMetadata) // TODO SQS size limit and billing optimization
-          ))
-        }
+        queueImageToEmbed(EmbedderMessage(
+          uploadRequest.imageId,
+          config.embeddingSourceBucket.bucket,
+          config.embeddingSourceBucket.keyFromS3URL(embeddingSource.uri),
+          instance.id,
+          Some(imageMetadata) // TODO SQS size limit and billing optimization
+        ))
       }
 
     } yield {
