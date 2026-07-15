@@ -178,7 +178,7 @@ object Uploader extends GridLogging {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
       }
-      embeddingSource <- createEmbeddingsSource(browserViewableImage, sourceOrientationMetadata, deps)
+      embeddingSource <- createEmbeddingsSource(browserViewableImage, sourceOrientationMetadata, tempDirForRequest, deps)
       storedEmbeddingSource <- storeEmbeddingSource(embeddingSource)
 
     } yield {
@@ -305,24 +305,21 @@ object Uploader extends GridLogging {
 
   private def createEmbeddingsSource(browserViewableImage: BrowserViewableImage,
                                      orientationMetadata: Option[OrientationMetadata],
+                                     tempDir: File,
                                      deps: ImageUploadOpsDependencies,
                                     )(implicit ec: ExecutionContext): Future[Option[StorableEmbeddingSourceImage]] = {
     import deps._
     maybeEmbedder.map { embedder =>
-      val eventualMaybeSourceBytes = imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata, embedder.embeddingSourceImageFormat())
-
-      eventualMaybeSourceBytes.map { maybeSourceBytes =>
-        maybeSourceBytes.map { sourceBytes =>
-          val tempPath = Files.createTempFile("embeddingsource-", ".tmp") // TODO push to image ops
-          tempPath.toFile.deleteOnExit()
-          Files.write(tempPath, sourceBytes)
-
-          browserViewableImage.copy(
-            file = tempPath.toFile,
-            mimeType = Png
-          ).asStorableEmbeddingSourceImage
+      createTempFile("embeddingsource-", embedder.embeddingSourceImageFormat().format.fileExtension, tempDir).flatMap { tempFile =>
+        val eventualEmbeddingSource = imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata, embedder.embeddingSourceImageFormat(), tempFile)
+        eventualEmbeddingSource.map { embeddingSource =>
+          Some(browserViewableImage.copy(
+            file = embeddingSource,
+            mimeType = embedder.embeddingSourceImageFormat().format
+          ).asStorableEmbeddingSourceImage)
         }
       }
+
     }.getOrElse {
       logger.info("Skipping createEmbeddingsSource because no embedder is configured")
       Future.successful(None)
