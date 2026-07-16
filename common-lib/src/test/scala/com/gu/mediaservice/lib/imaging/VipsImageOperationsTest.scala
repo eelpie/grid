@@ -110,13 +110,12 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     it("should produce embedding sources from original images") {
       implicit val arena: Arena = Arena.ofShared()
       val fullSizedImage = fileAt("IMG_4403.jpg")
-      val imageOperations = new ImageOperations("")
 
       val format = EmbeddingSourceImageFormat(
         longestAxis = 1000, format = Jpeg, letterBox = false
       )
 
-      val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = None, embeddingSourceImageFormat = format)
+      val eventualEmbeddingSource = vipsImageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = None, embeddingSourceImageFormat = format)
 
       whenReady(eventualEmbeddingSource) { source =>
         arena.close()
