@@ -230,11 +230,24 @@ class ImageOperations(playPath: String) extends GridLogging {
           VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL),
           VipsOption.String("export-profile", "srgb")
         )
+
+        println(thumbnail.getWidth)
+        println(thumbnail.getHeight)
+        println(thumbnail.getInt("bands"))
+        println(thumbnail.getInt("format"))
+        println( thumbnail.getUnsafeStructAddress.byteSize())
+
+
+        val segment = thumbnail.writeToMemory()
+
+        val t = VImage.newFromMemory(arena, segment,
+          thumbnail.getWidth, thumbnail.getHeight, thumbnail.getInt("bands"), thumbnail.getInt("format"))
+
         val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
           logger.info("Rotating thumbnail: " + angle)
-          thumbnail.rotate(angle)
+          t.rotate(angle)
         }.getOrElse {
-          thumbnail
+          t
         }
         logger.info("Created embedding source: " + rotated.getWidth + "x" + rotated.getHeight)
 
