@@ -231,23 +231,17 @@ class ImageOperations(playPath: String) extends GridLogging {
           VipsOption.String("export-profile", "srgb")
         )
 
-        println(thumbnail.getWidth)
-        println(thumbnail.getHeight)
-        println(thumbnail.getInt("bands"))
-        println(thumbnail.getInt("format"))
-        println( thumbnail.getUnsafeStructAddress.byteSize())
-
-
-        val segment = thumbnail.writeToMemory()
-
-        val t = VImage.newFromMemory(arena, segment,
-          thumbnail.getWidth, thumbnail.getHeight, thumbnail.getInt("bands"), thumbnail.getInt("format"))
+        val inMemoryCopy = VImage.newFromMemory(arena, thumbnail.writeToMemory(),
+          thumbnail.getWidth, thumbnail.getHeight,
+          VipsHelper.image_get_bands(thumbnail.getUnsafeStructAddress),
+          VipsHelper.image_get_format(thumbnail.getUnsafeStructAddress)
+        )
 
         val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
           logger.info("Rotating thumbnail: " + angle)
-          t.rotate(angle)
+          inMemoryCopy.rotate(angle)
         }.getOrElse {
-          t
+          inMemoryCopy
         }
         logger.info("Created embedding source: " + rotated.getWidth + "x" + rotated.getHeight)
 
