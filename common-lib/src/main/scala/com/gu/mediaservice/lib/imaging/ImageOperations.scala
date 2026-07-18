@@ -183,11 +183,14 @@ class ImageOperations(playPath: String) extends GridLogging {
           VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL),
           VipsOption.String("export-profile", "srgb")
         )
+
+        val inMemoryCopy = VImage.pngloadBuffer(arena, thumbnail.pngsaveBuffer(VipsOption.Int("compression", 0)))
+
         val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
           logger.info("Rotating thumbnail: " + angle)
-          thumbnail.rotate(angle)
+          inMemoryCopy.rotate(angle)
         }.getOrElse {
-          thumbnail
+          inMemoryCopy
         }
         logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
         saveImageToFile(rotated, Jpeg, qual.toInt, outputFile)
@@ -231,11 +234,7 @@ class ImageOperations(playPath: String) extends GridLogging {
           VipsOption.String("export-profile", "srgb")
         )
 
-        val inMemoryCopy = VImage.newFromMemory(arena, thumbnail.writeToMemory(),
-          thumbnail.getWidth, thumbnail.getHeight,
-          VipsHelper.image_get_bands(thumbnail.getUnsafeStructAddress),
-          VipsHelper.image_get_format(thumbnail.getUnsafeStructAddress)
-        )
+        val inMemoryCopy = VImage.pngloadBuffer(arena, thumbnail.pngsaveBuffer(VipsOption.Int("compression", 0)))
 
         val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
           logger.info("Rotating thumbnail: " + angle)
