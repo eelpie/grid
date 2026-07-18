@@ -4,7 +4,7 @@ import com.google.genai.Client
 import com.google.genai.types._
 import com.gu.mediaservice.lib.aws.EmbeddingSourceImageFormat
 import com.gu.mediaservice.lib.logging.LogMarker
-import com.gu.mediaservice.model.{Embedding, GeminiEmbedding2, ImageMetadata, MimeType, Png}
+import com.gu.mediaservice.model.{Embedding, GeminiEmbedding2, ImageMetadata, Jpeg, MimeType}
 
 import scala.compat.java8.OptionConverters.RichOptionalGeneric
 import scala.concurrent.{ExecutionContext, Future}
@@ -46,7 +46,7 @@ class GoogleCloudEmbedding(projectId: String, location: String) extends Embeddin
     }
   }
 
-  def embeddingSourceImageFormat(): EmbeddingSourceImageFormat = EmbeddingSourceImageFormat(longestAxis = 1600, format = Png, letterBox = false)
+  def embeddingSourceImageFormat(): EmbeddingSourceImageFormat = EmbeddingSourceImageFormat(longestAxis = 1600, format = Jpeg, letterBox = false)
 
   private def firstEmbeddingFromResponse(response: EmbedContentResponse): List[Float] = {
     val a: Seq[ContentEmbedding] = response.embeddings().asScala.map(_.asScala.toSeq).getOrElse(Seq.empty)
