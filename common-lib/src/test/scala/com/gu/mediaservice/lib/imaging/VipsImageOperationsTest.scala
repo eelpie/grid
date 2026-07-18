@@ -113,7 +113,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val fullSizedImage = fileAt("exif-orientated.jpg")
 
       val format = EmbeddingSourceImageFormat(
-        longestAxis = 1000, format = Jpeg, letterBox = false
+        longestAxis = 2800, format = Jpeg, letterBox = true
       )
 
       val eventualEmbeddingSource = vipsImageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = Some(OrientationMetadata(exifOrientation = Some(6))), embeddingSourceImageFormat = format)
