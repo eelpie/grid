@@ -81,7 +81,7 @@ class ImageOperations(playPath: String) extends GridLogging {
     // https://developers.google.com/search/docs/appearance/structured-data/image-license-metadata#iptc-photo-metadata
     makeXmpBlog(metadata).foreach { xmpBlob =>
       logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
-      VipsHelper.image_set_blob_copy(arena, correctedForICCProfile.getUnsafeStructAddress, "xmp-data", VBlob.newFromBytes(arena, xmpBlob).getUnsafeDataAddress, xmpBlob.length)
+      correctedForICCProfile.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
     }
 
     correctedForICCProfile
