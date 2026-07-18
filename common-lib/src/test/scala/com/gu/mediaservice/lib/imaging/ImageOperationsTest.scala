@@ -38,6 +38,18 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       }
     }
 
+    it("should correct for exif orientation if provided") {
+      val image = fileAt("IMG_4445.jpg")
+
+      val outputFile = new File("/Users/tony/Desktop/thumbnail-tall.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false,  Instance("TODO"))
+
+      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 240, 95, outputFile, Some(OrientationMetadata(exifOrientation = Some(6))))
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
     it("render LAB colour spaces correctly in sRGB") {
       val image = fileAt("halfdome_LAB.tif")
 
