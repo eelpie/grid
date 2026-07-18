@@ -45,7 +45,7 @@ class GoogleCloudEmbedding(projectId: String, location: String) extends Embeddin
     }
   }
 
-  def embeddingSourceImageFormat(): EmbeddingSourceImageFormat = EmbeddingSourceImageFormat(longestAxis = 768, format = Png, letterBox = true)
+  def embeddingSourceImageFormat(): EmbeddingSourceImageFormat = EmbeddingSourceImageFormat(longestAxis = 1200, format = Png, letterBox = true)
 
   private def firstEmbeddingFromResponse(response: EmbedContentResponse): List[Double] = {
     val a: Seq[ContentEmbedding] = response.embeddings().asScala.map(_.asScala.toSeq).getOrElse(Seq.empty)
