@@ -49,7 +49,8 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val outputFile = new File("/Users/tony/Desktop/thumbnail-tall.jpg")
       val browserViewableImageImage = BrowserViewableImage("TODO", image, Tiff, Map.empty, false,  Instance("TODO"))
 
-      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 240, 95, outputFile, Some(OrientationMetadata(exifOrientation = Some(6))))
+      // Use a large tall thumbnail to expose out of order read which exceeds the line cache
+      val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 2800, 95, outputFile, Some(OrientationMetadata(exifOrientation = Some(6))))
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
