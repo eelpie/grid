@@ -112,7 +112,7 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val imageOperations = new ImageOperations("")
 
       val format = EmbeddingSourceImageFormat(
-        longestAxis = 1000, format = Jpeg, letterBox = false
+        longestAxis = 2800, format = Jpeg, letterBox = true
       )
       val outputFile = new File("/Users/tony/Desktop/embedding-source.jpg")
 
