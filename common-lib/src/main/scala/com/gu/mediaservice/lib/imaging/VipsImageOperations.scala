@@ -90,11 +90,14 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
           VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL),
           VipsOption.String("export-profile", "srgb")
         )
+
+        val inMemoryCopy = thumbnail.copyMemory()
+
         val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
           logger.info("Rotating thumbnail: " + angle)
-          thumbnail.rotate(angle)
+          inMemoryCopy.rotate(angle)
         }.getOrElse {
-          thumbnail
+          inMemoryCopy
         }
         logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
         saveImageToFile(rotated, Jpeg, qual.toInt, outputFile)
