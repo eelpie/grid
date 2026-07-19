@@ -13,6 +13,7 @@ import org.scalatest.time.{Millis, Span}
 import java.io.File
 import java.lang.foreign.Arena
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 // This test is disabled for now as it doesn't run on our CI environment, because GraphicsMagick is not present...
 class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
@@ -421,14 +422,16 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       )
       implicit val i: Instance = Instance("id")
 
-      val crops = operations.createCrops(masterCrop, landscapeCropSizingWidths.toList, "test-image-id",
+      val eventualCrops = operations.createCrops(masterCrop, landscapeCropSizingWidths.toList, "test-image-id",
         Bounds(0, 0, 1000, 1200),
         Jpeg,
         new File("/Users/tony/tmp/crops"),
         75
       )
 
-      arena.close()
+      whenReady(eventualCrops) { crops =>
+        arena.close()
+      }
     }
   }
 
