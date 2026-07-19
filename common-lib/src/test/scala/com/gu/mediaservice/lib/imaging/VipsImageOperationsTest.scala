@@ -14,6 +14,7 @@ import org.scalatest.time.{Millis, Span}
 import java.io.File
 import java.lang.foreign.Arena
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
@@ -415,14 +416,16 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       )
       implicit val i: Instance = Instance("id")
 
-      val crops = vipsImageOperations.createCrops(masterCrop, landscapeCropSizingWidths.toList, "test-image-id",
+      val eventualCrops = vipsImageOperations.createCrops(masterCrop, landscapeCropSizingWidths.toList, "test-image-id",
         Bounds(0, 0, 1000, 1200),
         Jpeg,
         new File("/Users/tony/tmp/crops"),
         75
       )
 
-      arena.close()
+      whenReady(eventualCrops) { crops =>
+        arena.close()
+      }
     }
   }
 
