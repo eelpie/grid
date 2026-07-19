@@ -14,8 +14,14 @@ class GoogleCloudEmbedding(projectId: String, location: String) extends Embeddin
 
   private val modelId = "gemini-embedding-2"
 
-  private val embedContentConfig = EmbedContentConfig.builder()
+  private val indexingEmbedContentConfig = EmbedContentConfig.builder()
     .outputDimensionality(768)
+    .taskType("RETRIEVAL_DOCUMENT")
+    .build()
+
+  private val queryEmbedContentConfig = EmbedContentConfig.builder()
+    .outputDimensionality(768)
+    .taskType("RETRIEVAL_QUERY")
     .build()
 
   def createImageEmbeddings(source: Array[Byte], mimeType: MimeType, maybeMetadata: Option[ImageMetadata])(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Embedding] = {
@@ -30,7 +36,7 @@ class GoogleCloudEmbedding(projectId: String, location: String) extends Embeddin
         parts(parts).
         build()
 
-      val response = client.models.embedContent(modelId, content, embedContentConfig)
+      val response = client.models.embedContent(modelId, content, indexingEmbedContentConfig)
 
       val embeddings = firstEmbeddingFromResponse(response)
       Embedding(geminiEmbedding2 = Some(GeminiEmbedding2(embeddings.map(_.toDouble))))
@@ -40,7 +46,7 @@ class GoogleCloudEmbedding(projectId: String, location: String) extends Embeddin
   def createTextEmbedding(query: String)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[List[Double]] = {
     Future {
       val q = query
-      val response = client.models.embedContent(modelId, q, embedContentConfig)
+      val response = client.models.embedContent(modelId, q, queryEmbedContentConfig)
       firstEmbeddingFromResponse(response)
     }
   }
