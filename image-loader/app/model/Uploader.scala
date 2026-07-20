@@ -311,7 +311,7 @@ object Uploader extends GridLogging {
                                     )(implicit ec: ExecutionContext): Future[Option[StorableEmbeddingSourceImage]] = {
     import deps._
     maybeEmbedder.map { embedder =>
-      if (instance.id != "tortoise-live") {
+      if (true) {
         createTempFile("embeddingsource-", embedder.embeddingSourceImageFormat().format.fileExtension, tempDir).flatMap { tempFile =>
           val eventualEmbeddingSource = imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata, embedder.embeddingSourceImageFormat(), tempFile)
           eventualEmbeddingSource.map { embeddingSource =>
