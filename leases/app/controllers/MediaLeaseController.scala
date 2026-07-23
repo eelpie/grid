@@ -55,13 +55,13 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     respond(appIndex, indexLinks)
   }
 
-  private def clearLease(id: String) = store.get(id).collect { case Some(lease) =>
-    store.delete(id).map { _ => notifications.sendRemoveLease(lease.mediaId, id)}
+  private def clearLease(id: String, instance: Instance) = store.get(id).collect { case Some(lease) =>
+    store.delete(id).map { _ => notifications.sendRemoveLease(lease.mediaId, id, instance)}
   }.flatten
 
-  private def clearLeases(id: String) = store.getForMedia(id).flatMap { leases =>
+  private def clearLeases(id: String, instance: Instance) = store.getForMedia(id).flatMap { leases =>
     Future.sequence(leases.map(_.id).collect {
-      case Some(id) => clearLease(id)
+      case Some(id) => clearLease(id, instance)
     })
   }
 
@@ -71,35 +71,35 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
   private def prepareLeaseForSave(mediaLease: MediaLease, userId: Option[String]): MediaLease =
     mediaLease.prepareForSave.copy(id = Some(UUID.randomUUID().toString), leasedBy = userId)
 
-  private def addLease(mediaLease: MediaLease, userId: Option[String]) = {
+  private def addLease(mediaLease: MediaLease, userId: Option[String], instance: Instance) = {
     val lease = prepareLeaseForSave(mediaLease, userId)
     if (lease.isSyndication) {
       for {
         leasesForMedia <- store.getForMedia(mediaLease.mediaId)
         leasesWithoutSyndication = leasesForMedia.filter(!_.isSyndication)
-        replacement <- replaceLeases(leasesWithoutSyndication :+ lease, mediaLease.mediaId, userId)
+        replacement <- replaceLeases(leasesWithoutSyndication :+ lease, mediaLease.mediaId, userId, instance)
       } yield replacement
     } else {
       store.put(lease).map { _ =>
-        notifications.sendAddLease(lease)
+        notifications.sendAddLease(lease, instance)
       }
     }
   }
 
-  private def addLeases(mediaLeases: List[MediaLease], userId: Option[String]) = {
+  private def addLeases(mediaLeases: List[MediaLease], userId: Option[String], instance: Instance) = {
     val preparedMediaLeases = mediaLeases.map(prepareLeaseForSave(_, userId))
     store.putAll(preparedMediaLeases).map { _ =>
-      preparedMediaLeases.map(notifications.sendAddLease)
+      preparedMediaLeases.map(lease => notifications.sendAddLease(lease, instance))
     }
   }
 
-  private def replaceLeases(mediaLeases: List[MediaLease], imageId: String, userId: Option[String]) = {
+  private def replaceLeases(mediaLeases: List[MediaLease], imageId: String, userId: Option[String], instance: Instance) = {
     val preparedMediaLeases = mediaLeases.map(prepareLeaseForSave(_, userId))
     for {
-      _ <- clearLeases(imageId)
+      _ <- clearLeases(imageId, instance)
       _ <- store.putAll(preparedMediaLeases)
     } yield {
-      notifications.sendAddLeases(preparedMediaLeases, imageId)
+      notifications.sendAddLeases(preparedMediaLeases, imageId, instance)
     }
   }
 
@@ -109,7 +109,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
     request.body.validate[MediaLease] match {
       case JsSuccess(mediaLease, _) =>
         authorisedForEditMetadataOrIsUploader(mediaLease.mediaId, request) {
-          addLease(mediaLease, Some(Authentication.getIdentity(request.user))).map(_ => Accepted)
+          addLease(mediaLease, Some(Authentication.getIdentity(request.user)), instanceOf(request)).map(_ => Accepted)
         }
 
       case JsError(errors) =>
@@ -122,7 +122,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
       case JsSuccess(mediaLeases, _) =>
         validateMediaIds(mediaLeases, id) {
           authorisedForEditMetadataOrIsUploader(id, request) {
-            addLeases(mediaLeases, Some(Authentication.getIdentity(request.user))).map(_ => Accepted)
+            addLeases(mediaLeases, Some(Authentication.getIdentity(request.user)), instanceOf(request)).map(_ => Accepted)
           }
         }
       case JsError(errors) =>
@@ -135,7 +135,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
       case Some(lease) =>
         authorisedForEditMetadataOrIsUploader(lease.mediaId, request) {
           store.delete(id).map { _ =>
-            notifications.sendRemoveLease(lease.mediaId, id)
+            notifications.sendRemoveLease(lease.mediaId, id, instanceOf(request))
             Accepted
           }
         }
@@ -159,7 +159,8 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
 
   def deleteLeasesForMedia(id: String) = auth.async { implicit request =>
     authorisedForEditMetadataOrIsUploader(id, request) {
-      clearLeases(id).map(_ => Accepted)
+      val instance = instanceOf(request)
+      clearLeases(id, instance).map(_ => Accepted)
     }
   }
 
@@ -172,7 +173,7 @@ class MediaLeaseController(auth: Authentication, store: LeaseStore, config: Leas
         if (validateLeases(mediaLeases)) {
           validateMediaIds(mediaLeases, id) {
             authorisedForEditMetadataOrIsUploader(id, request) {
-              replaceLeases(mediaLeases, id, Some(Authentication.getIdentity(request.user))).map(_ => Accepted)
+              replaceLeases(mediaLeases, id, Some(Authentication.getIdentity(request.user)), instanceOf(request)).map(_ => Accepted)
             }
           }
         } else {
