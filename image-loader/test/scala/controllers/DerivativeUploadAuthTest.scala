@@ -7,6 +7,7 @@ import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, SimplePermis
 import com.gu.mediaservice.lib.aws.S3Object
 import com.gu.mediaservice.lib.config.{CommonConfig, SingleHostServices}
 import com.gu.mediaservice.lib.logging.LogMarker
+import com.gu.mediaservice.model.Instance
 import lib._
 import lib.storage.ImageLoaderStore
 import model.{Projector, Uploader}
@@ -189,7 +190,8 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
         anyString(),
         any[Map[String, String]],
         any[org.joda.time.DateTime],
-        any[Option[String]]
+        any[Option[String]],
+        any[Instance]
       )(any[ExecutionContext], any[LogMarker])).thenReturn(Future.failed(new java.io.IOException("upload failed")))
       val config = mock[ImageLoaderConfig]
       when(config.tempDir).thenReturn(temporaryDirectory.toFile)

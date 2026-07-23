@@ -16,7 +16,7 @@ import scala.collection.immutable.Map
 
 class SyndicationTest extends AnyFunSpec with Matchers with Syndication with MockitoSugar with ScalaFutures {
   private implicit val ec: ExecutionContext = ExecutionContext.parasitic
-
+  private implicit val instance: Instance = Instance("an-instance")
   private class PublishingFixture(
     photoshoot: Option[Photoshoot] = None,
     rightsBefore: Map[String, SyndicationRights] = Map.empty,
@@ -46,7 +46,7 @@ class SyndicationTest extends AnyFunSpec with Matchers with Syndication with Moc
       Future.successful(if (photoshootMaybe.isEmpty) Map.empty else if (persisted) rightsAfter else rightsBefore)
 
     override def publish(images: Map[String, Option[SyndicationRights]], subject: String)
-                        (implicit ec: ExecutionContext): Future[Unit] =
+                        (implicit ec: ExecutionContext, instance: Instance): Future[Unit] =
       if (images.isEmpty) Future.successful(())
       else {
         published = published :+ images

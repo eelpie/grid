@@ -15,7 +15,8 @@ class ThrallEventConsumerTest extends AnyFreeSpec with Matchers with Fixtures wi
           |{
           | "subject":"delete-image",
           | "id":"123",
-          | "lastModified":"2021-01-25T10:21:18.006Z"
+          | "lastModified":"2021-01-25T10:21:18.006Z",
+          | "instance":"an-instance"
           |}
           |""".stripMargin.getBytes()
       val m2 = ThrallEventConsumer.parseRecord(j, java.time.Instant.EPOCH)
