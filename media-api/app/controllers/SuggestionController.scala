@@ -56,6 +56,8 @@ class SuggestionController(auth: Authentication, elasticSearch: ElasticSearch,
     }
 
   private def suggestion(field: String, query: Option[String], size: Option[Int]) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
+
     query.flatMap(q => if (q.nonEmpty) Some(q) else None).map { q =>
       elasticSearch.completionSuggestion(field, q, size.getOrElse(10))
     }.getOrElse(
