@@ -13,7 +13,7 @@ trait Edit extends MessageSubjects {
 
   def publish(id: String, subject: String)(metadata: JsObject)(implicit instance: Instance): Edits = {
     val edits = metadata.as[Edits]
-    val updateMessage = UpdateMessage(subject = subject, id = Some(id), edits = Some(edits), instance = instance.id)
+    val updateMessage = UpdateMessage(subject = subject, id = Some(id), edits = Some(edits), instance = instance)
     notifications.publish(updateMessage)
     edits
   }

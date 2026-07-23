@@ -3,13 +3,12 @@ package controllers
 import com.gu.mediaservice.lib.ImageFields
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.auth.Authentication.Request
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.model.Instance
 import lib.elasticsearch.{AggregateSearchParams, CompletionSuggestionResults, ElasticSearch}
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{BaseController, ControllerComponents}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -47,6 +46,8 @@ class SuggestionController(auth: Authentication, elasticSearch: ElasticSearch,
   }
 
   private def suggestion(field: String, query: Option[String], size: Option[Int]) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
+
     query.flatMap(q => if (q.nonEmpty) Some(q) else None).map { q =>
       elasticSearch.completionSuggestion(field, q, size.getOrElse(10))
     }.getOrElse(
