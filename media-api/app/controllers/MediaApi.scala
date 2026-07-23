@@ -698,7 +698,6 @@ class MediaApi(
         val filterTotalAndCounts = elasticSearch.countMatchingFilterWithExtraCounts(filterOpt)
 
         for {
-          maybeImage <- elasticSearch.getImageById(imageId)
           maybeEmbedding <- eventualMaybeEmbedding
           searchResults <- maybeEmbedding match {
             // If we have an embedding, perform the KNN search. If not, return an empty result set.
