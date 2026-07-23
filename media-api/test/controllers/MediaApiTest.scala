@@ -7,7 +7,7 @@ import com.gu.mediaservice.lib.aws.{Embedder, S3, ThrallMessageSender, UpdateMes
 import com.gu.mediaservice.lib.config.{CommonConfig, SingleHostServices}
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
-import com.gu.mediaservice.model.{Image, ImageStatusRecord, NoRights}
+import com.gu.mediaservice.model.{Image, ImageStatusRecord, Instance, NoRights}
 import lib.elasticsearch.{ElasticSearch, Fixtures}
 import lib.querysyntax.Parser
 import lib.{ImageResponse, MediaApiConfig, MediaApiMetrics, PreviewContentApi}
@@ -58,8 +58,8 @@ class MediaApiTest extends AnyFunSpec with Matchers with MockitoSugar with Scala
 
     when(config.domainRoot).thenReturn("example.com")
     when(config.aiSearchEmbeddingCacheMaxSize).thenReturn(10)
-    when(config.services).thenReturn(new SingleHostServices("example.com"))
-    when(es.getImageById(any[String])(any[ExecutionContext], any[LogMarker]))
+    when(config.services).thenReturn(new SingleHostServices("localhost"))
+    when(es.getImageById(any[String])(any[ExecutionContext], any[LogMarker], any[Instance]))
       .thenReturn(Future.successful(Some(image)))
     when(response.canBeDeleted(any[Image])).thenReturn(true)
     when(authorisation.isUploaderOrHasPermission(any[Principal], any[String], any[SimplePermission]))

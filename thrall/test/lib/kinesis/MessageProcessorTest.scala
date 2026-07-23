@@ -1,7 +1,7 @@
 package lib.kinesis
 
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{DeleteImageMessage, NoRights, SyndicationRights, UpdateImageSyndicationMetadataMessage}
+import com.gu.mediaservice.model.{DeleteImageMessage, Instance, NoRights, SyndicationRights, UpdateImageSyndicationMetadataMessage}
 import helpers.Fixtures
 import lib.{MetadataEditorNotifications, ThrallStore}
 import lib.elasticsearch.{ElasticSearch, ElasticSearchDeleteResponse, ElasticSearchUpdateResponse, ImageNotDeletable}
@@ -30,12 +30,12 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
     it("waits for the Elasticsearch update to complete") {
       val f = new Fixture
       val update = Promise[ElasticSearchUpdateResponse]()
-      when(f.es.getImage(any[String])(any[ExecutionContext], any[LogMarker]))
+      when(f.es.getImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance]))
         .thenReturn(Future.successful(Some(image)))
-      when(f.es.updateImageSyndicationRights(any[String], any[Option[SyndicationRights]], any[DateTime])(any[ExecutionContext], any[LogMarker]))
+      when(f.es.updateImageSyndicationRights(any[String], any[Option[SyndicationRights]], any[DateTime])(any[ExecutionContext], any[LogMarker], any[Instance]))
         .thenReturn(update.future)
 
-      val result = f.processor.process(UpdateImageSyndicationMetadataMessage(image.id, DateTime.now, None), marker)
+      val result = f.processor.process(UpdateImageSyndicationMetadataMessage(image.id, DateTime.now, None, "an-instance"), marker)
 
       result.isCompleted shouldBe false
       update.success(ElasticSearchUpdateResponse())
@@ -44,12 +44,12 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
 
     it("succeeds without writing when the image is missing") {
       val f = new Fixture
-      when(f.es.getImage(any[String])(any[ExecutionContext], any[LogMarker]))
+      when(f.es.getImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance]))
         .thenReturn(Future.successful(None))
 
-      f.processor.process(UpdateImageSyndicationMetadataMessage(image.id, DateTime.now, None), marker).futureValue
+      f.processor.process(UpdateImageSyndicationMetadataMessage(image.id, DateTime.now, None, "an-instance"), marker).futureValue
 
-      verify(f.es, never()).updateImageSyndicationRights(any[String], any[Option[SyndicationRights]], any[DateTime])(any[ExecutionContext], any[LogMarker])
+      verify(f.es, never()).updateImageSyndicationRights(any[String], any[Option[SyndicationRights]], any[DateTime])(any[ExecutionContext], any[LogMarker], any[Instance])
     }
   }
 
@@ -61,19 +61,19 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
       val thumbnail = Promise[Unit]()
       val png = Promise[Unit]()
       val esDelete = Promise[ElasticSearchDeleteResponse]()
-      when(f.es.ensureImageDeletable(any[String])(any[ExecutionContext], any[LogMarker])).thenReturn(deletable.future)
+      when(f.es.ensureImageDeletable(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])).thenReturn(deletable.future)
       when(f.store.deleteOriginal(any[String])(any[LogMarker])).thenReturn(original.future)
       when(f.store.deleteThumbnail(any[String])(any[LogMarker])).thenReturn(thumbnail.future)
       when(f.store.deletePNG(any[String])(any[LogMarker])).thenReturn(png.future)
-      when(f.es.forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker])).thenReturn(esDelete.future)
+      when(f.es.forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])).thenReturn(esDelete.future)
 
-      val result = f.processor.process(DeleteImageMessage(image.id, DateTime.now), marker)
+      val result = f.processor.process(DeleteImageMessage(image.id, DateTime.now, "an-instance"), marker)
 
       verify(f.store, never()).deleteOriginal(any[String])(any[LogMarker])
       deletable.success(())
       original.success(())
       thumbnail.success(())
-      verify(f.es, never()).forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker])
+      verify(f.es, never()).forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])
       png.success(())
       result.isCompleted shouldBe false
       esDelete.success(ElasticSearchDeleteResponse())
@@ -83,26 +83,26 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
     it("keeps the Elasticsearch document intact for retry if an S3 deletion fails") {
       val f = new Fixture
       val failure = new RuntimeException("s3 delete failed")
-      when(f.es.ensureImageDeletable(any[String])(any[ExecutionContext], any[LogMarker])).thenReturn(Future.successful(()))
+      when(f.es.ensureImageDeletable(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])).thenReturn(Future.successful(()))
       when(f.store.deleteOriginal(any[String])(any[LogMarker])).thenReturn(Future.failed(failure))
       when(f.store.deleteThumbnail(any[String])(any[LogMarker])).thenReturn(Future.successful(()))
       when(f.store.deletePNG(any[String])(any[LogMarker])).thenReturn(Future.successful(()))
 
-      f.processor.process(DeleteImageMessage(image.id, DateTime.now), marker).failed.futureValue shouldBe failure
-      verify(f.es, never()).forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker])
+      f.processor.process(DeleteImageMessage(image.id, DateTime.now, "an-instance"), marker).failed.futureValue shouldBe failure
+      verify(f.es, never()).forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])
     }
 
     it("succeeds without deleting S3 objects or Elasticsearch documents when the image is protected") {
       val f = new Fixture
-      when(f.es.ensureImageDeletable(any[String])(any[ExecutionContext], any[LogMarker]))
+      when(f.es.ensureImageDeletable(any[String])(any[ExecutionContext], any[LogMarker], any[Instance]))
         .thenReturn(Future.failed(ImageNotDeletable))
 
-      f.processor.process(DeleteImageMessage(image.id, DateTime.now), marker).futureValue
+      f.processor.process(DeleteImageMessage(image.id, DateTime.now, "an-instance"), marker).futureValue
 
       verify(f.store, never()).deleteOriginal(any[String])(any[LogMarker])
       verify(f.store, never()).deleteThumbnail(any[String])(any[LogMarker])
       verify(f.store, never()).deletePNG(any[String])(any[LogMarker])
-      verify(f.es, never()).forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker])
+      verify(f.es, never()).forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance]) // TODO assert instance
     }
   }
 }
