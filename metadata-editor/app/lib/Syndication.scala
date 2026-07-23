@@ -166,7 +166,7 @@ trait Syndication extends Edit with MessageSubjects with GridLogging {
              (implicit ec: ExecutionContext, instance: Instance): Future[Unit] = Future {
     for (kv <- imagesInPhotoshoot) {
       val (k, v) = kv
-      val updateMessage = UpdateMessage(subject = subject, id = Some(k), syndicationRights = v, instance = instance.id)
+      val updateMessage = UpdateMessage(subject = subject, id = Some(k), syndicationRights = v, instance = instance)
       notifications.publish(updateMessage)
     }
   }
