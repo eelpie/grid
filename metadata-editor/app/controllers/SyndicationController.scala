@@ -39,7 +39,7 @@ class SyndicationController(auth: Authentication,
     }
   }
 
-  def setPhotoshoot(id: String) = AuthenticatedAndAuthorisedToEditMetadata.async(parse.json) { req => {
+  def setPhotoshoot(id: String) = AuthenticatedAndAuthorisedToEditMetadata.async(parse.json) { req =>
     implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").asOpt[Photoshoot].map(photoshoot =>
       setPhotoshootAndPublish(id, photoshoot)
@@ -48,7 +48,7 @@ class SyndicationController(auth: Authentication,
     .getOrElse(
       Future.successful(respondError(BadRequest, "invalid-form-data", "Invalid form data"))
     )
-  }}
+  }
 
   def deletePhotoshoot(id: String) = AuthenticatedAndAuthorisedToEditMetadata.async { request =>
     implicit val instance: Instance = instanceOf(request)

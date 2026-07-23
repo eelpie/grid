@@ -20,6 +20,8 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
   private val marker: LogMarker = MarkerMap()
   private val image = createImage("image-id", NoRights)
 
+  private val instance = Instance("an-instance")
+
   private class Fixture {
     val es: ElasticSearch = mock[ElasticSearch]
     val store: ThrallStore = mock[ThrallStore]
@@ -35,7 +37,7 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
       when(f.es.updateImageSyndicationRights(any[String], any[Option[SyndicationRights]], any[DateTime])(any[ExecutionContext], any[LogMarker], any[Instance]))
         .thenReturn(update.future)
 
-      val result = f.processor.process(UpdateImageSyndicationMetadataMessage(image.id, DateTime.now, None, "an-instance"), marker)
+      val result = f.processor.process(UpdateImageSyndicationMetadataMessage(image.id, DateTime.now, None, instance), marker)
 
       result.isCompleted shouldBe false
       update.success(ElasticSearchUpdateResponse())
@@ -47,7 +49,7 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
       when(f.es.getImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance]))
         .thenReturn(Future.successful(None))
 
-      f.processor.process(UpdateImageSyndicationMetadataMessage(image.id, DateTime.now, None, "an-instance"), marker).futureValue
+      f.processor.process(UpdateImageSyndicationMetadataMessage(image.id, DateTime.now, None, instance), marker).futureValue
 
       verify(f.es, never()).updateImageSyndicationRights(any[String], any[Option[SyndicationRights]], any[DateTime])(any[ExecutionContext], any[LogMarker], any[Instance])
     }
@@ -67,7 +69,7 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
       when(f.store.deletePNG(any[String])(any[LogMarker])).thenReturn(png.future)
       when(f.es.forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])).thenReturn(esDelete.future)
 
-      val result = f.processor.process(DeleteImageMessage(image.id, DateTime.now, "an-instance"), marker)
+      val result = f.processor.process(DeleteImageMessage(image.id, DateTime.now, instance), marker)
 
       verify(f.store, never()).deleteOriginal(any[String])(any[LogMarker])
       deletable.success(())
@@ -88,7 +90,7 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
       when(f.store.deleteThumbnail(any[String])(any[LogMarker])).thenReturn(Future.successful(()))
       when(f.store.deletePNG(any[String])(any[LogMarker])).thenReturn(Future.successful(()))
 
-      f.processor.process(DeleteImageMessage(image.id, DateTime.now, "an-instance"), marker).failed.futureValue shouldBe failure
+      f.processor.process(DeleteImageMessage(image.id, DateTime.now, instance), marker).failed.futureValue shouldBe failure
       verify(f.es, never()).forceDeleteImage(any[String])(any[ExecutionContext], any[LogMarker], any[Instance])
     }
 
@@ -97,7 +99,7 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
       when(f.es.ensureImageDeletable(any[String])(any[ExecutionContext], any[LogMarker], any[Instance]))
         .thenReturn(Future.failed(ImageNotDeletable))
 
-      f.processor.process(DeleteImageMessage(image.id, DateTime.now, "an-instance"), marker).futureValue
+      f.processor.process(DeleteImageMessage(image.id, DateTime.now, instance), marker).futureValue
 
       verify(f.store, never()).deleteOriginal(any[String])(any[LogMarker])
       verify(f.store, never()).deleteThumbnail(any[String])(any[LogMarker])

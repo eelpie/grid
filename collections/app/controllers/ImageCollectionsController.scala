@@ -67,7 +67,7 @@ class ImageCollectionsController(authenticated: Authentication, config: Collecti
 
   def publish(id: String)(collections: List[Collection])(implicit instance: Instance): List[Collection] = {
     val onlyLatestCollections = onlyLatest(collections)
-    val updateMessage = UpdateMessage(subject = SetImageCollections, id = Some(id), collections = Some(onlyLatestCollections), instance = instance.id)
+    val updateMessage = UpdateMessage(subject = SetImageCollections, id = Some(id), collections = Some(onlyLatestCollections), instance = instance)
     notifications.publish(updateMessage)
     onlyLatestCollections
   }

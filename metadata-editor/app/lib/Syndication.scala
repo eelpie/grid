@@ -181,7 +181,7 @@ trait Syndication extends Edit with MessageSubjects with GridLogging {
     if (imagesInPhotoshoot.isEmpty) Future.successful(())
     else Future(blocking {
       for ((k, v) <- imagesInPhotoshoot) {
-        val updateMessage = UpdateMessage(subject = subject, id = Some(k), syndicationRights = v, instance = instance.id)
+        val updateMessage = UpdateMessage(subject = subject, id = Some(k), syndicationRights = v, instance = instance)
         notifications.publish(updateMessage)
       }
     })

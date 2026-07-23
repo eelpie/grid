@@ -292,7 +292,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         reloadedImage(id).get.exports.isEmpty shouldBe true
         val exports = List(crop)
 
-        Await.result(ES.updateImageExports(id, exports, now, instance), fiveSeconds) // TODO rename to add
+        Await.result(ES.updateImageExports(id, exports, now), fiveSeconds) // TODO rename to add
 
         reloadedImage(id).get.exports.nonEmpty shouldBe true
         reloadedImage(id).get.exports.head.id shouldBe crop.id
@@ -304,14 +304,14 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         Await.result(ES.migrationAwareIndexImage(id, imageWithExports, now), fiveSeconds)
         reloadedImage(id).get.exports.nonEmpty shouldBe true
 
-        Await.result(ES.deleteImageExports(id, now, instance), fiveSeconds)
+        Await.result(ES.deleteImageExports(id, now), fiveSeconds)
 
         reloadedImage(id).get.exports.isEmpty shouldBe true
       }
 
       "deleting exports for a non-existant image is not an error" in {
         val id = UUID.randomUUID().toString
-        Await.result(ES.deleteImageExports(id, now, instance), fiveSeconds)
+        Await.result(ES.deleteImageExports(id, now), fiveSeconds)
       }
     }
 
@@ -505,7 +505,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
       "can delete all usages for an image which does not exist" in {
         val id = UUID.randomUUID().toString
 
-        Await.result(ES.deleteAllImageUsages(id, now, instance), fiveSeconds)
+        Await.result(ES.deleteAllImageUsages(id, now), fiveSeconds)
       }
 
       "can delete all usages for an image" in {
@@ -513,7 +513,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         val imageWithUsages = createImageForSyndication(id = UUID.randomUUID().toString, true, Some(now), None).copy(usages = List(usage()))
         Await.result(ES.migrationAwareIndexImage(id, imageWithUsages, now), fiveSeconds)
 
-        Await.result(ES.deleteAllImageUsages(id, now, instance), fiveSeconds)
+        Await.result(ES.deleteAllImageUsages(id, now), fiveSeconds)
 
         eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(reloadedImage(id).get.usages.isEmpty shouldBe true)
       }
@@ -587,7 +587,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
 
         Await.result(ES.migrationAwareIndexImage(id, imageWithUsages, now), fiveSeconds)
 
-        Await.result(ES.updateUsageStatus(id, List(usageWithUpdatedUsageStatus), now, instance), fiveSeconds)
+        Await.result(ES.updateUsageStatus(id, List(usageWithUpdatedUsageStatus), now), fiveSeconds)
         reloadedImage(id).get.usages.head.status shouldBe (SyndicatedUsageStatus)
         reloadedImage(id).get.usages.last.status shouldBe (PublishedUsageStatus)
       }
@@ -660,8 +660,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         Await.result(
           ES.applyImageMetadataOverride(id,
             updatedMetadata,
-            updatedLastModifiedDate,
-            instance),
+            updatedLastModifiedDate),
           fiveSeconds)
 
         reloadedImage(id).flatMap(_.userMetadata.get.metadata.description) shouldBe Some("An interesting image")
@@ -680,8 +679,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         Await.result(
           ES.applyImageMetadataOverride(id,
             updatedMetadata,
-            updatedLastModifiedDate,
-            instance),
+            updatedLastModifiedDate),
           fiveSeconds)
 
         reloadedImage(id).flatMap(_.userMetadataLastModified) shouldEqual Some(updatedLastModifiedDate)
@@ -701,8 +699,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         Await.result(
           ES.applyImageMetadataOverride(id,
             updatedMetadata,
-            updatedLastModifiedDate,
-            instance),
+            updatedLastModifiedDate),
           fiveSeconds)
 
         reloadedImage(id).map(_.originalMetadata) shouldEqual Some(imageWithBoringMetadata.originalMetadata)
@@ -721,8 +718,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         Await.result(
           ES.applyImageMetadataOverride(id,
             Edits(labels = List("foo"), metadata = userMetadata),
-            updatedLastModifiedDate,
-            instance),
+            updatedLastModifiedDate),
           fiveSeconds)
 
         reloadedImage(id).flatMap(_.userMetadataLastModified) shouldEqual Some(updatedLastModifiedDate)
@@ -734,8 +730,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         Await.result(
           ES.applyImageMetadataOverride(id,
             Edits(labels = List("foo", "bar"), metadata = furtherUpdatedMetadata),
-            updatedLastModifiedDate.plusSeconds(1),
-            instance),
+            updatedLastModifiedDate.plusSeconds(1)),
           fiveSeconds)
 
         reloadedImage(id).flatMap(_.userMetadata.get.metadata.description) shouldEqual Some("A further updated image")
@@ -756,8 +751,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         Await.result(
           ES.applyImageMetadataOverride(id,
             latestMetadata,
-            latestLastModifiedDate,
-            instance),
+            latestLastModifiedDate),
           fiveSeconds)
 
         val staleMetadata = Edits(metadata = imageWithBoringMetadata.metadata.copy(description = Some("A stale edit")))
@@ -766,8 +760,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         Await.result(
           ES.applyImageMetadataOverride(id,
             staleMetadata,
-            staleLastModifiedDate,
-            instance),
+            staleLastModifiedDate),
           fiveSeconds)
 
         reloadedImage(id).flatMap(_.userMetadata.get.metadata.description) shouldBe Some("Latest edit")
@@ -788,8 +781,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         Await.result(
           ES.applyImageMetadataOverride(id,
             metadataWithUpdatedUsageRights,
-            DateTime.now.withZone(DateTimeZone.UTC),
-            instance),
+            DateTime.now.withZone(DateTimeZone.UTC)),
           fiveSeconds)
 
         reloadedImage(id).get.usageRights.asInstanceOf[StaffPhotographer].photographer shouldEqual "Test Photographer"
@@ -806,7 +798,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
 
         val updatedMetadata = Edits(photoshoot = Some(newPhotoshoot), metadata = imageWithBoringMetadata.metadata.copy())
 
-        Await.result(ES.applyImageMetadataOverride(id, updatedMetadata, now, instance), fiveSeconds)
+        Await.result(ES.applyImageMetadataOverride(id, updatedMetadata, now), fiveSeconds)
 
         reloadedImage(id).flatMap(_.userMetadata.get.photoshoot.map(_.title)) shouldEqual Some("Test photoshoot")
         // TODO how to assert that the suggestion was added?
@@ -839,8 +831,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
           // does not throw, despite migration index not existing
           Await.result(ES.migrationAwareUpdater(
             indexName => updateById(index = indexName, id = id).doc(updateDoc),
-            indexName => s"update $id for $indexName",
-            instance = instance
+            indexName => s"update $id for $indexName"
           ), fiveSeconds)
 
           ES.getImage(id).await.get.identifiers shouldEqual Map("test" -> "done")
@@ -863,8 +854,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
           // does not throw, despite migration index not containing doc with id `id`
           Await.result(ES.migrationAwareUpdater(
             indexName => updateById(index = indexName, id = id).doc(updateDoc),
-            indexName => s"update $id for $indexName",
-            instance = instance
+            indexName => s"update $id for $indexName"
           ), fiveSeconds)
 
           val getRequest = get(ES.imagesCurrentAlias(instance), id)
@@ -898,8 +888,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
 
           Await.result(ES.migrationAwareUpdater(
             indexName => updateById(index = indexName, id = id).doc(updateDoc),
-            indexName => s"update $id for $indexName",
-            instance = instance
+            indexName => s"update $id for $indexName"
           ), fiveSeconds)
 
           // check update done in current index

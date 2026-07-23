@@ -17,7 +17,6 @@ import lib.querysyntax._
 import lib.{MediaApiConfig, MediaApiMetrics, UsageStore}
 import org.apache.http.client.utils.URIBuilder
 import org.joda.time.DateTime
-import org.mockito.Mockito.when
 import org.scalatest.concurrent.Eventually
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.Configuration
@@ -36,9 +35,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class ElasticSearchTest extends ElasticSearchTestBase with Eventually with ElasticSearchExecutions with MockitoSugar {
 
   implicit val instance: Instance = Instance(UUID.randomUUID().toString)
-
-  implicit val request: AuthenticatedRequest[AnyContent, Principal] = mock[AuthenticatedRequest[AnyContent, Principal]]
-  when(request.host) thenReturn instance.id
 
   private val index = instance.id + "_index"
 
