@@ -109,7 +109,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
     lazy val mockEs = mock[ElasticSearch]
     when(mockEs.continueScrollingImageIdsToMigrate(any())(any(), any()))
       .thenReturn(Future.successful(ScrolledSearchResults(List.empty, None)))
-    when(mockEs.startScrollingImageIdsToMigrate(any())(any(), any()))
+    when(mockEs.startScrollingImageIdsToMigrate(any(),any())(any(), any()))
     .thenReturn(Future.successful(ScrolledSearchResults(List.empty, None)))
 
     val uiPrioritySource: Source[KinesisRecord, Future[Done.type]] =
