@@ -65,7 +65,7 @@ class HybridSearchTest extends AnyFunSpec
   private val fiveSeconds = Duration(5, SECONDS)
 
   // The vector we'll "search" with - represents the user's query embedding.
-  private val queryEmbedding: List[Double] = firstBasisVector(256)
+  private val queryEmbedding: List[Double] = firstBasisVector(768)  // TODO push to the in use embedder implementation
 
   private def aiImage(id: String, title: String, vector: List[Double]): Image = {
     val base = createImage(id = id, usageRights = Handout(), vector = Some(vector))
