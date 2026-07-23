@@ -2,11 +2,16 @@ package lib.elasticsearch
 
 import com.gu.mediaservice.lib.elasticsearch.MappingTest
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
+import com.gu.mediaservice.model.Instance
 
+import java.util.UUID
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class ImageModelTest extends ElasticSearchTestBase {
+
+  override val instance: Instance = Instance(UUID.randomUUID().toString)
+
   implicit val logMarker: LogMarker = MarkerMap()
   "the image model matches the mapping" - {
     "the testImage is fully populated (doesn't have any fields that are empty)" in {
@@ -52,7 +57,7 @@ class ImageModelTest extends ElasticSearchTestBase {
        */
       val image = MappingTest.testImage
 
-      Await.result(ES.migrationAwareIndexImage(image.id, image, image.lastModified.get), fiveSeconds)
+      Await.result(ES.migrationAwareIndexImage(image.id, image, image.lastModified.get, instance), fiveSeconds)
       eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(reloadedImage(image.id).map(_.id) shouldBe Some(image.id))
 
       val retrievedImage = reloadedImage(image.id).get
