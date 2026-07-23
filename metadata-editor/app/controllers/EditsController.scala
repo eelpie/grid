@@ -94,6 +94,7 @@ class EditsController(
   }
 
   def setArchived(id: String) = AuthenticatedAndAuthorised.async(parse.json) { implicit req =>
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").validate[Boolean].fold(
       errors =>
         Future.successful(BadRequest(errors.toString())),
@@ -104,12 +105,12 @@ class EditsController(
     )
   }
 
-  def unsetArchived(id: String) = AuthenticatedAndAuthorised.async {
+  def unsetArchived(id: String) = AuthenticatedAndAuthorised.async { req =>
+    implicit val instance: Instance = instanceOf(req)
     editsStore.removeKey(id, Edits.Archived)
       .map(publish(id, UpdateImageUserMetadata))
       .map(_ => respond(false))
   }
-
 
   def getLabels(id: String) = auth.async { request =>
     implicit val instance: Instance = instanceOf(request)
@@ -155,6 +156,7 @@ class EditsController(
   }
 
   def setMetadata(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async(parse.json) { req =>
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").validate[ImageMetadata].fold(
       errors => Future.successful(BadRequest(errors.toString())),
       metadata => {
@@ -220,6 +222,7 @@ class EditsController(
   }
 
   def setUsageRights(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async(parse.json) { req =>
+    implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").asOpt[UsageRights].map(usageRight => {
       editsStore.jsonAdd(id, Edits.UsageRights, DynamoDB.caseClassToMap(usageRight))
         .map(publish(id, UpdateImageUserMetadata))
@@ -229,6 +232,7 @@ class EditsController(
 
   //TODO - remove as a second step
   def deleteUsageRights(id: String) = (auth andThen authorisedForEditMetadataOrUploader(id)).async { req =>
+    implicit val instance: Instance = instanceOf(req)
     editsStore.removeKey(id, Edits.UsageRights).map(publish(id, UpdateImageUserMetadata)).map(edits => Accepted)
   }
 
