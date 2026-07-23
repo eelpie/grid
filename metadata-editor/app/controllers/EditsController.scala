@@ -93,7 +93,7 @@ class EditsController(
     }
   }
 
-  def setArchived(id: String) = AuthenticatedAndAuthorised.async(parse.json) { implicit req =>
+  def setArchived(id: String) = AuthenticatedAndAuthorised.async(parse.json) { req =>
     implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").validate[Boolean].fold(
       errors =>
