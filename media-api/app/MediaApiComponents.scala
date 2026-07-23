@@ -3,6 +3,7 @@ import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, Management}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
+import com.gu.mediaservice.model.Instance
 import controllers._
 import lib._
 import lib.elasticsearch.ElasticSearch
@@ -20,14 +21,16 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   private val s3 = new S3(config)
 
   lazy val usageQuota: UsageQuota = new UsageQuota(config, actorSystem.scheduler,
-    id => { implicit val lm = com.gu.mediaservice.lib.logging.MarkerMap(); elasticSearch.quotaCountBySupplier(id) }
+    id => {
+      implicit val instance: Instance = ??? // TODO
+      implicit val lm = com.gu.mediaservice.lib.logging.MarkerMap(); elasticSearch.quotaCountBySupplier(id) }
   )
   usageQuota.quotaStore.update()
   usageQuota.scheduleUpdates()
   applicationLifecycle.addStopHook(() => Future{usageQuota.stopUpdates()})
 
-  lazy val elasticSearch = new ElasticSearch(config, mediaApiMetrics, config.esConfig, () => usageQuota.usageStore.overQuotaAgencies, actorSystem.scheduler)
-  elasticSearch.ensureIndexExistsAndAliasAssigned()
+  val elasticSearch = new ElasticSearch(config, mediaApiMetrics, config.esConfig, () => usageQuota.usageStore.overQuotaAgencies, actorSystem.scheduler)
+  // TODO needs to move somewhere more instance aware elasticSearch.ensureIndexExistsAndAliasAssigned()
 
   val imageResponse = new ImageResponse(config, s3, usageQuota)
 
