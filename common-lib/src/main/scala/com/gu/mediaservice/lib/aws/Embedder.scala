@@ -1,5 +1,5 @@
 package com.gu.mediaservice.lib.aws
-import com.gu.mediaservice.lib.embeddings.EmbeddingImplementation
+import com.gu.mediaservice.lib.embeddings.{EmbeddingImplementation, EmbeddingSourceImageFormat}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model.{Embedding, ImageMetadata, MimeType}
 import play.api.libs.json.{Json, OFormat}
@@ -32,4 +32,7 @@ class Embedder(embedding: EmbeddingImplementation, sqs: SimpleSqsMessageConsumer
     val result: SendMessageResponse = sqs.sendMessage(messageBody)
     logger.info(logMarker, s"Queued image for embedding with message ID: ${result.messageId()}")
   }
+
+  def embeddingSourceImageFormat(): EmbeddingSourceImageFormat = embedding.embeddingSourceImageFormat()
+
 }
