@@ -70,7 +70,7 @@ class MediaApiTest extends AnyFunSpec with Matchers with MockitoSugar with Scala
 
     val controller = new MediaApi(
       auth, sender, statusTable, es, response, config, mock[PreviewContentApi],
-      components, mock[S3], mock[MediaApiMetrics], mock[WSClient], authorisation, mock[Embedder], mock[UsageEvents]
+      components, mock[S3], mock[MediaApiMetrics], mock[WSClient], authorisation, mock[Option[Embedder]], mock[UsageEvents]
     )
 
     def delete(): Future[Result] =
