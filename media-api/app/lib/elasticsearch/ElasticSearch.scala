@@ -250,6 +250,7 @@ class ElasticSearch(
         .queryVector(queryEmbedding)
         .k(k)
         .numCandidates(numCandidates)
+        .similarity(0.40f)
       )
       .size(k)
 
