@@ -48,7 +48,7 @@ class MediaApi(
                 mediaApiMetrics: MediaApiMetrics,
                 ws: WSClient,
                 authorisation: Authorisation,
-                embedder: Embedder,
+                maybeEmbedder: Option[Embedder],
                 events: UsageEvents,
               )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition with InstanceForRequest {
 
@@ -57,11 +57,15 @@ class MediaApi(
   // Process-local cache keyed on normalised query text. Stores the Bedrock Future so that
   // concurrent requests for the same query share a single in-flight Bedrock call, and
   // subsequent requests within the TTL window skip Bedrock entirely.
-  private val embeddingCache: AsyncLoadingCache[String, List[Double]] = Scaffeine()
-    .maximumSize(config.aiSearchEmbeddingCacheMaxSize)
-    .buildAsyncFuture((normQuery: String) =>
-      embedder.createQueryEmbedding(normQuery)(MarkerMap())
-    )
+  private val maybeEmbeddingCache: Option[AsyncLoadingCache[String, List[Double]]] = {
+    maybeEmbedder.map { embedder =>
+      Scaffeine()
+        .maximumSize(config.aiSearchEmbeddingCacheMaxSize)
+        .buildAsyncFuture((normQuery: String) =>
+          embedder.createQueryEmbedding(normQuery)(MarkerMap())
+        )
+    }
+  }
 
   private val searchParamList = List(
     "q",
@@ -712,11 +716,14 @@ class MediaApi(
     def semanticSearchByText(k: Int, parts: AiQueryParts, params: SearchParams): Future[SearchResults] = {
       // Separate the chips from the main query text
       // So that we can embed just the query text
-      parts.semanticQuery match {
-        case None =>
+      (parts.semanticQuery, maybeEmbeddingCache) match {
+        case (_, None) =>
           logger.info(logMarker, s"No semantic query found in structured query; returning no AI results")
           Future.successful(SearchResults(Nil, total = 0, extraCounts = None))
-        case Some(semanticQuery) =>
+        case (None, _) =>
+          logger.info(logMarker, s"No semantic query found in structured query; returning no AI results")
+          Future.successful(SearchResults(Nil, total = 0, extraCounts = None))
+        case (Some(semanticQuery), Some(embeddingCache)) =>
           val vecWeight = params.vecWeight.getOrElse(0.85)
           val outerMarker = logMarker
 
