@@ -93,7 +93,7 @@ trait Fixtures {
       syndicationRights = syndicationRights,
       leases = leases.getOrElse(LeasesByMedia.build(Nil)),
       usages = usages,
-      embedding = vector.map(v => Embedding(cohereEmbedV4 = Some(CohereV4Embedding(image = v)))),
+      embedding = vector.map(v => Embedding(geminiEmbedding2 = Some(GeminiEmbedding2(image = v)))),
     )
   }
 
