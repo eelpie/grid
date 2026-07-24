@@ -72,10 +72,10 @@ class HybridSearchTest extends AnyFunSpec
     base.copy(metadata = base.metadata.copy(title = Some(title)))
   }
 
-  // 256-dim vectors to match the `embedding.cohereEmbedV4.image` dense_vector
+  // 768-dim vectors to match the `embedding.geminiEmbedding2.image` dense_vector
   // mapping, each constructed to have a known cosine similarity to the queryEmbedding.
   private def vectorWithScore(score: Double): List[Double] = {
-    vectorWithCosineSimilarity(256, score)
+    vectorWithCosineSimilarity(768, score)
   }
 
   // The full set of images shared by every spec below; indexed once in beforeAll.
