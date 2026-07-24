@@ -43,17 +43,13 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
           // Take the source image mimeType from S3 metadata for embedders who want it
           val maybeMimeTypeHeader = Option(response.contentType())
             .filterNot(_.equalsIgnoreCase("application/octet-stream"))
-          val maybeMimeType =  maybeMimeTypeHeader.map(MimeType(_))
+          val maybeMimeType = maybeMimeTypeHeader.map(MimeType(_)) // TODO recover to None
           logger.info(s"Got embedding source with mimeType $maybeMimeTypeHeader / $maybeMimeType")
 
           maybeMimeType.map { mimeType =>
-            val eventualEmbeddings = embedder.createImageEmbedding(bytes, mimeType, None)
-            val eventualEmbedding = eventualEmbeddings.map { embedding =>
-              logger.info("Got embedding: " + embedding)
-              embedding
-            }
-
+            val eventualEmbedding = embedder.createImageEmbedding(bytes, mimeType, None)
             eventualEmbedding.map { embedding =>
+              logger.info("Got embedding: " + embedding)
               // Issue an UpdateEmbedding message
               val updateEmbeddingMessage = UpdateEmbeddingMessage(
                 id = parsed.imageId,
