@@ -25,7 +25,7 @@ class Embedder(bedrock: Bedrock, sqs: SimpleSqsMessageConsumer)(implicit ec: Exe
     } yield embedding
   }
 
-  def queueImageToEmbed(message: EmbedderMessage)(implicit logMarker: LogMarker) = {
+  def queueImageToEmbed(message: EmbedderMessage)(implicit logMarker: LogMarker): Unit = {
     val messageBody = Json.stringify(Json.toJson(message))
     val result: SendMessageResponse = sqs.sendMessage(messageBody)
     logger.info(logMarker, s"Queued image for embedding with message ID: ${result.messageId()}")
