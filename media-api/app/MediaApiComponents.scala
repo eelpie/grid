@@ -31,9 +31,17 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   val imageResponse = new ImageResponse(config, s3, usageQuota)
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
-  val embedder = new Embedder(new Bedrock(config), new SimpleSqsMessageConsumer(config.embedderQueueUrl.get, config))
 
-  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3, mediaApiMetrics, wsClient, authorisation, embedder, usageEvents)
+  private val maybeEmbedding = Some(new Bedrock(config))
+
+  val maybeEmbedder: Option[Embedder] = for {
+    embedding <- maybeEmbedding
+    queueUrl <- config.embedderQueueUrl
+  } yield {
+    new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
+  }
+
+  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3, mediaApiMetrics, wsClient, authorisation, maybeEmbedder, usageEvents)
   val suggestionController = new SuggestionController(auth, elasticSearch, controllerComponents)
   val aggController = new AggregationController(auth, elasticSearch, controllerComponents)
   val usageController = new UsageController(auth, config, elasticSearch, usageQuota, controllerComponents)
