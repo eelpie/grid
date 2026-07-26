@@ -179,9 +179,9 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
       projectEmbeddingSourceAsS3Model,
       tryFetchThumbFile = fetchThumbFile,
       tryFetchOptimisedFile = fetchOptimisedFile,
-      tryFetchEmbeddingResult = fetchEmbeddingResult,
+      tryFetchEmbedding = fetchEmbeddingResult,
       maybeEmbedder = maybeEmbedder,
-      // Projection reuses a previously-computed embedding via fetchEmbedding/tryFetchEmbeddingResult above,
+      // Projection reuses a previously-computed embedding via fetchEmbedding/tryFetchEmbedding above,
       // and projectEmbeddingSourceAsS3Model never uploads the source image, so recreating it here would be wasted work.
     )
 
