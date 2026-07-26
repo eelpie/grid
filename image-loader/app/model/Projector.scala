@@ -206,11 +206,20 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
     }
   }
 
-  private def fetchEmbeddingResult(imageId: String, instance: Instance)(implicit ec: ExecutionContext): Future[Option[Embedding]] = Future {
+  private def fetchEmbeddingResult(imageId: String, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[Embedding]] = {
     val sourceKey = fileKeyFromId(imageId)(instance)
     val resultKey = embeddingKeyFromId(sourceKey)(instance)
-    s3.getObjectAsString(config.embedSourceBucket, resultKey).flatMap { json =>
-      Json.parse(json).validate[Embedding].asOpt
+    val doesResultExist = Future { s3.doesObjectExist(config.embedSourceBucket, resultKey) } recover { case _ => false }
+    doesResultExist.flatMap {
+      case false =>
+        logger.warn(logMarker, s"embedding did not exist in bucket ${config.embedSourceBucket} at key $resultKey")
+        Future.successful(None) // falls back to no previously computed embedding
+      case true =>
+        Future {
+          s3.getObjectAsString(config.embedSourceBucket, resultKey).flatMap { json =>
+            Json.parse(json).validate[Embedding].asOpt
+          }
+        }
     }
   }
 
