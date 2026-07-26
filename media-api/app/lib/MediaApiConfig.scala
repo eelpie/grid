@@ -73,6 +73,8 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
 
   val aiSearchResultLimit: Int = intOpt("ai.search.resultLimit").getOrElse(200)
   val aiSearchEmbeddingCacheMaxSize: Int = intOpt("ai.search.embeddingCache.maxSize").getOrElse(500)
+  val aiSearchMinimumSimilarity: Float = stringOpt("ai.search.minimumSimilarity").map(_.toFloat).getOrElse(0.40f)
+  val aiSimilarImagesMinimumSimilarity: Float = stringOpt("ai.similarImages.minimumSimilarity").map(_.toFloat).getOrElse(0.80f)
 
   val maybeAgencyPickQuery: Option[Query] = agencyPicksIngredients.map { ingredients =>
     filters.or(
