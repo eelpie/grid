@@ -80,7 +80,7 @@ case class ImageUploadOpsDependencies(
   storeEmbeddingSource: Option[StorableEmbeddingSourceImage] => Future[Option[S3Object]],
   tryFetchThumbFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
   tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
-  tryFetchEmbeddingResult: (String, Instance) => Future[Option[Embedding]] = (_, _) => Future.successful(None),
+  tryFetchEmbedding: (String, Instance) => Future[Option[Embedding]] = (_, _) => Future.successful(None),
   maybeEmbedder: Option[Embedder],
 )
 
@@ -185,7 +185,7 @@ object Uploader extends GridLogging {
       }
       embeddingSource <- deps.createEmbeddingsSource(browserViewableImage, sourceOrientationMetadata, tempDirForRequest)
       storedEmbeddingSource <- storeEmbeddingSource(embeddingSource)
-      previouslyComputedEmbedding <- deps.tryFetchEmbeddingResult(uploadRequest.imageId, uploadRequest.instance)
+      previouslyComputedEmbedding <- deps.tryFetchEmbedding(uploadRequest.imageId, uploadRequest.instance)
 
     } yield {
       val fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
