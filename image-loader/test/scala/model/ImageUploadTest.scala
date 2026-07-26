@@ -1,11 +1,11 @@
 package model
 
 import com.drew.imaging.ImageProcessingException
+import com.gu.mediaservice.lib._
 import com.gu.mediaservice.lib.aws.{S3Metadata, S3Object, S3ObjectMetadata}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.LogMarker
-import com.gu.mediaservice.lib._
 import com.gu.mediaservice.model._
 import lib.imaging.MimeTypeDetection
 import model.upload.{OptimiseWithPngQuant, UploadRequest}
@@ -32,7 +32,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, ResourceHelpers.dummyBucket("img-bucket"), ResourceHelpers.dummyBucket("thumb-bucket"), ResourceHelpers.dummyBucket("embedding-bucket"))
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, ResourceHelpers.dummyBucket("img-bucket"), ResourceHelpers.dummyBucket("thumb-bucket"), ResourceHelpers.dummyBucket("embeddingSources-bucket"), ResourceHelpers.dummyBucket("embeddings-bucket"))
 
   /**
     * @todo: I flailed about until I found a path that worked, but
