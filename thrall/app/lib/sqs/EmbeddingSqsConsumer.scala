@@ -1,10 +1,9 @@
 package lib.sqs
 
-import com.amazonaws.util.IOUtils
+import com.gu.mediaservice.lib.ImageIngestOperations
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, ThrallMessageSender}
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Instance, UpdateEmbeddingMessage}
-import com.gu.mediaservice.model.MimeType
+import com.gu.mediaservice.model.{Embedding, Instance, MimeType, UpdateEmbeddingMessage}
 import com.typesafe.scalalogging.StrictLogging
 import lib.ThrallStore
 import org.apache.pekko.actor.ActorSystem
@@ -16,7 +15,6 @@ import org.joda.time.DateTime
 import play.api.libs.json.Json
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
-import java.io.ByteArrayOutputStream
 import scala.concurrent.{ExecutionContext, Future}
 
 class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder: Embedder, thrallStore: ThrallStore, lowPriorityMessageSender: ThrallMessageSender)
@@ -38,22 +36,25 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
         maybeParsed.map { parsed =>
           // TODO check file exists
           val s3Object = thrallStore.getEmbeddingStoreImage(parsed.s3Key) // TODO imageid to keep knowledge of path in the store
-          val bos = new ByteArrayOutputStream()
-          try {
-            IOUtils.copy(s3Object, bos)
+          val bytes = try {
+            s3Object.readAllBytes()
           } finally {
             s3Object.close()
           }
 
           // Take the source image mimeType from S3 metadata for embedders who want it
-          val maybeMimeTypeHeader = Option(s3Object.getObjectMetadata.getContentType)
+          val maybeMimeTypeHeader = Option(s3Object.response().contentType())
           val maybeMimeType =  maybeMimeTypeHeader.map(MimeType(_)) // TODO recover to None
           logger.info(s"Got embedding source with mineType $maybeMimeTypeHeader / $maybeMimeType and image metadata title: ${parsed.imageMetadata.flatMap(_.title)}")
 
           maybeMimeType.map { mimeType =>
-            val eventualEmbedding = embedder.createImageEmbedding(bos.toByteArray, mimeType, parsed.imageMetadata)
-            eventualEmbedding.map { embedding =>
+            val eventualEmbedding = embedder.createImageEmbedding(bytes, mimeType, parsed.imageMetadata)
+            eventualEmbedding.map { embedding: Embedding =>
               logger.info("Got embedding: " + embedding)
+
+              // Store the embedding for reindexing
+              thrallStore.storeEmbedding(ImageIngestOperations.embeddingKeyFromId(parsed.imageId)(Instance(parsed.instance)), embedding)
+
               // Issue an UpdateEmbedding message
               val updateEmbeddingMessage = UpdateEmbeddingMessage(
                 id = parsed.imageId,
@@ -65,7 +66,7 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
             }
 
           }.getOrElse {
-            logger.warn("Skipping embedding source with missing mimeType: " + s3Object.getKey)
+            logger.warn("Skipping embedding source with missing mimeType: " + parsed.s3Key)
             Future.successful(())
           }
 
