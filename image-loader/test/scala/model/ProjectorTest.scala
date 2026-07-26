@@ -35,7 +35,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val imageOperations = new ImageOperations(ctxPath)
 
-  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, dummyBucket("img-bucket"), dummyBucket("thumb-bucket"), dummyBucket("embedding-bucket"))
+  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, dummyBucket("img-bucket"), dummyBucket("thumb-bucket"), dummyBucket("embeddingSource-bucket"), dummyBucket("embeddings-bucket"))
 
   private val maybeEmbedder = None
 
