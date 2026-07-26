@@ -2,6 +2,7 @@ package lib.sqs
 
 import com.amazonaws.util.IOUtils
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage}
+import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model.MimeType
 import com.typesafe.scalalogging.StrictLogging
 import lib.ThrallStore
@@ -21,6 +22,7 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
   extends StrictLogging {
 
   private val sourceSettings = SqsSourceSettings.Defaults
+  private implicit val logMarker: LogMarker = MarkerMap()
 
   def start(): Future[_] = {
     logger.info(s"Starting Pekko Connectors SQS consumer on $queueUrl")
@@ -31,7 +33,7 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
         val maybeParsed = Json.parse(message.body()).validate[EmbedderMessage].asOpt
         logger.info("Parsed: " + maybeParsed)
 
-        maybeParsed.foreach { parsed =>
+        maybeParsed.map { parsed =>
           // TODO check file exists
           val s3Object = thrallStore.getEmbeddingStoreImage(parsed.s3Key) // TODO imageid to keep knowledge of path in the store
           val bos = new ByteArrayOutputStream()
@@ -46,10 +48,21 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
           val maybeMimeType =  maybeMimeTypeHeader.map(MimeType(_))
           logger.info(s"Got embedding source with mineType $maybeMimeTypeHeader / $maybeMimeType")
 
+          maymeMimeType.map { mimeType =>
+            val eventualEmbeddings = embedder.createImageEmbedding(bos.toByteArray, mimeType, None)
+            val eventualEmbedding = eventualEmbeddings.map { embedding =>
+              logger.info("Got embedding: " + embedding)
+              embedding
+            }
+            eventualEmbedding
+          }.getOrElse {
+            logger.warn("Skipping embedding source with missing mimeType: " + s3Object.getKey)
+            Future.successful(())
+          }
+
+        }.getOrElse {
+          Future.successful(())
         }
-        // Load embedding source image from bucket
-        // Create the embedding
-        // Issue an UpdateEmbbedding message
 
         MessageAction.delete(message)
       }
