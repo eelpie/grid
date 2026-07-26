@@ -76,12 +76,12 @@ case class ImageUploadOpsDependencies(
   storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object],
   storeOrProjectThumbFile: StorableThumbImage => Future[S3Object],
   storeOrProjectOptimisedImage: StorableOptimisedImage => Future[S3Object],
+  createEmbeddingsSource: (BrowserViewableImage, Option[OrientationMetadata], File) => Future[Option[StorableEmbeddingSourceImage]],
   storeEmbeddingSource: Option[StorableEmbeddingSourceImage] => Future[Option[S3Object]],
   tryFetchThumbFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
   tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
   tryFetchEmbeddingResult: (String, Instance) => Future[Option[Embedding]] = (_, _) => Future.successful(None),
   maybeEmbedder: Option[Embedder],
-  createEmbeddingsSource: (BrowserViewableImage, Option[OrientationMetadata], File) => Future[Option[StorableEmbeddingSourceImage]]
 )
 
 
@@ -374,9 +374,7 @@ class Uploader(
 
   private def fromUploadRequest(uploadRequest: UploadRequest)
                                (implicit logMarker: LogMarker, instance: Instance): Future[ImageUpload] = {
-    val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps,
-      storeSource, storeThumbnail, storeOptimisedImage, storeEmbeddingSource,
-      maybeEmbedder = maybeEmbedder, createEmbeddingsSource = createEmbeddingsSource)
+    val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps, storeSource, storeThumbnail, storeOptimisedImage, createEmbeddingsSource = createEmbeddingsSource, storeEmbeddingSource, maybeEmbedder = maybeEmbedder)
     Stopwatch.async("finalImage") {
       val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor, optimiseOps)
       uploadRequest.identifiers.foreach{
