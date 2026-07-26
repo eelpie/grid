@@ -182,7 +182,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
       projectEmbeddingSourceAsS3Model,
       tryFetchThumbFile = fetchThumbFile,
       tryFetchOptimisedFile = fetchOptimisedFile,
-      tryFetchEmbeddingResult = fetchEmbeddingResult,
+      tryFetchEmbeddingResult = fetchEmbedding,
       maybeEmbedder = maybeEmbedder
     )
 
@@ -206,17 +206,16 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
     }
   }
 
-  private def fetchEmbeddingResult(imageId: String, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[Embedding]] = {
-    val sourceKey = fileKeyFromId(imageId)(instance)
-    val resultKey = embeddingKeyFromId(sourceKey)(instance)
-    val doesResultExist = Future { s3.doesObjectExist(config.embedSourceBucket, resultKey) } recover { case _ => false }
+  private def fetchEmbedding(imageId: String, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[Embedding]] = {
+    val key = embeddingKeyFromId(imageId)(instance)
+    val doesResultExist = Future { s3.doesObjectExist(config.embedSourceBucket, key) } recover { case _ => false }
     doesResultExist.flatMap {
       case false =>
-        logger.warn(logMarker, s"embedding did not exist in bucket ${config.embedSourceBucket} at key $resultKey")
+        logger.warn(logMarker, s"embedding did not exist in bucket ${config.embedSourceBucket} at key $key")
         Future.successful(None) // falls back to no previously computed embedding
       case true =>
         Future {
-          s3.getObjectAsString(config.embedSourceBucket, resultKey).flatMap { json =>
+          s3.getObjectAsString(config.embedSourceBucket, key).flatMap { json =>
             Json.parse(json).validate[Embedding].asOpt
           }
         }
