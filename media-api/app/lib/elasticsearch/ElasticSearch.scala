@@ -251,7 +251,7 @@ class ElasticSearch(
         .queryVector(queryEmbedding)
         .k(k)
         .numCandidates(numCandidates)
-        .similarity(0.40f)
+        .similarity(config.aiSearchMinimumSimilarity)
       )
       .size(k)
 
@@ -400,7 +400,7 @@ class ElasticSearch(
       .queryVector(queryEmbedding.map(_.toDouble))
       .k(k)
       .numCandidates(numCandidates)
-      .similarity(0.80f)
+      .similarity(config.aiSimilarImagesMinimumSimilarity)
   }
 
   def search(params: SearchParams, maybeSimilarToVector: Option[Seq[Float]] = None)(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
