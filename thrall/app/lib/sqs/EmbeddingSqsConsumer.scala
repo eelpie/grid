@@ -1,6 +1,7 @@
 package lib.sqs
 
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage}
+import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model.MimeType
 import com.typesafe.scalalogging.StrictLogging
 import lib.ThrallStore
@@ -19,6 +20,7 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
   extends StrictLogging {
 
   private val sourceSettings = SqsSourceSettings.Defaults
+  private implicit val logMarker: LogMarker = MarkerMap()
 
   def start(): Future[_] = {
     logger.info(s"Starting Pekko Connectors SQS consumer on $queueUrl")
@@ -29,7 +31,7 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
         val maybeParsed = Json.parse(message.body()).validate[EmbedderMessage].asOpt
         logger.info("Parsed: " + maybeParsed)
 
-        maybeParsed.foreach { parsed =>
+        maybeParsed.map { parsed =>
           // TODO check file exists
           val s3Object = thrallStore.getEmbeddingStoreImage(parsed.s3Key) // TODO imageid to keep knowledge of path in the store
           val response = s3Object.response()
@@ -42,11 +44,19 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
             .filterNot(_.equalsIgnoreCase("application/octet-stream"))
           val maybeMimeType =  maybeMimeTypeHeader.map(MimeType(_))
           logger.info(s"Got embedding source with mimeType $maybeMimeTypeHeader / $maybeMimeType")
-        }
 
-        // Load embedding source image from bucket
-        // Create the embedding
-        // Issue an UpdateEmbbedding message
+          maybeMimeType.map { mimeType =>
+            val eventualEmbeddings = embedder.createImageEmbedding(bytes, mimeType, None)
+            val eventualEmbedding = eventualEmbeddings.map { embedding =>
+              logger.info("Got embedding: " + embedding)
+              embedding
+            }
+            eventualEmbedding
+          }.getOrElse {
+            logger.warn("Skipping embedding source with missing mimeType: " + parsed.s3Key)
+            Future.successful(())
+          }
+        }
 
         MessageAction.delete(message)
       }
