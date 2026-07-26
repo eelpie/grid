@@ -75,7 +75,8 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       storeOrProjectThumbFile = storeOrProjectThumbFile,
       storeOrProjectOptimisedImage = storeOrProjectOptimisedPNG,
       storeEmbeddingSource = storeOrProjectEmbeddingSource,
-      maybeEmbedder = None
+      maybeEmbedder = None,
+      createEmbeddingsSource = (_, _, _) => Future.successful(None)
     )
 
     val tempFile = ResourceHelpers.fileAt(fileName)
