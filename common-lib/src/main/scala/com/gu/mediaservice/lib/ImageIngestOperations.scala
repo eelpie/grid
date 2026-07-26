@@ -19,7 +19,7 @@ object ImageIngestOperations {
 
   def optimisedPngKeyFromId(id: String)(implicit instance: Instance): String = instance.id + "/" + "optimised/" + snippetForId(id: String)
 
-  def embeddingKeyFromId(id: String)(implicit instance: Instance): String = s"embeddings/" + instance.id + "/" + snippetForId(id)
+  def embeddingKeyFromId(id: String)(implicit instance: Instance): String = instance.id + "/" + snippetForId(id)
 
   private def snippetForId(id: String) = id.take(6).mkString("/") + "/" + id
 }
