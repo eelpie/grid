@@ -24,7 +24,7 @@ object ImageIngestOperations {
   private def snippetForId(id: String) = id.take(6).mkString("/") + "/" + id
 }
 
-class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, embeddingSourceBucket: S3Bucket, config: CommonConfig, isVersionedS3: Boolean = false)
+class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, embeddingSourceBucket: S3Bucket, embeddingsBucket: S3Bucket, config: CommonConfig, isVersionedS3: Boolean = false)
   extends S3ImageStorage(config) with StrictLogging {
 
   import ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
@@ -74,8 +74,8 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, em
   }
 
   def storeEmbedding(key: String, embedding: Embedding): Unit = {
-    logger.info(s"Storing embedding source to key: ${embeddingSourceBucket.bucket} / $key")
-    putObject(embeddingSourceBucket, key, Json.stringify(Json.toJson(embedding)))
+    logger.info(s"Storing embedding to key: ${embeddingsBucket.bucket} / $key")
+    putObject(embeddingsBucket, key, Json.stringify(Json.toJson(embedding)))
   }
 
   private def bulkDelete(bucket: S3Bucket, keys: List[String]): Future[Map[String, Boolean]] = keys match {

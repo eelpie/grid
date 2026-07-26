@@ -36,7 +36,8 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
     val tempDir = new File("/tmp")
     val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, S3Bucket("img-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client),
       S3Bucket("thumb-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client),
-      S3Bucket("embedding-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client),
+      S3Bucket("embedding-source-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client),
+      S3Bucket("embeddings-bucket", S3.AmazonAwsS3Endpoint, usesPathStyleURLs = false, mockS3Client),
     )
 
   /**
