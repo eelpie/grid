@@ -175,11 +175,14 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
       projectOriginalFileAsS3Model,
       projectThumbnailFileAsS3Model,
       projectOptimisedPNGFileAsS3Model,
+      createEmbeddingsSource = (_, _, _) => Future.successful(None),
       projectEmbeddingSourceAsS3Model,
       tryFetchThumbFile = fetchThumbFile,
       tryFetchOptimisedFile = fetchOptimisedFile,
       tryFetchEmbeddingResult = fetchEmbeddingResult,
-      maybeEmbedder = maybeEmbedder
+      maybeEmbedder = maybeEmbedder,
+      // Projection reuses a previously-computed embedding via fetchEmbedding/tryFetchEmbeddingResult above,
+      // and projectEmbeddingSourceAsS3Model never uploads the source image, so recreating it here would be wasted work.
     )
 
     fromUploadRequestShared(uploadRequest, dependenciesWithProjectionsOnly, processor, optimiseOps).map(_._1)
