@@ -68,7 +68,8 @@ case class ImageUploadOpsCfg(
   thumbQuality: Double,
   originalFileBucket: S3Bucket,
   thumbBucket: S3Bucket,
-  embedSourceBucket: S3Bucket
+  embedSourceBucket: S3Bucket,
+  embeddingsBucket: S3Bucket
 )
 
 case class ImageUploadOpsDependencies(
@@ -99,7 +100,8 @@ object Uploader extends GridLogging {
       config.thumbQuality,
       config.imageBucket,
       config.thumbnailBucket,
-      config.embeddingSourcesBucket
+      config.embeddingSourcesBucket,
+      config.embeddingsBucket
     )
   }
 
