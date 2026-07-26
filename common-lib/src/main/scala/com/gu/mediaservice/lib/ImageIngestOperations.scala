@@ -1,16 +1,16 @@
 package com.gu.mediaservice.lib
 
+import _root_.play.api.libs.json._
 import com.amazonaws.services.s3.model
 import com.amazonaws.services.s3.model.MultiObjectDeleteException
-
-import java.io.File
-import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.aws.{S3Bucket, S3Object}
+import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.LogMarker
-import com.gu.mediaservice.model.{Instance, MimeType, Png}
+import com.gu.mediaservice.model.{Embedding, Instance, MimeType}
 import com.typesafe.scalalogging.StrictLogging
 import org.joda.time.DateTime
 
+import java.io.File
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
 
@@ -18,6 +18,8 @@ object ImageIngestOperations {
   def fileKeyFromId(id: String)(implicit instance: Instance): String = instance.id + "/" + snippetForId(id)
 
   def optimisedPngKeyFromId(id: String)(implicit instance: Instance): String = instance.id + "/" + "optimised/" + snippetForId(id: String)
+
+  def embeddingKeyFromId(id: String)(implicit instance: Instance): String = s"embeddings/" + instance.id + "/" + snippetForId(id)
 
   private def snippetForId(id: String) = id.take(6).mkString("/") + "/" + id
 }
@@ -69,6 +71,11 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, em
 
   def getEmbeddingStoreImage(key: String): model.S3Object = {
     getObject(embeddingSourceBucket, key)
+  }
+
+  def storeEmbedding(key: String, embedding: Embedding): Unit = {
+    logger.info(s"Storing embedding source to key: ${embeddingSourceBucket.bucket} / $key")
+    putObject(embeddingSourceBucket, key, Json.stringify(Json.toJson(embedding)))
   }
 
   private def bulkDelete(bucket: S3Bucket, keys: List[String]): Future[Map[String, Boolean]] = keys match {

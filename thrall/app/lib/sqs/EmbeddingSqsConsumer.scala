@@ -1,10 +1,10 @@
 package lib.sqs
 
 import com.amazonaws.util.IOUtils
+import com.gu.mediaservice.lib.ImageIngestOperations
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, ThrallMessageSender}
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Instance, UpdateEmbeddingMessage}
-import com.gu.mediaservice.model.MimeType
+import com.gu.mediaservice.model.{Embedding, Instance, MimeType, UpdateEmbeddingMessage}
 import com.typesafe.scalalogging.StrictLogging
 import lib.ThrallStore
 import org.apache.pekko.actor.ActorSystem
@@ -52,8 +52,12 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
 
           maybeMimeType.map { mimeType =>
             val eventualEmbedding = embedder.createImageEmbedding(bos.toByteArray, mimeType, parsed.imageMetadata)
-            eventualEmbedding.map { embedding =>
+            eventualEmbedding.map { embedding: Embedding =>
               logger.info("Got embedding: " + embedding)
+
+              // Store the embedding for reindexing
+              thrallStore.storeEmbedding(ImageIngestOperations.embeddingKeyFromId(parsed.imageId)(Instance(parsed.instance)), embedding)
+
               // Issue an UpdateEmbedding message
               val updateEmbeddingMessage = UpdateEmbeddingMessage(
                 id = parsed.imageId,

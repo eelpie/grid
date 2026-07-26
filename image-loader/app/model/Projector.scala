@@ -2,16 +2,16 @@ package model
 
 import _root_.play.api.libs.ws.WSRequest
 import com.amazonaws.services.s3.model.{ObjectMetadata, S3Object => AwsS3Object}
-import com.gu.mediaservice.lib.ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
+import com.gu.mediaservice.lib.ImageIngestOperations.{embeddingKeyFromId, fileKeyFromId, optimisedPngKeyFromId}
 import com.gu.mediaservice.lib._
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, S3, S3Bucket, S3Object}
+import com.gu.mediaservice.lib.aws.{Embedder, S3, S3Bucket, S3Object}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
-import com.gu.mediaservice.model.{Image, Instance, MimeType, Png, UploadInfo}
+import com.gu.mediaservice.model.{Embedding, Image, Instance, MimeType, UploadInfo}
 import com.gu.mediaservice.{GridClient, ImageDataMerger}
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3}
 import lib.{DigestedFile, ImageLoaderConfig}
@@ -23,6 +23,7 @@ import java.io.{File, FileOutputStream}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
+import _root_.play.api.libs.json._
 
 object Projector {
 
@@ -139,8 +140,8 @@ class Projector(config: ImageUploadOpsCfg,
     val uploadInfo_ = UploadInfo(filename = extractedS3Meta.uploadFileName, isFeedUpload = extractedS3Meta.isFeedUpload)
 
     MimeTypeDetection.guessMimeType(tempFile_) match {
-      case util.Left(unsupported) => Future.failed(unsupported)
-      case util.Right(mimeType) =>
+      case scala.util.Left(unsupported) => Future.failed(unsupported)
+      case scala.util.Right(mimeType) =>
         val uploadRequest = UploadRequest(
           imageId = id_,
           tempFile = tempFile_,
@@ -181,6 +182,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
       projectEmbeddingSourceAsS3Model,
       tryFetchThumbFile = fetchThumbFile,
       tryFetchOptimisedFile = fetchOptimisedFile,
+      tryFetchEmbeddingResult = fetchEmbeddingResult,
       maybeEmbedder = maybeEmbedder
     )
 
@@ -201,6 +203,14 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
       storableEmbeddingSourceImage.map { storableEmbeddingSourceImage =>
         storableEmbeddingSourceImage.toProjectedS3Object(config.embedSourceBucket)
       }
+    }
+  }
+
+  private def fetchEmbeddingResult(imageId: String, instance: Instance)(implicit ec: ExecutionContext): Future[Option[Embedding]] = Future {
+    val sourceKey = fileKeyFromId(imageId)(instance)
+    val resultKey = embeddingKeyFromId(sourceKey)(instance)
+    s3.getObjectAsString(config.embedSourceBucket, resultKey).flatMap { json =>
+      Json.parse(json).validate[Embedding].asOpt
     }
   }
 
