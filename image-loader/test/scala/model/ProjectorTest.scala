@@ -48,6 +48,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
   private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, S3Bucket("img-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
     S3Bucket("thumb-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
     S3Bucket("embedding-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
+    S3Bucket("embeddings-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
   )
 
   private val maybeEmbedder = None

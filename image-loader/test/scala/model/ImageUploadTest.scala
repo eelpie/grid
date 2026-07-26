@@ -1,12 +1,11 @@
 package model
 
-import com.amazonaws.services.s3.AmazonS3
 import com.drew.imaging.ImageProcessingException
-import com.gu.mediaservice.lib.aws.{S3, S3Bucket, S3Object, S3Ops}
+import com.gu.mediaservice.lib.aws.{S3Bucket, S3Object, S3Ops}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.LogMarker
-import com.gu.mediaservice.lib.{StorableEmbeddingSourceImage, StorableImage, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
+import com.gu.mediaservice.lib._
 import com.gu.mediaservice.model._
 import lib.imaging.MimeTypeDetection
 import model.upload.{OptimiseWithPngQuant, UploadRequest}
@@ -38,6 +37,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
     val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, S3Bucket("img-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
       S3Bucket("thumb-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
       S3Bucket("embedding-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
+      S3Bucket("embeddings-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
     )
 
   /**
