@@ -34,7 +34,7 @@ import scala.concurrent.{ExecutionContext, Future}
 case object ImageUpload {
 
   def createImage(uploadRequest: UploadRequest, source: Asset, thumbnail: Asset, png: Option[Asset],
-                  fileMetadata: FileMetadata, metadata: ImageMetadata): Image = {
+                  fileMetadata: FileMetadata, metadata: ImageMetadata, embedding: Option[Embedding] = None): Image = {
     val usageRights = NoRights
     Image(
       uploadRequest.imageId,
@@ -55,8 +55,9 @@ case object ImageUpload {
       usageRights,
       List(),
       List(),
-      //      ImageEmbedding will be written by lambda later
-      embedding = None
+      // For a fresh upload there is no embedding yet - it is written later once computed.
+      // For a projected (re-indexed) image, an embedding fetched from a prior run may be supplied.
+      embedding = embedding
     )
   }
 }
@@ -79,6 +80,7 @@ case class ImageUploadOpsDependencies(
   storeEmbeddingSource: Option[StorableEmbeddingSourceImage] => Future[Option[S3Object]],
   tryFetchThumbFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
   tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
+  tryFetchEmbeddingResult: (String, Instance) => Future[Option[Embedding]] = (_, _) => Future.successful(None),
   maybeEmbedder: Option[Embedder]
 )
 
@@ -183,6 +185,7 @@ object Uploader extends GridLogging {
       }
       embeddingSource <- createEmbeddingsSource(browserViewableImage, sourceOrientationMetadata, tempDirForRequest, deps)
       storedEmbeddingSource <- storeEmbeddingSource(embeddingSource)
+      previouslyComputedEmbedding <- deps.tryFetchEmbeddingResult(uploadRequest.imageId, uploadRequest.instance)
 
     } yield {
       val fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
@@ -198,7 +201,8 @@ object Uploader extends GridLogging {
         thumbAsset,
         pngAsset,
         fullFileMetadata,
-        metadata
+        metadata,
+        previouslyComputedEmbedding
       )
       val processedImage = processor(baseImage)
 
