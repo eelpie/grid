@@ -16,7 +16,7 @@ steps:
     args: [ 'run', 'dist' ]
 
   - name: 'gcr.io/$PROJECT_ID/scala-sbt:1.11.7-jdk-25'
-    args: ['media-api/test']
+    args: ['collections/test', 'leases/test', 'media-api/test']
     env:
      - 'DOCKER_HOST=unix:///var/run/docker.sock'
      - 'DOCKER_API_VERSION=1.41'
