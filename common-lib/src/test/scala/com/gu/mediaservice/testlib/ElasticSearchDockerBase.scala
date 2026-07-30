@@ -35,8 +35,9 @@ trait ElasticSearchDockerBase extends BeforeAndAfterAll {
     }
   } else None
 
+  val esHost = esContainer.map(_.getHost).getOrElse("localhost")
   val esPort = esContainer.map(_.getMappedPort(9200)).getOrElse(9200)
-  val esTestUrl = Properties.envOrElse("ES6_TEST_URL", s"http://localhost:$esPort")
+  val esTestUrl = Properties.envOrElse("ES6_TEST_URL", s"http://$esHost:$esPort")
 
   override protected def afterAll(): Unit = {
     super.afterAll()
