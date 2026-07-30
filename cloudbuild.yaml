@@ -16,15 +16,11 @@ steps:
     args: [ 'run', 'dist' ]
 
   - name: 'gcr.io/$PROJECT_ID/scala-sbt:1.11.7-jdk-25'
-    args: ['collections/test', 'leases/test', 'media-api/test']
+    args: ['compile', 'collections/test', 'leases/test', 'media-api/test', 'docker:publishLocal']
     env:
      - 'DOCKER_HOST=unix:///var/run/docker.sock'
      - 'DOCKER_API_VERSION=1.41'
 
-  - name: 'gcr.io/$PROJECT_ID/scala-sbt:1.11.7-jdk-25'
-    args: ['docker:publishLocal']
-    env:
-    - 'DOCKER_API_VERSION=1.41'
   - name: 'gcr.io/cloud-builders/docker'
     args: ['tag', 'auth:0.1', 'eu.gcr.io/$PROJECT_ID/auth:$BRANCH_NAME']
   - name: 'gcr.io/cloud-builders/docker'
