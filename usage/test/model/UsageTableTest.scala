@@ -10,8 +10,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.testcontainers.containers.localstack.LocalStackContainer
-import org.testcontainers.containers.localstack.LocalStackContainer.Service.DYNAMODB
+import org.testcontainers.localstack.LocalStackContainer
 import org.testcontainers.utility.DockerImageName
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
@@ -33,11 +32,11 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
 
   private val dynamoContainer = new LocalStackContainer(
     DockerImageName.parse("localstack/localstack:1.4.0")
-  ).withServices(DYNAMODB)
+  ).withServices("dynamodb")
   dynamoContainer.start()
 
   private val dynamoClientV2: DynamoDbClient = DynamoDbClient.builder()
-    .endpointOverride(dynamoContainer.getEndpointOverride(DYNAMODB))
+    .endpointOverride(dynamoContainer.getEndpoint)
     .region(Region.of(dynamoContainer.getRegion))
     .credentialsProvider(StaticCredentialsProvider.create(
       AwsBasicCredentials.create(dynamoContainer.getAccessKey, dynamoContainer.getSecretKey)
