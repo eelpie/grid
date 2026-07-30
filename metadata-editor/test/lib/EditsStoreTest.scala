@@ -6,8 +6,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.testcontainers.containers.localstack.LocalStackContainer
-import org.testcontainers.containers.localstack.LocalStackContainer.Service.DYNAMODB
+import org.testcontainers.localstack.LocalStackContainer
 import org.testcontainers.utility.DockerImageName
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
@@ -22,13 +21,13 @@ class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Bef
 
   implicit val defaultPatience: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds), interval = Span(100, Millis))
 
-  private val dynamoContainer = new LocalStackContainer(DockerImageName.parse("localstack/localstack:1.4.0")).withServices(DYNAMODB)
+  private val dynamoContainer = new LocalStackContainer(DockerImageName.parse("localstack/localstack:1.4.0")).withServices("dynamodb")
   dynamoContainer.start()
 
   val testTableName: String = "test-edits-table-" + UUID.randomUUID().toString
 
   private val dynamoClient2: DynamoDbClient = DynamoDbClient.builder().
-    endpointOverride(dynamoContainer.getEndpointOverride(DYNAMODB)).
+    endpointOverride(dynamoContainer.getEndpoint).
     region(Region.of(dynamoContainer.getRegion)).
     credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(dynamoContainer.getAccessKey, dynamoContainer.getSecretKey))).build()
 
