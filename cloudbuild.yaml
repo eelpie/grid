@@ -1,5 +1,6 @@
 options:
   machineType: 'N1_HIGHCPU_8'
+timeout: '1200s'
 steps:
   - name: 'node:24-alpine'
     entrypoint: 'npm'
@@ -13,6 +14,12 @@ steps:
     entrypoint: 'npm'
     dir: 'kahuna'
     args: [ 'run', 'dist' ]
+
+  - name: 'gcr.io/$PROJECT_ID/scala-sbt:1.11.7-jdk-25'
+    args: ['media-api/test']
+    env:
+     - 'DOCKER_HOST=unix:///var/run/docker.sock'
+     - 'DOCKER_API_VERSION=1.41'
 
   - name: 'gcr.io/$PROJECT_ID/scala-sbt:1.11.7-jdk-25'
     args: ['docker:publishLocal']
