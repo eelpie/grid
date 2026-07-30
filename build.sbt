@@ -52,7 +52,7 @@ val commonSettings = Seq(
     "org.scalatestplus" %% "mockito-3-4" % "3.1.4.0" % Test,
     "org.mockito" % "mockito-core" % "2.18.0" % Test,
     "org.scalamock" %% "scalamock" % "5.1.0" % Test,
-    "org.testcontainers" % "localstack" % "1.21.4" % Test
+    "org.testcontainers" % "testcontainers-localstack" % "2.0.5" % Test
   ),
   dependencyOverrides ++= jacksonOverrides,
 
@@ -128,7 +128,7 @@ lazy val commonLib = project("common-lib").settings(
     "com.adobe.xmp" % "xmpcore" % "6.1.11",
     ws,
     "com.google.genai" % "google-genai" % "1.53.0" exclude("com.fasterxml.jackson.module", "jackson-module-kotlin"),
-    "org.testcontainers" % "testcontainers-elasticsearch" % "2.0.2" % Test,
+    "org.testcontainers" % "testcontainers-elasticsearch" % "2.0.5" % Test,
   ),
   dependencyOverrides += "ch.qos.logback" % "logback-classic" % "1.2.13" % Test
 )
