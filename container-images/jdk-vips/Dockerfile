@@ -43,7 +43,4 @@ RUN ldconfig
 RUN rm /tmp/vips-8.18.7.tar.xz
 RUN rm -r /tmp/vips-8.18.7/
 
-RUN apt -y --no-install-suggests install \
-  libjemalloc-dev \
-  graphicsmagick \
-  graphicsmagick-imagemagick-compat
+RUN apt -y --no-install-suggests install libjemalloc-dev
