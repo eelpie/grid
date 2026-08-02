@@ -1,21 +1,24 @@
 package model.upload
 
+import app.photofox.vipsffm.enums.VipsIntent
+import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.ImageWrapper
+import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap, Stopwatch}
-import com.gu.mediaservice.model.{FileMetadata, MimeType, Png, Tiff}
+import com.gu.mediaservice.model.{MimeType, Png}
 
 import java.io.File
+import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
-import scala.sys.process._
 
 trait OptimiseOps {
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, tempDir: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)]
-  def shouldOptimise(mimeType: Option[MimeType], fileMetadata: FileMetadata): Boolean
+  def shouldOptimise(mimeType: Option[MimeType]): Boolean
   def optimiseMimeType: MimeType
 }
 
-object OptimiseWithPngQuant extends OptimiseOps {
+class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps {
 
   override def optimiseMimeType: MimeType = Png
 
@@ -23,33 +26,35 @@ object OptimiseWithPngQuant extends OptimiseOps {
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = Future {
 
     val marker = MarkerMap(
-      "fileName" -> file.getName()
+      "fileName" -> file.getName
     )
 
-    Stopwatch("pngquant") {
-      val result = Seq("pngquant", "-s10", "--quality", "1-85", file.getAbsolutePath,
-        "--force", "--output", optimisedFile.getAbsolutePath
-      ).!
-      if (result > 0)
-        throw new Exception(s"pngquant failed to convert to optimised png file (rc = $result)")
-    }(marker)
+    // Given a source file on any valid upload type, return a file of the optimised type
+    Stopwatch("toOptimisedFile") {
+      try {
+        val arena = Arena.ofConfined
 
-    if (optimisedFile.exists()) {
-      (optimisedFile, optimiseMimeType)
-    } else {
-      throw new Exception(s"Attempted to optimise PNG file ${optimisedFile.getPath}")
-    }
+        val image = VImage.newFromFile(arena, file.getAbsolutePath)
+
+        // If we saw and ICC profile than we will need to transform
+        val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
+        val correctedForICCProfile = if (needsICCTransform) {
+          image.iccTransform("srgb",
+            VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL), // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
+          )
+        } else {
+          // LAB gets corrupted by a needless icc_transform
+          image
+        }
+
+        imageOperations.saveImageToFile(correctedForICCProfile: VImage, optimiseMimeType, 85, optimisedFile, quantise = true)
+        (optimisedFile, optimiseMimeType)
+      } catch {
+        case _: Exception =>
+          throw new Exception(s"Failed to optimise PNG file ${file.getAbsolutePath}")
+      }
+    }(marker)
   }
 
-  def shouldOptimise(mimeType: Option[MimeType], fileMetadata: FileMetadata): Boolean =
-    mimeType match {
-      case Some(Png) =>
-        fileMetadata.colourModelInformation.get("colorType") match {
-          case Some("True Color") => true
-          case Some("True Color with Alpha") => true
-          case _ => false
-        }
-      case Some(Tiff) => true // TODO This should be done better, it could be better optimised into a jpeg if there is no transparency.
-      case _ => false
-    }
+  def shouldOptimise(mimeType: Option[MimeType]): Boolean = false
 }
