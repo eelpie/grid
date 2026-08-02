@@ -125,7 +125,6 @@ lazy val commonLib = project("common-lib").settings(
     "software.amazon.awssdk" % "cloudwatch" % awsSdkV2Version,
     // declare explicit dependency on desired version of aws sdk v2 bedrock runtime
     "software.amazon.awssdk" % "bedrockruntime" % awsSdkV2Version,
-    "software.amazon.awssdk" % "s3vectors" % awsSdkV2Version,
     "com.adobe.xmp" % "xmpcore" % "6.1.11",
     ws,
     "com.google.genai" % "google-genai" % "1.53.0" exclude("com.fasterxml.jackson.module", "jackson-module-kotlin"),

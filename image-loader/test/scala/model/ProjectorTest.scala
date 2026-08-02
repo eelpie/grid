@@ -1,24 +1,18 @@
 package model
 
 import com.amazonaws.services.s3.AmazonS3
-
-import java.io.File
-import java.net.URI
-import java.util.Date
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.aws.{Embedder, S3, S3Bucket, S3Vectors}
-import com.gu.mediaservice.lib.aws.S3Ops
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Instance, _}
 import com.gu.mediaservice.model.leases.LeasesByMedia
+import com.gu.mediaservice.model._
 import lib.DigestedFile
 import model.upload.OptimiseWithPngQuant
 import org.joda.time.{DateTime, DateTimeZone}
-import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{times, verify, when}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
@@ -26,13 +20,14 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.libs.json.{JsArray, JsString}
-import software.amazon.awssdk.services.s3vectors.model.PutVectorsResponse
 import test.lib.ResourceHelpers
 
-import java.nio.file.Path
+import java.io.File
+import java.net.URI
+import java.util.Date
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.jdk.CollectionConverters._
-import scala.concurrent.{ExecutionContext, Future}
 
 class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with MockitoSugar {
 
