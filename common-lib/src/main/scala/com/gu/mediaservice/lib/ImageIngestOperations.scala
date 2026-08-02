@@ -27,7 +27,7 @@ object ImageIngestOperations {
 class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, embeddingSourceBucket: S3Bucket, embeddingsBucket: S3Bucket, config: CommonConfig, isVersionedS3: Boolean = false)
   extends S3ImageStorage(config) with StrictLogging {
 
-  import ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
+  import ImageIngestOperations.{embeddingKeyFromId, fileKeyFromId, optimisedPngKeyFromId}
 
   def store(storableImage: StorableImage)
            (implicit logMarker: LogMarker): Future[S3Object] = storableImage match {
@@ -125,6 +125,7 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, em
   def deleteThumbnails(ids: Set[String])(implicit instance: Instance) = bulkDelete(thumbnailBucket, ids.map(id => fileKeyFromId(id)).toList)
   def deletePNG(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[Unit] = deleteImage(imageBucket, optimisedPngKeyFromId(id))
   def deletePNGs(ids: Set[String])(implicit instance: Instance) = bulkDelete(imageBucket, ids.map(id => optimisedPngKeyFromId(id)).toList)
+  def deleteEmbeddings(ids: Set[String])(implicit instance: Instance) = bulkDelete(embeddingsBucket, ids.map(id => embeddingKeyFromId(id)).toList)
 
   def doesOriginalExist(id: String)(implicit instance: Instance): Boolean =
     doesObjectExist(imageBucket, fileKeyFromId(id))
