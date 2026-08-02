@@ -15,7 +15,7 @@ import scala.concurrent.Future
 
 class S3FileDoesNotExistException extends Exception()
 
-class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config) with GridLogging {
+class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config.embeddingSourceBucket, config.embeddingsBucket, config) with GridLogging {
 
   private def handleNotFound[T](key: String)(doWork: => T)(loggingIfNotFound: => Unit): T = {
     try {
@@ -72,5 +72,6 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   } {
     logger.warn(logMarker, s"Attempted to delete $key from ingest bucket, but it does not exist.")
   }
+
 }
 

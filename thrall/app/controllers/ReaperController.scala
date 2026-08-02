@@ -2,7 +2,6 @@ package controllers
 
 import com.gu.mediaservice.lib.auth.Permissions.DeleteImage
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, BaseControllerWithLoginRedirects}
-import com.gu.mediaservice.lib.aws.S3Vectors
 import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
 import com.gu.mediaservice.lib.elasticsearch.ReapableEligibility
 import com.gu.mediaservice.lib.events.UsageEvents
@@ -31,7 +30,6 @@ import scala.util.{Failure, Success}
 class ReaperController(
   es: ElasticSearch,
   store: ThrallStore,
-  s3Vectors: S3Vectors,
   authorisation: Authorisation,
   val config: ThrallConfig,
   scheduler: Scheduler,
@@ -154,14 +152,12 @@ class ReaperController(
           instance = instance.id
         )
       ))
-      s3VectorsDeletions <- s3Vectors.deleteEmbeddings(esIdsActuallySoftDeleted)
     } yield {
       metrics.softReaped.increment(n = esIdsActuallySoftDeleted.size)
       esIds.map { id =>
         val wasSoftDeletedInES = esIdsActuallySoftDeleted.contains(id)
         val detail = Json.obj(
-          "ES" -> wasSoftDeletedInES,
-          "s3Vectors" -> s3VectorsDeletions.get(id).map(_.toString)
+          "ES" -> wasSoftDeletedInES
         )
         logger.info(s"Soft deleted image $id : ${Json.stringify(detail)}")
         id -> detail
@@ -184,6 +180,7 @@ class ReaperController(
       mainImagesS3Deletions <- store.deleteOriginals(esIdsActuallyDeleted)
       thumbsS3Deletions <- store.deleteThumbnails(esIdsActuallyDeleted)
       pngsS3Deletions <- store.deletePNGs(esIdsActuallyDeleted)
+      embeddingsS3Deletions <- store.deleteEmbeddings(esIdsActuallyDeleted)
       _ <- softDeletedMetadataTable.clearStatuses(esIdsActuallyDeleted)
       // TODO No one has issued an image-deleted notification to metadata-editor? Metadata will persist forever?
     } yield {
@@ -195,7 +192,8 @@ class ReaperController(
           "ES" -> wasHardDeletedFromES,
           "mainImage" -> mainImagesS3Deletions.get(ImageIngestOperations.fileKeyFromId(id)),
           "thumb" -> thumbsS3Deletions.get(ImageIngestOperations.fileKeyFromId(id)),
-          "optimisedPng" -> pngsS3Deletions.get(ImageIngestOperations.optimisedPngKeyFromId(id))
+          "optimisedPng" -> pngsS3Deletions.get(ImageIngestOperations.optimisedPngKeyFromId(id)),
+          "embeddings" -> embeddingsS3Deletions.get(ImageIngestOperations.embeddingKeyFromId(id))
         )
         if (wasHardDeletedFromES) {
           usageEvents.hardDeleteImage(instance = i, image = id)

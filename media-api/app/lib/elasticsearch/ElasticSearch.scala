@@ -42,6 +42,8 @@ class ElasticSearch(
   val instancesClient: InstancesClient,
 ) extends ElasticSearchClient with ImageFields with MatchFields with FutureSyntax with GridLogging with MigrationStatusProvider {
 
+  private val knnSearchFieldName = "embedding.geminiEmbedding2.image"
+
   private val maybeOrgOwnedExtraCount: Option[(String, ExtraCountConfig)] =
     if (config.shouldDisplayOrgOwnedCountAndFilterCheckbox)
       Some(s"owned" -> ExtraCountConfig(
@@ -161,7 +163,7 @@ class ElasticSearch(
   def lookupIds(ids: List[String], offset: Int, length: Int)(implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[SearchResults] = {
     val query = filters.pinnedIds(ids)
 
-    val searchRequest = prepareSearch(query)
+    val searchRequest = prepareSearch(query, None)
       .trackTotalHits(true)
       .storedFields("_source")
       .from(offset)
@@ -180,10 +182,7 @@ class ElasticSearch(
       logger.warn(logMarker, "knnSearch called but includeDenseVectorMappings=false, returning empty results")
       Future.successful(SearchResults(Nil, total = 0, extraCounts = None))
     } else {
-      val knn = Knn("embedding.cohereEmbedV4.image", filter = filterOpt)
-        .queryVector(queryEmbedding.map(_.toDouble))
-        .k(k)
-        .numCandidates(numCandidates)
+      val knn = knnSimilarClause(queryEmbedding, k, numCandidates)
 
       val searchRequest = ElasticDsl.search(imagesCurrentAlias(instance))
         .knn(knn)
@@ -244,10 +243,11 @@ class ElasticSearch(
   )(implicit instance: Instance): SearchRequest =
     ElasticDsl
       .search(imagesCurrentAlias(instance))
-      .knn(Knn("embedding.cohereEmbedV4.image", filter = filterOpt)
+      .knn(Knn(knnSearchFieldName, filter = filterOpt)
         .queryVector(queryEmbedding)
         .k(k)
         .numCandidates(numCandidates)
+        .similarity(config.aiSearchMinimumSimilarity)
       )
       .size(k)
 
@@ -391,10 +391,27 @@ class ElasticSearch(
     }
   }
 
-  def search(params: SearchParams)(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
+  private def knnSimilarClause(queryEmbedding: List[Float], k: Int, numCandidates: Int) = {
+    Knn(knnSearchFieldName)
+      .queryVector(queryEmbedding.map(_.toDouble))
+      .k(k)
+      .numCandidates(numCandidates)
+      .similarity(config.aiSimilarImagesMinimumSimilarity)
+  }
+
+  def search(params: SearchParams, maybeSimilarToVector: Option[Seq[Float]] = None)(implicit ex: ExecutionContext, instance: Instance, logMarker:MarkerMap = MarkerMap()): Future[SearchResults] = {
     val query: Query = queryBuilder.makeQuery(params.structuredQuery)
 
+
+    val similarTo: Option[Knn] = maybeSimilarToVector.map { s =>
+      knnSimilarClause(s.toList, 1000, 2000)
+    }
+
     val filterOpt: Option[Query] = queryBuilder.buildFilterOpt(params, searchFilters, syndicationFilter)
+
+    val withFilter = filterOpt.map { f =>
+      boolQuery() must query filter f
+    }.getOrElse(query)
 
     val sort = params.orderBy match {
       case Some("dateAddedToCollection") => sorts.dateAddedToCollectionDescending
@@ -426,7 +443,7 @@ class ElasticSearch(
         Seq.empty
       }
 
-    val searchRequest = prepareSearch(maybeWithFilter(query, filterOpt))
+    val searchRequest: SearchRequest = prepareSearch(withFilter, similarTo)
       .trackTotalHits(trackTotalHits)
       .runtimeMappings(runtimeMappings)
       .storedFields("_source") // this needs to be explicit when using script fields
@@ -434,11 +451,16 @@ class ElasticSearch(
       .aggregations(extraCountAggregations)
       .from(params.offset)
       .size(params.length)
-      .sortBy(sort)
 
-    executeAndLog(searchRequest, "image search").
+    val withKnn: SearchRequest = similarTo.map { _ =>
+      searchRequest
+    }.getOrElse {
+      searchRequest.sortBy(sort)
+    }
+
+    executeAndLog(withKnn, "image search").
       toMetric(Some(mediaApiMetrics.searchQueries), List(mediaApiMetrics.searchTypeDimension("results")))(_.result.took).map { r =>
-      logSearchQueryIfTimedOut(searchRequest, r.result)
+      logSearchQueryIfTimedOut(withKnn, r.result)
       val imageHits = r.result.hits.hits.map(resolveHit).toSeq.flatten.map(i => (i.instance.id, i))
       // setting trackTotalHits to false means we don't get any hit count at all.
       // Requester has explicitly opted into not caring about the total hits, so give them what they want (nothing).
@@ -491,7 +513,7 @@ class ElasticSearch(
 
     val query = boolQuery().must(matchAllQuery()).filter(boolQuery().must(beSupplier, haveNestedUsage))
 
-    val search = prepareSearch(query) size 0
+    val search = prepareSearch(query, None) size 0
 
     executeAndLog(search, s"$id usage search").map { r =>
       import r.result
@@ -533,7 +555,7 @@ class ElasticSearch(
   )(implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[AggregateSearchResults] = {
     logger.info(logMarker, "aggregate search: " + name + " / " + params + " / " + aggregation)
     val query = queryBuilder.makeQuery(params.structuredQuery)
-    val search = prepareSearch(query) aggregations aggregation size 0
+    val search = prepareSearch(query, None) aggregations aggregation size 0
 
     executeAndLog(search, s"$name aggregate search")
       .toMetric(Some(mediaApiMetrics.searchQueries), List(mediaApiMetrics.searchTypeDimension("aggregate")))(_.result.took).map { r =>
@@ -569,7 +591,7 @@ class ElasticSearch(
 
   def withSearchQueryTimeout(sr: SearchRequest): SearchRequest = sr timeout SearchQueryTimeout
 
-  private def prepareSearch(query: Query)(implicit instance: Instance): SearchRequest = {
+  private def prepareSearch(query: Query, maybeSimilarTo: Option[Knn])(implicit instance: Instance): SearchRequest = {
     val indexes = migrationStatus match {
       case completionPreview: CompletionPreview => List(completionPreview.migrationIndexName)
       case running: Running => List(imagesCurrentAlias(instance), running.migrationIndexName)
@@ -579,7 +601,13 @@ class ElasticSearch(
       case running: Running => filters.and(query, filters.mustNot(filters.term("esInfo.migration.migratedTo", running.migrationIndexName)))
       case _ => query
     }
-    val searchRequest = ElasticDsl.search(indexes) query migrationAwareQuery
+
+    val searchRequest = maybeSimilarTo.map { knn =>
+      ElasticDsl.search(indexes).knn(knn.filter(migrationAwareQuery))
+    }.getOrElse {
+      ElasticDsl.search(indexes) query migrationAwareQuery
+    }
+
     withSearchQueryTimeout(searchRequest)
   }
 

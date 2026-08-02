@@ -39,6 +39,10 @@ trait Fixtures {
     "s3.image.bucket.endpoint",
     "s3.thumb.bucket.name",
     "s3.thumb.bucket.endpoint",
+    "s3.embeddingSources.bucket.name",
+    "s3.embeddingSources.bucket.endpoint",
+    "s3.embeddings.bucket.name",
+    "s3.embeddings.bucket.endpoint",
     "grid.stage",
     "grid.appName",
     "instance.service.my",
@@ -95,7 +99,7 @@ trait Fixtures {
       syndicationRights = syndicationRights,
       leases = leases.getOrElse(LeasesByMedia.build(Nil)),
       usages = usages,
-      embedding = vector.map(v => Embedding(cohereEmbedV4 = Some(CohereV4Embedding(image = v)))),
+      embedding = vector.map(v => Embedding(geminiEmbedding2 = Some(GeminiEmbedding2(image = v)))),
     )
   }
 

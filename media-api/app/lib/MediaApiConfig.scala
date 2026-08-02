@@ -81,10 +81,14 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
 
   val restrictDownload: Boolean = boolean("restrictDownload")
 
-  val queueUrl: String = stringOpt("sqs.embedder.queue.url").getOrElse("")
+  val embedderQueueUrl: Option[String] = stringOpt("sqs.embedder.queue.url")
+
+  val gcpProjectId: Option[String] = stringOpt("gcp.project.id")
 
   val aiSearchResultLimit: Int = intOpt("ai.search.resultLimit").getOrElse(200)
   val aiSearchEmbeddingCacheMaxSize: Int = intOpt("ai.search.embeddingCache.maxSize").getOrElse(500)
+  val aiSearchMinimumSimilarity: Float = stringOpt("ai.search.minimumSimilarity").map(_.toFloat).getOrElse(0.40f)
+  val aiSimilarImagesMinimumSimilarity: Float = stringOpt("ai.similarImages.minimumSimilarity").map(_.toFloat).getOrElse(0.80f)
 
   val maybeAgencyPickQuery: Option[Query] = agencyPicksIngredients.map { ingredients =>
     filters.or(

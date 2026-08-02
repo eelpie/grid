@@ -82,4 +82,7 @@ class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElast
 
   val instanceUsageQueueName: String = string("instance.usage.queue.name")
 
+  val embeddingsQueueUrl: Option[String] = stringOpt("sqs.image.embedder.queue.url")
+
+  val gcpProjectId: Option[String] = stringOpt("gcp.project.id")
 }

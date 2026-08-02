@@ -3,8 +3,10 @@ package com.gu.mediaservice.lib.imaging
 import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VImage, Vips}
 import com.gu.mediaservice.lib.BrowserViewableImage
+import com.gu.mediaservice.lib.embeddings.EmbeddingSourceImageFormat
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
+import org.apache.commons.io.FileUtils
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
@@ -13,7 +15,6 @@ import org.scalatest.time.{Millis, Span}
 import java.io.File
 import java.lang.foreign.Arena
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 // This test is disabled for now as it doesn't run on our CI environment, because GraphicsMagick is not present...
 class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
@@ -100,6 +101,26 @@ class ImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
       val eventualThumbnail = new ImageOperations("").createThumbnailVips(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
+      }
+    }
+  }
+
+  describe("embeddings") {
+    it("should produce embedding sources from original images") {
+      implicit val arena: Arena = Arena.ofShared()
+      val fullSizedImage = fileAt("exif-orientated.jpg")
+      val imageOperations = new ImageOperations("")
+
+      val format = EmbeddingSourceImageFormat(
+        longestAxis = 2800, format = Jpeg, letterBox = true
+      )
+      val outputFile = new File("/Users/tony/Desktop/embedding-source.jpg")
+
+      val eventualEmbeddingSource = imageOperations.createEmbeddingSource(fullSizedImage, orientationMetadata = Some(OrientationMetadata(exifOrientation = Some(6))), embeddingSourceImageFormat = format, outputFile)
+
+      whenReady(eventualEmbeddingSource) { embeddingSource =>
+        arena.close()
+        outputFile.length > 100 should be(true)
       }
     }
   }

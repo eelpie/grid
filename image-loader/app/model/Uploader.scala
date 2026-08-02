@@ -28,12 +28,12 @@ import java.io.File
 import java.nio.file.Files
 import scala.concurrent.{ExecutionContext, Future}
 
-case class ImageUpload(uploadRequest: UploadRequest, image: Image)
+ case class ImageUpload(uploadRequest: UploadRequest, image: Image, embeddingSource: Option[S3Object])
 
 case object ImageUpload {
 
   def createImage(uploadRequest: UploadRequest, source: Asset, thumbnail: Asset, png: Option[Asset],
-                  fileMetadata: FileMetadata, metadata: ImageMetadata): Image = {
+                  fileMetadata: FileMetadata, metadata: ImageMetadata, embedding: Option[Embedding] = None): Image = {
     val usageRights = NoRights
     Image(
       uploadRequest.imageId,
@@ -54,8 +54,9 @@ case object ImageUpload {
       usageRights,
       List(),
       List(),
-      //      ImageEmbedding will be written by lambda later
-      embedding = None
+      // For a fresh upload there is no embedding yet - it is written later once computed.
+      // For a projected (re-indexed) image, an embedding fetched from a prior run may be supplied.
+      embedding = embedding
     )
   }
 }
@@ -66,6 +67,8 @@ case class ImageUploadOpsCfg(
   thumbQuality: Double,
   originalFileBucket: S3Bucket,
   thumbBucket: S3Bucket,
+  embedSourceBucket: S3Bucket,
+  embeddingsBucket: S3Bucket
 )
 
 case class ImageUploadOpsDependencies(
@@ -74,8 +77,12 @@ case class ImageUploadOpsDependencies(
   storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object],
   storeOrProjectThumbFile: StorableThumbImage => Future[S3Object],
   storeOrProjectOptimisedImage: StorableOptimisedImage => Future[S3Object],
+  createEmbeddingsSource: (BrowserViewableImage, Option[OrientationMetadata], File) => Future[Option[StorableEmbeddingSourceImage]],
+  storeEmbeddingSource: Option[StorableEmbeddingSourceImage] => Future[Option[S3Object]],
   tryFetchThumbFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
   tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
+  tryFetchEmbedding: (String, Instance) => Future[Option[Embedding]] = (_, _) => Future.successful(None),
+  maybeEmbedder: Option[Embedder],
 )
 
 
@@ -92,11 +99,13 @@ object Uploader extends GridLogging {
       config.thumbQuality,
       config.imageBucket,
       config.thumbnailBucket,
+      config.embeddingSourceBucket,
+      config.embeddingsBucket
     )
   }
 
   def fromUploadRequestShared(uploadRequest: UploadRequest, deps: ImageUploadOpsDependencies, processor: ImageProcessor, optimiseOps: OptimiseOps)
-                             (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
+                             (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(Image, Option[S3Object])] = {
 
     import deps._
 
@@ -111,6 +120,7 @@ object Uploader extends GridLogging {
         storeOrProjectOriginalFile,
         storeOrProjectThumbFile,
         storeOrProjectOptimisedImage,
+        storeEmbeddingSource,
         uploadRequest,
         deps,
         processor,
@@ -121,11 +131,12 @@ object Uploader extends GridLogging {
   private[model] def uploadAndStoreImage(storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object],
                                          storeOrProjectThumbFile: StorableThumbImage => Future[S3Object],
                                          storeOrProjectOptimisedFile: StorableOptimisedImage => Future[S3Object],
+                                         storeEmbeddingSource: Option[StorableEmbeddingSourceImage] => Future[Option[S3Object]],
                                          uploadRequest: UploadRequest,
                                          deps: ImageUploadOpsDependencies,
                                          processor: ImageProcessor,
                                          optimiseOps: OptimiseOps)
-                  (implicit ec: ExecutionContext, logMarker: LogMarker) = {
+                  (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(Image, Option[S3Object])] = {
     val originalMimeType = uploadRequest.mimeType
       .orElse(MimeTypeDetection.guessMimeType(uploadRequest.tempFile).toOption)
     match {
@@ -174,6 +185,10 @@ object Uploader extends GridLogging {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
       }
+      embeddingSource <- deps.createEmbeddingsSource(browserViewableImage, sourceOrientationMetadata, tempDirForRequest)
+      storedEmbeddingSource <- storeEmbeddingSource(embeddingSource)
+      previouslyComputedEmbedding <- deps.tryFetchEmbedding(uploadRequest.imageId, uploadRequest.instance)
+
     } yield {
       val fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
       val metadata = ImageMetadataConverter.fromFileMetadata(fullFileMetadata, s3Source.metadata.objectMetadata.lastModified)
@@ -188,16 +203,19 @@ object Uploader extends GridLogging {
         thumbAsset,
         pngAsset,
         fullFileMetadata,
-        metadata
+        metadata,
+        previouslyComputedEmbedding
       )
       val processedImage = processor(baseImage)
 
       logger.info(addLogMarkers(fileMetadata.toLogMarker), s"Ending image ops")
       // FIXME: dirty hack to sync the originalUsageRights and originalMetadata as well
-      processedImage.copy(
+      val image = processedImage.copy(
         originalMetadata = processedImage.metadata,
         originalUsageRights = processedImage.usageRights
       )
+
+      (image, storedEmbeddingSource)
     }
     eventualImage.onComplete{ _ =>
       tempDirForRequest.listFiles().map(f => f.delete())
@@ -358,8 +376,7 @@ class Uploader(
 
   private def fromUploadRequest(uploadRequest: UploadRequest)
                                (implicit logMarker: LogMarker, instance: Instance): Future[ImageUpload] = {
-    val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps,
-      storeSource, storeThumbnail, storeOptimisedImage)
+    val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps, storeSource, storeThumbnail, storeOptimisedImage, createEmbeddingsSource = createEmbeddingsSource, storeEmbeddingSource, maybeEmbedder = maybeEmbedder)
     Stopwatch.async("finalImage") {
       val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor, optimiseOps)
       uploadRequest.identifiers.foreach{
@@ -370,7 +387,7 @@ class Uploader(
         case (ImageStorageProps.replacesMediaIdIdentifierKey, mediaIdToAddUsageTo) =>
           addChildUsageToParentImage(uploadRequest, isReplacement = true)(mediaIdToAddUsageTo)
       }
-      finalImage.map(img => ImageUpload(uploadRequest, img))
+      finalImage.map(img => ImageUpload(uploadRequest, img._1, img._2))
     }
   }
 
@@ -391,6 +408,32 @@ class Uploader(
 
   private def storeOptimisedImage(storableOptimisedImage: StorableOptimisedImage)
                                  (implicit logMarker: LogMarker) = store.store(storableOptimisedImage)
+
+  private def createEmbeddingsSource(browserViewableImage: BrowserViewableImage,
+                                     orientationMetadata: Option[OrientationMetadata],
+                                     tempDir: File): Future[Option[StorableEmbeddingSourceImage]] = {
+    maybeEmbedder.map { embedder =>
+      createTempFile("embeddingsource-", embedder.embeddingSourceImageFormat().format.fileExtension, tempDir).flatMap { tempFile =>
+        val eventualEmbeddingSource = imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata, embedder.embeddingSourceImageFormat(), tempFile)
+        eventualEmbeddingSource.map { embeddingSource =>
+          Some(browserViewableImage.copy(
+            file = embeddingSource,
+            mimeType = embedder.embeddingSourceImageFormat().format
+          ).asStorableEmbeddingSourceImage)
+        }
+      }
+    }.getOrElse {
+      logger.info("Skipping createEmbeddingsSource because no embedder is configured")
+      Future.successful(None)
+    }
+  }
+
+  private def storeEmbeddingSource(storableEmbeddingSourceImage: Option[StorableEmbeddingSourceImage])(implicit logMarker: LogMarker): Future[Option[S3Object]] = {
+    storableEmbeddingSourceImage.map { storableEmbeddingSourceImage =>
+        store.store(storableEmbeddingSourceImage).map(Some(_))
+      }
+      .getOrElse(Future.successful(None))
+  }
 
   def loadFile(digestedFile: DigestedFile,
                uploadedBy: String,
@@ -436,30 +479,25 @@ class Uploader(
     for {
       imageUpload <- fromUploadRequest(uploadRequest)
       updateMessage = UpdateMessage(subject = Image, image = Some(imageUpload.image), instance = uploadRequest.instance)
-      _ <- Future { notifications.publish(updateMessage) }
-      // Send the optimised PNG to the embedder if there is one (e.g. for TIFFs),
-      // otherwise send the original image.
-      assetForEmbedder = imageUpload.image.optimisedPng match {
-        case Some(optimisedPngAsset) =>
-          logger.info(logMarker, s"Queueing optimised PNG instead of original for embedding")
-          optimisedPngAsset
-        case _ =>
-          imageUpload.image.source
+      _ <- Future {
+        notifications.publish(updateMessage)
       }
-      uriForEmbedder = assetForEmbedder.file
-      s3BucketForEmbedder = uriForEmbedder.getHost.split('.').head
-      s3KeyForEmbedder = uriForEmbedder.getPath.stripPrefix("/")
-      mimeTypeForEmbedder = assetForEmbedder.mimeType.getOrElse(
-        throw new Exception("Image for embedding has no mime type")
-      ).name
-      _ = queueImageToEmbed(EmbedderMessage(
-        uploadRequest.imageId,
-        mimeTypeForEmbedder,
-        s3BucketForEmbedder,
-        s3KeyForEmbedder,
-        instance.id
-      ))
-      // TODO: centralise where all these URLs are constructed
+      // Send the embed source to the embedder
+      _ = imageUpload.embeddingSource.foreach { embeddingSource =>
+
+        val imageMetadata = imageUpload.image.metadata
+        val imageMetadataJson = Json.prettyPrint(Json.toJson(imageMetadata))
+        logger.info("Putting imageMetadata onto EmbedderMessage: " + imageMetadataJson.length)
+
+        queueImageToEmbed(EmbedderMessage(
+          uploadRequest.imageId,
+          config.embeddingSourceBucket.bucket,
+          config.embeddingSourceBucket.keyFromS3URL(embeddingSource.uri),
+          instance.id,
+          Some(imageMetadata)  // TODO SQS size limit and billing optimization
+        ))
+      }
+
     } yield {
       /*
       config.maybeLowerEnvironmentQueueBucketToSampleInto.foreach { lowerEnvironmentQueueBucket =>
