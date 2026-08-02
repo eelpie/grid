@@ -15,36 +15,36 @@ class CropsTest extends AnyFunSpec with Matchers with MockitoSugar {
   private implicit val instance: Instance = Instance(id = "an-instance")
 
   it("should return JPEG when the input type is a JPEG") {
-    Crops.cropType(Jpeg, "True Color", hasAlpha = false) shouldBe Jpeg
-    Crops.cropType(Jpeg, "Monkey", hasAlpha = false) shouldBe Jpeg
+    Crops.cropType(Jpeg, isGraphic = false, hasAlpha = false) shouldBe Jpeg
+    Crops.cropType(Jpeg, isGraphic = true, hasAlpha = false) shouldBe Jpeg
   }
 
   it("should return PNG when the input type is PNG and it has alpha") {
-    Crops.cropType(Png, "Monkey", hasAlpha = true) shouldBe Png
+    Crops.cropType(Png, isGraphic = true, hasAlpha = true) shouldBe Png
   }
 
   it("should return PNG when the input type is PNG and it has alpha even if it is True Color") {
-    Crops.cropType(Png, "True Color", hasAlpha = true) shouldBe Png
+    Crops.cropType(Png, isGraphic = false, hasAlpha = true) shouldBe Png
   }
 
   it("should return PNG when the input type is PNG and it is NOT true color (a graphic)") {
-    Crops.cropType(Png, "Monkey", hasAlpha = false) shouldBe Png
+    Crops.cropType(Png, isGraphic = true, hasAlpha = false) shouldBe Png
   }
 
   it("should return JPEG when the input type is PNG and it is true color") {
-    Crops.cropType(Png, "True Color", hasAlpha = false) shouldBe Jpeg
+    Crops.cropType(Png, isGraphic = false, hasAlpha = false) shouldBe Jpeg
   }
 
   it("should return PNG when the input type is TIFF and it has alpha") {
-    Crops.cropType(Tiff, "Monkey", hasAlpha = true) shouldBe Png
+    Crops.cropType(Tiff, isGraphic = false, hasAlpha = true) shouldBe Png
   }
 
   it("should return PNG when the input type is TIFF and it doesn't have alpha or is true color") {
-    Crops.cropType(Tiff, "Monkey", hasAlpha = false) shouldBe Png
+    Crops.cropType(Tiff, isGraphic = true, hasAlpha = false) shouldBe Png
   }
 
   it("should return JPEG when the input type is TIFF and it doesn't have alpha and it is true color") {
-    Crops.cropType(Tiff, "TrueColor", hasAlpha = false) shouldBe Jpeg
+    Crops.cropType(Tiff, isGraphic = false, hasAlpha = false) shouldBe Jpeg
   }
 
   private val config = {
@@ -65,22 +65,22 @@ class CropsTest extends AnyFunSpec with Matchers with MockitoSugar {
 
   it("should should construct a correct address for a master jpg") {
     val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
-      .outputFilename(source, bounds, outputWidth, Jpeg, isMaster = true)
+      .outputFilename(source.id, bounds, outputWidth, Jpeg, isMaster = true)
     outputFilename shouldBe "an-instance/test/10_20_30_40/master/1234.jpg"
   }
   it("should should construct a correct address for a non-master jpg") {
     val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
-      .outputFilename(source, bounds, outputWidth, Jpeg)
+      .outputFilename(source.id, bounds, outputWidth, Jpeg)
     outputFilename shouldBe "an-instance/test/10_20_30_40/1234.jpg"
   }
   it("should should construct a correct address for a non-master tiff") {
     val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
-      .outputFilename(source, bounds, outputWidth, Tiff)
+      .outputFilename(source.id, bounds, outputWidth, Tiff)
     outputFilename shouldBe "an-instance/test/10_20_30_40/1234.tiff"
   }
   it("should should construct a correct address for a non-master png") {
     val outputFilename = new Crops(config, store, imageOperations, imageBucket, s3)
-      .outputFilename(source, bounds, outputWidth, Png)
+      .outputFilename(source.id, bounds, outputWidth, Png)
     outputFilename shouldBe "an-instance/test/10_20_30_40/1234.png"
   }
 }
