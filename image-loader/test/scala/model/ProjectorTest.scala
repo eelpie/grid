@@ -6,8 +6,8 @@ import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.leases.LeasesByMedia
 import com.gu.mediaservice.model._
+import com.gu.mediaservice.model.leases.LeasesByMedia
 import lib.DigestedFile
 import model.upload.OptimiseWithPngQuant
 import org.joda.time.{DateTime, DateTimeZone}
