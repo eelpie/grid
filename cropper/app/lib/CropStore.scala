@@ -49,9 +49,11 @@ class CropStore(config: CropperConfig) extends S3ImageStorage(config) with CropS
             date           = userMetadata.get("date").flatMap(parseDateTime)
             dimensions     = Dimensions(width, height)
 
+            key = config.imgPublishingBucket.keyFromS3URL(s3Object.uri)
+
             sizing         =
               Asset(
-                signedCropAssetUrl(s3Object.uri),
+                signedCropAssetUrl(key),
                 Some(s3Object.size),
                 objectMetadata.contentType,
                 Some(dimensions),
@@ -78,12 +80,12 @@ class CropStore(config: CropperConfig) extends S3ImageStorage(config) with CropS
   def translateImgHost(uri: URI): URI =
     new URI("https", config.imgPublishingHost, uri.getPath, uri.getFragment)
 
-  private def folderForImagesCrops(id: Bucket, instance: Instance) = {
+  private def folderForImagesCrops(id: String, instance: Instance) = {
     instance.id + "/" + id
   }
 
-  private def signedCropAssetUrl(uri: URI): URI = {
-    signUrlTony(config.imgPublishingBucket, uri).toURI
+  private def signedCropAssetUrl(key: String): URI = {
+    signUrlTony(config.imgPublishingBucket, key).toURI
   }
 
 }

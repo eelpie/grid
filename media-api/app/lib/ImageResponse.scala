@@ -12,12 +12,10 @@ import lib.ImageResponse.extractAliasFieldValues
 import lib.elasticsearch.SourceWrapper
 import lib.usagerights.CostCalculator
 import org.apache.commons.codec.binary.Base64
-import org.joda.time.DateTime
-import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.utils.UriEncoding
 
-import java.net.{URI, URLEncoder}
+import java.net.URI
 import scala.annotation.tailrec
 import scala.util.{Failure, Try}
 
@@ -79,11 +77,12 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3, usageQuota: UsageQuota
 
     val fileUri = image.source.file
 
-    val imageUrl = s3Client.signUrl(config.imageBucket, fileUri, image, imageType = Source)
+    val key = config.imageBucket.keyFromS3URL(fileUri)
+    val imageUrl = s3Client.signUrl(config.imageBucket, key, image, imageType = Source)
     val pngUrl: Option[String] = pngFileUri
-      .map(s3Client.signUrl(config.imageBucket, _, image, imageType = OptimisedPng))
+      .map(uri => s3Client.signUrl(config.imageBucket, config.imageBucket.keyFromS3URL(uri), image, imageType = OptimisedPng))
 
-    def s3SignedThumbUrl = s3Client.signUrl(config.thumbBucket, fileUri, image, imageType = Thumbnail)
+    def s3SignedThumbUrl = s3Client.signUrl(config.thumbnailBucket, key, image, imageType = Thumbnail)
 
     val thumbUrl = config.cloudFrontDomainThumbBucket
       .map(domain => s"https://$domain${fileUri.getPath}")
