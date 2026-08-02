@@ -24,7 +24,10 @@ RUN apt -y --no-install-suggests install \
     libimagequant-dev \
     libheif-dev \
     libheif-plugin-libde265 \
-    libheif-plugin-x265
+    libheif-plugin-x265 \
+    libheif-plugins-all \
+    libheif-plugin-libde265 \
+    libheif-plugin-aomdec
 
 WORKDIR /tmp
 RUN wget https://github.com/libvips/libvips/releases/download/v8.18.4/vips-8.18.4.tar.xz
