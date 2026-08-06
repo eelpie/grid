@@ -1,22 +1,22 @@
 package com.gu.mediaservice.lib.aws
 
+import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.s3.model.{Region => _, _}
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder, model}
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.util.IOUtils
-import com.amazonaws.{AmazonServiceException, ClientConfiguration}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
-import org.joda.time.{DateTime, Duration}
+import org.joda.time.DateTime
 import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.{GetObjectResponse, GetObjectRequest => GetObjectRequestV2}
 
 import java.io.File
-import java.net.URI
-import scala.jdk.CollectionConverters._
+import java.net.{URI, URL}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 case class S3Object(uri: URI, size: Long, metadata: S3Metadata)
 
@@ -83,7 +83,15 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     val request = new GeneratePresignedUrlRequest(bucket, key).withExpiration(expiration.toDate).withResponseHeaders(headers)
     client.generatePresignedUrl(request).toExternalForm
   }
-  
+
+  def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration()): URL = {
+    // get path and remove leading `/`
+    val key: Key = url.getPath.drop(1)
+
+    val request = new GeneratePresignedUrlRequest(bucket, key).withExpiration(expiration.toDate)
+    client.generatePresignedUrl(request)
+  }
+
   def getObjectV2(bucket: Bucket, url: URI): ResponseInputStream[GetObjectResponse]= {
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)

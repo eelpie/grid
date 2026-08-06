@@ -1,12 +1,14 @@
 package com.gu.mediaservice.lib.elasticsearch
 
+import com.gu.mediaservice.lib.instances.InstancesClient
+import com.gu.mediaservice.model.Instance
 import org.apache.pekko.actor.Scheduler
-import com.sksamuel.elastic4s.Index
 
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.{Duration, DurationInt, SECONDS}
 
 sealed trait MigrationStatus
 
@@ -36,12 +38,24 @@ object MigrationStatusProvider {
 trait MigrationStatusProvider {
   self: ElasticSearchClient =>
 
+  def elasticSearchConfig: ElasticSearchConfig
+
+  def imagesCurrentAlias(instance: Instance): String = instance.id + "_" + elasticSearchConfig.aliases.current
+  def imagesMigrationAlias(instance: Instance): String = instance.id + "_" + elasticSearchConfig.aliases.migration
+  def imagesHistoricalAlias(instance: Instance): String = instance.id + "_" + "Images_Historical"
+
   def scheduler: Scheduler
 
-  private val migrationStatusRef = new AtomicReference[MigrationStatus](fetchMigrationStatus(bubbleErrors = true))
+  def instancesClient: InstancesClient
 
-  private def fetchMigrationStatus(bubbleErrors: Boolean): MigrationStatus = {
-    val statusFuture = getIndexForAlias(imagesMigrationAlias)
+  private val migrationStatues: ConcurrentHashMap[String, AtomicReference[MigrationStatus]] = new ConcurrentHashMap()
+
+  private def migrationStatusRef(instance: Instance): AtomicReference[MigrationStatus] = {
+    migrationStatues.getOrDefault(instance.id, new AtomicReference(fetchMigrationStatus(bubbleErrors = true, instance = instance)))
+  }
+
+  private def fetchMigrationStatus(bubbleErrors: Boolean, instance: Instance): MigrationStatus = {
+    val statusFuture = getIndexForAlias(imagesMigrationAlias(instance))
       .map {
         case Some(index) if index.aliases.contains(MigrationStatusProvider.COMPLETION_PREVIEW_ALIAS) => CompletionPreview(index.name)
         case Some(index) if index.aliases.contains(MigrationStatusProvider.PAUSED_ALIAS) => Paused(index.name)
@@ -54,30 +68,32 @@ trait MigrationStatusProvider {
     } catch {
       case e if !bubbleErrors =>
         logger.error("Failed to get name of index for ongoing migration", e)
-        StatusRefreshError(cause = e, preErrorStatus = migrationStatusRef.get())
+        StatusRefreshError(cause = e, preErrorStatus = migrationStatusRef(instance).get)
     }
   }
 
-  private def refreshMigrationStatus(): Unit = {
-    migrationStatusRef.set(
-      fetchMigrationStatus(bubbleErrors = false)
-    )
+  private def refreshMigrationStatus(instance: Instance): Unit = {
+    migrationStatues.put(instance.id, new AtomicReference(fetchMigrationStatus(bubbleErrors = false, instance = instance)))
   }
 
   private val migrationStatusRefresher = scheduler.scheduleAtFixedRate(
     initialDelay = 0.seconds,
     interval = 5.seconds
-  ) { () => refreshMigrationStatus() }
-
-  def migrationStatus: MigrationStatus = migrationStatusRef.get()
-  def migrationIsInProgress: Boolean = migrationStatus.isInstanceOf[InProgress]
-  def refreshAndRetrieveMigrationStatus(): MigrationStatus = {
-    refreshMigrationStatus()
-    migrationStatus
+  ) { () => {
+    val instances = Await.result(instancesClient.getInstances(), Duration(10, SECONDS))
+    instances.foreach(refreshMigrationStatus)
+  }
   }
 
-  def migrationStatusRefresherHealth: Option[String] = {
-    migrationStatusRef.get() match {
+  def migrationStatus(implicit instance: Instance): MigrationStatus = migrationStatusRef(instance).get()
+  def migrationIsInProgress(implicit instance: Instance): Boolean = migrationStatus.isInstanceOf[InProgress]
+  def refreshAndRetrieveMigrationStatus(instance: Instance): MigrationStatus = {
+    refreshMigrationStatus(instance)
+    migrationStatus(instance)
+  }
+
+  def migrationStatusRefresherHealth(implicit instance: Instance): Option[String] = {
+    migrationStatusRef(instance).get match {
       case StatusRefreshError(_, _) => Some("Could not determine status of migration")
       case _ => None
     }

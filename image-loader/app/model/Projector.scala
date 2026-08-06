@@ -9,10 +9,11 @@ import com.gu.mediaservice.lib.ImageIngestOperations.{fileKeyFromId, optimisedPn
 import com.gu.mediaservice.lib.{ImageIngestOperations, ImageStorageProps, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, S3Ops}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
-import com.gu.mediaservice.model.{Image, MimeType, UploadInfo}
+import com.gu.mediaservice.model.{Image, Instance, MimeType, UploadInfo}
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3}
 import lib.{DigestedFile, ImageLoaderConfig}
 import model.upload.UploadRequest
@@ -20,6 +21,7 @@ import org.apache.commons.io.IOUtils
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.ws.WSRequest
 import software.amazon.awssdk.services.s3vectors.model.PutVectorsResponse
+import play.api.mvc.RequestHeader
 
 import java.nio.file.Path
 import scala.jdk.CollectionConverters._
@@ -38,7 +40,8 @@ case class S3FileExtractedMetadata(
   uploadedBy: String,
   uploadTime: DateTime,
   uploadFileName: Option[String],
-  identifiers: Map[String, String]
+  identifiers: Map[String, String],
+  isFeedUpload: Option[Boolean],
 )
 
 object S3FileExtractedMetadata {
@@ -68,6 +71,7 @@ object S3FileExtractedMetadata {
     }.map{ case (key, value) =>
       key.stripPrefix(ImageStorageProps.identifierMetadataKeyPrefix) -> value
     }
+    val isFeedUpload = fileUserMetadata.get(ImageStorageProps.isFeedUploadMetadataKey).map(_.toBoolean)
 
     val uploadFileName = fileUserMetadata.get(ImageStorageProps.filenameMetadataKey)
 
@@ -76,6 +80,7 @@ object S3FileExtractedMetadata {
       uploadTime = uploadTime,
       uploadFileName = uploadFileName,
       identifiers = identifiers,
+      isFeedUpload = isFeedUpload,
     )
   }
 }
@@ -85,12 +90,12 @@ class Projector(config: ImageUploadOpsCfg,
                 imageOps: ImageOperations,
                 processor: ImageProcessor,
                 auth: Authentication,
-                maybeEmbedder: Option[Embedder]) extends GridLogging {
+                maybeEmbedder: Option[Embedder]) extends GridLogging with InstanceForRequest {
 
   private val imageUploadProjectionOps = new ImageUploadProjectionOps(config, imageOps, processor, s3, maybeEmbedder)
 
   def projectS3ImageById(imageId: String, tempFile: File, gridClient: GridClient, onBehalfOfFn: WSRequest => WSRequest)
-                        (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[Image]] = {
+                        (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Option[Image]] = {
     Future {
       import ImageIngestOperations.fileKeyFromId
       val s3Key = fileKeyFromId(imageId)
@@ -130,11 +135,11 @@ class Projector(config: ImageUploadOpsCfg,
                    extractedS3Meta: S3FileExtractedMetadata,
                    gridClient: GridClient,
                    onBehalfOfFn: WSRequest => WSRequest)
-                  (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
+                  (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Image] = {
     val DigestedFile(tempFile_, id_) = srcFileDigest
 
     val identifiers_ = extractedS3Meta.identifiers
-    val uploadInfo_ = UploadInfo(filename = extractedS3Meta.uploadFileName)
+    val uploadInfo_ = UploadInfo(filename = extractedS3Meta.uploadFileName, isFeedUpload = extractedS3Meta.isFeedUpload)
 
     MimeTypeDetection.guessMimeType(tempFile_) match {
       case util.Left(unsupported) => Future.failed(unsupported)
@@ -146,7 +151,8 @@ class Projector(config: ImageUploadOpsCfg,
           uploadTime = extractedS3Meta.uploadTime,
           uploadedBy = extractedS3Meta.uploadedBy,
           identifiers = identifiers_,
-          uploadInfo = uploadInfo_
+          uploadInfo = uploadInfo_,
+          instance = instance, // TODO careful with this one!
         )
 
         imageUploadProjectionOps.projectImageFromUploadRequest(uploadRequest) flatMap (
@@ -168,7 +174,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
 
   def projectImageFromUploadRequest(uploadRequest: UploadRequest)
                                    (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
-    val dependenciesWithProjectionsOnly = ImageUploadOpsDependencies(
+    val dependenciesWithProjectionsOnly: ImageUploadOpsDependencies = ImageUploadOpsDependencies(
       config,
       imageOps,
       projectOriginalFileAsS3Model,
@@ -191,17 +197,15 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
     Future.successful(storableOptimisedImage.toProjectedS3Object(config.originalFileBucket))
 
   private def fetchThumbFile(
-    imageId: String, outFile: File
-  )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
-    val key = fileKeyFromId(imageId)
-
+    imageId: String, outFile: File, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
+    val key = fileKeyFromId(imageId)(instance)
     fetchFile(config.thumbBucket, key, outFile)
   }
 
   private def fetchOptimisedFile(
-    imageId: String, outFile: File
+    imageId: String, outFile: File, instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
-    val key = optimisedPngKeyFromId(imageId)
+    val key = optimisedPngKeyFromId(imageId)(instance)
 
     fetchFile(config.originalFileBucket, key, outFile)
   }
