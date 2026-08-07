@@ -176,9 +176,13 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
           QueryRequestV2.builder()
             .tableName(tableName)
             .indexName(indexName)
-            .keyConditionExpression(s"$keyName = :key")
+            .keyConditionExpression(s"instance = :instance AND $keyName = :key")
             .expressionAttributeValues(
               Map(
+                ":instance" ->
+                  AttributeValueV2.builder()
+                  .s(instance.id)
+                  .build(),
                 ":key" ->
                   AttributeValueV2.builder()
                     .s(key)
