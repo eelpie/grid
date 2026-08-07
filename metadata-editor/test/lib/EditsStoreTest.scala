@@ -1,6 +1,6 @@
 package lib
 
-import com.gu.mediaservice.model.{Edits, ImageMetadata}
+import com.gu.mediaservice.model.{Edits, ImageMetadata, Instance}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
@@ -21,6 +21,7 @@ import scala.jdk.CollectionConverters._
 class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with BeforeAndAfterAll {
 
   implicit val defaultPatience: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds), interval = Span(100, Millis))
+  implicit val instance: Instance = Instance(id = "an-instance")
 
   private val dynamoContainer = new LocalStackContainer(DockerImageName.parse("localstack/localstack:1.4.0")).withServices(DYNAMODB)
   dynamoContainer.start()
