@@ -12,7 +12,6 @@ import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Random
-import scala.collection.immutable.Map
 
 class SyndicationTest extends AnyFunSpec with Matchers with Syndication with MockitoSugar with ScalaFutures {
   private implicit val ec: ExecutionContext = ExecutionContext.parasitic
@@ -33,16 +32,16 @@ class SyndicationTest extends AnyFunSpec with Matchers with Syndication with Moc
     private var persisted = false
     var published: List[Map[String, Option[SyndicationRights]]] = Nil
 
-    when(syndicationStore.jsonAdd(any[String], any[String], any[Map[String, JsValue]])(any[ExecutionContext]))
+    when(syndicationStore.jsonAdd(any[String], any[String], any[Map[String, JsValue]])(any[ExecutionContext], any[Instance]))
       .thenAnswer(_ => write.future.map { obj => persisted = true; obj })
-    when(syndicationStore.deleteItem(any[String])(any[ExecutionContext]))
+    when(syndicationStore.deleteItem(any[String])(any[ExecutionContext], any[Instance]))
       .thenAnswer(_ => deletion.future.map { _ => persisted = true })
 
-    override def getPhotoshootForImage(id: String)(implicit ec: ExecutionContext): Future[Option[Photoshoot]] =
+    override def getPhotoshootForImage(id: String)(implicit ec: ExecutionContext, instance: Instance): Future[Option[Photoshoot]] =
       Future.successful(photoshoot)
 
     override def getAllImageRightsInPhotoshoot(photoshootMaybe: Option[Photoshoot])
-                                              (implicit ec: ExecutionContext): Future[Map[String, SyndicationRights]] =
+                                              (implicit ec: ExecutionContext, instance: Instance): Future[Map[String, SyndicationRights]] =
       Future.successful(if (photoshootMaybe.isEmpty) Map.empty else if (persisted) rightsAfter else rightsBefore)
 
     override def publish(images: Map[String, Option[SyndicationRights]], subject: String)
