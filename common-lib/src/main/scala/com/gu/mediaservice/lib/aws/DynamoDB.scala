@@ -9,7 +9,7 @@ import software.amazon.awssdk.enhanced.dynamodb._
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
 import software.amazon.awssdk.enhanced.dynamodb.model.{BatchGetItemEnhancedRequest, ReadBatch}
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.{UpdateItemRequest, AttributeValue => AttributeValueV2, QueryRequest => QueryRequestV2, ReturnValue => ReturnValueV2}
+import software.amazon.awssdk.services.dynamodb.model.{UpdateItemRequest, AttributeValue => AttributeValueV2,  KeysAndAttributes => KeysAndAttributesV2, QueryRequest => QueryRequestV2, ReturnValue => ReturnValueV2}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
@@ -96,7 +96,15 @@ class DynamoDB[T](client: DynamoDbClient, tableName: String, lastModifiedKey: Op
 
   def batchGet(ids: List[String], attributeKey: String)(implicit ex: ExecutionContext, rjs: Reads[T], instance: Instance): Future[Map[String, T]] = {
     val chunks =
-      ids.grouped(100).toList.zipWithIndex
+      ids.map(k => (
+          AttributeValueV2.builder()
+            .s(instance.id)
+            .build(),
+          AttributeValueV2.builder()
+            .s(k)
+            .build()
+        ))
+        .grouped(100).toList.zipWithIndex
 
     Future
       .traverse(chunks) { case (chunk, idx) =>
@@ -110,7 +118,8 @@ class DynamoDB[T](client: DynamoDbClient, tableName: String, lastModifiedKey: Op
           chunk.foreach { id =>
             readBatchBuilder.addGetItem(
               Key.builder()
-                .partitionValue(id)
+                .partitionValue(id._1)
+                .sortValue(id._2)
                 .build()
             )
           }
