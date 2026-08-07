@@ -34,6 +34,7 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
   lazy val table2 = dynamo2.table(tableName, tableSchema)
 
   private val IdKey = "id"
+  private val InstanceKey = "instance"
 
   private def itemKey(key: String)(implicit instance: Instance) =
     Key.builder()
@@ -239,10 +240,10 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
 
   // FIXME: surely there must be a better way to convert?
   def asJsObject(item: Item): JsObject =
-    jsonWithNullAsEmptyString(Json.parse(item.toJSON)).as[JsObject] - IdKey
+    jsonWithNullAsEmptyString(Json.parse(item.toJSON)).as[JsObject] - IdKey - InstanceKey
 
   def asJsObject(doc: EnhancedDocument): JsObject =
-    jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject] - IdKey
+    jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject] - IdKey - InstanceKey
 
   def asJsObject(outcome: UpdateItemOutcome): JsObject =
     Option(outcome.getItem) map asJsObject getOrElse Json.obj()
