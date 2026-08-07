@@ -4,6 +4,7 @@ import com.amazonaws.services.dynamodbv2.document._
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap
 import com.gu.mediaservice.lib.aws.DynamoDB.{deleteExpr, jsonWithNullAsEmptyString, setExpr}
 import com.gu.mediaservice.lib.logging.GridLogging
+import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
 import play.api.libs.json._
 import software.amazon.awssdk.enhanced.dynamodb._
@@ -36,11 +37,11 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
 
   private def itemKey(key: String) = Key.builder().partitionValue(key).build()
 
-  def getV2(id: String)(implicit ex: ExecutionContext): Future[JsObject] = Future {
+  def getV2(id: String)(implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     table2.getItem(itemKey(id))
   } flatMap docOrNotFound map asJsObject
 
-  private def getV2(id: String, attribute: String)(implicit ex: ExecutionContext): Future[EnhancedDocument] = Future {
+  private def getV2(id: String, attribute: String)(implicit ex: ExecutionContext, instance: Instance): Future[EnhancedDocument] = Future {
     Option(table2.getItem(itemKey(id))).flatMap(doc => Option.when(doc.isPresent(attribute))(doc))
   } flatMap {
     case Some(doc) => Future.successful(doc)
@@ -54,22 +55,22 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
     }
   }
 
-  def removeKeyV2(id: String, key: String)(implicit ex: ExecutionContext) = Future{
+  def removeKeyV2(id: String, key: String)(implicit ex: ExecutionContext, instance: Instance) = Future{
     updateV2(id, DynamoDB.removeExpr(key, lastModifiedKey))
   }
 
-  def deleteItemV2(id: String)(implicit ex: ExecutionContext): Future[Unit] = Future {
+  def deleteItemV2(id: String)(implicit ex: ExecutionContext, instance: Instance): Future[Unit] = Future {
     table2.deleteItem(
       Key.builder().partitionValue(id).build()
     )
   }
   def booleanGetV2(id: String, key: String)
-    (implicit ex: ExecutionContext): Future[Boolean] = {
+    (implicit ex: ExecutionContext, instance: Instance): Future[Boolean] = {
       getV2(id, key).map(_.getBoolean(key).booleanValue())
   }
 
   def booleanSetV2(id: String, key: String, value: Boolean)
-                (implicit ex: ExecutionContext): Future[JsObject] = Future {
+                (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(
       id,
       DynamoDB.setExpr(key, lastModifiedKey),
@@ -78,24 +79,24 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
   }
 
   def booleanSetOrRemoveV2(id: String, key: String, value: Boolean)
-                        (implicit ex: ExecutionContext): Future[JsObject] =
+                        (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] =
     if (value) booleanSetV2(id, key, value)
     else removeKeyV2(id, key)
 
-  def stringSetV2(id: String, key: String, value: String)(implicit ex: ExecutionContext): Future[JsObject] = Future {
+  def stringSetV2(id: String, key: String, value: String)(implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(id,  DynamoDB.setExpr(key, lastModifiedKey), AttributeValueV2.fromS(value))
   }
 
   def setGetV2(id: String, key: String)
-    (implicit ex: ExecutionContext): Future[Set[String]] = {
+    (implicit ex: ExecutionContext, instance: Instance): Future[Set[String]] = {
     getV2(id, key).map(_.getStringSet(key).asScala.toSet)
   }
 
-  def setAddV2(id: String, key: String, value: List[String])(implicit ex: ExecutionContext): Future[JsObject] = Future {
+  def setAddV2(id: String, key: String, value: List[String])(implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(id, DynamoDB.addExpr(key, lastModifiedKey), AttributeValueV2.fromSs(value.asJava))
   }
 
-  def batchGetV2(ids: List[String], attributeKey: String)(implicit ex: ExecutionContext, rjs: Reads[T]): Future[Map[String, T]] = {
+  def batchGetV2(ids: List[String], attributeKey: String)(implicit ex: ExecutionContext, rjs: Reads[T], instance: Instance): Future[Map[String, T]] = {
     val chunks =
       ids.grouped(100).toList.zipWithIndex
 
@@ -150,7 +151,7 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
 
   // We cannot update, so make sure you send over the WHOLE document
   def jsonAddV2(id: String, key: String, value: Map[String, JsValue])
-             (implicit ex: ExecutionContext): Future[JsObject] = Future {
+             (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(
       id,
       setExpr(key, lastModifiedKey),
@@ -159,7 +160,7 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
   }
 
   def setDeleteV2(id: String, key: String, value: String)
-               (implicit ex: ExecutionContext): Future[JsObject] = Future {
+               (implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     updateV2(id,  deleteExpr(key, lastModifiedKey), AttributeValueV2.fromSs(List(value).asJava))
   }
 
@@ -167,7 +168,7 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
                  indexName: String,
                  keyName: String,
                  key: String
-               )(implicit ex: ExecutionContext): Future[List[String]] =
+               )(implicit ex: ExecutionContext, instance: Instance): Future[List[String]] =
     Future {
 
       val response =
