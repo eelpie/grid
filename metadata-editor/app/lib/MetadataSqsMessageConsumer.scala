@@ -1,6 +1,7 @@
 package lib
 
 import com.gu.mediaservice.lib.aws.SqsViaSnsMessageConsumer
+import com.gu.mediaservice.model.Instance
 import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -15,6 +16,7 @@ class MetadataSqsMessageConsumer(config: EditsConfig, metadataEditorMetrics: Met
     }
 
   private def processDeletedImage(message: JsValue) = Future {
-      withImageId(message)(id => store.deleteItem(id))
+    implicit val instance: Instance = ??? // TODO
+    withImageId(message)(id => store.deleteItem(id))
   }
 }
