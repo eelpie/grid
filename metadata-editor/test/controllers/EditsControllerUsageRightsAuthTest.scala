@@ -81,30 +81,30 @@ class EditsControllerUsageRightsAuthTest extends AnyFunSpec with Matchers with M
       val f = new Fixture(hasEditMetadata = false, uploadedBy = Some("someone.else@example.com"))
       val result = f.controller.setUsageRights(imageId)(FakeRequest().withBody(validBody))
       status(result) shouldBe FORBIDDEN
-      verify(f.store, never()).jsonAdd(anyString(), anyString(), any())(any())
+      verify(f.store, never()).jsonAdd(anyString(), anyString(), any())(any(), any())
     }
 
     it("is forbidden when the uploader cannot be determined") {
       val f = new Fixture(hasEditMetadata = false, uploadedBy = None)
       val result = f.controller.setUsageRights(imageId)(FakeRequest().withBody(validBody))
       status(result) shouldBe FORBIDDEN
-      verify(f.store, never()).jsonAdd(anyString(), anyString(), any())(any())
+      verify(f.store, never()).jsonAdd(anyString(), anyString(), any())(any(), any())
     }
 
     it("is allowed for a user with EditMetadata") {
       val f = new Fixture(hasEditMetadata = true, uploadedBy = None)
-      when(f.store.jsonAdd(anyString(), anyString(), any())(any())).thenReturn(Future.successful(JsObject.empty))
+      when(f.store.jsonAdd(anyString(), anyString(), any())(any(), any())).thenReturn(Future.successful(JsObject.empty))
       val result = f.controller.setUsageRights(imageId)(FakeRequest().withBody(validBody))
       status(result) should not be FORBIDDEN
-      verify(f.store).jsonAdd(anyString(), anyString(), any())(any())
+      verify(f.store).jsonAdd(anyString(), anyString(), any())(any(), any())
     }
 
     it("is allowed for the uploader without EditMetadata") {
       val f = new Fixture(hasEditMetadata = false, uploadedBy = Some(user.email))
-      when(f.store.jsonAdd(anyString(), anyString(), any())(any())).thenReturn(Future.successful(JsObject.empty))
+      when(f.store.jsonAdd(anyString(), anyString(), any())(any(), any())).thenReturn(Future.successful(JsObject.empty))
       val result = f.controller.setUsageRights(imageId)(FakeRequest().withBody(validBody))
       status(result) should not be FORBIDDEN
-      verify(f.store).jsonAdd(anyString(), anyString(), any())(any())
+      verify(f.store).jsonAdd(anyString(), anyString(), any())(any(), any())
     }
   }
 
@@ -113,23 +113,23 @@ class EditsControllerUsageRightsAuthTest extends AnyFunSpec with Matchers with M
       val f = new Fixture(hasEditMetadata = false, uploadedBy = Some("someone.else@example.com"))
       val result = f.controller.deleteUsageRights(imageId)(FakeRequest())
       status(result) shouldBe FORBIDDEN
-      verify(f.store, never()).removeKey(anyString(), anyString())(any())
+      verify(f.store, never()).removeKey(anyString(), anyString())(any(), any())
     }
 
     it("is allowed for a user with EditMetadata") {
       val f = new Fixture(hasEditMetadata = true, uploadedBy = None)
-      when(f.store.removeKey(anyString(), anyString())(any())).thenReturn(Future.successful(JsObject.empty))
+      when(f.store.removeKey(anyString(), anyString())(any(), any())).thenReturn(Future.successful(JsObject.empty))
       val result = f.controller.deleteUsageRights(imageId)(FakeRequest())
       status(result) should not be FORBIDDEN
-      verify(f.store).removeKey(anyString(), anyString())(any())
+      verify(f.store).removeKey(anyString(), anyString())(any(), any())
     }
 
     it("is allowed for the uploader without EditMetadata") {
       val f = new Fixture(hasEditMetadata = false, uploadedBy = Some(user.email))
-      when(f.store.removeKey(anyString(), anyString())(any())).thenReturn(Future.successful(JsObject.empty))
+      when(f.store.removeKey(anyString(), anyString())(any(), any())).thenReturn(Future.successful(JsObject.empty))
       val result = f.controller.deleteUsageRights(imageId)(FakeRequest())
       status(result) should not be FORBIDDEN
-      verify(f.store).removeKey(anyString(), anyString())(any())
+      verify(f.store).removeKey(anyString(), anyString())(any(), any())
     }
   }
 
@@ -138,15 +138,15 @@ class EditsControllerUsageRightsAuthTest extends AnyFunSpec with Matchers with M
       val f = new Fixture(hasEditMetadata = false, uploadedBy = None)
       val result = f.controller.unsetArchived(imageId)(FakeRequest())
       status(result) shouldBe FORBIDDEN
-      verify(f.store, never()).removeKey(anyString(), anyString())(any())
+      verify(f.store, never()).removeKey(anyString(), anyString())(any(), any())
     }
 
     it("is allowed for a user with ArchiveImages") {
       val f = new Fixture(hasEditMetadata = true, uploadedBy = None)
-      when(f.store.removeKey(anyString(), anyString())(any())).thenReturn(Future.successful(JsObject.empty))
+      when(f.store.removeKey(anyString(), anyString())(any(), any())).thenReturn(Future.successful(JsObject.empty))
       val result = f.controller.unsetArchived(imageId)(FakeRequest())
       status(result) should not be FORBIDDEN
-      verify(f.store).removeKey(anyString(), anyString())(any())
+      verify(f.store).removeKey(anyString(), anyString())(any(), any())
     }
   }
 }
