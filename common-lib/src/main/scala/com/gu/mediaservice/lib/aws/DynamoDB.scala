@@ -66,7 +66,10 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
 
   def deleteItemV2(id: String)(implicit ex: ExecutionContext, instance: Instance): Future[Unit] = Future {
     table2.deleteItem(
-      Key.builder().partitionValue(id).build()
+      Key.builder().
+        partitionValue(instance.id).
+        sortValue(id).
+        build()
     )
   }
   def booleanGetV2(id: String, key: String)
@@ -212,23 +215,26 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
       }
     }
 
-  private def updateRequestBuilder(id: String, expression: String) = {
+  private def updateRequestBuilder(id: String, expression: String)(implicit instance: Instance) = {
     UpdateItemRequest.builder()
-      .key(Map(IdKey -> AttributeValueV2.fromS(id)).asJava)
+      .key(Map(
+        InstanceKey -> AttributeValueV2.fromS(instance.id),
+        IdKey -> AttributeValueV2.fromS(id)
+      ).asJava)
       .updateExpression(expression)
       .returnValues(ReturnValueV2.ALL_NEW)
       .tableName(tableName)
   }
 
-  private def updateV2(id: String, expression: String, attribute: AttributeValueV2): JsObject = {
+  private def updateV2(id: String, expression: String, attribute: AttributeValueV2)(implicit instance: Instance): JsObject = {
     updateV2(id, expression, Map(":value" -> attribute))
   }
 
-  private def updateV2(id: String, expression: String): JsObject = {
+  private def updateV2(id: String, expression: String)(implicit instance: Instance): JsObject = {
     updateV2(id, expression, Map.empty[String, AttributeValueV2])
   }
 
-  private def updateV2(id: String, expression: String, baseValuesMap: Map[String, AttributeValueV2]) = {
+  private def updateV2(id: String, expression: String, baseValuesMap: Map[String, AttributeValueV2])(implicit instance: Instance) = {
     val valuesMap = lastModifiedKey.fold(baseValuesMap)(key => baseValuesMap ++ Map(s":${key}" -> AttributeValueV2.fromS(DateTime.now().toString)))
     val updateRequest = updateRequestBuilder(id, expression)
       .expressionAttributeValues(valuesMap.asJava)
