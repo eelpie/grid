@@ -11,7 +11,7 @@ import software.amazon.awssdk.enhanced.dynamodb._
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
 import software.amazon.awssdk.enhanced.dynamodb.model.{BatchGetItemEnhancedRequest, ReadBatch}
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.{UpdateItemRequest, AttributeValue => AttributeValueV2,  KeysAndAttributes => KeysAndAttributesV2, QueryRequest => QueryRequestV2, ReturnValue => ReturnValueV2}
+import software.amazon.awssdk.services.dynamodb.model.{UpdateItemRequest, AttributeValue => AttributeValueV2, KeysAndAttributes => KeysAndAttributesV2, QueryRequest => QueryRequestV2, ReturnValue => ReturnValueV2}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
@@ -35,7 +35,11 @@ class DynamoDB[T](client2: DynamoDbClient, tableName: String, lastModifiedKey: O
 
   private val IdKey = "id"
 
-  private def itemKey(key: String) = Key.builder().partitionValue(key).build()
+  private def itemKey(key: String)(implicit instance: Instance) =
+    Key.builder()
+      .partitionValue(instance.id)
+      .sortValue(key)
+      .build()
 
   def getV2(id: String)(implicit ex: ExecutionContext, instance: Instance): Future[JsObject] = Future {
     table2.getItem(itemKey(id))
