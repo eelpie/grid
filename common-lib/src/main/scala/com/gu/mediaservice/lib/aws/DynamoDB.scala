@@ -32,6 +32,7 @@ class DynamoDB[T](client: DynamoDbClient, tableName: String, lastModifiedKey: Op
   lazy val table = dynamo.table(tableName, tableSchema)
 
   private val IdKey = "id"
+  private val InstanceKey = "instance"
 
   private def itemKey(key: String)(implicit instance: Instance) =
     Key.builder()
@@ -236,7 +237,7 @@ class DynamoDB[T](client: DynamoDbClient, tableName: String, lastModifiedKey: Op
   }
 
   def asJsObject(doc: EnhancedDocument): JsObject =
-    jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject] - IdKey
+    jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject] - IdKey - InstanceKey
 
 }
 
