@@ -35,31 +35,6 @@ case class UsageRecord(
   dateAdded: Option[DateTime] = None,
   instance: String
 ) {
-  def toXSpec: UpdateItemExpressionSpec = {
-    val specBuilder = new ExpressionSpecBuilder
-    List(
-      mediaId.filter(_.nonEmpty).map(S("media_id").set(_)),
-      usageType.map(usageType => S("usage_type").set(usageType.toString)),
-      mediaType.filter(_.nonEmpty).map(S("media_type").set(_)),
-      lastModified.map(lastMod => N("last_modified").set(lastMod.getMillis)),
-      usageStatus.filter(_.nonEmpty).map(S("usage_status").set(_)),
-      printUsageMetadata.map(_.toMap).map(map => M("print_metadata").set(map.asJava)),
-      digitalUsageMetadata.map(_.toMap).map(map => M("digital_metadata").set(map.asJava)),
-      syndicationUsageMetadata.map(_.toMap).map(map => M("syndication_metadata").set(map.asJava)),
-      frontUsageMetadata.map(_.toMap).map(map => M("front_metadata").set(map.asJava)),
-      downloadUsageMetadata.map(_.toMap).map(map => M("download_metadata").set(map.asJava)),
-      childUsageMetadata.map(_.toMap).map(map => M("child_metadata").set(map.asJava)),
-      dateAdded.map(dateAdd => N("date_added").set(dateAdd.getMillis)),
-      dateRemovedOperation match {
-        case ClearDateRemoved => Some(N("date_removed").remove)
-        case LeaveDateRemovedUntouched => None
-        case SetDateRemoved(dateRemoved) => Some(N("date_removed").set(dateRemoved.getMillis))
-      },
-      Some(S("instance").set(instance))
-    ).flatten.foreach(specBuilder.addUpdate)
-    specBuilder.buildForUpdate
-  }
-
   def toAttributeValueMap(m: Map[String, DynamoElement]):java.util.Map[String, AttributeValue] = {
     m.map { case(k, v) =>
       k -> v.toAttrValue
