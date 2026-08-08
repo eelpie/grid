@@ -1,9 +1,7 @@
 package com.gu.mediaservice.lib.aws
 
-import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.s3.model.{Region => _, _}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
-import com.amazonaws.util.IOUtils
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
@@ -12,14 +10,13 @@ import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.{GetObjectResponse, HeadObjectRequest, HeadObjectResponse, ListObjectsV2Request, NoSuchKeyException, PutObjectRequest, GetObjectRequest => GetObjectRequestV2, PutObjectRequest => PutObjectRequestV2}
+import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, GetObjectResponse, HeadObjectRequest, HeadObjectResponse, ListObjectsV2Request, NoSuchKeyException, PutObjectRequest, GetObjectRequest => GetObjectRequestV2, PutObjectRequest => PutObjectRequestV2}
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
 
 import java.io.File
-import java.net.URI
-import java.nio.charset.StandardCharsets
 import java.net.{URI, URL}
+import java.nio.charset.StandardCharsets
 import java.time.{Duration => JavaDuration}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
@@ -208,6 +205,9 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
       case _: NoSuchKeyException => false
     }
   }
+
+  def deleteObjectV2(bucket: Bucket, key: String): Unit =
+    clientV2.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build())
 
 }
 
