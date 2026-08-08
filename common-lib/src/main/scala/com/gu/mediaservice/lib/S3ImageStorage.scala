@@ -4,9 +4,7 @@ import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model.MimeType
-import org.slf4j.LoggerFactory
 import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, HeadObjectRequest, ListObjectsV2Request, NoSuchKeyException}
-import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, HeadObjectRequest, ListObjectsV2Request}
 
 import java.io.File
 import scala.concurrent.Future
@@ -30,8 +28,7 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
   }
 
   def deleteImage(bucket: String, key: String)(implicit logMarker: LogMarker) = Future {
-    client.deleteObject(
-      DeleteObjectRequest.builder().bucket(bucket).key(key).build())
+    deleteObject(bucket, key)
     logger.info(logMarker, s"Deleted image $key from bucket $bucket")
   }
 
@@ -51,10 +48,8 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
       ListObjectsV2Request.builder().bucket(bucket).prefix(id).build()
     ).contents().asScala.toList
     logger.info(s"Found ${files.size} files to delete in folder $id")
-    files.foreach(file => client.deleteObject(
-      DeleteObjectRequest.builder().bucket(bucket).key(file.key()).build()
-    ))
-		logger.info(logMarker, s"Deleting images in folder $id from bucket $bucket")
+    files.foreach(file => deleteObject(bucket, file.key()))
+    logger.info(logMarker, s"Deleting images in folder $id from bucket $bucket")
 	}
 
 }
