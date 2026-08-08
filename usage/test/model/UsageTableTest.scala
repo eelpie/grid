@@ -324,7 +324,6 @@ class UsageTableTest extends AnyFunSpec with Matchers with GridLogging with Scal
         lastModified = DateTime.now
       )
 
-      implicit val logMarker: MarkerMap = MarkerMap()
       val eventualResult = store.matchUsageGroup(WithLogMarker((usageGroup, instance))).toList.toBlocking.toFuture
 
       whenReady(eventualResult) { result =>
