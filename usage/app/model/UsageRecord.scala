@@ -55,7 +55,7 @@ case class UsageRecord(
         case LeaveDateRemovedUntouched => None
         case SetDateRemoved(dateRemoved) => Some(N("date_removed").set(dateRemoved.getMillis))
       },
-      S("instance").set(instance)
+      Some(S("instance").set(instance))
     ).flatten.foreach(specBuilder.addUpdate)
     specBuilder.buildForUpdate
   }

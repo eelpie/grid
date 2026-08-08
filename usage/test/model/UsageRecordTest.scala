@@ -1,15 +1,18 @@
 package model
 
 import com.gu.mediaservice.lib.dynamo.{DbInt, DbNestedMap, DbString}
-import com.gu.mediaservice.model.usage.{ChildUsageMetadata, DigitalUsageMetadata, DownloadUsageMetadata, FrontUsageMetadata, PrintImageSize, PrintUsage, PrintUsageMetadata, SyndicationUsageMetadata}
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue
+import com.gu.mediaservice.model.Instance
+import com.gu.mediaservice.model.usage._
 import org.joda.time.DateTime
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
 import java.net.URI
 import scala.jdk.CollectionConverters.{CollectionHasAsScala, MapHasAsJava, MapHasAsScala}
 class UsageRecordTest extends AnyFunSpec with Matchers {
+
+  private val instance = Instance(id = "an-instance")
 
   def getMapFromValues(rawValues: Iterable[AnyRef]) = {
     rawValues.collectFirst {
@@ -23,7 +26,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
       val record = UsageRecord(
         hashKey = "hash-123",
         rangeKey = "range-456",
-        dateRemovedOperation = LeaveDateRemovedUntouched
+        dateRemovedOperation = LeaveDateRemovedUntouched,
+        instance = instance.id
       )
       val spec = record.toXSpec
       val names = Option(spec.getNameMap).map(_.values().asScala)
@@ -45,7 +49,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         mediaId = Some("media-789"),
         usageType = Some(PrintUsage),
         mediaType = Some("image"),
-        usageStatus = Some("active")
+        usageStatus = Some("active"),
+        instance = instance.id
       )
 
       val spec = record.toXSpec
@@ -77,7 +82,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
       val record = UsageRecord(
         hashKey = "hash-123",
         rangeKey = "range-456",
-        dateRemovedOperation = SetDateRemoved(DateTime.now())
+        dateRemovedOperation = SetDateRemoved(DateTime.now()),
+        instance = instance.id
       )
 
       val spec = record.toXSpec
@@ -92,7 +98,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
       val record = UsageRecord(
         hashKey = "hash-123",
         rangeKey = "range-456",
-        dateRemovedOperation = ClearDateRemoved
+        dateRemovedOperation = ClearDateRemoved,
+        instance = instance.id
       )
 
       val spec = record.toXSpec
@@ -108,7 +115,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         hashKey = "hash-123",
         rangeKey = "range-456",
         dateRemovedOperation = ClearDateRemoved,
-        mediaId = Some("media-789")
+        mediaId = Some("media-789"),
+        instance = instance.id
       )
 
       val spec = record.toXSpec
@@ -144,7 +152,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         hashKey = "hash-123",
         rangeKey = "range-456",
         dateRemovedOperation = LeaveDateRemovedUntouched,
-        printUsageMetadata = Some(metadata)
+        printUsageMetadata = Some(metadata),
+        instance = instance.id
       )
       val spec = record.toXSpec
       val rawValues = spec.getValueMap.values().asScala
@@ -183,7 +192,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         hashKey = "hash-123",
         rangeKey = "range-456",
         dateRemovedOperation = LeaveDateRemovedUntouched,
-        printUsageMetadata = Some(metadata)
+        printUsageMetadata = Some(metadata),
+        instance = instance.id
       )
       val spec = record.toXSpec
       val rawValues = spec.getValueMap.values().asScala
@@ -222,7 +232,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         hashKey = "hash-123",
         rangeKey = "range-456",
         dateRemovedOperation = LeaveDateRemovedUntouched,
-        digitalUsageMetadata = Some(metadata)
+        digitalUsageMetadata = Some(metadata),
+        instance = instance.id
       )
 
       val spec = record.toXSpec
@@ -249,7 +260,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         hashKey = "hash-123",
         rangeKey = "range-456",
         dateRemovedOperation = LeaveDateRemovedUntouched,
-        digitalUsageMetadata = Some(metadata)
+        digitalUsageMetadata = Some(metadata),
+        instance = instance.id
       )
 
       val spec = record.toXSpec
@@ -265,7 +277,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
       val record = UsageRecord(
         hashKey = "hash-123",
         rangeKey = "range-456",
-        dateRemovedOperation = LeaveDateRemovedUntouched
+        dateRemovedOperation = LeaveDateRemovedUntouched,
+        instance = instance.id
       )
       val expression = record.toExpression
       val names = expression.expressionNames().values().asScala
@@ -285,7 +298,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         mediaId = Some("media-789"),
         usageType = Some(PrintUsage),
         mediaType = Some("image"),
-        usageStatus = Some("active")
+        usageStatus = Some("active"),
+        instance = instance.id
       )
 
       val expression = record.toExpression
@@ -316,7 +330,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         val record = UsageRecord(
           hashKey = "hash-123",
           rangeKey = "range-456",
-          dateRemovedOperation = SetDateRemoved(DateTime.now())
+          dateRemovedOperation = SetDateRemoved(DateTime.now()),
+          instance = instance.id
         )
 
         val expression = record.toExpression
@@ -330,7 +345,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         val record = UsageRecord(
           hashKey = "hash-123",
           rangeKey = "range-456",
-          dateRemovedOperation = ClearDateRemoved
+          dateRemovedOperation = ClearDateRemoved,
+          instance = instance.id
         )
 
         val expression = record.toExpression
@@ -341,7 +357,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
           hashKey = "hash-123",
           rangeKey = "range-456",
           dateRemovedOperation = ClearDateRemoved,
-          mediaId = Some("media-789")
+          mediaId = Some("media-789"),
+          instance = instance.id
         )
 
         val expression = record.toExpression
@@ -375,7 +392,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
           hashKey = "hash-123",
           rangeKey = "range-456",
           dateRemovedOperation = LeaveDateRemovedUntouched,
-          printUsageMetadata = Some(metadata)
+          printUsageMetadata = Some(metadata),
+          instance = instance.id
         )
         val expression = record.toExpression
         val rawValues = expression.expressionValues().values().asScala
@@ -414,7 +432,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
           hashKey = "hash-123",
           rangeKey = "range-456",
           dateRemovedOperation = LeaveDateRemovedUntouched,
-          printUsageMetadata = Some(metadata)
+          printUsageMetadata = Some(metadata),
+          instance = instance.id
         )
         val expression = record.toExpression
         val rawValues = expression.expressionValues().values().asScala
@@ -451,7 +470,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
           hashKey = "hash-123",
           rangeKey = "range-456",
           dateRemovedOperation = LeaveDateRemovedUntouched,
-          digitalUsageMetadata = Some(metadata)
+          digitalUsageMetadata = Some(metadata),
+          instance = instance.id
         )
 
         val expression = record.toExpression
@@ -478,7 +498,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
           hashKey = "hash-123",
           rangeKey = "range-456",
           dateRemovedOperation = LeaveDateRemovedUntouched,
-          digitalUsageMetadata = Some(metadata)
+          digitalUsageMetadata = Some(metadata),
+          instance = instance.id
         )
 
         val expression = record.toExpression
@@ -552,7 +573,8 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         frontUsageMetadata = Some(frontMetadata),
         downloadUsageMetadata = Some(downloadMetadata),
         childUsageMetadata = Some(childMetadata),
-        dateAdded = Some(fixedDateAdded)
+        dateAdded = Some(fixedDateAdded),
+        instance = instance.id
       )
 
       val expression = record.toExpression
