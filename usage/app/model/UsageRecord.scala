@@ -110,6 +110,8 @@ case class UsageRecord(
 
     dateAdded.foreach(dt => setN("date_added", dt.getMillis))
 
+    setS("instance", instance)
+
     dateRemovedOperation match {
       case ClearDateRemoved =>
         removeOps += "date_removed"
