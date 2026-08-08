@@ -226,6 +226,9 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     }
   }
 
+  def deleteObject(bucket: Bucket, key: String): Unit =
+    client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build())
+
 }
 
 object S3Ops {
