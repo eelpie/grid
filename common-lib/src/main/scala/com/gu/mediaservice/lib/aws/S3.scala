@@ -13,11 +13,14 @@ import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.{GetObjectResponse, HeadObjectRequest, HeadObjectResponse, ListObjectsV2Request, NoSuchKeyException, PutObjectRequest, GetObjectRequest => GetObjectRequestV2, PutObjectRequest => PutObjectRequestV2}
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
 
 import java.io.File
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.net.{URI, URL}
+import java.time.{Duration => JavaDuration}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
@@ -85,24 +88,29 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   lazy val client: AmazonS3 = S3Ops.buildS3Client(config)
   lazy val clientV2: S3Client = S3Ops.buildS3ClientV2(config)
 
+  private def signatureDuration(expiration: DateTime): JavaDuration =
+    JavaDuration.ofMillis(expiration.getMillis - DateTime.now().getMillis)
+
   def signUrl(bucket: Bucket, url: URI, image: Image, expiration: DateTime = cachableExpiration(), imageType: ImageFileType = Source): String = {
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)
 
     val contentDisposition = getContentDisposition(image, imageType, config.shortenDownloadFilename)
 
-    val headers = new ResponseHeaderOverrides().withContentDisposition(contentDisposition)
+    val getObjectRequest = GetObjectRequestV2.builder().bucket(bucket).key(key).responseContentDisposition(contentDisposition).build()
+    val presignRequest = GetObjectPresignRequest.builder().signatureDuration(signatureDuration(expiration)).getObjectRequest(getObjectRequest).build()
 
-    val request = new GeneratePresignedUrlRequest(bucket, key).withExpiration(expiration.toDate).withResponseHeaders(headers)
-    client.generatePresignedUrl(request).toExternalForm
+    S3Ops.buildS3PresignerV2(config).presignGetObject(presignRequest).url().toExternalForm
   }
 
   def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration()): URL = {
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)
 
-    val request = new GeneratePresignedUrlRequest(bucket, key).withExpiration(expiration.toDate)
-    client.generatePresignedUrl(request)
+    val getObjectRequest = GetObjectRequestV2.builder().bucket(bucket).key(key).build()
+    val presignRequest = GetObjectPresignRequest.builder().signatureDuration(signatureDuration(expiration)).getObjectRequest(getObjectRequest).build()
+
+    S3Ops.buildS3PresignerV2(config).presignGetObject(presignRequest).url()
   }
 
   def getObjectV2(bucket: Bucket, url: URI): ResponseInputStream[GetObjectResponse]= {
@@ -229,5 +237,18 @@ object S3Ops {
     }
 
     config.withAWSCredentialsV2(builder, localstackAware, maybeRegionOverride).build()
+  }
+
+  def buildS3PresignerV2(config: CommonConfig, localstackAware: Boolean = true, maybeRegionOverride: Option[Region] = None): S3Presigner = {
+    val builder = S3Presigner.builder()
+      .credentialsProvider(config.awsCredentialsV2)
+      .region(maybeRegionOverride.getOrElse(config.awsRegionV2))
+
+    val configuredBuilder = config.awsLocalEndpointUri match {
+      case Some(endpoint) if localstackAware => builder.endpointOverride(endpoint)
+      case _ => builder
+    }
+
+    configuredBuilder.build()
   }
 }
