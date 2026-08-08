@@ -28,9 +28,8 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
   }
 
   def deleteImage(bucket: String, key: String)(implicit logMarker: LogMarker) = Future {
+    deleteObject(bucket, key)
     logger.info(logMarker, s"Deleted image $key from bucket $bucket")
-    client.deleteObject(
-      DeleteObjectRequest.builder().bucket(bucket).key(key).build())
   }
 
   def deleteVersionedImage(bucket: String, id: String)(implicit logMarker: LogMarker) = Future {
@@ -44,10 +43,8 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
       ListObjectsV2Request.builder().bucket(bucket).prefix(id).build()
     ).contents().asScala.toList
     logger.info(s"Found ${files.size} files to delete in folder $id")
-    files.foreach(file => client.deleteObject(
-      DeleteObjectRequest.builder().bucket(bucket).key(file.key()).build()
-    ))
-		logger.info(logMarker, s"Deleting images in folder $id from bucket $bucket")
+    files.foreach(file => deleteObject(bucket, file.key()))
+    logger.info(logMarker, s"Deleting images in folder $id from bucket $bucket")
 	}
 
 }
