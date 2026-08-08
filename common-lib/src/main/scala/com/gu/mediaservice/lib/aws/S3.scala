@@ -185,11 +185,6 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
       })
     }
 
-  def getMetadata(bucket: Bucket, key: Key): S3Metadata = {
-    val meta = client.getObjectMetadata(bucket, key)
-    S3Metadata(meta)
-  }
-
   def getMetadataV2(bucket: Bucket, key: Key): S3Metadata = {
     val meta = clientV2.headObject(HeadObjectRequest.builder().key(key).bucket(bucket).build())
     S3Metadata(meta)
