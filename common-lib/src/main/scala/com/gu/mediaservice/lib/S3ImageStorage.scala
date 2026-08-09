@@ -7,7 +7,6 @@ import com.gu.mediaservice.model.MimeType
 import org.slf4j.LoggerFactory
 
 import java.io.File
-import scala.jdk.CollectionConverters._
 import scala.concurrent.Future
 
 // TODO: If deleteObject fails - we should be catching the errors here to avoid them bubbling to the application
@@ -40,11 +39,10 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
     logger.info(logMarker, s"Deleted image $id from bucket $bucket (version: $objectVersion)")
   }
 
-  def deleteFolder(bucket: String, id: String)(implicit logMarker: LogMarker) = Future {
-		val files = client.listObjects(bucket, id).getObjectSummaries.asScala
+  def deleteFolder(bucket: String, id: String)(implicit logMarker: LogMarker): Future[Unit] = listV2(bucket, id).map { files =>
     logger.info(s"Found ${files.size} files to delete in folder $id")
-    files.foreach(file => deleteObjectV2(bucket, file.getKey))
-		logger.info(logMarker, s"Deleting images in folder $id from bucket $bucket")
-	}
+    files.foreach(file => deleteObjectV2(bucket, file.uri.getPath.stripPrefix("/")))
+    logger.info(logMarker, s"Deleting images in folder $id from bucket $bucket")
+  }
 
 }
