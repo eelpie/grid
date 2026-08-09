@@ -11,9 +11,9 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import software.amazon.awssdk.http.Protocol
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.cloudwatch.{CloudWatchAsyncClient, CloudWatchAsyncClientBuilder}
-import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
-import software.amazon.awssdk.services.kinesis.{KinesisAsyncClient, KinesisAsyncClientBuilder}
+import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
+import software.amazon.awssdk.services.kinesis.KinesisAsyncClient
 import software.amazon.kinesis.metrics.MetricsLevel
 
 import java.net.URI
@@ -56,11 +56,11 @@ object KinesisReceiverConfig {
 }
 
 class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElastic(resources) {
-  val imageBucket: S3Bucket = S3Bucket(bucket = string("s3.image.bucket"))
+  val imageBucket: S3Bucket = S3Bucket(bucket = string("s3.image.bucket"), client = s3Client)
 
-  val thumbnailBucket: S3Bucket = S3Bucket(bucket = string("s3.thumb.bucket"))
+  val thumbnailBucket: S3Bucket = S3Bucket(bucket = string("s3.thumb.bucket"), client = s3Client)
 
-  val maybeReaperBucket: Option[S3Bucket] = stringOpt("s3.reaper.bucket").map( bucket => S3Bucket(bucket = bucket))
+  val maybeReaperBucket: Option[S3Bucket] = stringOpt("s3.reaper.bucket").map( bucket => S3Bucket(bucket = bucket, client = s3Client))
   val maybeReaperCountPerRun: Option[Int] = intOpt("reaper.countPerRun")
 
   val metadataTopicArn: String = string("indexed.image.sns.topic.arn")

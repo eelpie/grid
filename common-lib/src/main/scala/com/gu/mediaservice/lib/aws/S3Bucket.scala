@@ -1,3 +1,5 @@
 package com.gu.mediaservice.lib.aws
 
-case class S3Bucket(bucket: String)
+import software.amazon.awssdk.services.s3.S3Client
+
+case class S3Bucket(bucket: String, client: S3Client)

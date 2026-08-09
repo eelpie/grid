@@ -1,11 +1,11 @@
 package com.gu.mediaservice.lib.config
 
-import com.gu.mediaservice.lib.aws.{AwsClientV1BuilderUtils, AwsClientV2BuilderUtils, KinesisSenderConfig, S3Bucket}
+import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.model.UsageRightsSpec
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
 import play.api.{ConfigLoader, Configuration}
-import scalaz.NonEmptyList
+import software.amazon.awssdk.services.s3.S3Client
 
 import java.net.URI
 import java.util.UUID
@@ -61,10 +61,11 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
 
-  val maybeIngestBucket: Option[S3Bucket] = stringOpt("s3.ingest.bucket").map( bucket => S3Bucket(bucket = bucket))
-  val maybeFailBucket: Option[S3Bucket] = stringOpt("s3.fail.bucket").map( bucket => S3Bucket(bucket = bucket))
+  protected val s3Client: S3Client = S3Ops.buildS3ClientV2(this)
+  val maybeIngestBucket: Option[S3Bucket] = stringOpt("s3.ingest.bucket").map( bucket => S3Bucket(bucket = bucket, client = s3Client))
+  val maybeFailBucket: Option[S3Bucket] = stringOpt("s3.fail.bucket").map( bucket => S3Bucket(bucket = bucket, client = s3Client))
 
-  val maybeQuarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map( bucket => S3Bucket(bucket = bucket))
+  val maybeQuarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map( bucket => S3Bucket(bucket = bucket, client = s3Client))
 
   val maybeBucketForUIUploads: Option[S3Bucket] = maybeQuarantineBucket orElse maybeIngestBucket
 

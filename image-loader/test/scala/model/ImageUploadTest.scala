@@ -14,6 +14,7 @@ import org.scalatest.Assertion
 import org.scalatest.funsuite.AsyncFunSuite
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
+import software.amazon.awssdk.services.s3.S3Client
 import test.lib.ResourceHelpers
 
 import java.io.File
@@ -29,10 +30,12 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
     override def markerContents: Map[String, Any] = Map()
   }
 
+  private val mockS3Client = mock[S3Client]
+
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), S3Bucket("img-bucket"), S3Bucket("thumb-bucket"))
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), S3Bucket("img-bucket", mockS3Client), S3Bucket("thumb-bucket", mockS3Client))
 
   /**
     * @todo: I flailed about until I found a path that worked, but
