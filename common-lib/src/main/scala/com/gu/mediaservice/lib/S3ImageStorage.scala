@@ -4,7 +4,7 @@ import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model.MimeType
-import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, HeadObjectRequest, ListObjectsV2Request}
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
 
 import java.io.File
 import scala.concurrent.Future
@@ -33,8 +33,10 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
   }
 
   def deleteVersionedImage(bucket: String, id: String)(implicit logMarker: LogMarker) = Future {
-    val objectVersion = client.headObject(HeadObjectRequest.builder().bucket(bucket).key(id).build()).versionId()
-    client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(id).versionId(objectVersion).build())
+    val objectVersion = getMetadata(bucket, id).objectVersion.getOrElse(
+      throw new IllegalStateException(s"No version id found for $id in bucket $bucket")
+    )
+    deleteVersion(bucket, id, objectVersion)
     logger.info(logMarker, s"Deleted image $id from bucket $bucket (version: $objectVersion)")
   }
 
