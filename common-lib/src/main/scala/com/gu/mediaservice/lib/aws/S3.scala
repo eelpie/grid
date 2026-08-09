@@ -50,7 +50,7 @@ object S3Object {
   }
 }
 
-case class S3Metadata(userMetadata: Map[String, String], objectMetadata: S3ObjectMetadata)
+case class S3Metadata(userMetadata: Map[String, String], objectMetadata: S3ObjectMetadata, objectVersion: Option[String] = None)
 
 object S3Metadata {
   def apply(meta: ObjectMetadata): S3Metadata = {
@@ -60,7 +60,8 @@ object S3Metadata {
         contentType = Option(meta.getContentType).filterNot(_.toLowerCase == "application/octet-stream").map(MimeType.apply),
         cacheControl = Option(meta.getCacheControl),
         lastModified = Option(meta.getLastModified).map(new DateTime(_))
-      )
+      ),
+      objectVersion = Option(meta.getVersionId)
     )
   }
   def apply(meta: HeadObjectResponse): S3Metadata = {
@@ -70,7 +71,8 @@ object S3Metadata {
         contentType = Option(meta.contentType()).filterNot(_.toLowerCase == "application/octet-stream").map(MimeType.apply),
         cacheControl = Option(meta.cacheControl()),
         lastModified = Option(meta.lastModified()).map(l => new DateTime(l.toEpochMilli).withZone(DateTimeZone.UTC))
-      )
+      ),
+      objectVersion = Option(meta.versionId())
     )
   }
 }
