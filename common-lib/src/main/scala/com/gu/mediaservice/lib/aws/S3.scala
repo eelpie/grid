@@ -1,7 +1,6 @@
 package com.gu.mediaservice.lib.aws
 
 import com.amazonaws.services.s3.model.{Region => _, _}
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
@@ -84,7 +83,6 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   type Key = String
   type UserMetadata = Map[String, String]
 
-  lazy val client: AmazonS3 = S3Ops.buildS3Client(config)
   lazy val clientV2: S3Client = S3Ops.buildS3ClientV2(config)
 
   private def signatureDuration(expiration: DateTime): JavaDuration =
@@ -220,19 +218,6 @@ object S3Ops {
   // TODO make this localstack friendly
   // TODO: Make this region aware - i.e. RegionUtils.getRegion(region).getServiceEndpoint(AmazonS3.ENDPOINT_PREFIX)
   val s3Endpoint = "s3.amazonaws.com"
-
-  def buildS3Client(config: CommonConfig, localstackAware: Boolean = true, maybeRegionOverride: Option[String] = None): AmazonS3 = {
-    val builder = config.awsLocalEndpoint match {
-      case Some(_) if config.isDev =>
-        // TODO revise closer to the time of deprecation https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/
-        //  `withPathStyleAccessEnabled` for localstack
-        //  see https://github.com/localstack/localstack/issues/1512
-        AmazonS3ClientBuilder.standard().withPathStyleAccessEnabled(true)
-      case _ => AmazonS3ClientBuilder.standard()
-    }
-
-    config.withAWSCredentials(builder, localstackAware, maybeRegionOverride).build()
-  }
 
   def buildS3ClientV2(config: CommonConfig, localstackAware: Boolean = true, maybeRegionOverride: Option[Region] = None): S3Client = {
     val builder = config.awsLocalEndpoint match {
