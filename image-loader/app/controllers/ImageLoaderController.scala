@@ -665,13 +665,13 @@ class ImageLoaderController(auth: Authentication,
           Future.successful(Conflict("Image already exists in main bucket"))
         case None =>
           Future.successful(NotImplemented("No replica bucket configured"))
-        case Some(replicaBucket) if doesObjectExist(replicaBucket, fileKeyFromId(imageId)) =>
+        case Some(replicaBucket) if doesObjectExist(replicaBucket.bucket, fileKeyFromId(imageId)) =>
           val s3Key = fileKeyFromId(imageId)
 
           logger.info(logMarker, s"Restoring image $imageId from replica bucket $replicaBucket (key: $s3Key)")
 
           val replicaObject = replicaS3.getObject(
-            GetObjectRequest.builder().bucket(replicaBucket).key(s3Key).build()
+            GetObjectRequest.builder().bucket(replicaBucket.bucket).key(s3Key).build()
           )
           val lastModified = replicaObject.response().lastModified()
           val metaMap = replicaObject.response().metadata().asScala.toMap

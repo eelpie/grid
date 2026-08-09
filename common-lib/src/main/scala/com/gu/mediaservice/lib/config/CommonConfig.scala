@@ -1,6 +1,6 @@
 package com.gu.mediaservice.lib.config
 
-import com.gu.mediaservice.lib.aws.{AwsClientV1BuilderUtils, AwsClientV2BuilderUtils, KinesisSenderConfig}
+import com.gu.mediaservice.lib.aws.{AwsClientV1BuilderUtils, AwsClientV2BuilderUtils, KinesisSenderConfig, S3Bucket}
 import com.gu.mediaservice.model.UsageRightsSpec
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
@@ -60,12 +60,13 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   lazy val softDeletedMetadataTable: String = string("dynamo.table.softDelete.metadata")
 
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
-  val maybeIngestBucket: Option[String] = stringOpt("s3.ingest.bucket")
-  val maybeFailBucket: Option[String] = stringOpt("s3.fail.bucket")
 
-  val maybeQuarantineBucket: Option[String] = stringOpt("s3.quarantine.bucket")
+  val maybeIngestBucket: Option[S3Bucket] = stringOpt("s3.ingest.bucket").map( bucket => S3Bucket(bucket = bucket))
+  val maybeFailBucket: Option[S3Bucket] = stringOpt("s3.fail.bucket").map( bucket => S3Bucket(bucket = bucket))
 
-  val maybeBucketForUIUploads: Option[String] = maybeQuarantineBucket orElse maybeIngestBucket
+  val maybeQuarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map( bucket => S3Bucket(bucket = bucket))
+
+  val maybeBucketForUIUploads: Option[S3Bucket] = maybeQuarantineBucket orElse maybeIngestBucket
 
   val maybeUploadLimitInBytes: Option[Int] = intOpt("upload.limit.mb").map(_ * 1024 * 1024)
 

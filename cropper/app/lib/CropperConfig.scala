@@ -1,5 +1,6 @@
 package lib
 
+import com.gu.mediaservice.lib.aws.S3Bucket
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.model.Instance
 
@@ -7,9 +8,9 @@ import java.io.File
 
 
 class CropperConfig(resources: GridConfigResources) extends CommonConfig(resources) {
-  val imageBucket: String = string("s3.image.bucket")
+  val imageBucket: S3Bucket = S3Bucket(bucket = string("s3.image.bucket"))
 
-  val imgPublishingBucket = string("publishing.image.bucket")
+  val imgPublishingBucket: S3Bucket= S3Bucket(bucket = string("publishing.image.bucket"))
 
   val canDownloadCrop: Boolean = boolean("canDownloadCrop")
 

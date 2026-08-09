@@ -1,6 +1,6 @@
 package lib
 
-import com.gu.mediaservice.lib.aws.AwsClientV2BuilderUtils
+import com.gu.mediaservice.lib.aws.{AwsClientV2BuilderUtils, S3Bucket}
 import com.gu.mediaservice.lib.cleanup.ReapableEligibiltyResources
 import com.gu.mediaservice.lib.config.{CommonConfigWithElastic, GridConfigResources, ReapableEligibilityLoader}
 import com.gu.mediaservice.lib.elasticsearch.ReapableEligibility
@@ -56,11 +56,11 @@ object KinesisReceiverConfig {
 }
 
 class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElastic(resources) {
-  val imageBucket: String = string("s3.image.bucket")
+  val imageBucket: S3Bucket = S3Bucket(bucket = string("s3.image.bucket"))
 
-  val thumbnailBucket: String = string("s3.thumb.bucket")
+  val thumbnailBucket: S3Bucket = S3Bucket(bucket = string("s3.thumb.bucket"))
 
-  val maybeReaperBucket: Option[String] = stringOpt("s3.reaper.bucket")
+  val maybeReaperBucket: Option[S3Bucket] = stringOpt("s3.reaper.bucket").map( bucket => S3Bucket(bucket = bucket))
   val maybeReaperCountPerRun: Option[Int] = intOpt("reaper.countPerRun")
 
   val metadataTopicArn: String = string("indexed.image.sns.topic.arn")

@@ -34,14 +34,14 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
 
   def getS3Object(key: String)(implicit logMarker: LogMarker): ResponseInputStream[GetObjectResponse] = handleNotFound(key) {
       clientV2.getObject(
-        GetObjectRequest.builder().bucket(config.maybeIngestBucket.get).key(key).build())
+        GetObjectRequest.builder().bucket(config.maybeIngestBucket.get.bucket).key(key).build())
   } {
     logger.error(logMarker, s"Attempted to read $key from ingest bucket, but it does not exist.")
   }
 
   def queueS3Object(uploader: String, filename: String, s3Meta: Map[String, String], file: File)(implicit logMarker: LogMarker, instance: Instance): Future[aws.S3Object] = {
     storeV2(
-        config.maybeIngestBucket.get,
+        config.maybeIngestBucket.get.bucket,
         s"${instance.id}/$uploader/$filename",
         file,
         mimeType = None, // we don't care as this is just the queue bucket
@@ -52,7 +52,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   def generatePreSignedUploadUrl(filename: String, duration: Duration, uploadedBy: String, mediaId: String)(implicit instance: Instance): String = {
 
     val putObjectRequest = PutObjectRequest.builder()
-      .bucket(config.maybeBucketForUIUploads.get).key(s"${instance.id}/$uploadedBy/$filename").metadata(Map(
+      .bucket(config.maybeBucketForUIUploads.get.bucket).key(s"${instance.id}/$uploadedBy/$filename").metadata(Map(
         "media-id" -> mediaId).asJava)
       .build()
     val putObjectPresignRequest =
@@ -68,9 +68,9 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key){
     clientV2.copyObject(
       CopyObjectRequest.builder()
-        .sourceBucket(config.maybeIngestBucket.get)  // TODO Naked get - make optional
+        .sourceBucket(config.maybeIngestBucket.get.bucket)  // TODO Naked get - make optional
         .sourceKey(key)
-        .destinationBucket(config.maybeFailBucket.get)   // TODO Naked get - make optional
+        .destinationBucket(config.maybeFailBucket.get.bucket)   // TODO Naked get - make optional
         .destinationKey(key)
         .build()
     )
@@ -81,7 +81,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
 
   def deleteObjectFromIngestBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key) {
     clientV2.deleteObject(
-      DeleteObjectRequest.builder().bucket(config.maybeIngestBucket.get).key(key).build())
+      DeleteObjectRequest.builder().bucket(config.maybeIngestBucket.get.bucket).key(key).build())
     ()
   } {
     logger.warn(logMarker, s"Attempted to delete $key from ingest bucket, but it does not exist.")

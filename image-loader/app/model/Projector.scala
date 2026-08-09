@@ -92,11 +92,11 @@ class Projector(config: ImageUploadOpsCfg,
       import ImageIngestOperations.fileKeyFromId
       val s3Key = fileKeyFromId(imageId)
 
-        if (!s3.doesObjectExistV2(config.originalFileBucket, s3Key))
-        throw new NoSuchImageExistsInS3(config.originalFileBucket, s3Key)
+        if (!s3.doesObjectExistV2(config.originalFileBucket.bucket, s3Key))
+        throw new NoSuchImageExistsInS3(config.originalFileBucket.bucket, s3Key)
 
       val s3Source = Stopwatch(s"object exists, getting s3 object at s3://${config.originalFileBucket}/$s3Key to perform Image projection"){
-        s3.getObjectV2(config.originalFileBucket, s3Key)
+        s3.getObjectV2(config.originalFileBucket.bucket, s3Key)
       }(logMarker)
 
       try {
@@ -180,18 +180,18 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
   }
 
   private def projectOriginalFileAsS3Model(storableOriginalImage: StorableOriginalImage) =
-    Future.successful(storableOriginalImage.toProjectedS3Object(config.originalFileBucket))
+    Future.successful(storableOriginalImage.toProjectedS3Object(config.originalFileBucket.bucket))
 
   private def projectThumbnailFileAsS3Model(storableThumbImage: StorableThumbImage) =
-    Future.successful(storableThumbImage.toProjectedS3Object(config.thumbBucket))
+    Future.successful(storableThumbImage.toProjectedS3Object(config.thumbBucket.bucket))
 
   private def projectOptimisedPNGFileAsS3Model(storableOptimisedImage: StorableOptimisedImage) =
-    Future.successful(storableOptimisedImage.toProjectedS3Object(config.originalFileBucket))
+    Future.successful(storableOptimisedImage.toProjectedS3Object(config.originalFileBucket.bucket))
 
   private def fetchThumbFile(
     imageId: String, outFile: File, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
     val key = fileKeyFromId(imageId)(instance)
-    fetchFile(config.thumbBucket, key, outFile)
+    fetchFile(config.thumbBucket.bucket, key, outFile)
   }
 
   private def fetchOptimisedFile(
@@ -199,7 +199,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
     val key = optimisedPngKeyFromId(imageId)(instance)
 
-    fetchFile(config.originalFileBucket, key, outFile)
+    fetchFile(config.originalFileBucket.bucket, key, outFile)
   }
 
   private def fetchFile(

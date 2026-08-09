@@ -1,7 +1,7 @@
 package com.gu.mediaservice.lib
 
 
-import com.gu.mediaservice.lib.aws.S3Object
+import com.gu.mediaservice.lib.aws.{S3Bucket, S3Object}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model.{Instance, MimeType}
@@ -21,7 +21,7 @@ object ImageIngestOperations {
   private def snippetForId(id: String) = id.take(6).mkString("/") + "/" + id
 }
 
-class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config: CommonConfig, isVersionedS3: Boolean = false)
+class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, config: CommonConfig, isVersionedS3: Boolean = false)
   extends S3ImageStorage(config) with StrictLogging {
 
   import ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
@@ -79,14 +79,14 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
   }
 
   def deleteOriginal(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[Unit] = if(isVersionedS3) deleteVersionedImage(imageBucket, fileKeyFromId(id)) else deleteImage(imageBucket, fileKeyFromId(id))
-  def deleteOriginals(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(imageBucket, ids.map(id => fileKeyFromId(id)).toList)
+  def deleteOriginals(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(imageBucket.bucket, ids.map(id => fileKeyFromId(id)).toList)
   def deleteThumbnail(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[Unit] = deleteImage(thumbnailBucket, fileKeyFromId(id))
-  def deleteThumbnails(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(thumbnailBucket, ids.map(id => fileKeyFromId(id)).toList)
+  def deleteThumbnails(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(thumbnailBucket.bucket, ids.map(id => fileKeyFromId(id)).toList)
   def deletePNG(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[Unit] = deleteImage(imageBucket, optimisedPngKeyFromId(id))
-  def deletePNGs(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(imageBucket, ids.map(id => optimisedPngKeyFromId(id)).toList)
+  def deletePNGs(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(imageBucket.bucket, ids.map(id => optimisedPngKeyFromId(id)).toList)
 
   def doesOriginalExistV2(id: String)(implicit instance: Instance): Boolean = {
-    this.doesObjectExistV2(imageBucket, fileKeyFromId(id))
+    this.doesObjectExistV2(imageBucket.bucket, fileKeyFromId(id))
   }
 
   private def instanceAwareOriginalImageKey(storableImage: StorableOriginalImage) = {
