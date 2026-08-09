@@ -33,7 +33,9 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
   }
 
   def deleteVersionedImage(bucket: String, id: String)(implicit logMarker: LogMarker) = Future {
-    val objectVersion = client.getObjectMetadata(bucket, id).getVersionId
+    val objectVersion = getMetadataV2(bucket, id).objectVersion.getOrElse(
+      throw new IllegalStateException(s"No version id found for $id in bucket $bucket")
+    )
     deleteVersionV2(bucket, id, objectVersion)
     logger.info(logMarker, s"Deleted image $id from bucket $bucket (version: $objectVersion)")
   }
