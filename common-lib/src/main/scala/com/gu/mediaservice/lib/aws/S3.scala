@@ -49,7 +49,7 @@ object S3Object {
   }
 }
 
-case class S3Metadata(userMetadata: Map[String, String], objectMetadata: S3ObjectMetadata)
+case class S3Metadata(userMetadata: Map[String, String], objectMetadata: S3ObjectMetadata, objectVersion: Option[String] = None)
 
 object S3Metadata {
   def apply(meta: HeadObjectResponse): S3Metadata = {
@@ -63,7 +63,8 @@ object S3Metadata {
         contentType = maybeMineType,
         cacheControl = Option(meta.cacheControl()),
         lastModified = Option(meta.lastModified()).map(l => new DateTime(l.toEpochMilli).withZone(DateTimeZone.UTC))
-      )
+      ),
+      objectVersion = Option(meta.versionId())
     )
   }
 }
