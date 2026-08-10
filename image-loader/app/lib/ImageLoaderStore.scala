@@ -77,10 +77,8 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
     logger.warn(logMarker, s"Attempted to copy $key from ingest bucket to fail bucket, but it does not exist.")
   }
 
-  def deleteObjectFromIngestBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key) {
-    client.deleteObject(
-      DeleteObjectRequest.builder().bucket(config.maybeIngestBucket.get).key(key).build())
-    ()
+  def deleteObjectFromIngestBucket(key: String)(implicit logMarker: LogMarker): Unit = handleNotFound(key) {
+    deleteObject(config.maybeIngestBucket.get, key)
   } {
     logger.warn(logMarker, s"Attempted to delete $key from ingest bucket, but it does not exist.")
   }
