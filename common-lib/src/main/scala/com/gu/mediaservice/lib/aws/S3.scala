@@ -84,7 +84,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   type Key = String
   type UserMetadata = Map[String, String]
 
-  lazy val clientV2: S3Client = S3Ops.buildS3ClientV2(config)
+  private lazy val clientV2: S3Client = S3Ops.buildS3ClientV2(config)
 
   private def signatureDuration(expiration: DateTime): JavaDuration =
     JavaDuration.ofMillis(expiration.getMillis - DateTime.now().getMillis)
