@@ -7,11 +7,9 @@ import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model.{Instance, MimeType}
 import com.typesafe.scalalogging.StrictLogging
 import org.joda.time.DateTime
-import software.amazon.awssdk.services.s3.model.{Delete, DeleteObjectsRequest, ObjectIdentifier}
 
 import java.io.File
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters._
 
 object ImageIngestOperations {
   def fileKeyFromId(id: String)(implicit instance: Instance): String = instance.id + "/" + snippetForId(id)
@@ -57,24 +55,10 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
       overwrite = true)
   }
 
-
   private def bulkDelete(bucket: String, keys: List[String]): Future[Map[String, Boolean]] = keys match {
     case Nil => Future.successful(Map.empty)
     case _ => Future {
-      val objects = keys.map { key =>
-        ObjectIdentifier.builder()
-          .key(key)
-          .build()
-      }.asJava
-      val response = client.deleteObjects(
-        DeleteObjectsRequest.builder().bucket(bucket)
-          .delete(Delete.builder().objects(objects).build())
-          .build()
-      )
-      val errorKeys = response.errors().asScala.toList.map(_.key())
-      keys.map { key =>
-        key -> !errorKeys.contains(key)
-      }.toMap
+      deleteObjects(bucket, keys)
     }
   }
 
