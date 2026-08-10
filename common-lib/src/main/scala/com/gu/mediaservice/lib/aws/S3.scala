@@ -83,7 +83,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   type Key = String
   type UserMetadata = Map[String, String]
 
-  private lazy val clientV2: S3Client = S3Ops.buildS3ClientV2(config)
+  private def clientFor(bucket: S3Bucket): S3Client = bucket.client
 
   private def signatureDuration(expiration: DateTime): JavaDuration =
     JavaDuration.ofMillis(expiration.getMillis - DateTime.now().getMillis)
@@ -113,16 +113,16 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   def getObjectV2(bucket: S3Bucket, url: URI): ResponseInputStream[GetObjectResponse]= {
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)
-    clientV2.getObject(GetObjectRequestV2.builder().key(key).bucket(bucket.bucket).build())
+    clientFor(bucket).getObject(GetObjectRequestV2.builder().key(key).bucket(bucket.bucket).build())
   }
 
   def getObjectV2(bucket: S3Bucket, key: String): ResponseInputStream[GetObjectResponse] = {
-    clientV2.getObject(GetObjectRequestV2.builder().key(key).bucket(bucket.bucket).build())
+    clientFor(bucket).getObject(GetObjectRequestV2.builder().key(key).bucket(bucket.bucket).build())
   }
 
   def getObjectAsStringV2(bucket: S3Bucket, key: String): Option[String] = {
     try {
-      val stream = clientV2.getObject(GetObjectRequestV2.builder().key(key).bucket(bucket.bucket).build());
+      val stream = clientFor(bucket).getObject(GetObjectRequestV2.builder().key(key).bucket(bucket.bucket).build());
       Some(new String(stream.readAllBytes(), StandardCharsets.UTF_8))
     } catch {
       case e: NoSuchKeyException =>
@@ -132,7 +132,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   }
 
   def putString(bucket: S3Bucket, key: String, fileContents: String): PutObjectResponse = {
-    clientV2.putObject(PutObjectRequest.builder().bucket(bucket.bucket).key(key).build(), RequestBody.fromString(fileContents))
+    clientFor(bucket).putObject(PutObjectRequest.builder().bucket(bucket.bucket).key(key).build(), RequestBody.fromString(fileContents))
   }
 
   def storeV2(bucket: S3Bucket, id: Key, file: File, mimeType: Option[MimeType], meta: UserMetadata = Map.empty, cacheControl: Option[String] = None)
@@ -151,9 +151,9 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
       val req = reqBuilder.build()
 
       Stopwatch(s"S3 client.putObject ($req)"){
-        clientV2.putObject(req, RequestBody.fromFile(file))
+        clientFor(bucket).putObject(req, RequestBody.fromFile(file))
         // once we've completed the PUT read back to ensure that we are returning reality
-        val metadata = clientV2.headObject(
+        val metadata = clientFor(bucket).headObject(
           HeadObjectRequest.builder().key(id).bucket(bucket.bucket).build()
         )
 
@@ -164,7 +164,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   def storeIfNotPresentV2(bucket: S3Bucket, id: Key, file: File, mimeType: Option[MimeType], meta: UserMetadata = Map.empty, cacheControl: Option[String] = None)
                        (implicit ex: ExecutionContext, logMarker: LogMarker): Future[S3Object] = {
     Future {
-      Some(clientV2.headObject(
+      Some(clientFor(bucket).headObject(
         HeadObjectRequest.builder().key(id).bucket(bucket.bucket).build()
       ))
     }.recover {
@@ -183,7 +183,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
             (implicit ex: ExecutionContext): Future[List[S3Object]] =
     Future {
       val req = ListObjectsV2Request.builder().bucket(bucket.bucket).prefix(s"$prefixDir/").build()
-      val listing = clientV2.listObjectsV2(req)
+      val listing = clientFor(bucket).listObjectsV2(req)
       val s3Objects = listing.contents().asScala.toList
       s3Objects.map(s3Object => {
         S3Object(bucket.bucket, s3Object.key(), size = s3Object.size(), metadata = getMetadataV2(bucket, s3Object.key()))
@@ -191,13 +191,13 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     }
 
   def getMetadataV2(bucket: S3Bucket, key: Key): S3Metadata = {
-    val meta = clientV2.headObject(HeadObjectRequest.builder().key(key).bucket(bucket.bucket).build())
+    val meta = clientFor(bucket).headObject(HeadObjectRequest.builder().key(key).bucket(bucket.bucket).build())
     S3Metadata(meta)
   }
 
   def doesObjectExistV2(bucket: S3Bucket, key: String) = {
     try {
-      clientV2.headObject(
+      clientFor(bucket).headObject(
         HeadObjectRequest.builder().key(key).bucket(bucket.bucket).build()
       )
       true
@@ -207,7 +207,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   }
 
   def deleteObjectV2(bucket: S3Bucket, key: String): Unit =
-    clientV2.deleteObject(DeleteObjectRequest.builder().bucket(bucket.bucket).key(key).build())
+    clientFor(bucket).deleteObject(DeleteObjectRequest.builder().bucket(bucket.bucket).key(key).build())
 
   def deleteObjectsV2(bucket: S3Bucket, keys: List[String]): Map[String, Boolean] = {
     val objects: util.List[ObjectIdentifier] = keys.map { key =>
@@ -215,7 +215,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
         .key(key)
         .build()
     }.asJava
-    val response = clientV2.deleteObjects(
+    val response = clientFor(bucket).deleteObjects(
       DeleteObjectsRequest.builder().bucket(bucket.bucket)
         .delete(Delete.builder().objects(objects).build())
         .build()
@@ -227,7 +227,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   }
 
   def deleteVersionV2(bucket: S3Bucket, key: String, objectVersion: String): Unit =
-    clientV2.deleteObject(DeleteObjectRequest.builder().bucket(bucket.bucket).key(key).versionId(objectVersion).build())
+    clientFor(bucket).deleteObject(DeleteObjectRequest.builder().bucket(bucket.bucket).key(key).versionId(objectVersion).build())
 
   def copyV2(key: String, sourceBucket: S3Bucket, destinationBucket: S3Bucket): CopyObjectResponse = {
     clientFor(sourceBucket).copyObject(
