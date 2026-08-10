@@ -72,7 +72,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   type Key = String
   type UserMetadata = Map[String, String]
 
-  lazy val client: S3Client = S3Ops.buildS3Client(config)
+  private lazy val client: S3Client = S3Ops.buildS3Client(config)
   lazy val presigner = S3Ops.buildPresignerClientV2(config)
   def signUrl(
                  bucket: Bucket,
