@@ -62,15 +62,10 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
     req.url().toExternalForm
   }
 
-  def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key){
-    client.copyObject(
-      CopyObjectRequest.builder()
-        .sourceBucket(config.maybeIngestBucket.get)  // TODO Naked get - make optional
-        .sourceKey(key)
-        .destinationBucket(config.maybeFailBucket.get)   // TODO Naked get - make optional
-        .destinationKey(key)
-        .build()
-    )
+  def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker): Unit = handleNotFound(key){
+    val sourceBucket = config.maybeIngestBucket.get  // TODO Naked get - make optional
+    val destinationBucket = config.maybeFailBucket.get // TODO Naked get - make optional
+    copy(key, sourceBucket, destinationBucket)
     deleteObjectFromIngestBucket(key)
   } {
     logger.warn(logMarker, s"Attempted to copy $key from ingest bucket to fail bucket, but it does not exist.")
