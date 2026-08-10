@@ -65,8 +65,8 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   }
 
   def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker): Unit = handleNotFound(key){
-    val sourceBucket = config.maybeIngestBucket.get.bucket  // TODO Naked get - make optional
-    val destinationBucket = config.maybeFailBucket.get.bucket // TODO Naked get - make optional
+    val sourceBucket = config.maybeIngestBucket.get  // TODO Naked get - make optional
+    val destinationBucket = config.maybeFailBucket.get // TODO Naked get - make optional
     copyV2(key, sourceBucket, destinationBucket)
     deleteObjectFromIngestBucket(key)
   } {

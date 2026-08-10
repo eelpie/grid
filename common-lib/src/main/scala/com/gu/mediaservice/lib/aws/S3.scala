@@ -229,12 +229,12 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   def deleteVersionV2(bucket: S3Bucket, key: String, objectVersion: String): Unit =
     clientV2.deleteObject(DeleteObjectRequest.builder().bucket(bucket.bucket).key(key).versionId(objectVersion).build())
 
-  def copyV2(key: String, sourceBucket: String, destinationBucket: String): CopyObjectResponse = {
-    clientV2.copyObject(
+  def copyV2(key: String, sourceBucket: S3Bucket, destinationBucket: S3Bucket): CopyObjectResponse = {
+    clientFor(sourceBucket).copyObject(
       CopyObjectRequest.builder()
-        .sourceBucket(sourceBucket)
+        .sourceBucket(sourceBucket.bucket)
         .sourceKey(key)
-        .destinationBucket(destinationBucket)
+        .destinationBucket(destinationBucket.bucket)
         .destinationKey(key)
         .build()
     )
