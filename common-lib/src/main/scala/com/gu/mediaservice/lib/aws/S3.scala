@@ -7,15 +7,16 @@ import org.joda.time.{DateTime, DateTimeZone}
 import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
-import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 
 import java.io.File
 import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+import java.util
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
@@ -229,6 +230,23 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
 
   def deleteObject(bucket: Bucket, key: String): Unit =
     client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build())
+
+  def deleteObjects(bucket: Bucket, keys: List[String]): Map[String, Boolean] = {
+    val objects: util.List[ObjectIdentifier] = keys.map { key =>
+      ObjectIdentifier.builder()
+        .key(key)
+        .build()
+    }.asJava
+    val response = client.deleteObjects(
+      DeleteObjectsRequest.builder().bucket(bucket)
+        .delete(Delete.builder().objects(objects).build())
+        .build()
+    )
+    val errorKeys = response.errors().asScala.toList.map(_.key())
+    keys.map { key =>
+      key -> !errorKeys.contains(key)
+    }.toMap
+  }
 
   def deleteVersion(bucket: Bucket, key: String, objectVersion: String): Unit =
     client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).versionId(objectVersion).build())
