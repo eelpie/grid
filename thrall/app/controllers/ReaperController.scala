@@ -19,11 +19,9 @@ import play.api.libs.json.{JsValue, Json, OWrites}
 import play.api.libs.ws.WSClient
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import scalaz.NonEmptyList
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
-import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -200,31 +198,27 @@ class ReaperController(
       }.toMap
     }).map(Json.toJson(_))
   }
-  def index = withLoginRedirect {
+  def index: Action[AnyContent] = withLoginRedirectAsync {
     val now = DateTime.now(DateTimeZone.UTC)
     (config.maybeReaperBucket, config.maybeReaperCountPerRun) match {
-    case (None, _) => NotImplemented("'s3.reaper.bucket' not configured in thrall.conf")
-    case (_, None) => NotImplemented("'reaper.countPerRun' not configured in thrall.conf")
+    case (None, _) => Future.successful(NotImplemented("'s3.reaper.bucket' not configured in thrall.conf"))
+    case (_, None) => Future.successful(NotImplemented("'reaper.countPerRun' not configured in thrall.conf"))
     case (Some(reaperBucket), Some(countOfImagesToReap)) =>
-      val recentRecords = List(now, now.minusDays(1), now.minusDays(2)).flatMap { day =>
+      Future.sequence(List(now, now.minusDays(1), now.minusDays(2)).map { day =>
         val s3DirName = s3DirNameFromDate(day)
-        val softDeletes = store.client.listObjectsV2(
-            ListObjectsV2Request.builder().bucket(reaperBucket).prefix(s"soft/$s3DirName/").build()
-        ).contents().asScala.toList
+        for {
+          softDeletes <- store.list(reaperBucket, s"soft/$s3DirName")
+          hardDeletes <- store.list(reaperBucket, s"hard/$s3DirName")
+        } yield softDeletes ++ hardDeletes
+      }).map { recentRecords =>
+        val recentRecordKeys = recentRecords.flatten
+          .filter(_.metadata.objectMetadata.lastModified.exists(_ isAfter now.minusHours(48)))
+          .sortBy(_.metadata.objectMetadata.lastModified.map(_.getMillis))
+          .reverse
+          .map(_.uri.getPath.stripPrefix("/"))
 
-        val hardDeletes = store.client.listObjectsV2(
-          ListObjectsV2Request.builder().bucket(reaperBucket).prefix(s"hard/$s3DirName/").build()
-        ).contents().asScala.toList
-
-        softDeletes ++ hardDeletes
+        Ok(views.html.reaper(isPaused, INTERVAL.toString(), countOfImagesToReap, recentRecordKeys))
       }
-      val recentRecordKeys = recentRecords
-        .filter(_.lastModified() isAfter now.minusHours(48).toDate.toInstant)
-        .sortBy(_.lastModified())
-        .reverse
-        .map(_.key())
-
-      Ok(views.html.reaper(isPaused, INTERVAL.toString(), countOfImagesToReap, recentRecordKeys))
   }}
 
   def reaperRecord(key: String) = auth { config.maybeReaperBucket match {
