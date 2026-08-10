@@ -7,10 +7,10 @@ import org.joda.time.{DateTime, DateTimeZone}
 import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
+import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 
 import java.io.File
 import java.net.{URI, URL}
@@ -251,6 +251,16 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   def deleteVersion(bucket: Bucket, key: String, objectVersion: String): Unit =
     client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).versionId(objectVersion).build())
 
+  def copy(key: String, sourceBucket: String, destinationBucket: String): CopyObjectResponse = {
+    client.copyObject(
+      CopyObjectRequest.builder()
+        .sourceBucket(sourceBucket)
+        .sourceKey(key)
+        .destinationBucket(destinationBucket)
+        .destinationKey(key)
+        .build()
+    )
+  }
 }
 
 object S3Ops {
