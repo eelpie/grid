@@ -9,7 +9,7 @@ import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.{Delete, DeleteObjectRequest, DeleteObjectsRequest, GetObjectResponse, HeadObjectRequest, HeadObjectResponse, ListObjectsV2Request, NoSuchKeyException, ObjectIdentifier, PutObjectRequest, GetObjectRequest => GetObjectRequestV2, PutObjectRequest => PutObjectRequestV2}
+import software.amazon.awssdk.services.s3.model.{CopyObjectRequest, CopyObjectResponse, Delete, DeleteObjectRequest, DeleteObjectsRequest, GetObjectResponse, HeadObjectRequest, HeadObjectResponse, ListObjectsV2Request, NoSuchKeyException, ObjectIdentifier, PutObjectRequest, GetObjectRequest => GetObjectRequestV2, PutObjectRequest => PutObjectRequestV2}
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
 
@@ -230,6 +230,16 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   def deleteVersionV2(bucket: Bucket, key: String, objectVersion: String): Unit =
     clientV2.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).versionId(objectVersion).build())
 
+  def copyV2(key: String, sourceBucket: String, destinationBucket: String): CopyObjectResponse = {
+    clientV2.copyObject(
+      CopyObjectRequest.builder()
+        .sourceBucket(sourceBucket)
+        .sourceKey(key)
+        .destinationBucket(destinationBucket)
+        .destinationKey(key)
+        .build()
+    )
+  }
 }
 
 object S3Ops {
