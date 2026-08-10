@@ -3,10 +3,9 @@ package com.gu.mediaservice.lib.auth
 import com.gu.mediaservice.lib.BaseStore
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.model.Instance
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
 
-import scala.jdk.CollectionConverters._
-import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 
 class KeyStore(bucket: String, config: CommonConfig)(implicit ec: ExecutionContext)
   extends BaseStore[String, ApiAccessor](bucket, config)(ec) {
@@ -18,9 +17,8 @@ class KeyStore(bucket: String, config: CommonConfig)(implicit ec: ExecutionConte
   }
 
   private def fetchAll: Map[String, ApiAccessor] = {
-    val contents = s3.clientV2.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).build())
-      .contents().asScala.toList
-    val keys = contents.map(_.key())
+    val objects = Await.result(s3.listV2(bucket, ""), 10.seconds)
+    val keys = objects.map(_.uri.getPath.stripPrefix("/"))
     keys.flatMap(k => getS3Object(k).map(k -> ApiAccessor(_))).toMap
   }
 }
