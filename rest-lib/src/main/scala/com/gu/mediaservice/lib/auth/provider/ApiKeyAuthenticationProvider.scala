@@ -1,9 +1,9 @@
 package com.gu.mediaservice.lib.auth.provider
 import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, Principal}
-import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider.{ApiKeyInstance, KindeIdKey}
+import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider.ApiKeyInstance
 import com.gu.mediaservice.lib.auth.{ApiAccessor, KeyStore}
+import com.gu.mediaservice.lib.aws.{S3Bucket, S3Ops}
 import com.gu.mediaservice.lib.config.InstanceForRequest
-import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.model.Instance
 import com.typesafe.scalalogging.StrictLogging
 import play.api.Configuration
@@ -25,7 +25,10 @@ class ApiKeyAuthenticationProvider(configuration: Configuration, resources: Auth
   var keyStorePlaceholder: Option[KeyStore] = _
 
   override def initialise(): Unit = {
-    val store = new KeyStore(configuration.get[String]("authKeyStoreBucket"), resources.commonConfig)
+    val authBucketS3Client = S3Ops.buildS3ClientV2(resources.commonConfig)
+    val keyStoreBucket: S3Bucket = S3Bucket(bucket = configuration.get[String]("authKeyStoreBucket"), client = authBucketS3Client)
+
+    val store = new KeyStore(keyStoreBucket, resources.commonConfig)
     store.scheduleUpdates(resources.actorSystem.scheduler)
     keyStorePlaceholder = Some(store)
   }

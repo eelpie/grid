@@ -44,7 +44,7 @@ class MediaApi(
                 imageResponse: ImageResponse,
                 config: MediaApiConfig,
                 override val controllerComponents: ControllerComponents,
-                s3Client: S3,
+                s3Client: S3, // TODO rename to s3
                 mediaApiMetrics: MediaApiMetrics,
                 ws: WSClient,
                 authorisation: Authorisation,

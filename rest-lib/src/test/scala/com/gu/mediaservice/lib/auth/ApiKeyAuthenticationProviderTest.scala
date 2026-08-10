@@ -3,6 +3,7 @@ package com.gu.mediaservice.lib.auth
 import org.apache.pekko.actor.ActorSystem
 import com.gu.mediaservice.lib.auth.Authentication.MachinePrincipal
 import com.gu.mediaservice.lib.auth.provider.{ApiKeyAuthenticationProvider, Authenticated, AuthenticationProviderResources, Invalid, NotAuthenticated, NotAuthorised}
+import com.gu.mediaservice.lib.aws.S3Bucket
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.model.Instance
@@ -16,6 +17,7 @@ import play.api.libs.crypto.CookieSigner
 import play.api.mvc.DefaultControllerComponents
 import play.api.test.{FakeRequest, WsTestClient}
 import play.api.{Configuration, Environment}
+import software.amazon.awssdk.services.s3.S3Client
 
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.Future
@@ -36,6 +38,9 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
   private val providerConfig = Configuration.empty
   private val controllerComponents: DefaultControllerComponents = DefaultControllerComponents(null, null, null, null, null, global)
   private val resources = AuthenticationProviderResources(config, actorSystem, wsClient, controllerComponents, mock[Authorisation], mock[CookieSigner], mock[UsageEvents] )
+
+  private val mockS3Client = mock[S3Client]
+
   private val provider = new ApiKeyAuthenticationProvider(providerConfig, resources) {
     override def initialise(): Unit = { /* do nothing */ }
 
@@ -43,7 +48,7 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
       Future.successful(())
     }
 
-    override def keyStore: KeyStore = new KeyStore("not-used", resources.commonConfig) {
+    override def keyStore: KeyStore = new KeyStore(S3Bucket(bucket = "not-used", client = mockS3Client), resources.commonConfig) {
       override def lookupIdentity(key: String)(implicit instance: Instance): Option[ApiAccessor] = {
         key match {
           case "key-chuckle" => Some(ApiAccessor("brothers", Internal))

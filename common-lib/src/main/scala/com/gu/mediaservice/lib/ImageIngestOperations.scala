@@ -55,7 +55,7 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, co
       overwrite = true)
   }
 
-  private def bulkDeleteV2(bucket: String, keys: List[String]): Future[Map[String, Boolean]] = keys match {
+  private def bulkDeleteV2(bucket: S3Bucket, keys: List[String]): Future[Map[String, Boolean]] = keys match {
     case Nil => Future.successful(Map.empty)
     case _ => Future {
       deleteObjectsV2(bucket, keys)
@@ -63,14 +63,14 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, co
   }
 
   def deleteOriginal(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[Unit] = if(isVersionedS3) deleteVersionedImage(imageBucket, fileKeyFromId(id)) else deleteImage(imageBucket, fileKeyFromId(id))
-  def deleteOriginals(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(imageBucket.bucket, ids.map(id => fileKeyFromId(id)).toList)
+  def deleteOriginals(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(imageBucket, ids.map(id => fileKeyFromId(id)).toList)
   def deleteThumbnail(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[Unit] = deleteImage(thumbnailBucket, fileKeyFromId(id))
-  def deleteThumbnails(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(thumbnailBucket.bucket, ids.map(id => fileKeyFromId(id)).toList)
+  def deleteThumbnails(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(thumbnailBucket, ids.map(id => fileKeyFromId(id)).toList)
   def deletePNG(id: String)(implicit logMarker: LogMarker, instance: Instance): Future[Unit] = deleteImage(imageBucket, optimisedPngKeyFromId(id))
-  def deletePNGs(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(imageBucket.bucket, ids.map(id => optimisedPngKeyFromId(id)).toList)
+  def deletePNGs(ids: Set[String])(implicit instance: Instance) = bulkDeleteV2(imageBucket, ids.map(id => optimisedPngKeyFromId(id)).toList)
 
   def doesOriginalExistV2(id: String)(implicit instance: Instance): Boolean = {
-    this.doesObjectExistV2(imageBucket.bucket, fileKeyFromId(id))
+    this.doesObjectExistV2(imageBucket, fileKeyFromId(id))
   }
 
   private def instanceAwareOriginalImageKey(storableImage: StorableOriginalImage) = {

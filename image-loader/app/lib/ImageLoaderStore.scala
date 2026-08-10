@@ -33,14 +33,14 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   }
 
   def getS3Object(key: String)(implicit logMarker: LogMarker): ResponseInputStream[GetObjectResponse] = handleNotFound(key) {
-      getObjectV2(config.maybeIngestBucket.get.bucket, key)
+      getObjectV2(config.maybeIngestBucket.get, key)
   } {
     logger.error(logMarker, s"Attempted to read $key from ingest bucket, but it does not exist.")
   }
 
   def queueS3Object(uploader: String, filename: String, s3Meta: Map[String, String], file: File)(implicit logMarker: LogMarker, instance: Instance): Future[aws.S3Object] = {
     storeV2(
-        config.maybeIngestBucket.get.bucket,
+        config.maybeIngestBucket.get,
         s"${instance.id}/$uploader/$filename",
         file,
         mimeType = None, // we don't care as this is just the queue bucket
@@ -74,7 +74,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   }
 
   def deleteObjectFromIngestBucket(key: String)(implicit logMarker: LogMarker): Unit = handleNotFound(key) {
-    deleteObjectV2(config.maybeIngestBucket.get.bucket, key)
+    deleteObjectV2(config.maybeIngestBucket.get, key)
   } {
     logger.warn(logMarker, s"Attempted to delete $key from ingest bucket, but it does not exist.")
   }

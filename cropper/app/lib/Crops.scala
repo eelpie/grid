@@ -116,7 +116,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
     val cropType = Crops.cropType(mimeType, colourType, hasAlpha)
 
-    val secureUrl = s3.signUrlTony(imageBucket.bucket, secureFile)
+    val secureUrl = s3.signUrlTony(imageBucket, secureFile)
 
     Stopwatch.async(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {

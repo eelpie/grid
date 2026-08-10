@@ -121,7 +121,7 @@ class ReaperController(
     case Some(reaperBucket) => doBatchDelete.map { json =>
       val now = DateTime.now(DateTimeZone.UTC)
       val key = s"$deleteType/${s3DirNameFromDate(now)}/$deleteType-${now.toString()}.json"
-      store.putString(reaperBucket.bucket, key, json.toString())
+      store.putString(reaperBucket, key, json.toString())
       json
     }
   }
@@ -207,8 +207,8 @@ class ReaperController(
       Future.sequence(List(now, now.minusDays(1), now.minusDays(2)).map { day =>
         val s3DirName = s3DirNameFromDate(day)
         for {
-          softDeletes <- store.listV2(reaperBucket.bucket, s"soft/$s3DirName")
-          hardDeletes <- store.listV2(reaperBucket.bucket, s"hard/$s3DirName")
+          softDeletes <- store.listV2(reaperBucket, s"soft/$s3DirName")
+          hardDeletes <- store.listV2(reaperBucket, s"hard/$s3DirName")
         } yield softDeletes ++ hardDeletes
       }).map { recentRecords =>
         val recentRecordKeys = recentRecords.flatten
@@ -224,7 +224,7 @@ class ReaperController(
   def reaperRecord(key: String) = auth { config.maybeReaperBucket match {
     case None => NotImplemented("Reaper bucket not configured")
     case Some(reaperBucket) =>
-      store.getObjectAsStringV2(reaperBucket.bucket, key) match {
+      store.getObjectAsStringV2(reaperBucket, key) match {
         case Some(res) => Ok(res).as(JSON)
         case None => NotFound
       }
