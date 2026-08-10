@@ -33,8 +33,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   }
 
   def getS3Object(key: String)(implicit logMarker: LogMarker): ResponseInputStream[GetObjectResponse] = handleNotFound(key) {
-      clientV2.getObject(
-        GetObjectRequest.builder().bucket(config.maybeIngestBucket.get.bucket).key(key).build())
+      getObjectV2(config.maybeIngestBucket.get.bucket, key)
   } {
     logger.error(logMarker, s"Attempted to read $key from ingest bucket, but it does not exist.")
   }
