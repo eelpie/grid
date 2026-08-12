@@ -62,10 +62,25 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
 
   protected val s3Client: S3Client = S3Ops.buildS3ClientV2(this)
-  val maybeIngestBucket: Option[S3Bucket] = stringOpt("s3.ingest.bucket").map( bucket => S3Bucket(bucket = bucket, client = s3Client))
-  val maybeFailBucket: Option[S3Bucket] = stringOpt("s3.fail.bucket").map( bucket => S3Bucket(bucket = bucket, client = s3Client))
 
-  val maybeQuarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map( bucket => S3Bucket(bucket = bucket, client = s3Client))
+  val maybeIngestBucket: Option[S3Bucket] = for {
+    ingestBucket <- stringOpt("s3.ingest.bucket.name")
+    ingestBucketEndpoint <- stringOpt("s3.ingest.bucket.endpoint")
+  } yield {
+    S3Bucket(ingestBucket, ingestBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.ingest.bucket.pathStyleURLs").getOrElse(false), s3Client)
+  }
+  val maybeFailBucket: Option[S3Bucket] = for {
+    failBucket <- stringOpt("s3.fail.bucket.name")
+    failBucketEndpoint <- stringOpt("s3.fail.bucket.endpoint")
+  } yield {
+    S3Bucket(failBucket, failBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.fail.bucket.pathStyleURLs").getOrElse(false), s3Client)
+  }
+  val maybeQuarantineBucket: Option[S3Bucket] = for {
+    failBucket <- stringOpt("s3.quarantine.bucket.name")
+    failBucketEndpoint <- stringOpt("s3.quarantine.bucket.endpoint")
+  } yield {
+    S3Bucket(failBucket, failBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.quarantine.bucket.pathStyleURLs").getOrElse(false), s3Client)
+  }
 
   val maybeBucketForUIUploads: Option[S3Bucket] = maybeQuarantineBucket orElse maybeIngestBucket
 

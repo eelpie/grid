@@ -3,7 +3,7 @@ package com.gu.mediaservice.lib.auth
 import org.apache.pekko.actor.ActorSystem
 import com.gu.mediaservice.lib.auth.Authentication.MachinePrincipal
 import com.gu.mediaservice.lib.auth.provider.{ApiKeyAuthenticationProvider, Authenticated, AuthenticationProviderResources, Invalid, NotAuthenticated, NotAuthorised}
-import com.gu.mediaservice.lib.aws.S3Bucket
+import com.gu.mediaservice.lib.aws.{S3Bucket, S3Ops}
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.model.Instance
@@ -48,7 +48,7 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
       Future.successful(())
     }
 
-    override def keyStore: KeyStore = new KeyStore(S3Bucket(bucket = "not-used", client = mockS3Client), resources.commonConfig) {
+    override def keyStore: KeyStore = new KeyStore(S3Bucket(bucket = "not-used", endPoint = S3Ops.s3Endpoint, usesPathStyleURLs = false, client = mockS3Client), resources.commonConfig) {
       override def lookupIdentity(key: String)(implicit instance: Instance): Option[ApiAccessor] = {
         key match {
           case "key-chuckle" => Some(ApiAccessor("brothers", Internal))

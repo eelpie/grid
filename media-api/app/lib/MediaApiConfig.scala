@@ -1,6 +1,6 @@
 package lib
 
-import com.gu.mediaservice.lib.aws.S3Bucket
+import com.gu.mediaservice.lib.aws.{S3Bucket, S3Ops}
 import com.gu.mediaservice.lib.config.{CommonConfigWithElastic, GridConfigResources}
 import com.gu.mediaservice.lib.elasticsearch.filters
 import com.gu.mediaservice.model.Instance
@@ -17,17 +17,34 @@ case class StoreConfig(
 )
 
 class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithElastic(resources) {
-  val configBucket: S3Bucket = S3Bucket(bucket = string("s3.config.bucket"), client = s3Client)
-  val usageMailBucket: S3Bucket = S3Bucket(bucket = string("s3.usagemail.bucket"), client = s3Client)
+  private val configBucketEndpoint = S3Ops.s3Endpoint
+  val configBucket: S3Bucket = S3Bucket(string("s3.config.bucket"), configBucketEndpoint, usesPathStyleURLs = false, s3Client)
+  private val usageMailBucketEndpoint = S3Ops.s3Endpoint
+  val usageMailBucket: S3Bucket = S3Bucket(string("s3.usagemail.bucket"), usageMailBucketEndpoint, usesPathStyleURLs = false, s3Client)
 
   val quotaStoreKey: String = string("quota.store.key")
   val quotaStoreConfig: StoreConfig = StoreConfig(configBucket, quotaStoreKey)
 
   //Lazy allows this to be empty and not break things unless used somewhere
-  lazy val imgPublishingBucket: S3Bucket = S3Bucket(bucket = string("publishing.image.bucket"), client = s3Client)
+  lazy val imgPublishingBucket: S3Bucket = S3Bucket(
+    string("publishing.image.bucket.name"),
+    string("publishing.image.bucket.endpoint"),
+    boolean("publishing.image.bucket.pathStyleURLs"),
+    s3Client
+  )
 
-  val imageBucket: S3Bucket = S3Bucket(bucket = string("s3.image.bucket"), client = s3Client)
-  val thumbBucket: S3Bucket = S3Bucket(bucket = string("s3.thumb.bucket"), client = s3Client)
+  val imageBucket: S3Bucket = S3Bucket(
+    string("s3.image.bucket.name"),
+    string("s3.image.bucket.endpoint"),
+    boolean("s3.image.bucket.pathStyleURLs"),
+    s3Client
+  )
+  val thumbBucket: S3Bucket = S3Bucket(
+    string("s3.thumb.bucket.name"),
+    string("s3.thumb.bucket.endpoint"),
+    boolean("s3.thumb.bucket.pathStyleURLs"),
+    s3Client
+  )
 
   val cloudFrontDomainThumbBucket: Option[String]   = stringOpt("cloudfront.domain.thumbbucket")
   val cloudFrontPrivateKeyBucket: Option[String]    = stringOpt("cloudfront.private-key.bucket")

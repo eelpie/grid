@@ -56,11 +56,17 @@ object KinesisReceiverConfig {
 }
 
 class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElastic(resources) {
-  val imageBucket: S3Bucket = S3Bucket(bucket = string("s3.image.bucket"), client = s3Client)
+  val imageBucket: S3Bucket = S3Bucket(bucket = string("s3.image.bucket.name"), endPoint = string("s3.image.bucket.endpoint"), usesPathStyleURLs = booleanOpt("s3.image.bucket.pathStyleURLs").getOrElse(false),  client = s3Client)
 
-  val thumbnailBucket: S3Bucket = S3Bucket(bucket = string("s3.thumb.bucket"), client = s3Client)
+  val thumbnailBucket: S3Bucket = S3Bucket(bucket = string("s3.thumb.bucket.name"), endPoint = string("s3.thumb.bucket.endpoint"), usesPathStyleURLs = booleanOpt("s3.thumb.bucket.pathStyleURLs").getOrElse(false),  client = s3Client)
 
-  val maybeReaperBucket: Option[S3Bucket] = stringOpt("s3.reaper.bucket").map( bucket => S3Bucket(bucket = bucket, client = s3Client))
+  val maybeReaperBucket: Option[S3Bucket] = for {
+    reaperBucketName <- stringOpt("s3.reaper.bucket.name")
+    reaperBucketEndpoint <- stringOpt("s3.reaper.bucket.endpoint")
+  } yield {
+    S3Bucket(reaperBucketName, reaperBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.reaper.bucket.pathStyleURLs").getOrElse(false), s3Client)
+  }
+
   val maybeReaperCountPerRun: Option[Int] = intOpt("reaper.countPerRun")
 
   val metadataTopicArn: String = string("indexed.image.sns.topic.arn")

@@ -35,13 +35,17 @@ trait Fixtures {
     "es.index.aliases.current",
     "es.index.aliases.migration",
     "es6.url",
-    "s3.image.bucket",
-    "s3.thumb.bucket",
+    "s3.image.bucket.name",
+    "s3.image.bucket.endpoint",
+    "s3.thumb.bucket.name",
+    "s3.thumb.bucket.endpoint",
     "grid.stage",
     "grid.appName",
     "instance.service.my",
     "instance.service.instances",
-    "usageEvents.queue.name"
+    "usageEvents.queue.name",
+    "publishing.image.bucket.name",
+    "publishing.image.bucket.endpoint"
   )
 
   def deletionData(deletedBy: String): SoftDeletedMetadata = SoftDeletedMetadata(

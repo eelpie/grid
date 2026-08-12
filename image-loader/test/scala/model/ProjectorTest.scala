@@ -7,7 +7,7 @@ import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket, S3Ops}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
@@ -44,7 +44,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
   private val imageOperations = new ImageOperations(ctxPath)
   private val mockS3Client = mock[S3Client]
 
-  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, Nil, S3Bucket("img-bucket", mockS3Client), S3Bucket("thumb-bucket", mockS3Client))
+  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, Nil, S3Bucket("img-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client), S3Bucket("thumb-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client))
 
   private val maybeEmbedder = None
 

@@ -1,7 +1,7 @@
 package model
 
 import com.drew.imaging.ImageProcessingException
-import com.gu.mediaservice.lib.aws.{S3Bucket, S3Metadata, S3Object, S3ObjectMetadata}
+import com.gu.mediaservice.lib.aws.{S3Bucket, S3Metadata, S3Object, S3ObjectMetadata, S3Ops}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.LogMarker
@@ -35,7 +35,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), S3Bucket("img-bucket", mockS3Client), S3Bucket("thumb-bucket", mockS3Client))
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), S3Bucket("img-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client), S3Bucket("thumb-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client))
 
   /**
     * @todo: I flailed about until I found a path that worked, but
