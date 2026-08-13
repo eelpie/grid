@@ -2,6 +2,7 @@ package lib
 
 import org.apache.pekko.actor.Scheduler
 import com.gu.mediaservice.lib.FeatureToggle
+import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.model.UsageRights
 
 import scala.concurrent.Await
@@ -12,16 +13,16 @@ import scala.util.Try
 case class ImageNotFound() extends Exception("Image not found")
 case class NoUsageQuota() extends Exception("No usage found for this image")
 
-class UsageQuota(config: MediaApiConfig, scheduler: Scheduler) {
+class UsageQuota(config: MediaApiConfig, scheduler: Scheduler, s3: S3) {
   val quotaStore = new QuotaStore(
     config.quotaStoreConfig.storeKey,
     config.quotaStoreConfig.storeBucket,
-    config
+    s3
   )
 
   val usageStore = new UsageStore(
     config.usageMailBucket,
-    config,
+    s3,
     quotaStore
   )
 

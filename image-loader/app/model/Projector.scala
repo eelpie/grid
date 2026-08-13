@@ -29,8 +29,8 @@ object Projector {
 
   import Uploader.toImageUploadOpsCfg
 
-  def apply(config: ImageLoaderConfig, imageOps: ImageOperations, processor: ImageProcessor, auth: Authentication, maybeEmbedder: Option[Embedder])(implicit ec: ExecutionContext): Projector
-  = new Projector(toImageUploadOpsCfg(config), new S3(config), imageOps, processor, auth, maybeEmbedder)
+  def apply(config: ImageLoaderConfig, imageOps: ImageOperations, s3: S3, processor: ImageProcessor, auth: Authentication, maybeEmbedder: Option[Embedder])(implicit ec: ExecutionContext): Projector
+  = new Projector(toImageUploadOpsCfg(config), s3, imageOps, processor, auth, maybeEmbedder)
 }
 
 case class S3FileExtractedMetadata(

@@ -4,6 +4,7 @@ import org.apache.pekko.actor.ActorSystem
 import com.gu.mediaservice.lib.auth.Authentication.{InnerServicePrincipal, Principal}
 import com.gu.mediaservice.lib.auth.Authorisation
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
+import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.config.{CommonConfig, Provider}
 import com.gu.mediaservice.lib.events.UsageEvents
 import play.api.libs.crypto.CookieSigner
@@ -27,7 +28,8 @@ case class AuthenticationProviderResources(
   controllerComponents: ControllerComponents,
   authorisation: Authorisation,
   cookieSigner: CookieSigner,
-  usageEvents: UsageEvents
+  usageEvents: UsageEvents,
+  s3: S3
 )
 
 sealed trait LoginLink

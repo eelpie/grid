@@ -1,7 +1,7 @@
 package lib
 
 import com.gu.mediaservice.lib.BaseStore
-import com.gu.mediaservice.lib.aws.S3Bucket
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext
@@ -9,8 +9,8 @@ import scala.concurrent.ExecutionContext
 class QuotaStore(
                   quotaFile: String,
                   bucket: S3Bucket,
-                  config: MediaApiConfig
-                )(implicit ec: ExecutionContext) extends BaseStore[String, SupplierUsageQuota](bucket, config)(ec) {
+                  s3: S3
+                )(implicit ec: ExecutionContext) extends BaseStore[String, SupplierUsageQuota](bucket, s3)(ec) {
 
   def getQuota: Map[String, SupplierUsageQuota] = store.get()
 

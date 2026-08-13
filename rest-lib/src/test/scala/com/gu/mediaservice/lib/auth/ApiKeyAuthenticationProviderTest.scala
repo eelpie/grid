@@ -3,7 +3,7 @@ package com.gu.mediaservice.lib.auth
 import org.apache.pekko.actor.ActorSystem
 import com.gu.mediaservice.lib.auth.Authentication.MachinePrincipal
 import com.gu.mediaservice.lib.auth.provider.{ApiKeyAuthenticationProvider, Authenticated, AuthenticationProviderResources, Invalid, NotAuthenticated, NotAuthorised}
-import com.gu.mediaservice.lib.aws.{S3Bucket, S3Ops}
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket, S3Ops}
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.model.Instance
@@ -37,7 +37,8 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
   )){}
   private val providerConfig = Configuration.empty
   private val controllerComponents: DefaultControllerComponents = DefaultControllerComponents(null, null, null, null, null, global)
-  private val resources = AuthenticationProviderResources(config, actorSystem, wsClient, controllerComponents, mock[Authorisation], mock[CookieSigner], mock[UsageEvents] )
+  private val s3 = new S3(config)
+  private val resources = AuthenticationProviderResources(config, actorSystem, wsClient, controllerComponents, mock[Authorisation], mock[CookieSigner], mock[UsageEvents], s3)
 
   private val mockS3Client = mock[S3Client]
 
@@ -48,7 +49,7 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
       Future.successful(())
     }
 
-    override def keyStore: KeyStore = new KeyStore(S3Bucket(bucket = "not-used", endPoint = S3Ops.s3Endpoint, usesPathStyleURLs = false, client = mockS3Client), resources.commonConfig) {
+    override def keyStore: KeyStore = new KeyStore(S3Bucket(bucket = "not-used", endPoint = S3Ops.s3Endpoint, usesPathStyleURLs = false, client = mockS3Client), resources.s3) {
       override def lookupIdentity(key: String)(implicit instance: Instance): Option[ApiAccessor] = {
         key match {
           case "key-chuckle" => Some(ApiAccessor("brothers", Internal))

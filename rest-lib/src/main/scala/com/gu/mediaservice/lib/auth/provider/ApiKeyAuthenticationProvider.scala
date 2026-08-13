@@ -29,7 +29,7 @@ class ApiKeyAuthenticationProvider(configuration: Configuration, resources: Auth
     val authBucketS3Client = S3Ops.buildS3ClientV2(resources.commonConfig)
     val keyStoreBucket: S3Bucket = S3Bucket(bucket = configuration.get[String]("authKeyStoreBucket"), authBucketEndPoint, usesPathStyleURLs = false, client = authBucketS3Client)
 
-    val store = new KeyStore(keyStoreBucket, resources.commonConfig)
+    val store = new KeyStore(keyStoreBucket, resources.s3)
     store.scheduleUpdates(resources.actorSystem.scheduler)
     keyStorePlaceholder = Some(store)
   }
