@@ -180,13 +180,13 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
   }
 
   private def projectOriginalFileAsS3Model(storableOriginalImage: StorableOriginalImage) =
-    Future.successful(storableOriginalImage.toProjectedS3Object(config.originalFileBucket.bucket))
+    Future.successful(storableOriginalImage.toProjectedS3Object(config.originalFileBucket))
 
   private def projectThumbnailFileAsS3Model(storableThumbImage: StorableThumbImage) =
-    Future.successful(storableThumbImage.toProjectedS3Object(config.thumbBucket.bucket))
+    Future.successful(storableThumbImage.toProjectedS3Object(config.thumbBucket))
 
   private def projectOptimisedPNGFileAsS3Model(storableOptimisedImage: StorableOptimisedImage) =
-    Future.successful(storableOptimisedImage.toProjectedS3Object(config.originalFileBucket.bucket))
+    Future.successful(storableOptimisedImage.toProjectedS3Object(config.originalFileBucket))
 
   private def fetchThumbFile(
     imageId: String, outFile: File, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {

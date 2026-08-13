@@ -31,6 +31,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
   }
 
   private val mockS3Client = mock[S3Client]
+  private val mockBucket = mock[S3Bucket]
 
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
@@ -51,12 +52,9 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
 
     val randomId = UUID.randomUUID().toString + fileName
 
-    val mockS3Meta = S3Metadata(Map.empty, S3ObjectMetadata(None, None, None))
-    val mockS3Object = S3Object(new URI("innernets.com"), 12345, mockS3Meta)
-
     def mockStore = (a: StorableImage) =>
       Future.successful(
-        S3Object("madeupname", "madeupkey", a.file, Some(a.mimeType), None, a.meta, None)
+        S3Object(mockBucket, "madeupkey", a.file, Some(a.mimeType), None, a.meta, None)
       )
 
     def storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object] = mockStore

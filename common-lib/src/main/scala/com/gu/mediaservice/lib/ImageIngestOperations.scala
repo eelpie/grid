@@ -91,7 +91,7 @@ sealed trait ImageWrapper {
   val instance: Instance
 }
 sealed trait StorableImage extends ImageWrapper {
-  def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
+  def toProjectedS3Object(thumbBucket: S3Bucket): S3Object = S3Object(
     thumbBucket,
     ImageIngestOperations.fileKeyFromId(id)(instance),
     file,
@@ -103,7 +103,7 @@ sealed trait StorableImage extends ImageWrapper {
 
 case class StorableThumbImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage
 case class StorableOriginalImage(id: String, file: File, mimeType: MimeType, lastModified: DateTime, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage {
-  override def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
+  override def toProjectedS3Object(thumbBucket: S3Bucket): S3Object = S3Object(
     thumbBucket,
     ImageIngestOperations.fileKeyFromId(id)(instance),
     file,
@@ -113,7 +113,7 @@ case class StorableOriginalImage(id: String, file: File, mimeType: MimeType, las
   )
 }
 case class StorableOptimisedImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage {
-  override def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
+  override def toProjectedS3Object(thumbBucket: S3Bucket): S3Object = S3Object(
     thumbBucket,
     ImageIngestOperations.optimisedPngKeyFromId(id)(instance),
     file,

@@ -29,10 +29,10 @@ object S3Object {
     new URI("http", bucketUrl, s"/$key", null)
   }
 
-  def apply(bucket: String, key: String, size: Long, metadata: S3Metadata): S3Object =
-    apply(objectUrl(bucket, key), size, metadata)
+  def apply(bucket: S3Bucket, key: String, size: Long, metadata: S3Metadata): S3Object =
+    apply(objectUrl(bucket.bucket, key), size, metadata)
 
-  def apply(bucket: String, key: String, file: File, mimeType: Option[MimeType], lastModified: Option[DateTime],
+  def apply(bucket: S3Bucket, key: String, file: File, mimeType: Option[MimeType], lastModified: Option[DateTime],
             meta: Map[String, String] = Map.empty, cacheControl: Option[String] = None): S3Object = {
     S3Object(
       bucket,
@@ -157,7 +157,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
           HeadObjectRequest.builder().key(id).bucket(bucket.bucket).build()
         )
 
-        S3Object(bucket.bucket, id, metadata.contentLength(), S3Metadata(metadata))
+        S3Object(bucket, id, metadata.contentLength(), S3Metadata(metadata))
       }(markers)
     }
 
@@ -173,7 +173,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     }.flatMap {
       case Some(metadata) =>
         logger.info(logMarker, s"Skipping storing of S3 file $id as key is already present in bucket $bucket")
-        Future.successful(S3Object(bucket.bucket, id, metadata.contentLength(), S3Metadata(metadata)))
+        Future.successful(S3Object(bucket, id, metadata.contentLength(), S3Metadata(metadata)))
       case None =>
         storeV2(bucket, id, file, mimeType, meta, cacheControl)
     }
@@ -186,7 +186,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
       val listing = clientFor(bucket).listObjectsV2(req)
       val s3Objects = listing.contents().asScala.toList
       s3Objects.map(s3Object => {
-        S3Object(bucket.bucket, s3Object.key(), size = s3Object.size(), metadata = getMetadataV2(bucket, s3Object.key()))
+        S3Object(bucket, s3Object.key(), size = s3Object.size(), metadata = getMetadataV2(bucket, s3Object.key()))
       })
     }
 
