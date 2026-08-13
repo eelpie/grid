@@ -78,12 +78,14 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3, usageQuota: UsageQuota
     val pngFileUri = image.optimisedPng.map(_.file)
 
     val fileUri = image.source.file
+    val imageKey = config.imageBucket.keyFromURL(fileUri)
 
-    val imageUrl = s3Client.signUrl(config.imageBucket, fileUri, image, imageType = Source)
+    val imageUrl = s3Client.signUrl(config.imageBucket, imageKey, image, imageType = Source)
     val pngUrl: Option[String] = pngFileUri
-      .map(s3Client.signUrl(config.imageBucket, _, image, imageType = OptimisedPng))
+      .map(file => s3Client.signUrl(config.imageBucket, config.imageBucket.keyFromURL(file), image, imageType = OptimisedPng))
 
-    def s3SignedThumbUrl = s3Client.signUrl(config.thumbnailBucket, fileUri, image, imageType = Thumbnail)
+    val thumbKey = config.thumbnailBucket.keyFromURL(fileUri)
+    def s3SignedThumbUrl = s3Client.signUrl(config.thumbnailBucket, thumbKey, image, imageType = Thumbnail)
 
     val thumbUrl = config.cloudFrontDomainThumbBucket
       .map(domain => s"https://$domain${fileUri.getPath}")
