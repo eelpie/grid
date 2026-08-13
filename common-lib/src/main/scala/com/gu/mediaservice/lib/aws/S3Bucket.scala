@@ -12,8 +12,12 @@ case class S3Bucket(bucket: String, endPoint: String, usesPathStyleURLs: Boolean
   }
 
   def keyFromURL(url: URI): String = {
-    // get path and remove leading `/`
-    url.getPath.drop(1)
+    if (usesPathStyleURLs) {
+      url.getPath.drop(bucket.length + 2)
+    } else {
+      // get path and remove leading `/`
+      url.getPath.drop(1)
+    }
   }
 
   private def bucketURL(): URI = {
