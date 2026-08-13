@@ -11,6 +11,11 @@ case class S3Bucket(bucket: String, endPoint: String, usesPathStyleURLs: Boolean
     new URI("http", bucketBaseURL.getHost, bucketBaseURL.getPath + key, null)
   }
 
+  def keyFromURL(url: URI): String = {
+    // get path and remove leading `/`
+    url.getPath.drop(1)
+  }
+
   private def bucketURL(): URI = {
     if (usesPathStyleURLs) {
       new URI("https", endPoint, s"/$bucket/", null)
