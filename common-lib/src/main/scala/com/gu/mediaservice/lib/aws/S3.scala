@@ -24,7 +24,7 @@ case class S3Object(uri: URI, size: Long, metadata: S3Metadata)
 
 object S3Object {
   def objectUrl(bucket: S3Bucket, key: String): URI = {
-    val bucketUrl = s"$bucket.${S3Ops.s3Endpoint}"
+    val bucketUrl = s"${bucket.name}.${bucket.endPoint}"
     new URI("http", bucketUrl, s"/$key", null)
   }
 
