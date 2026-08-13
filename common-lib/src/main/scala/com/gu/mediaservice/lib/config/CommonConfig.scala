@@ -102,8 +102,8 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   private val thumbBucketEndpoint = string("s3.thumb.bucket.endpoint")
   val thumbnailBucket: S3Bucket = S3Bucket(string("s3.thumb.bucket.name"), thumbBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.thumb.bucket.pathStyleURLs").getOrElse(false), s3Client)
 
-  private val embeddingSourceBucketEndpoint = string("s3.embedding.bucket.endpoint")
-  val embeddingSourceBucket: S3Bucket = S3Bucket(string("s3.embedding.bucket.name"), embeddingSourceBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.embedding.bucket.pathStyleURLs").getOrElse(false), s3Client)
+  private val embeddingSourceBucketEndpoint = string("s3.embeddingSources.bucket.endpoint")
+  val embeddingSourceBucket: S3Bucket = S3Bucket(string("s3.embeddingSources.bucket.name"), embeddingSourceBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.embedding.bucket.pathStyleURLs").getOrElse(false), s3Client)
 
   private val embeddingsBucketEndpoint = string("s3.embeddings.bucket.endpoint")
   val embeddingsBucket: S3Bucket = S3Bucket(string("s3.embeddings.bucket.name"), embeddingsBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.embeddings.bucket.pathStyleURLs").getOrElse(false), s3Client)
