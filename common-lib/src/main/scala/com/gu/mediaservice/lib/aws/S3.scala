@@ -104,11 +104,6 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     S3Ops.buildS3PresignerV2(config).presignGetObject(presignRequest).url()
   }
 
-  def getObjectV2(bucket: S3Bucket, url: URI): ResponseInputStream[GetObjectResponse]= {
-    val key: Key = bucket.keyFromURL(url)
-    clientFor(bucket).getObject(GetObjectRequestV2.builder().key(key).bucket(bucket.bucket).build())
-  }
-
   def getObjectV2(bucket: S3Bucket, key: String): ResponseInputStream[GetObjectResponse] = {
     clientFor(bucket).getObject(GetObjectRequestV2.builder().key(key).bucket(bucket.bucket).build())
   }
