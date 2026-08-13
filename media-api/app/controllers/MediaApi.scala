@@ -360,7 +360,8 @@ class MediaApi(
         val maybeResult = for {
           export <- source.exports.find(_.id.contains(exportId))
           asset <- export.master
-          s3Object <- Try(s3.getObject(config.imgPublishingBucket, asset.file)).toOption
+          key = config.imgPublishingBucket.keyFromURL(asset.file)
+          s3Object <- Try(s3.getObject(config.imgPublishingBucket, key)).toOption
           file = StreamConverters.fromInputStream(() => s3Object)
           entity = HttpEntity.Streamed(file, asset.size, asset.mimeType.map(_.name))
           result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset, config.shortenDownloadFilename))
@@ -389,7 +390,8 @@ class MediaApi(
         val maybeResult = for {
           export <- source.exports.find(_.id.contains(exportId))
           asset <- export.assets.find(_.dimensions.exists(_.width == width))
-          s3Res = Try(s3.getObject(config.imgPublishingBucket, asset.file))
+          key = config.imgPublishingBucket.keyFromURL(asset.file)
+          s3Res = Try(s3.getObject(config.imgPublishingBucket, key))
           _ = s3Res.failed.foreach { ex =>
             logger.error("Failed to fetch S3 object", ex)
           }
@@ -557,7 +559,8 @@ class MediaApi(
   /** Stream the original image bytes straight from S3, unmodified. */
   private def streamOriginal(image: Image, contentDisposition: String): Future[Result] =
     Future(blocking {
-      val s3Object = s3.getObject(config.imageBucket, image.source.file)
+      val key = config.imageBucket.keyFromURL(image.source.file)
+      val s3Object = s3.getObject(config.imageBucket, key)
       val data = StreamConverters.fromInputStream(() => s3Object)
       Result(ResponseHeader(OK), HttpEntity.Streamed(data, image.source.size, image.source.mimeType.map(_.name)))
         .withHeaders("Content-Disposition" -> contentDisposition)
@@ -575,7 +578,8 @@ class MediaApi(
   private def streamWithStrippedMetadata(image: Image, contentDisposition: String)(implicit logMarker: LogMarker): Future[Result] =
     Future(blocking {
       val tempPath = Files.createTempFile("grid-download-", ".tmp")
-      val inputStream = s3.getObject(config.imageBucket, image.source.file)
+      val key = config.imageBucket.keyFromURL(image.source.file)
+      val inputStream = s3.getObject(config.imageBucket, key)
       try {
         Files.copy(inputStream, tempPath, StandardCopyOption.REPLACE_EXISTING)
         tempPath
