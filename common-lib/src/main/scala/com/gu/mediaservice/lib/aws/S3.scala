@@ -84,9 +84,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   private def signatureDuration(expiration: DateTime): JavaDuration =
     JavaDuration.ofMillis(expiration.getMillis - DateTime.now().getMillis)
 
-  def signUrl(bucket: S3Bucket, url: URI, image: Image, expiration: DateTime = cachableExpiration(), imageType: ImageFileType = Source): String = {
-    val key: Key = bucket.keyFromURL(url)
-
+  def signUrl(bucket: S3Bucket, key: String, image: Image, expiration: DateTime = cachableExpiration(), imageType: ImageFileType = Source): String = {
     val contentDisposition = getContentDisposition(image, imageType, config.shortenDownloadFilename)
 
     val getObjectRequest = GetObjectRequestV2.builder().bucket(bucket.bucket).key(key).responseContentDisposition(contentDisposition).build()
@@ -95,9 +93,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     S3Ops.buildS3PresignerV2(config).presignGetObject(presignRequest).url().toExternalForm
   }
 
-  def signUrlTony(bucket: S3Bucket, url: URI, expiration: DateTime = cachableExpiration()): URL = {
-    val key: Key = bucket.keyFromURL(url)
-
+  def signUrlTony(bucket: S3Bucket, key: String, expiration: DateTime = cachableExpiration()): URL = {
     val getObjectRequest = GetObjectRequestV2.builder().bucket(bucket.bucket).key(key).build()
     val presignRequest = GetObjectPresignRequest.builder().signatureDuration(signatureDuration(expiration)).getObjectRequest(getObjectRequest).build()
 

@@ -526,8 +526,9 @@ class MediaApi(
         logger.info(logMarker, s"Download optimised image: $id from user: ${Authentication.getIdentity(request.user)}")
         mediaApiMetrics.incrementImageDownload(apiKey, mediaApiMetrics.OptimisedDownloadType)
 
+        val key = config.imageBucket.keyFromURL(image.optimisedPng.getOrElse(image.source).file)
         val sourceImageUri =
-          new URI(s3Client.signUrl(config.imageBucket, image.optimisedPng.getOrElse(image.source).file, image, imageType = image.optimisedPng match {
+          new URI(s3Client.signUrl(config.imageBucket, key, image, imageType = image.optimisedPng match {
             case Some(_) => OptimisedPng
             case _ => Source
           }))
