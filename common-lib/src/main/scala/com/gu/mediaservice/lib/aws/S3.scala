@@ -69,13 +69,11 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
 
   def signUrl(
                  bucket: S3Bucket,
-                 url: URI,
+                 key: Key,
                  image: Image,
                  expiration: DateTime = cachableExpiration(),
                  imageType: ImageFileType = Source
                ): String = {
-    val key: Key = bucket.keyFromURL(url)
-
     val contentDisposition = getContentDisposition(image, imageType, config.shortenDownloadFilename)
 
     val nowMillis = System.currentTimeMillis()
@@ -97,9 +95,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     req.url().toExternalForm
   }
 
-  def signUrlTony(bucket: S3Bucket, url: URI, expiration: DateTime = cachableExpiration()): URL = {
-    val key: Key = bucket.keyFromURL(url)
-
+  def signUrlTony(bucket: S3Bucket, key: Key, expiration: DateTime = cachableExpiration()): URL = {
     val nowMillis = System.currentTimeMillis()
     val targetExpirationMillis = expiration.getMillis
     val remainingSeconds = Math.max(1, (targetExpirationMillis - nowMillis) / 1000)
