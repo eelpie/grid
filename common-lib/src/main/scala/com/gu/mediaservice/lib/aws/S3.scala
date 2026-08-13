@@ -74,8 +74,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
                  expiration: DateTime = cachableExpiration(),
                  imageType: ImageFileType = Source
                ): String = {
-    // Fix key extraction (use stripPrefix to avoid corrupting relative paths)
-    val key: Key = url.getPath.stripPrefix("/")
+    val key: Key = bucket.keyFromURL(url)
 
     val contentDisposition = getContentDisposition(image, imageType, config.shortenDownloadFilename)
 
@@ -99,8 +98,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   }
 
   def signUrlTony(bucket: S3Bucket, url: URI, expiration: DateTime = cachableExpiration()): URL = {
-    // get path and remove leading `/`
-    val key: Key = url.getPath.drop(1)
+    val key: Key = bucket.keyFromURL(url)
 
     val nowMillis = System.currentTimeMillis()
     val targetExpirationMillis = expiration.getMillis
@@ -125,8 +123,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   }
 
   def getObject(bucket: S3Bucket, url: URI): ResponseInputStream[GetObjectResponse]= {
-    // get path and remove leading `/`
-    val key: Key = url.getPath.drop(1)
+    val key: Key = bucket.keyFromURL(url)
     bucket.client.getObject(GetObjectRequest.builder().key(key).bucket(bucket.name).build())
   }
 
@@ -258,6 +255,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
         .build()
     )
   }
+
 }
 
 object S3Ops extends GridLogging {
