@@ -7,8 +7,16 @@ import java.net.URI
 case class S3Bucket(bucket: String, endPoint: String, usesPathStyleURLs: Boolean, client: S3Client) {
 
   def objectUrl(key: String): URI = {
-    val bucketUrl = s"$bucket.$endPoint"
-    new URI("http", bucketUrl, s"/$key", null)
+    val bucketBaseURL = bucketURL()
+    new URI("http", bucketBaseURL.getHost, bucketBaseURL.getPath + key, null)
+  }
+
+  private def bucketURL(): URI = {
+    if (usesPathStyleURLs) {
+      new URI("https", endPoint, s"/$bucket/", null)
+    } else {
+      new URI("https", s"$bucket.$endPoint", "/", null)
+    }
   }
 
 }
