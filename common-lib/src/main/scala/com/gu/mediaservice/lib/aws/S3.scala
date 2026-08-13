@@ -24,13 +24,9 @@ import scala.jdk.CollectionConverters._
 case class S3Object(uri: URI, size: Long, metadata: S3Metadata)
 
 object S3Object {
-  def objectUrl(bucket: S3Bucket, key: String): URI = {
-    val bucketUrl = s"${bucket.bucket}.${bucket.endPoint}"
-    new URI("http", bucketUrl, s"/$key", null)
-  }
 
   def apply(bucket: S3Bucket, key: String, size: Long, metadata: S3Metadata): S3Object =
-    apply(objectUrl(bucket, key), size, metadata)
+    apply(bucket.objectUrl(key), size, metadata)
 
   def apply(bucket: S3Bucket, key: String, file: File, mimeType: Option[MimeType], lastModified: Option[DateTime],
             meta: Map[String, String] = Map.empty, cacheControl: Option[String] = None): S3Object = {
