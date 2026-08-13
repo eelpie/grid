@@ -4,15 +4,23 @@ import com.gu.mediaservice.lib.config.CommonConfig
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import java.net.URI
 
-case class S3Bucket(name: String, endPoint: String, usesPathStyleURLs: Boolean, client: S3Client, presigner: S3Presigner)
+case class S3Bucket(name: String, endPoint: String, usesPathStyleURLs: Boolean, client: S3Client, presigner: S3Presigner) {
+
+  def objectUrl(key: String): URI = {
+    val bucketUrl = s"$name.$endPoint"
+    new URI("http", bucketUrl, s"/$key", null)
+  }
+
+}
 
 object S3Bucket {
 
   /**
-    * Build a bucket that talks to the endpoint implied by the current environment - i.e. the localstack
-    * endpoint (with path style URLs) when running in DEV, otherwise the real AWS S3 endpoint.
-    */
+   * Build a bucket that talks to the endpoint implied by the current environment - i.e. the localstack
+   * endpoint (with path style URLs) when running in DEV, otherwise the real AWS S3 endpoint.
+   */
   def apply(name: String, config: CommonConfig): S3Bucket = {
     val endpointOverride = config.awsLocalEndpoint
     val usesPathStyleURLs = endpointOverride.isDefined
