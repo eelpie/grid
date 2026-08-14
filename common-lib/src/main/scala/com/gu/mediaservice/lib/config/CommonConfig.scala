@@ -1,5 +1,6 @@
 package com.gu.mediaservice.lib.config
 
+import com.amazonaws.services.s3.AmazonS3
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.model.UsageRightsSpec
 import com.typesafe.config.Config
@@ -61,25 +62,43 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
 
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
 
-  protected val s3Client: S3Client = S3Ops.buildS3ClientV2(this)
+  val googleS3AccessKey: Option[String] = stringOpt("s3.accessKey")
+  val googleS3SecretKey: Option[String] = stringOpt("s3.secretKey")
+
+  private val amazonS3: S3Client = S3Ops.buildS3ClientV2(this)
+  private val googleS3: Option[S3Client] = S3Ops.buildGoogleS3Client(this)
+  private val localS3: Option[S3Client] = S3Ops.buildLocalS3Client(this)
+
+  def clientFor(bucketEndpoint: String): S3Client = {
+    (bucketEndpoint match {
+      case "storage.googleapis.com" =>
+        googleS3
+      case "minio.griddev.eelpieconsulting.co.uk" =>
+        localS3
+      case _ =>
+        Some(amazonS3)
+    }).getOrElse {
+      amazonS3
+    }
+  }
 
   val maybeIngestBucket: Option[S3Bucket] = for {
     ingestBucket <- stringOpt("s3.ingest.bucket.name")
     ingestBucketEndpoint <- stringOpt("s3.ingest.bucket.endpoint")
   } yield {
-    S3Bucket(ingestBucket, ingestBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.ingest.bucket.pathStyleURLs").getOrElse(false), s3Client)
+    S3Bucket(ingestBucket, ingestBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.ingest.bucket.pathStyleURLs").getOrElse(false), clientFor(ingestBucketEndpoint))
   }
   val maybeFailBucket: Option[S3Bucket] = for {
     failBucket <- stringOpt("s3.fail.bucket.name")
     failBucketEndpoint <- stringOpt("s3.fail.bucket.endpoint")
   } yield {
-    S3Bucket(failBucket, failBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.fail.bucket.pathStyleURLs").getOrElse(false), s3Client)
+    S3Bucket(failBucket, failBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.fail.bucket.pathStyleURLs").getOrElse(false), clientFor(failBucketEndpoint))
   }
   val maybeQuarantineBucket: Option[S3Bucket] = for {
-    failBucket <- stringOpt("s3.quarantine.bucket.name")
-    failBucketEndpoint <- stringOpt("s3.quarantine.bucket.endpoint")
+    quarantineBucket <- stringOpt("s3.quarantine.bucket.name")
+    quarantineBucketEndpoint <- stringOpt("s3.quarantine.bucket.endpoint")
   } yield {
-    S3Bucket(failBucket, failBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.quarantine.bucket.pathStyleURLs").getOrElse(false), s3Client)
+    S3Bucket(quarantineBucket, quarantineBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.quarantine.bucket.pathStyleURLs").getOrElse(false), clientFor(quarantineBucketEndpoint))
   }
 
   val maybeBucketForUIUploads: Option[S3Bucket] = maybeQuarantineBucket orElse maybeIngestBucket
@@ -98,15 +117,15 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val services = new SingleHostServices(domainRoot)
 
   private val imageBucketEndpoint = string("s3.image.bucket.endpoint")
-  val imageBucket: S3Bucket = S3Bucket(string("s3.image.bucket.name"), imageBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.image.bucket.pathStyleURLs").getOrElse(false), s3Client)
-  private val thumbBucketEndpoint = string("s3.thumb.bucket.endpoint")
-  val thumbnailBucket: S3Bucket = S3Bucket(string("s3.thumb.bucket.name"), thumbBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.thumb.bucket.pathStyleURLs").getOrElse(false), s3Client)
+  val imageBucket: S3Bucket = S3Bucket(string("s3.image.bucket.name"), imageBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.image.bucket.pathStyleURLs").getOrElse(false), clientFor(imageBucketEndpoint))
+  private val thumbnailBucketEndpoint = string("s3.thumb.bucket.endpoint")
+  val thumbnailBucket: S3Bucket = S3Bucket(string("s3.thumb.bucket.name"), thumbnailBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.thumb.bucket.pathStyleURLs").getOrElse(false), clientFor(thumbnailBucketEndpoint))
 
   private val embeddingSourceBucketEndpoint = string("s3.embeddingSources.bucket.endpoint")
-  val embeddingSourceBucket: S3Bucket = S3Bucket(string("s3.embeddingSources.bucket.name"), embeddingSourceBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.embedding.bucket.pathStyleURLs").getOrElse(false), s3Client)
+  val embeddingSourceBucket: S3Bucket = S3Bucket(string("s3.embeddingSources.bucket.name"), embeddingSourceBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.embedding.bucket.pathStyleURLs").getOrElse(false), clientFor(embeddingSourceBucketEndpoint))
 
   private val embeddingsBucketEndpoint = string("s3.embeddings.bucket.endpoint")
-  val embeddingsBucket: S3Bucket = S3Bucket(string("s3.embeddings.bucket.name"), embeddingsBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.embeddings.bucket.pathStyleURLs").getOrElse(false), s3Client)
+  val embeddingsBucket: S3Bucket = S3Bucket(string("s3.embeddings.bucket.name"), embeddingsBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.embeddings.bucket.pathStyleURLs").getOrElse(false), clientFor(embeddingsBucketEndpoint))
 
   /**
    * Load in a list of domain metadata specifications from configuration. For example:
