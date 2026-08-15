@@ -633,7 +633,7 @@ class ImageLoaderController(auth: Authentication,
       }
   }
 
-  lazy val replicaS3: S3Client = S3Ops.buildS3ClientV2(config, maybeRegionOverride = Some(Region.US_WEST_1))
+  lazy val replicaS3: S3Client = S3Ops.buildAwsS3ClientV2()
   def doesObjectExist(bucket: String, key: String) = {
     try {
       replicaS3.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build())
