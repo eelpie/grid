@@ -21,7 +21,11 @@ trait Fixtures {
     "usageRights" -> Map(
       "applicable" -> List()
     ),
-    "usageRightsConfigProvider" -> "com.gu.mediaservice.lib.config.RuntimeUsageRightsConfig"
+    "usageRightsConfigProvider" -> "com.gu.mediaservice.lib.config.RuntimeUsageRightsConfig",
+    "s3.image.bucket.endpoint" -> "s3.amazonaws.com",
+    "s3.thumb.bucket.endpoint" -> "s3.amazonaws.com",
+    "s3.embeddingSources.bucket.endpoint" -> "s3.amazonaws.com",
+    "s3.embeddings.bucket.endpoint"-> "s3.amazonaws.com"
   )
   val NOT_USED_IN_TEST = "not used in test"
   val MOCK_CONFIG_KEYS = Seq(
@@ -36,13 +40,9 @@ trait Fixtures {
     "es.index.aliases.migration",
     "es6.url",
     "s3.image.bucket.name",
-    "s3.image.bucket.endpoint",
     "s3.thumb.bucket.name",
-    "s3.thumb.bucket.endpoint",
     "s3.embeddingSources.bucket.name",
-    "s3.embeddingSources.bucket.endpoint",
     "s3.embeddings.bucket.name",
-    "s3.embeddings.bucket.endpoint",
     "grid.stage",
     "grid.appName",
     "instance.service.my",

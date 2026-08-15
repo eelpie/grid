@@ -60,7 +60,7 @@ class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElast
     reaperBucketName <- stringOpt("s3.reaper.bucket.name")
     reaperBucketEndpoint <- stringOpt("s3.reaper.bucket.endpoint")
   } yield {
-    S3Bucket(reaperBucketName, reaperBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.reaper.bucket.pathStyleURLs").getOrElse(false), clientFor(reaperBucketEndpoint))
+    S3Bucket(reaperBucketName, reaperBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.reaper.bucket.pathStyleURLs").getOrElse(false), clientFor(reaperBucketEndpoint), presignerFor(reaperBucketEndpoint, booleanOpt("s3.reaper.bucket.pathStyleURLs").getOrElse(false)))
   }
 
   val maybeReaperCountPerRun: Option[Int] = intOpt("reaper.countPerRun")

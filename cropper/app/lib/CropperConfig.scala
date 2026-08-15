@@ -12,7 +12,8 @@ class CropperConfig(resources: GridConfigResources) extends CommonConfig(resourc
     string("publishing.image.bucket.name"),
     imagePublishingBucketEndpoint,
     boolean("publishing.image.bucket.pathStyleURLs"),
-    clientFor(imagePublishingBucketEndpoint)
+    clientFor(imagePublishingBucketEndpoint),
+    presignerFor(imagePublishingBucketEndpoint, boolean("publishing.image.bucket.pathStyleURLs"))
   )
 
   val canDownloadCrop: Boolean = boolean("canDownloadCrop")

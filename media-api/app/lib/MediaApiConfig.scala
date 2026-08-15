@@ -18,9 +18,9 @@ case class StoreConfig(
 
 class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithElastic(resources) {
   private val configBucketEndpoint = S3Ops.s3Endpoint
-  val configBucket: S3Bucket = S3Bucket(string("s3.config.bucket"), configBucketEndpoint, usesPathStyleURLs = false, clientFor(configBucketEndpoint))
+  val configBucket: S3Bucket = S3Bucket(string("s3.config.bucket"), configBucketEndpoint, usesPathStyleURLs = false, clientFor(configBucketEndpoint), presignerFor(configBucketEndpoint, usesPathStyleURLs = false))
   private val usageMailBucketEndpoint = S3Ops.s3Endpoint
-  val usageMailBucket: S3Bucket = S3Bucket(string("s3.usagemail.bucket"), usageMailBucketEndpoint, usesPathStyleURLs = false, clientFor(usageMailBucketEndpoint))
+  val usageMailBucket: S3Bucket = S3Bucket(string("s3.usagemail.bucket"), usageMailBucketEndpoint, usesPathStyleURLs = false, clientFor(usageMailBucketEndpoint), presignerFor(usageMailBucketEndpoint, usesPathStyleURLs = false))
 
   val quotaStoreKey: String = string("quota.store.key")
   val quotaStoreConfig: StoreConfig = StoreConfig(configBucket, quotaStoreKey)
@@ -31,7 +31,8 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
     string("publishing.image.bucket.name"),
     imagePublishingBucketEndpoint,
     boolean("publishing.image.bucket.pathStyleURLs"),
-    clientFor(imagePublishingBucketEndpoint)
+    clientFor(imagePublishingBucketEndpoint),
+    presignerFor(imagePublishingBucketEndpoint, boolean("publishing.image.bucket.pathStyleURLs"))
   )
 
   val cloudFrontDomainThumbBucket: Option[String]   = stringOpt("cloudfront.domain.thumbbucket")

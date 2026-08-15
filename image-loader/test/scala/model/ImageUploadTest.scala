@@ -15,6 +15,7 @@ import org.scalatest.funsuite.AsyncFunSuite
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import test.lib.ResourceHelpers
 
 import java.io.File
@@ -30,14 +31,15 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
   }
 
   private val mockS3Client = mock[S3Client]
+  private val mockS3Presigner = mock[S3Presigner]
 
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, S3Bucket("img-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
-      S3Bucket("thumb-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
-      S3Bucket("embedding-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
-      S3Bucket("embeddings-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, S3Bucket("img-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client, mockS3Presigner),
+      S3Bucket("thumb-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client, mockS3Presigner),
+      S3Bucket("embedding-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client, mockS3Presigner),
+      S3Bucket("embeddings-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client, mockS3Presigner),
     )
 
   /**
@@ -56,12 +58,12 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
 
     def mockStore = (a: StorableImage) =>
       Future.successful(
-        S3Object(S3Bucket("madeupname", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client), "madeupkey", a.file, Some(a.mimeType), None, a.meta, None)
+        S3Object(S3Bucket("madeupname", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client, mockS3Presigner), "madeupkey", a.file, Some(a.mimeType), None, a.meta, None)
       )
 
     def mockOptionalStore = (a: Option[StorableImage]) =>
       Future.successful(
-        a.map(a => S3Object(S3Bucket("madeupname", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client), "madeupkey", a.file, Some(a.mimeType), None, a.meta, None))
+        a.map(a => S3Object(S3Bucket("madeupname", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client, mockS3Presigner), "madeupkey", a.file, Some(a.mimeType), None, a.meta, None))
       )
 
     def storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object] = mockStore

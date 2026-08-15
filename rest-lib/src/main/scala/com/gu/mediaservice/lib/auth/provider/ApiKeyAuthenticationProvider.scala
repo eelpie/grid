@@ -27,7 +27,8 @@ class ApiKeyAuthenticationProvider(configuration: Configuration, resources: Auth
   override def initialise(): Unit = {
     val authBucketEndPoint = S3Ops.s3Endpoint
     val authBucketS3Client = S3Ops.buildAwsS3ClientV2()
-    val keyStoreBucket: S3Bucket = S3Bucket(bucket = configuration.get[String]("authKeyStoreBucket"), authBucketEndPoint, usesPathStyleURLs = false, client = authBucketS3Client)
+    val keyStoreBucket: S3Bucket = S3Bucket(bucket = configuration.get[String]("authKeyStoreBucket"), authBucketEndPoint, usesPathStyleURLs = false, client = authBucketS3Client,
+      presigner = S3Ops.buildS3PresignerV2(resources.commonConfig, authBucketEndPoint, usePathStyleURLs = false))
 
     val store = new KeyStore(keyStoreBucket, resources.s3)
     store.scheduleUpdates(resources.actorSystem.scheduler)

@@ -18,6 +18,7 @@ import play.api.mvc.DefaultControllerComponents
 import play.api.test.{FakeRequest, WsTestClient}
 import play.api.{Configuration, Environment}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
 
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.Future
@@ -41,6 +42,7 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
   private val resources = AuthenticationProviderResources(config, actorSystem, wsClient, controllerComponents, mock[Authorisation], mock[CookieSigner], mock[UsageEvents], s3)
 
   private val mockS3Client = mock[S3Client]
+  private val mockS3Presigner = mock[S3Presigner]
 
   private val provider = new ApiKeyAuthenticationProvider(providerConfig, resources) {
     override def initialise(): Unit = { /* do nothing */ }
@@ -49,7 +51,7 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
       Future.successful(())
     }
 
-    override def keyStore: KeyStore = new KeyStore(S3Bucket(bucket = "not-used", endPoint = S3Ops.s3Endpoint, usesPathStyleURLs = false, client = mockS3Client), resources.s3) {
+    override def keyStore: KeyStore = new KeyStore(S3Bucket(bucket = "not-used", endPoint = S3Ops.s3Endpoint, usesPathStyleURLs = false, client = mockS3Client, presigner = mockS3Presigner), resources.s3) {
       override def lookupIdentity(key: String)(implicit instance: Instance): Option[ApiAccessor] = {
         key match {
           case "key-chuckle" => Some(ApiAccessor("brothers", Internal))

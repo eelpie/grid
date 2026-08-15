@@ -16,7 +16,7 @@ class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(res
     imageReplicaBucketName <- stringOpt("s3.image.replica.bucket.name")
     imageReplicaBucketEndpoint <- stringOpt("s3.image.replica.bucket.endpoint")
   } yield {
-    S3Bucket(imageReplicaBucketName, imageReplicaBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.image.replica.bucket.pathStyleURLs").getOrElse(false), clientFor(imageReplicaBucketEndpoint))
+    S3Bucket(imageReplicaBucketName, imageReplicaBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.image.replica.bucket.pathStyleURLs").getOrElse(false), clientFor(imageReplicaBucketEndpoint), presignerFor(imageReplicaBucketEndpoint, usesPathStyleURLs = booleanOpt("s3.image.replica.bucket.pathStyleURLs").getOrElse(false)))
   }
 
   val lowerEnvironmentSamplingPercentageAsDecimal = intOpt("s3.sampling.percentage").getOrElse(1) / 100.0

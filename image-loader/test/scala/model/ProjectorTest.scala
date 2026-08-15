@@ -19,6 +19,7 @@ import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.libs.json.{JsArray, JsString}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import test.lib.ResourceHelpers
 
 import java.io.File
@@ -36,11 +37,12 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val imageOperations = new ImageOperations(ctxPath)
   private val mockS3Client = mock[S3Client]
+  private val mockS3Presigner = mock[S3Presigner]
 
-  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, S3Bucket("img-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
-    S3Bucket("thumb-bucket",  S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
-    S3Bucket("embedding-source-bucket",  S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
-    S3Bucket("embeddings-bucket",  S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client),
+  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, S3Bucket("img-bucket", S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client, mockS3Presigner),
+    S3Bucket("thumb-bucket",  S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client, mockS3Presigner),
+    S3Bucket("embedding-source-bucket",  S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client, mockS3Presigner),
+    S3Bucket("embeddings-bucket",  S3Ops.s3Endpoint, usesPathStyleURLs = false, mockS3Client, mockS3Presigner),
   )
 
   private val maybeEmbedder = None

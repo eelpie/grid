@@ -7,6 +7,7 @@ import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
 
 class CropsTest extends AnyFunSpec with Matchers with MockitoSugar {
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -49,11 +50,12 @@ class CropsTest extends AnyFunSpec with Matchers with MockitoSugar {
   private val config = mock[CropperConfig]
   private val store = mock[CropStore]
   private val mockS3Client = mock[S3Client]
+  private val mockS3Presigner = mock[S3Presigner]
   private val imageOperations: ImageOperations = mock[ImageOperations]
   private val source: SourceImage = SourceImage("test", mock[Asset], valid = true, mock[ImageMetadata], mock[FileMetadata])
   private val bounds: Bounds = Bounds(10, 20, 30, 40)
   private val outputWidth = 1234
-  private val imageBucket = S3Bucket("crops-bucket", S3Ops.s3Endpoint, usesPathStyleURLs =  false, mockS3Client)
+  private val imageBucket = S3Bucket("crops-bucket", S3Ops.s3Endpoint, usesPathStyleURLs =  false, mockS3Client, mockS3Presigner)
   private val s3 = new S3(config)
 
   it("should should construct a correct address for a master jpg") {
