@@ -271,14 +271,10 @@ object S3Ops {
     }
   }
 
-  def buildS3ClientV2(config: CommonConfig, localstackAware: Boolean = true, maybeRegionOverride: Option[Region] = None): S3Client = {
-    val builder = config.awsLocalEndpoint match {
-      case Some(_) if config.isDev =>
-        S3Client.builder().forcePathStyle(true)
-      case _ => S3Client.builder()
-    }
-
-    config.withAWSCredentialsV2(builder, localstackAware, maybeRegionOverride).build()
+  def buildAwsS3ClientV2(): S3Client = {
+    S3Client.builder()
+      .region(Region.EU_WEST_1)
+      .build()
   }
 
   def buildS3PresignerV2(config: CommonConfig, localstackAware: Boolean = true, maybeRegionOverride: Option[Region] = None): S3Presigner = {
