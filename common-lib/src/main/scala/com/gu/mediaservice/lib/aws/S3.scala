@@ -1,21 +1,18 @@
 package com.gu.mediaservice.lib.aws
 
-import com.amazonaws.ClientConfiguration
-import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.services.s3.model.{Region => _, _}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
 import org.joda.time.{DateTime, DateTimeZone}
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.{CopyObjectRequest, CopyObjectResponse, Delete, DeleteObjectRequest, DeleteObjectsRequest, GetObjectResponse, HeadObjectRequest, HeadObjectResponse, ListObjectsV2Request, NoSuchKeyException, ObjectIdentifier, PutObjectRequest, PutObjectResponse, GetObjectRequest => GetObjectRequestV2, PutObjectRequest => PutObjectRequestV2}
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
+import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 
 import java.io.File
 import java.net.{URI, URL}
@@ -257,18 +254,19 @@ object S3Ops {
   def buildGoogleS3Client(config: CommonConfig): Option[S3Client] = {
     config.googleS3AccessKey.flatMap { accessKey =>
       config.googleS3SecretKey.map { secretKey =>
-        val endpointConfig = new EndpointConfiguration("https://storage.googleapis.com", null)
-        // create credentials provider
-        val credentials = new BasicAWSCredentials(accessKey, secretKey)
-        val credentialsProvider = new AWSStaticCredentialsProvider(credentials)
-        // create a client config
-        val clientConfig = new ClientConfiguration()
+        val credentials = AwsBasicCredentials.create(accessKey, secretKey)
+        val credentialsProvider = StaticCredentialsProvider.create(credentials)
 
-        val clientBuilder = AmazonS3ClientBuilder.standard()
-        clientBuilder.setEndpointConfiguration(endpointConfig)
-        clientBuilder.withCredentials(credentialsProvider)
-        clientBuilder.withClientConfiguration(clientConfig)
-        clientBuilder.build()
+        val s3Configuration = S3Configuration.builder()
+          .pathStyleAccessEnabled(false)
+          .build()
+
+        S3Client.builder()
+          .endpointOverride(URI.create("https://storage.googleapis.com"))
+          .credentialsProvider(credentialsProvider)
+          .serviceConfiguration(s3Configuration)
+          .region(Region.EU_WEST_1) // required by v2 even for custom endpoints; value is mostly ignored by servers
+          .build()
       }
     }
   }
@@ -276,19 +274,19 @@ object S3Ops {
   def buildLocalS3Client(config: CommonConfig): Option[S3Client] = {
     config.googleS3AccessKey.flatMap { accessKey =>
       config.googleS3SecretKey.map { secretKey =>
-        val endpointConfig = new EndpointConfiguration("https://minio.griddev.eelpieconsulting.co.uk", null)
-        // create credentials provider
-        val credentials = new BasicAWSCredentials(accessKey, secretKey)
-        val credentialsProvider = new AWSStaticCredentialsProvider(credentials)
-        // create a client config
-        val clientConfig = new ClientConfiguration()
+        val credentials = AwsBasicCredentials.create(accessKey, secretKey)
+        val credentialsProvider = StaticCredentialsProvider.create(credentials)
 
-        val clientBuilder = AmazonS3ClientBuilder.standard()
-        clientBuilder.setEndpointConfiguration(endpointConfig)
-        clientBuilder.withCredentials(credentialsProvider)
-        clientBuilder.withClientConfiguration(clientConfig)
-        clientBuilder.withPathStyleAccessEnabled(true)
-        clientBuilder.build()
+        val s3Configuration = S3Configuration.builder()
+          .pathStyleAccessEnabled(true)
+          .build()
+
+        S3Client.builder()
+          .endpointOverride(URI.create("https://minio.griddev.eelpieconsulting.co.uk"))
+          .credentialsProvider(credentialsProvider)
+          .serviceConfiguration(s3Configuration)
+          .region(Region.EU_WEST_1) // required by v2 even for custom endpoints; value is mostly ignored by servers
+          .build()
       }
     }
   }
