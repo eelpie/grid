@@ -5,7 +5,7 @@ import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
 import org.joda.time.{DateTime, DateTimeZone}
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, DefaultCredentialsProvider, EnvironmentVariableCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
@@ -278,12 +278,21 @@ object S3Ops {
   }
 
   def buildS3PresignerV2(config: CommonConfig, endpoint: String, usePathStyleURLs: Boolean): S3Presigner = {
+    val credentialsProvider = config.googleS3AccessKey.flatMap { accessKey =>
+      config.googleS3SecretKey.map { secretKey =>
+        StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey))
+      }
+    }.getOrElse{
+      EnvironmentVariableCredentialsProvider.create()
+    }
+
     val s3Configuration = S3Configuration.builder()
       .pathStyleAccessEnabled(usePathStyleURLs)
       .build()
 
     val builder = S3Presigner.builder()
       .serviceConfiguration(s3Configuration)
+      .credentialsProvider(credentialsProvider)
       .endpointOverride(URI.create(endpoint))
       .region(Region.EU_WEST_1) // required by v2 even for custom endpoints; value is mostly ignored by servers
 
