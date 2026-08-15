@@ -66,8 +66,8 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientV1B
   val googleS3SecretKey: Option[String] = stringOpt("s3.secretKey")
 
   private val amazonS3: S3Client = S3Ops.buildS3ClientV2(this)
-  private val googleS3: Option[S3Client] = S3Ops.buildGoogleS3Client(this)
-  private val localS3: Option[S3Client] = S3Ops.buildLocalS3Client(this)
+  private val googleS3: Option[S3Client] = S3Ops.buildLocalS3Client(this, "storage.googleapis.com", usePathStyleURLs = false)
+  private val localS3: Option[S3Client] = S3Ops.buildLocalS3Client(this, "minio.griddev.eelpieconsulting.co.uk", usePathStyleURLs = true)
 
   def clientFor(bucketEndpoint: String): S3Client = {
     (bucketEndpoint match {

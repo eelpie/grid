@@ -251,38 +251,18 @@ object S3Ops {
   // TODO: Make this region aware - i.e. RegionUtils.getRegion(region).getServiceEndpoint(AmazonS3.ENDPOINT_PREFIX)
   val s3Endpoint = "s3.amazonaws.com"
 
-  def buildGoogleS3Client(config: CommonConfig): Option[S3Client] = {
+  def buildLocalS3Client(config: CommonConfig, endpoint: String, usePathStyleURLs: Boolean): Option[S3Client] = {
     config.googleS3AccessKey.flatMap { accessKey =>
       config.googleS3SecretKey.map { secretKey =>
         val credentials = AwsBasicCredentials.create(accessKey, secretKey)
         val credentialsProvider = StaticCredentialsProvider.create(credentials)
 
         val s3Configuration = S3Configuration.builder()
-          .pathStyleAccessEnabled(false)
+          .pathStyleAccessEnabled(usePathStyleURLs)
           .build()
 
         S3Client.builder()
-          .endpointOverride(URI.create("https://storage.googleapis.com"))
-          .credentialsProvider(credentialsProvider)
-          .serviceConfiguration(s3Configuration)
-          .region(Region.EU_WEST_1) // required by v2 even for custom endpoints; value is mostly ignored by servers
-          .build()
-      }
-    }
-  }
-
-  def buildLocalS3Client(config: CommonConfig): Option[S3Client] = {
-    config.googleS3AccessKey.flatMap { accessKey =>
-      config.googleS3SecretKey.map { secretKey =>
-        val credentials = AwsBasicCredentials.create(accessKey, secretKey)
-        val credentialsProvider = StaticCredentialsProvider.create(credentials)
-
-        val s3Configuration = S3Configuration.builder()
-          .pathStyleAccessEnabled(true)
-          .build()
-
-        S3Client.builder()
-          .endpointOverride(URI.create("https://minio.griddev.eelpieconsulting.co.uk"))
+          .endpointOverride(URI.create(endpoint))
           .credentialsProvider(credentialsProvider)
           .serviceConfiguration(s3Configuration)
           .region(Region.EU_WEST_1) // required by v2 even for custom endpoints; value is mostly ignored by servers
