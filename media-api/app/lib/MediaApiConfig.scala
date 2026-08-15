@@ -18,19 +18,20 @@ case class StoreConfig(
 
 class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithElastic(resources) {
   private val configBucketEndpoint = S3Ops.s3Endpoint
-  val configBucket: S3Bucket = S3Bucket(string("s3.config.bucket"), configBucketEndpoint, usesPathStyleURLs = false, s3Client)
+  val configBucket: S3Bucket = S3Bucket(string("s3.config.bucket"), configBucketEndpoint, usesPathStyleURLs = false, clientFor(configBucketEndpoint))
   private val usageMailBucketEndpoint = S3Ops.s3Endpoint
-  val usageMailBucket: S3Bucket = S3Bucket(string("s3.usagemail.bucket"), usageMailBucketEndpoint, usesPathStyleURLs = false, s3Client)
+  val usageMailBucket: S3Bucket = S3Bucket(string("s3.usagemail.bucket"), usageMailBucketEndpoint, usesPathStyleURLs = false, clientFor(usageMailBucketEndpoint))
 
   val quotaStoreKey: String = string("quota.store.key")
   val quotaStoreConfig: StoreConfig = StoreConfig(configBucket, quotaStoreKey)
 
+  private val imagePublishingBucketEndpoint: String = string("publishing.image.bucket.endpoint")
   //Lazy allows this to be empty and not break things unless used somewhere
   lazy val imgPublishingBucket: S3Bucket = S3Bucket(
     string("publishing.image.bucket.name"),
-    string("publishing.image.bucket.endpoint"),
+    imagePublishingBucketEndpoint,
     boolean("publishing.image.bucket.pathStyleURLs"),
-    s3Client
+    clientFor(imagePublishingBucketEndpoint)
   )
 
   val cloudFrontDomainThumbBucket: Option[String]   = stringOpt("cloudfront.domain.thumbbucket")

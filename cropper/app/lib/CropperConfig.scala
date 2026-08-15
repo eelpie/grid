@@ -7,11 +7,12 @@ import com.gu.mediaservice.model.Instance
 import java.io.File
 
 class CropperConfig(resources: GridConfigResources) extends CommonConfig(resources) {
+  private val imagePublishingBucketEndpoint: String = string("publishing.image.bucket.endpoint")
   val imgPublishingBucket: S3Bucket = S3Bucket(
     string("publishing.image.bucket.name"),
-    string("publishing.image.bucket.endpoint"),
+    imagePublishingBucketEndpoint,
     boolean("publishing.image.bucket.pathStyleURLs"),
-    s3Client
+    clientFor(imagePublishingBucketEndpoint)
   )
 
   val canDownloadCrop: Boolean = boolean("canDownloadCrop")
