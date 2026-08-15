@@ -293,7 +293,7 @@ object S3Ops {
     val builder = S3Presigner.builder()
       .serviceConfiguration(s3Configuration)
       .credentialsProvider(credentialsProvider)
-      .endpointOverride(URI.create(endpoint))
+      .endpointOverride(URI.create("https://" + endpoint))
       .region(Region.EU_WEST_1) // required by v2 even for custom endpoints; value is mostly ignored by servers
 
     builder.build()
