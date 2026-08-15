@@ -92,14 +92,14 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     val getObjectRequest = GetObjectRequestV2.builder().bucket(bucket.bucket).key(key).responseContentDisposition(contentDisposition).build()
     val presignRequest = GetObjectPresignRequest.builder().signatureDuration(signatureDuration(expiration)).getObjectRequest(getObjectRequest).build()
 
-    S3Ops.buildS3PresignerV2(config).presignGetObject(presignRequest).url().toExternalForm
+    S3Ops.buildS3PresignerV2(config, bucket.endPoint, bucket.usesPathStyleURLs).presignGetObject(presignRequest).url().toExternalForm
   }
 
   def signUrlTony(bucket: S3Bucket, key: String, expiration: DateTime = cachableExpiration()): URL = {
     val getObjectRequest = GetObjectRequestV2.builder().bucket(bucket.bucket).key(key).build()
     val presignRequest = GetObjectPresignRequest.builder().signatureDuration(signatureDuration(expiration)).getObjectRequest(getObjectRequest).build()
 
-    S3Ops.buildS3PresignerV2(config).presignGetObject(presignRequest).url()
+    S3Ops.buildS3PresignerV2(config, bucket.endPoint, bucket.usesPathStyleURLs).presignGetObject(presignRequest).url()
   }
 
   def getObjectV2(bucket: S3Bucket, key: String): ResponseInputStream[GetObjectResponse] = {
@@ -277,16 +277,16 @@ object S3Ops {
       .build()
   }
 
-  def buildS3PresignerV2(config: CommonConfig, localstackAware: Boolean = true, maybeRegionOverride: Option[Region] = None): S3Presigner = {
+  def buildS3PresignerV2(config: CommonConfig, endpoint: String, usePathStyleURLs: Boolean): S3Presigner = {
+    val s3Configuration = S3Configuration.builder()
+      .pathStyleAccessEnabled(usePathStyleURLs)
+      .build()
+
     val builder = S3Presigner.builder()
-      .credentialsProvider(config.awsCredentialsV2)
-      .region(maybeRegionOverride.getOrElse(config.awsRegionV2))
+      .serviceConfiguration(s3Configuration)
+      .endpointOverride(URI.create(endpoint))
+      .region(Region.EU_WEST_1) // required by v2 even for custom endpoints; value is mostly ignored by servers
 
-    val configuredBuilder = config.awsLocalEndpointUri match {
-      case Some(endpoint) if localstackAware => builder.endpointOverride(endpoint)
-      case _ => builder
-    }
-
-    configuredBuilder.build()
+    builder.build()
   }
 }
