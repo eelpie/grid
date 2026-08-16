@@ -19,7 +19,7 @@ object UseCqlChips extends FeatureSwitch(
 object EnableAISearch extends FeatureSwitch(
   key = "enable-ai-search",
   title = "Enable the use of AI search",
-  default = true
+  default = false
 )
 
 class FeatureSwitches(featureSwitches: List[FeatureSwitch]){
