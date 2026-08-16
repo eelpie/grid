@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Duration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 case class S3Object(uri: URI, size: Long, metadata: S3Metadata)
 
@@ -52,10 +53,14 @@ case class S3Metadata(userMetadata: Map[String, String], objectMetadata: S3Objec
 
 object S3Metadata {
   def apply(meta: HeadObjectResponse): S3Metadata = {
+    val maybeMineType = Try {
+      Option(meta.contentType()).filterNot(_.toLowerCase == "application/octet-stream").map(MimeType.apply)
+    }.toOption.flatten
+
     S3Metadata(
       meta.metadata().asScala.toMap,
       S3ObjectMetadata(
-        contentType = Option(meta.contentType()).filterNot(_.toLowerCase == "application/octet-stream").map(MimeType.apply),
+        contentType = maybeMineType,
         cacheControl = Option(meta.cacheControl()),
         lastModified = Option(meta.lastModified()).map(l => new DateTime(l.toEpochMilli).withZone(DateTimeZone.UTC))
       )
