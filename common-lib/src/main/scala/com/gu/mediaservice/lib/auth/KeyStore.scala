@@ -17,8 +17,8 @@ class KeyStore(bucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext)
   }
 
   private def fetchAll: Map[String, ApiAccessor] = {
-    val objects = Await.result(s3.listV2(bucket, ""), 10.seconds)
-    val keys = objects.map(_.uri.getPath.stripPrefix("/"))  // TODO use unction!
+    val objects = Await.result(s3.listV2(bucket), 10.seconds)
+    val keys = objects.map(s3Object => bucket.keyFromURL(s3Object.uri))
     keys.flatMap(k => getS3Object(k).map(k -> ApiAccessor(_))).toMap
   }
 }
