@@ -205,8 +205,8 @@ class ReaperController(
       Future.sequence(List(now, now.minusDays(1), now.minusDays(2)).map { day =>
         val s3DirName = s3DirNameFromDate(day)
         for {
-          softDeletes <- store.listV2(reaperBucket, s"soft/$s3DirName")
-          hardDeletes <- store.listV2(reaperBucket, s"hard/$s3DirName")
+          softDeletes <- store.listV2(reaperBucket, Some(s"soft/$s3DirName"))
+          hardDeletes <- store.listV2(reaperBucket, Some(s"hard/$s3DirName"))
         } yield softDeletes ++ hardDeletes
       }).map { recentRecords =>
         val recentRecordKeys = recentRecords.flatten

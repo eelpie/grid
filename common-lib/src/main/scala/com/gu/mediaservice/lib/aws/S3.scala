@@ -174,11 +174,13 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     }
   }
 
-  def listV2(bucket: S3Bucket, prefixDir: String)
+  def listV2(bucket: S3Bucket, prefixDir: Option[String] = None)
             (implicit ex: ExecutionContext): Future[List[S3Object]] =
     Future {
-      val req = ListObjectsV2Request.builder().bucket(bucket.bucket).prefix(s"$prefixDir/").build()
-      val listing = clientFor(bucket).listObjectsV2(req)
+      val req = ListObjectsV2Request.builder().bucket(bucket.bucket)
+      val withPrefix = prefixDir.map(prefix =>  req.prefix(s"$prefix/")).getOrElse(req).build()
+
+      val listing = clientFor(bucket).listObjectsV2(withPrefix)
       val s3Objects = listing.contents().asScala.toList
       s3Objects.map(s3Object => {
         S3Object(bucket, s3Object.key(), size = s3Object.size(), metadata = getMetadataV2(bucket, s3Object.key()))
