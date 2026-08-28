@@ -25,9 +25,6 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   val quotaStoreKey: String = string("quota.store.key")
   val quotaStoreConfig: StoreConfig = StoreConfig(configBucket, quotaStoreKey)
 
-  //Lazy allows this to be empty and not break things unless used somewhere
-  lazy val imgPublishingBucket = string("publishing.image.bucket")
-
   val cloudFrontDomainThumbBucket: Option[String]   = stringOpt("cloudfront.domain.thumbbucket")
   val cloudFrontPrivateKeyBucket: Option[String]    = stringOpt("cloudfront.private-key.bucket")
   val cloudFrontPrivateKeyBucketKey: Option[String] = stringOpt("cloudfront.private-key.key")
