@@ -73,6 +73,9 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
   val imageBucket: String = string("s3.image.bucket")
   val thumbnailBucket: String = string("s3.thumb.bucket")
 
+  // Lazy allows this to be empty and not break things unless used somewhere
+  lazy val imgPublishingBucket: String = string("publishing.image.bucket")
+
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
   val maybeIngestBucket: Option[String] = stringOpt("s3.ingest.bucket")
   val maybeFailBucket: Option[String] = stringOpt("s3.fail.bucket")
