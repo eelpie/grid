@@ -31,13 +31,13 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         instance = instance.id
       )
       val expression = record.toExpression
-      val names = expression.expressionNames().values().asScala
+      val names = expression.expressionNames().values().asScala.filterNot(_ == "instance")
       names shouldBe empty
 
-      val values = expression.expressionValues().values().asScala
+      val values = expression.expressionValues().values().asScala.filterNot(_.s() == instance.id)
 
       values shouldBe empty
-      expression.expression() shouldBe ""
+      expression.expression() shouldBe "SET #instance = :instance"
     }
 
     it("should include standard String and UsageType updates when present") {
@@ -56,21 +56,23 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
 
       val names = expression.expressionNames().values().asScala
 
-      names.size shouldBe 4
+      names.size shouldBe 5
       names should contain ("media_id")
       names should contain ("usage_type")
       names should contain ("media_type")
       names should contain ("usage_status")
+      names should contain ("instance")
 
       val values = expression.expressionValues().values().asScala
-      values.size shouldBe 4
+      values.size shouldBe 5
       values should contain (AttributeValue.builder.s("media-789").build())
       values should contain (AttributeValue.builder.s(PrintUsage.toString).build())
       values should contain (AttributeValue.builder.s("image").build())
       values should contain (AttributeValue.builder.s("active").build())
+      values should contain (AttributeValue.builder.s(instance.id).build())
 
       val setExp = "SET #media_id = :media_id, #usage_type = :usage_type," +
-        " #media_type = :media_type, #usage_status = :usage_status"
+        " #media_type = :media_type, #usage_status = :usage_status, #instance = :instance"
 
       expression.expression() shouldEqual setExp
     }
@@ -86,10 +88,11 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
 
         val expression = record.toExpression
         val names = expression.expressionNames().values().asScala
-        names.size shouldBe 1
+        names.size shouldBe 2
         names should contain ("date_removed")
+        names should contain ("instance")
 
-        expression.expression() shouldEqual "SET #date_removed = :date_removed"
+        expression.expression() shouldEqual "SET #instance = :instance, #date_removed = :date_removed"
       }
       it("should generate a REMOVE block when ClearDateRemoved is specified") {
         val record = UsageRecord(
@@ -100,7 +103,7 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         )
 
         val expression = record.toExpression
-        expression.expression() shouldEqual "REMOVE date_removed"
+        expression.expression() shouldEqual "SET #instance = :instance REMOVE date_removed"
       }
       it("should handle a mix of remove and set updates when the relevant fields are set") {
         val record = UsageRecord(
@@ -114,9 +117,10 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         val expression = record.toExpression
 
         val names = expression.expressionNames().values().asScala
-        names.size shouldBe 1
+        names.size shouldBe 2
         names should contain ("media_id")
-        expression.expression() shouldEqual "SET #media_id = :media_id REMOVE date_removed"
+        names should contain ("instance")
+        expression.expression() shouldEqual "SET #media_id = :media_id, #instance = :instance REMOVE date_removed"
       }
     }
     describe("PrintUsageMetadata") {
@@ -148,7 +152,7 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         val expression = record.toExpression
         val rawValues = expression.expressionValues().values().asScala
 
-        val printMetadataMap = rawValues.head.m().asScala
+        val printMetadataMap = rawValues.last.m().asScala
 
         printMetadataMap("sectionName") shouldBe DbString("News").toAttrValue
         printMetadataMap("issueDate") shouldBe DbString("2026-07-07T12:00:00.000Z").toAttrValue
@@ -188,7 +192,7 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
         val expression = record.toExpression
         val rawValues = expression.expressionValues().values().asScala
 
-        val printMetadataMap = rawValues.head.m().asScala
+        val printMetadataMap = rawValues.last.m().asScala
         printMetadataMap("sectionName") shouldBe DbString("News").toAttrValue
         printMetadataMap("issueDate") shouldBe DbString("2026-07-07T12:00:00.000Z").toAttrValue
         printMetadataMap("pageNumber") shouldBe DbInt(5).toAttrValue
@@ -330,17 +334,18 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
       val expression = record.toExpression
 
       val names = expression.expressionNames().values().asScala
-      names should have size 13
+      names should have size 14
 
       val expectedNames = List(
         "media_id", "usage_type", "media_type", "last_modified", "usage_status",
         "print_metadata", "digital_metadata", "syndication_metadata",
-        "front_metadata", "download_metadata", "child_metadata", "date_added", "date_removed"
+        "front_metadata", "download_metadata", "child_metadata", "date_added", "date_removed",
+        "instance"
       )
       expectedNames.foreach { name => names should contain (name) }
 
       val values = expression.expressionValues().values().asScala
-      values should have size 13
+      values should have size 14
 
       values should contain (AttributeValue.builder().s("media-789").build())
       values should contain (AttributeValue.builder().s(PrintUsage.toString).build())
@@ -349,6 +354,7 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
       values should contain (AttributeValue.builder().s("active").build())
       values should contain (AttributeValue.builder().n(fixedDateAdded.getMillis.toString).build())
       values should contain (AttributeValue.builder().n(fixedDateRemoved.getMillis.toString).build())
+      values should contain (AttributeValue.builder().s(instance.id).build())
 
       val attributeMaps = values.collect { case av if av.hasM => av.m().asScala.toMap }
 
@@ -392,7 +398,7 @@ class UsageRecordTest extends AnyFunSpec with Matchers {
           "#last_modified = :last_modified, #usage_status = :usage_status, #print_metadata = :print_metadata, " +
           "#digital_metadata = :digital_metadata, #syndication_metadata = :syndication_metadata, " +
           "#front_metadata = :front_metadata, #download_metadata = :download_metadata, " +
-          "#child_metadata = :child_metadata, #date_added = :date_added, #date_removed = :date_removed"
+          "#child_metadata = :child_metadata, #date_added = :date_added, #instance = :instance, #date_removed = :date_removed"
 
       expression.expression() shouldEqual expectedExpressionString
     }
