@@ -24,15 +24,16 @@ object NoItemFound extends Throwable("item not found")
   * @tparam T The type of this table
   */
 class DynamoDB[T](client: DynamoDbClient, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
+  private val IdKey = "id"
+  private val InstanceKey = "instance"
+
   lazy val dynamo: DynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(client).build()
   lazy val tableSchema = TableSchema.documentSchemaBuilder()
-    .addIndexPartitionKey(TableMetadata.primaryIndexName(), IdKey, AttributeValueType.S)
+    .addIndexPartitionKey(TableMetadata.primaryIndexName(), InstanceKey, AttributeValueType.S)
+    .addIndexSortKey(TableMetadata.primaryIndexName(), IdKey, AttributeValueType.S)
     .attributeConverterProviders(AttributeConverterProvider.defaultProvider())
     .build()
   lazy val table = dynamo.table(tableName, tableSchema)
-
-  private val IdKey = "id"
-  private val InstanceKey = "instance"
 
   private def itemKey(key: String)(implicit instance: Instance) =
     Key.builder()
