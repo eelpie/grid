@@ -108,6 +108,28 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     req.url().toExternalForm
   }
 
+  def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration()): String = {
+    // get path and remove leading `/`
+    val key: Key = url.getPath.drop(1)
+
+    val nowMillis = System.currentTimeMillis()
+    val targetExpirationMillis = expiration.getMillis
+    val remainingSeconds = Math.max(1, (targetExpirationMillis - nowMillis) / 1000)
+
+    val getObjectRequest = GetObjectRequest.builder()
+      .bucket(bucket)
+      .key(key)
+      .build()
+
+    val getObjectPresignRequest = GetObjectPresignRequest.builder()
+      .getObjectRequest(getObjectRequest)
+      .signatureDuration(Duration.ofSeconds(remainingSeconds))
+      .build()
+
+    val req = presigner.presignGetObject(getObjectPresignRequest)
+    req.url().toExternalForm
+  }
+
   def getObject(bucket: Bucket, url: URI): ResponseInputStream[GetObjectResponse]= {
     // get path and remove leading `/`
     val key: Key = url.getPath.drop(1)
