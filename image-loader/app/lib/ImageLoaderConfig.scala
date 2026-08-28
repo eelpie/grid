@@ -12,8 +12,6 @@ import scala.concurrent.duration.FiniteDuration
 class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(resources) with StrictLogging {
   val maybeImageReplicaBucket: Option[String] = stringOpt("s3.image.replicaBucket")
 
-  val thumbnailBucket: String = string("s3.thumb.bucket")
-
   val lowerEnvironmentSamplingPercentageAsDecimal = intOpt("s3.sampling.percentage").getOrElse(1) / 100.0
   val maybeLowerEnvironmentQueueBucketToSampleInto = stringOpt("s3.sampling.targetBucket")
 
