@@ -28,21 +28,22 @@ class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Bef
 
   val testTableName: String = "test-edits-table-" + UUID.randomUUID().toString
 
-  private val dynamoClient2: DynamoDbClient = DynamoDbClient.builder().
+  private val dynamoClient = DynamoDbClient.builder().
     endpointOverride(dynamoContainer.getEndpointOverride(DYNAMODB)).
     region(Region.of(dynamoContainer.getRegion)).
     credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(dynamoContainer.getAccessKey, dynamoContainer.getSecretKey))).build()
 
-  private val store = new EditsStore(dynamoClient2, testTableName) {
-  }
+  private val store = new EditsStore(dynamoClient, testTableName)
 
   override def beforeAll(): Unit = {
     def createTableRequestFor(tableName: String): CreateTableRequest = {
       val attributeDefinitions = List(
+        AttributeDefinition.builder.attributeName("instance").attributeType(ScalarAttributeType.S).build(),
         AttributeDefinition.builder.attributeName("id").attributeType(ScalarAttributeType.S).build()
       )
       val keySchema = List(
-        KeySchemaElement.builder.attributeName("id").keyType(KeyType.HASH).build()
+        KeySchemaElement.builder.attributeName("instance").keyType(KeyType.HASH).build(),
+        KeySchemaElement.builder.attributeName("id").keyType(KeyType.RANGE).build()
       )
       val provisionedThroughput = ProvisionedThroughput.builder.readCapacityUnits(1L).writeCapacityUnits(1L).build()
       val request = CreateTableRequest.builder
@@ -54,7 +55,7 @@ class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Bef
       request
     }
 
-    dynamoClient2.createTable(createTableRequestFor(testTableName))
+    dynamoClient.createTable(createTableRequestFor(testTableName))
   }
 
   override def afterAll(): Unit = {
