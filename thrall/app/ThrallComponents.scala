@@ -91,7 +91,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   val streamRunning: Future[Done] = thrallStreamProcessor.run()
 
-  val s3 = S3Ops.buildS3Client(config)
   val s3Vectors = new S3Vectors(config)
 
   Source.repeat(()).throttle(1, per = 5.minute).map(_ => {
