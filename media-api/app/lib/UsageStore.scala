@@ -5,6 +5,8 @@ import java.util.concurrent.atomic.AtomicReference
 import org.apache.pekko.actor.{Cancellable, Scheduler}
 import com.gu.mediaservice.lib.BaseStore
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap}
+import com.gu.mediaservice.lib.aws.S3
+import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.{Agencies, Agency, UsageRights}
 import com.gu.mediaservice.model.usage.{DigitalUsage, PrintUsage, PublishedUsageStatus, RemovedUsageStatus, UnknownUsageStatus, Usage, UsageStatus, UsageType}
 import org.joda.time.{DateTime, Duration}
@@ -138,8 +140,9 @@ class UsageStore(
 class QuotaStore(
   quotaFile: String,
   bucket: String,
-  config: MediaApiConfig
-)(implicit ec: ExecutionContext) extends BaseStore[String, SupplierUsageQuota](bucket, config)(ec) {
+  config: MediaApiConfig,
+  s3: S3
+)(implicit ec: ExecutionContext) extends BaseStore[String, SupplierUsageQuota](bucket, config, s3)(ec) {
 
   def getQuota: Map[String, SupplierUsageQuota] = store.get()
 
