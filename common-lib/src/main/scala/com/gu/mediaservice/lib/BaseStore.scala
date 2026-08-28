@@ -12,10 +12,8 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 
-abstract class BaseStore[TStoreKey, TStoreVal](bucket: String, config: CommonConfig)(implicit ec: ExecutionContext)
+abstract class BaseStore[TStoreKey, TStoreVal](bucket: String, config: CommonConfig, s3: S3)(implicit ec: ExecutionContext)
   extends GridLogging {
-
-  val s3 = new S3(config)
 
   protected val store: AtomicReference[Map[TStoreKey, TStoreVal]] = new AtomicReference(Map.empty)
   protected val lastUpdated: AtomicReference[DateTime] = new AtomicReference(DateTime.now())
