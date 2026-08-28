@@ -7,17 +7,17 @@ import org.joda.time.{DateTime, DateTimeZone}
 import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
-import software.amazon.awssdk.services.s3.model.{GetObjectRequest, GetObjectResponse, HeadObjectRequest, HeadObjectResponse, ListObjectsV2Request, NoSuchKeyException, PutObjectRequest}
+import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
+import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 
 import java.io.File
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.time.Duration
-import scala.jdk.CollectionConverters._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 case class S3Object(uri: URI, size: Long, metadata: S3Metadata)
 
@@ -92,6 +92,28 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
       .bucket(bucket)
       .key(key)
       .responseContentDisposition(contentDisposition)
+      .build()
+
+    val getObjectPresignRequest = GetObjectPresignRequest.builder()
+      .getObjectRequest(getObjectRequest)
+      .signatureDuration(Duration.ofSeconds(remainingSeconds))
+      .build()
+
+    val req = presigner.presignGetObject(getObjectPresignRequest)
+    req.url().toExternalForm
+  }
+
+  def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration()): String = {
+    // get path and remove leading `/`
+    val key: Key = url.getPath.drop(1)
+
+    val nowMillis = System.currentTimeMillis()
+    val targetExpirationMillis = expiration.getMillis
+    val remainingSeconds = Math.max(1, (targetExpirationMillis - nowMillis) / 1000)
+
+    val getObjectRequest = GetObjectRequest.builder()
+      .bucket(bucket)
+      .key(key)
       .build()
 
     val getObjectPresignRequest = GetObjectPresignRequest.builder()
