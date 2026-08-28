@@ -71,6 +71,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
   lazy val softDeletedMetadataTable: String = string("dynamo.table.softDelete.metadata")
 
   val imageBucket: String = string("s3.image.bucket")
+  val thumbnailBucket: String = string("s3.thumb.bucket")
 
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
   val maybeIngestBucket: Option[String] = stringOpt("s3.ingest.bucket")
