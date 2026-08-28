@@ -1,14 +1,15 @@
 package com.gu.mediaservice.lib.auth
 
 import com.gu.mediaservice.lib.BaseStore
+import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.model.Instance
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}
 
-class KeyStore(bucket: String, config: CommonConfig)(implicit ec: ExecutionContext)
-  extends BaseStore[String, ApiAccessor](bucket, config)(ec) {
+class KeyStore(bucket: String, config: CommonConfig, s3: S3)(implicit ec: ExecutionContext)
+  extends BaseStore[String, ApiAccessor](bucket, config, s3)(ec) {
 
   def lookupIdentity(key: String)(implicit instance: Instance): Option[ApiAccessor] = store.get().get(instance.id + "/" + key)
 
