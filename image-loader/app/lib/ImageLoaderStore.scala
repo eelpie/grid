@@ -58,7 +58,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
         .signatureDuration(duration)
         .build();
 
-    val req = presigner.presignPutObject(putObjectPresignRequest)
+    val req = presignPutObject(putObjectPresignRequest)
     req.url().toExternalForm
   }
 
