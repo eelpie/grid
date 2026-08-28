@@ -28,13 +28,12 @@ class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Bef
 
   val testTableName: String = "test-edits-table-" + UUID.randomUUID().toString
 
-  private val dynamoClient2: DynamoDbClient = DynamoDbClient.builder().
+  private val dynamoClient = DynamoDbClient.builder().
     endpointOverride(dynamoContainer.getEndpointOverride(DYNAMODB)).
     region(Region.of(dynamoContainer.getRegion)).
     credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(dynamoContainer.getAccessKey, dynamoContainer.getSecretKey))).build()
 
-  private val store = new EditsStore(dynamoClient2, testTableName) {
-  }
+  private val store = new EditsStore(dynamoClient, testTableName)
 
   override def beforeAll(): Unit = {
     def createTableRequestFor(tableName: String): CreateTableRequest = {
