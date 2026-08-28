@@ -29,7 +29,6 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   lazy val imgPublishingBucket = string("publishing.image.bucket")
   val awsRegionName = string("aws.region")
 
-  val imageBucket: String = string("s3.image.bucket")
   val thumbBucket: String = string("s3.thumb.bucket")
 
   val cloudFrontDomainThumbBucket: Option[String]   = stringOpt("cloudfront.domain.thumbbucket")
