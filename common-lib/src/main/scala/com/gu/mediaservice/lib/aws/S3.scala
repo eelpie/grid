@@ -9,7 +9,7 @@ import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
+import software.amazon.awssdk.services.s3.presigner.model.{GetObjectPresignRequest, PresignedPutObjectRequest, PutObjectPresignRequest}
 import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 
 import java.io.File
@@ -73,7 +73,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   type UserMetadata = Map[String, String]
 
   private lazy val client: S3Client = S3Ops.buildS3Client(config)
-  lazy val presigner = S3Ops.buildPresignerClientV2(config)
+  private lazy val presigner = S3Ops.buildPresignerClientV2(config)
   def signUrl(
                  bucket: Bucket,
                  url: URI,
@@ -125,6 +125,10 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
 
     val req = presigner.presignGetObject(getObjectPresignRequest)
     req.url()
+  }
+
+  def presignPutObject(putObjectPresignRequest: PutObjectPresignRequest): PresignedPutObjectRequest = {
+    presigner.presignPutObject(putObjectPresignRequest)
   }
 
   def getObject(bucket: Bucket, url: URI): ResponseInputStream[GetObjectResponse]= {
