@@ -3,6 +3,7 @@ package com.gu.mediaservice.lib.auth
 import org.apache.pekko.actor.ActorSystem
 import com.gu.mediaservice.lib.auth.Authentication.MachinePrincipal
 import com.gu.mediaservice.lib.auth.provider.{ApiKeyAuthenticationProvider, Authenticated, AuthenticationProviderResources, Invalid, NotAuthenticated, NotAuthorised}
+import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.model.Instance
@@ -36,6 +37,7 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
   private val providerConfig = Configuration.empty
   private val controllerComponents: DefaultControllerComponents = DefaultControllerComponents(null, null, null, null, null, global)
   private val resources = AuthenticationProviderResources(config, actorSystem, wsClient, controllerComponents, mock[Authorisation], mock[CookieSigner], mock[UsageEvents] )
+  private val s3 = new S3(config)
   private val provider = new ApiKeyAuthenticationProvider(providerConfig, resources) {
     override def initialise(): Unit = { /* do nothing */ }
 
@@ -43,7 +45,7 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
       Future.successful(())
     }
 
-    override def keyStore: KeyStore = new KeyStore("not-used", resources.commonConfig) {
+    override def keyStore: KeyStore = new KeyStore("not-used", resources.commonConfig, s3) {
       override def lookupIdentity(key: String)(implicit instance: Instance): Option[ApiAccessor] = {
         key match {
           case "key-chuckle" => Some(ApiAccessor("brothers", Internal))
