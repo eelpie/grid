@@ -33,7 +33,7 @@ function getCommonConfig(config) {
 
   return `domain.root="${config.DOMAIN}"
         |content.web.baseUrl="https://notused.example.com"
-        |authentication.providers.machine.config.authKeyStoreBucket="${config.coreStackProps.KeyBucket}"
+        |authentication.providers.machine.config.authKeyStoreBucket.name="${config.coreStackProps.KeyBucket}"
         |aws.local.endpoint="https://localstack.media.${config.DOMAIN}"
         |thrall.kinesis.stream.name="${config.coreStackProps.ThrallMessageStream}"
         |thrall.kinesis.lowPriorityStream.name="${config.coreStackProps.ThrallLowPriorityMessageStream}"
@@ -49,8 +49,8 @@ function getCommonConfig(config) {
         ${useLocalPermissions ? '|auth.useLocal=true' : ''}
         ${useLocalPermissions ? `|permissions.bucket="${config.coreStackProps.PermissionsBucket}"` : ''}
         |sqs.ingest.queue.url="${config.coreStackProps.IngestSqsQueue.replace("http://localhost:4576", `https://localstack.media.${config.DOMAIN}`)}"
-        |s3.ingest.bucket="${config.coreStackProps.IngestQueueBucket}"
-        |s3.fail.bucket="${config.coreStackProps.IngestQueueFailBucket}"
+        |s3.ingest.bucket.name="${config.coreStackProps.IngestQueueBucket}"
+        |s3.fail.bucket.name="${config.coreStackProps.IngestQueueFailBucket}"
         |usageRightsConfigProvider.config.freeSuppliers=[
         |  "AAP",
         |  "Alamy",
@@ -105,7 +105,7 @@ function getCommonConfig(config) {
 
 function getAuthConfig(config) {
   return stripMargin`${getCommonConfig(config)}
-        |s3.config.bucket="${config.coreStackProps.ConfigBucket}"
+        |s3.config.bucket.name="${config.coreStackProps.ConfigBucket}"
         |aws.region="${config.AWS_DEFAULT_REGION}"
         |security.cors.allowedOrigins="${getCorsAllowedOriginString(config)}"
         |metrics.request.enabled=false
@@ -115,7 +115,7 @@ function getAuthConfig(config) {
 function getCollectionsConfig(config) {
     return stripMargin`${getCommonConfig(config)}
         |aws.region="${config.AWS_DEFAULT_REGION}"
-        |s3.collections.bucket="${config.coreStackProps.CollectionsBucket}"
+        |s3.collections.bucket.name="${config.coreStackProps.CollectionsBucket}"
         |dynamo.table.collections="CollectionsTable"
         |dynamo.table.imageCollections="ImageCollectionsTable"
         |security.cors.allowedOrigins="${getCorsAllowedOriginString(config)}"
@@ -126,9 +126,9 @@ function getCollectionsConfig(config) {
 function getCropperConfig(config) {
     return stripMargin`${getCommonConfig(config)}
         |aws.region="${config.AWS_DEFAULT_REGION}"
-        |publishing.image.bucket="${config.coreStackProps.ImageOriginBucket}"
+        |publishing.image.bucket.name="${config.coreStackProps.ImageOriginBucket}"
         |publishing.image.host="public.media.${config.DOMAIN}"
-        |s3.config.bucket="${config.coreStackProps.ConfigBucket}"
+        |s3.config.bucket.name="${config.coreStackProps.ConfigBucket}"
         |security.cors.allowedOrigins="${getCorsAllowedOriginString(config)}"
         |metrics.request.enabled=false
         |`;
@@ -137,11 +137,11 @@ function getCropperConfig(config) {
 function getImageLoaderConfig(config) {
     return stripMargin`${getCommonConfig(config)}
         |aws.region="${config.AWS_DEFAULT_REGION}"
-        |s3.image.bucket="${config.coreStackProps.ImageBucket}"
-        |s3.thumb.bucket="${config.coreStackProps.ThumbBucket}"
+        |s3.image.bucket.name="${config.coreStackProps.ImageBucket}"
+        |s3.thumb.bucket.name="${config.coreStackProps.ThumbBucket}"
         |#uncomment to enable the quarantine bucket
-        |#s3.quarantine.bucket="${config.coreStackProps.QuarantineBucket}"
-        |s3.config.bucket="${config.coreStackProps.ConfigBucket}"
+        |#s3.quarantine.bucket.name="${config.coreStackProps.QuarantineBucket}"
+        |s3.config.bucket.name="${config.coreStackProps.ConfigBucket}"
         |dynamo.table.upload.status="UploadStatusTable"
         |aws.local.endpoint="https://localstack.media.${config.DOMAIN}"
         |security.cors.allowedOrigins="${getCorsAllowedOriginString(config)}"
@@ -205,10 +205,10 @@ function getLeasesConfig(config) {
 function getMediaApiConfig(config) {
     return stripMargin`${getCommonConfig(config)}
         |aws.region="${config.AWS_DEFAULT_REGION}"
-        |s3.image.bucket="${config.coreStackProps.ImageBucket}"
-        |s3.thumb.bucket="${config.coreStackProps.ThumbBucket}"
-        |s3.config.bucket="${config.coreStackProps.ConfigBucket}"
-        |s3.usagemail.bucket="${config.coreStackProps.UsageMailBucket}"
+        |s3.image.bucket.name="${config.coreStackProps.ImageBucket}"
+        |s3.thumb.bucket.name="${config.coreStackProps.ThumbBucket}"
+        |s3.config.bucket.name="${config.coreStackProps.ConfigBucket}"
+        |s3.usagemail.bucket.name="${config.coreStackProps.UsageMailBucket}"
         |es6.url="${config.es6.url}"
         |es6.shards=${config.es6.shards}
         |es6.replicas=${config.es6.replicas}
@@ -231,7 +231,7 @@ function getMediaApiConfig(config) {
 function getMetadataEditorConfig(config) {
     return stripMargin`${getCommonConfig(config)}
         |aws.region="${config.AWS_DEFAULT_REGION}"
-        |s3.collections.bucket="${config.coreStackProps.CollectionsBucket}"
+        |s3.collections.bucket.name="${config.coreStackProps.CollectionsBucket}"
         |dynamo.table.edits="EditsTable"
         |dynamo.globalsecondaryindex.edits.photoshoots="Photoshoots"
         |dynamo.table.syndication="SyndicationTable"
@@ -244,9 +244,9 @@ function getMetadataEditorConfig(config) {
 function getThrallConfig(config) {
     return stripMargin`${getCommonConfig(config)}
         |aws.region="${config.AWS_DEFAULT_REGION}"
-        |s3.image.bucket="${config.coreStackProps.ImageBucket}"
-        |s3.thumb.bucket="${config.coreStackProps.ThumbBucket}"
-        |s3.reaper.bucket="${config.coreStackProps.ReaperBucket}"
+        |s3.image.bucket.name="${config.coreStackProps.ImageBucket}"
+        |s3.thumb.bucket.name="${config.coreStackProps.ThumbBucket}"
+        |s3.reaper.bucket.name="${config.coreStackProps.ReaperBucket}"
         |indexed.image.sns.topic.arn="${config.coreStackProps.IndexedImageTopic}"
         |es6.url="${config.es6.url}"
         |es6.shards=${config.es6.shards}
