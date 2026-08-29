@@ -215,7 +215,7 @@ class ReaperController(
           .filter(_.metadata.objectMetadata.lastModified.exists(_ isAfter now.minusHours(48)))
           .sortBy(_.metadata.objectMetadata.lastModified.map(_.getMillis))
           .reverse
-          .map(_.uri.getPath.stripPrefix("/"))
+          .map(s3Object => reaperBucket.keyFromURL(s3Object.uri))
 
         Ok(views.html.reaper(isPaused, INTERVAL.toString(), countOfImagesToReap, recentRecordKeys))
       }
