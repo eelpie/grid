@@ -23,6 +23,26 @@ Anything that's specific to an organisation and to a stage, but is common across
 #### `<configRoot>/<stage>/<service>.conf`
 Service-specific configs. These will override all other config files.
 
+### S3 bucket configuration
+
+Each S3 bucket is configured as a config object rather than a bare string. The bucket name
+lives under a `name` key, alongside optional keys for talking to a non-default endpoint:
+
+```hocon
+s3.image.bucket {
+  name          = "media-service-image-bucket"  # required
+  endpoint      = "s3.eu-west-1.amazonaws.com"   # optional; defaults to the localstack endpoint in DEV, real S3 otherwise
+  pathStyleUrls = false                          # optional; defaults to `endpoint` being set
+  region        = "eu-west-1"                     # optional; defaults to `aws.region`
+}
+```
+
+This applies to every `*.bucket` key below (`s3.image.bucket`, `s3.thumb.bucket`,
+`publishing.image.bucket`, `s3.config.bucket`, `s3.usagemail.bucket`, `s3.ingest.bucket`,
+`s3.fail.bucket`, `s3.quarantine.bucket`, `s3.reaper.bucket`, `s3.embeddings.bucket`,
+`s3.embeddingSources.bucket`, `s3.image.replicaBucket`) and to
+`authentication.providers.machine.config.authKeyStoreBucket`.
+
 ## Config documentation
 
 ### Common configuration
@@ -127,7 +147,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td>string</td>
     <td></td>
@@ -184,7 +204,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -220,7 +240,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.config.bucket</code></td>
+    <td><code>s3.config.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -265,7 +285,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -307,7 +327,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.collections.bucket</code></td>
+    <td><code>s3.collections.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -358,7 +378,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -400,7 +420,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>publishing.image.bucket</code></td>
+    <td><code>publishing.image.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -412,7 +432,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.config.bucket</code></td>
+    <td><code>s3.config.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -451,7 +471,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -493,25 +513,25 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.image.bucket</code></td>
+    <td><code>s3.image.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.thumb.bucket</code></td>
+    <td><code>s3.thumb.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.quarantine.bucket</code></td>
+    <td><code>s3.quarantine.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.config.bucket</code></td>
+    <td><code>s3.config.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -568,7 +588,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -610,25 +630,25 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.image.bucket</code></td>
+    <td><code>s3.image.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.thumb.bucket</code></td>
+    <td><code>s3.thumb.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.quarantine.bucket</code></td>
+    <td><code>s3.quarantine.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.config.bucket</code></td>
+    <td><code>s3.config.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -737,7 +757,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -818,7 +838,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -860,25 +880,25 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.image.bucket</code></td>
+    <td><code>s3.image.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.thumb.bucket</code></td>
+    <td><code>s3.thumb.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.config.bucket</code></td>
+    <td><code>s3.config.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.usagemail.bucket</code></td>
+    <td><code>s3.usagemail.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -941,7 +961,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -983,7 +1003,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.collections.bucket</code></td>
+    <td><code>s3.collections.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -1046,7 +1066,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -1094,13 +1114,13 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.ingest.bucket</code></td>
+    <td><code>s3.ingest.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.fail.bucket</code></td>
+    <td><code>s3.fail.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -1127,7 +1147,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -1169,13 +1189,13 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.image.bucket</code></td>
+    <td><code>s3.image.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
   </tr>
   <tr>
-    <td><code>s3.thumb.bucket</code></td>
+    <td><code>s3.thumb.bucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
@@ -1243,7 +1263,7 @@ Service-specific configs. These will override all other config files.
     <td></td>
   </tr>
   <tr>
-    <td><code>authentication.providers.machine.config.authKeyStoreBucket</code></td>
+    <td><code>authentication.providers.machine.config.authKeyStoreBucket.name</code></td>
     <td></td>
     <td></td>
     <td></td>
