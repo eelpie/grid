@@ -288,18 +288,22 @@ object S3Ops extends GridLogging {
     withEndpoint.build()
   }
 
-  def buildPresignerClientV2(config: CommonConfig, localstackAware: Boolean = true, maybeRegionOverride: Option[Region] = None): S3Presigner = {
+  def buildPresignerClientV2(config: CommonConfig, endpointOverride: Option[String] = None, usesPathStyleURLs: Boolean = false, maybeRegionOverride: Option[Region] = None): S3Presigner = {
     val builder = S3Presigner.builder()
       .credentialsProvider(config.awsCredentials)
-      .region(config.awsRegion)
+      .region(maybeRegionOverride.getOrElse(config.awsRegion))
+      .serviceConfiguration(S3Configuration.builder()
+        .pathStyleAccessEnabled(usesPathStyleURLs)
+        .build())
 
-    config.awsLocalPresigningEndpointUri match {
-      case Some(endpoint) if config.isDev => builder.endpointOverride(endpoint)
-        .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build()).build()
-      case _ => builder.build()
-
+    val withEndpoint = endpointOverride match {
+      case Some(endpoint) =>
+        logger.info(s"creating S3 presigner with endpoint override: $endpoint")
+        builder.endpointOverride(new URI(endpoint))
+      case _ => builder
     }
 
+    withEndpoint.build()
   }
 
 }
