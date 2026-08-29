@@ -17,8 +17,8 @@ case class StoreConfig(
 )
 
 class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithElastic(resources) {
-  val configBucket: S3Bucket = S3Bucket(string("s3.config.bucket"), this)
-  val usageMailBucket: S3Bucket = S3Bucket(string("s3.usagemail.bucket"), this)
+  val configBucket: S3Bucket = S3Bucket.fromConfig("s3.config.bucket", this)
+  val usageMailBucket: S3Bucket = S3Bucket.fromConfig("s3.usagemail.bucket", this)
 
   val quotaStoreKey: String = string("quota.store.key")
   val quotaStoreConfig: StoreConfig = StoreConfig(configBucket, quotaStoreKey)
