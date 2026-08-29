@@ -35,7 +35,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val imageOperations = new MagickImageOperations(ctxPath)
 
-  private val imageUploadOpsConfig = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, Nil, "img-bucket", "thumb-bucket")
+  private val imageUploadOpsConfig = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, Nil, dummyBucket("img-bucket"), dummyBucket("thumb-bucket"))
   private val imageLoaderConfig = mock[ImageLoaderConfig]
   when(imageLoaderConfig.transcodedMimeTypes).thenReturn(imageUploadOpsConfig.transcodedMimeTypes)
 
