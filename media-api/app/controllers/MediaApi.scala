@@ -63,7 +63,7 @@ class MediaApi(
                 config: MediaApiConfig,
                 previewContentApi: PreviewContentApi,
                 override val controllerComponents: ControllerComponents,
-                s3Client: S3,
+                s3: S3,
                 mediaApiMetrics: MediaApiMetrics,
                 ws: WSClient,
                 authorisation: Authorisation,
@@ -342,7 +342,7 @@ class MediaApi(
         val maybeResult = for {
           export <- source.exports.find(_.id.contains(exportId))
           asset <- export.assets.find(_.dimensions.exists(_.width == width))
-          s3Res = Try(s3Client.getObject(config.imgPublishingBucket, asset.file))
+          s3Res = Try(s3.getObject(config.imgPublishingBucket, asset.file))
           _ = s3Res.failed.foreach { ex =>
             logger.error("Failed to fetch S3 object", ex)
           }
@@ -493,7 +493,7 @@ class MediaApi(
   /** Stream the original image bytes straight from S3, unmodified. */
   private def streamOriginal(image: Image, contentDisposition: String): Future[Result] =
     Future(blocking {
-      val s3Object = s3Client.getObject(config.imageBucket, image.source.file)
+      val s3Object = s3.getObject(config.imageBucket, image.source.file)
       val data = StreamConverters.fromInputStream(() => s3Object)
       Result(ResponseHeader(OK), HttpEntity.Streamed(data, image.source.size, image.source.mimeType.map(_.name)))
         .withHeaders("Content-Disposition" -> contentDisposition)
@@ -511,7 +511,7 @@ class MediaApi(
   private def streamWithStrippedMetadata(image: Image, contentDisposition: String)(implicit logMarker: LogMarker): Future[Result] =
     Future(blocking {
       val tempPath = Files.createTempFile("grid-download-", ".tmp")
-      val inputStream = s3Client.getObject(config.imageBucket, image.source.file)
+      val inputStream = s3.getObject(config.imageBucket, image.source.file)
       try {
         Files.copy(inputStream, tempPath, StandardCopyOption.REPLACE_EXISTING)
         tempPath
@@ -575,7 +575,7 @@ class MediaApi(
         mediaApiMetrics.incrementImageDownload(apiKey, mediaApiMetrics.OptimisedDownloadType)
 
         val sourceImageUri =
-          new URI(s3Client.signUrl(config.imageBucket, image.optimisedPng.getOrElse(image.source).file, image, imageType = image.optimisedPng match {
+          new URI(s3.signUrl(config.imageBucket, image.optimisedPng.getOrElse(image.source).file, image, imageType = image.optimisedPng match {
             case Some(_) => OptimisedPng
             case _ => Source
           }))
