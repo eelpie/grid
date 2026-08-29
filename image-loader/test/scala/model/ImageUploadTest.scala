@@ -34,7 +34,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), "img-bucket", "thumb-bucket")
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), ResourceHelpers.dummyBucket("img-bucket"), ResourceHelpers.dummyBucket("thumb-bucket"))
 
   private val imageLoaderConfig = mock[ImageLoaderConfig]
   when(imageLoaderConfig.transcodedMimeTypes).thenReturn(mockConfig.transcodedMimeTypes)
