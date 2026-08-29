@@ -70,17 +70,17 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
 
   lazy val softDeletedMetadataTable: String = string("dynamo.table.softDelete.metadata")
 
-  val imageBucket: S3Bucket = S3Bucket(string("s3.image.bucket"), this)
-  val thumbnailBucket: S3Bucket = S3Bucket(string("s3.thumb.bucket"), this)
-  val imgPublishingBucket: S3Bucket = S3Bucket(string("publishing.image.bucket"), this)
-  val embeddingSourcesBucket: S3Bucket = S3Bucket(string("s3.embeddingSources.bucket"), this)
-  val embeddingsBucket: S3Bucket = S3Bucket(string("s3.embeddings.bucket"), this)
+  val imageBucket: S3Bucket = S3Bucket.fromConfig("s3.image.bucket", this)
+  val thumbnailBucket: S3Bucket = S3Bucket.fromConfig("s3.thumb.bucket", this)
+  val imgPublishingBucket: S3Bucket = S3Bucket.fromConfig("publishing.image.bucket", this)
+  val embeddingSourcesBucket: S3Bucket = S3Bucket.fromConfig("s3.embeddingSources.bucket", this)
+  val embeddingsBucket: S3Bucket = S3Bucket.fromConfig("s3.embeddings.bucket", this)
 
   val maybeIngestSqsQueueUrl: Option[String] = stringOpt("sqs.ingest.queue.url")
-  val maybeIngestBucket: Option[S3Bucket] = stringOpt("s3.ingest.bucket").map(S3Bucket(_, this))
-  val maybeFailBucket: Option[S3Bucket] = stringOpt("s3.fail.bucket").map(S3Bucket(_, this))
+  val maybeIngestBucket: Option[S3Bucket] = S3Bucket.fromConfigOpt("s3.ingest.bucket", this)
+  val maybeFailBucket: Option[S3Bucket] = S3Bucket.fromConfigOpt("s3.fail.bucket", this)
 
-  val maybeQuarantineBucket: Option[S3Bucket] = stringOpt("s3.quarantine.bucket").map(S3Bucket(_, this))
+  val maybeQuarantineBucket: Option[S3Bucket] = S3Bucket.fromConfigOpt("s3.quarantine.bucket", this)
 
   val maybeBucketForUIUploads: Option[S3Bucket] = maybeQuarantineBucket orElse maybeIngestBucket
 

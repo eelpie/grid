@@ -26,7 +26,7 @@ class ApiKeyAuthenticationProvider(configuration: Configuration, resources: Auth
   var keyStorePlaceholder: Option[KeyStore] = _
 
   override def initialise(): Unit = {
-    val store = new KeyStore(S3Bucket(configuration.get[String]("authKeyStoreBucket"), resources.commonConfig), resources.commonConfig, new S3(resources.commonConfig))
+    val store = new KeyStore(S3Bucket.fromConfig(configuration, "authKeyStoreBucket", resources.commonConfig), resources.commonConfig, new S3(resources.commonConfig))
     store.scheduleUpdates(resources.actorSystem.scheduler)
     keyStorePlaceholder = Some(store)
   }
