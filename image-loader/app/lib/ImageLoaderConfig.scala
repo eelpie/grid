@@ -1,6 +1,6 @@
 package lib
 
-import com.gu.mediaservice.lib.aws.{S3Bucket, S3Ops}
+import com.gu.mediaservice.lib.aws.S3Bucket
 
 import java.io.File
 import com.gu.mediaservice.lib.cleanup.{ComposedImageProcessor, ImageProcessor, ImageProcessorResources}
@@ -13,8 +13,14 @@ import software.amazon.awssdk.regions.Region
 import scala.concurrent.duration.FiniteDuration
 
 class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(resources) with StrictLogging {
-  val maybeImageReplicaBucket: Option[S3Bucket] = stringOpt("s3.image.replicaBucket").map{ replicaBucketName =>
-    S3Bucket.apply(replicaBucketName, this, None, usesPathStyleURLs = false, maybeRegionOverride = Some(Region.US_WEST_1))
+  val maybeImageReplicaBucket: Option[S3Bucket] = stringOpt("s3.image.replicaBucket.name").map { replicaBucketName =>
+    S3Bucket.apply(
+      replicaBucketName,
+      this,
+      endpointOverride = stringOpt("s3.image.replicaBucket.endpoint").filter(_.nonEmpty),
+      usesPathStyleURLs = booleanOpt("s3.image.replicaBucket.pathStyleUrls").getOrElse(false),
+      maybeRegionOverride = stringOpt("s3.image.replicaBucket.region").filter(_.nonEmpty).map(Region.of).orElse(Some(Region.US_WEST_1))
+    )
   }
 
   val lowerEnvironmentSamplingPercentageAsDecimal = intOpt("s3.sampling.percentage").getOrElse(1) / 100.0
