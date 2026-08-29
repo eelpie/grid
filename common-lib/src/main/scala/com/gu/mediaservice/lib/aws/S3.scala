@@ -267,19 +267,25 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
   }
 }
 
-object S3Ops {
+object S3Ops extends GridLogging {
   // TODO make this localstack friendly
   // TODO: Make this region aware - i.e. RegionUtils.getRegion(region).getServiceEndpoint(AmazonS3.ENDPOINT_PREFIX)
   val s3Endpoint = "s3.amazonaws.com"
 
-  def buildS3Client(config: CommonConfig, localstackAware: Boolean = true, maybeRegionOverride: Option[Region] = None): S3Client = {
-    val builder = config.awsLocalEndpoint match {
-      case Some(_) if config.isDev =>
-        S3Client.builder().forcePathStyle(true)
-      case _ => S3Client.builder()
+  def buildS3Client(config: CommonConfig, endpointOverride: Option[String] = None, usesPathStyleURLs: Boolean = false, maybeRegionOverride: Option[Region] = None): S3Client = {
+    val builder = S3Client.builder()
+      .credentialsProvider(config.awsCredentials)
+      .region(maybeRegionOverride.getOrElse(config.awsRegion))
+      .forcePathStyle(usesPathStyleURLs)
+
+    val withEndpoint = endpointOverride match {
+      case Some(endpoint) =>
+        logger.info(s"creating S3 client with endpoint override: $endpoint")
+        builder.endpointOverride(new URI(endpoint))
+      case _ => builder
     }
 
-    config.withAWSCredentials(builder, localstackAware, maybeRegionOverride).build()
+    withEndpoint.build()
   }
 
   def buildPresignerClientV2(config: CommonConfig, localstackAware: Boolean = true, maybeRegionOverride: Option[Region] = None): S3Presigner = {
