@@ -48,8 +48,9 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   }
   def generatePreSignedUploadUrl(filename: String, duration: Duration, uploadedBy: String, mediaId: String)(implicit instance: Instance): String = {
 
+    val bucket = config.maybeBucketForUIUploads.get
     val putObjectRequest = PutObjectRequest.builder()
-      .bucket(config.maybeBucketForUIUploads.get).key(s"${instance.id}/$uploadedBy/$filename").metadata(Map(
+      .bucket(bucket.bucket).key(s"${instance.id}/$uploadedBy/$filename").metadata(Map(
         "media-id" -> mediaId).asJava)
       .build()
     val putObjectPresignRequest =
@@ -58,7 +59,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
         .signatureDuration(duration)
         .build();
 
-    val req = presignPutObject(putObjectPresignRequest)
+    val req = presignPutObject(bucket, putObjectPresignRequest)
     req.url().toExternalForm
   }
 

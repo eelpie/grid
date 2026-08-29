@@ -460,7 +460,7 @@ class ImageLoaderController(auth: Authentication,
           logger.info(context, "image found")
           Ok(Json.toJson(img)).as(ArgoMediaType)
         case None =>
-          val s3Path = "s3://" + config.imageBucket + "/" + ImageIngestOperations.fileKeyFromId(imageId)
+          val s3Path = "s3://" + config.imageBucket.bucket + "/" + ImageIngestOperations.fileKeyFromId(imageId)
           logger.info(context, "image not found")
           respondError(NotFound, "image-not-found", s"Could not find image: $imageId in s3 at $s3Path")
       } recover {
