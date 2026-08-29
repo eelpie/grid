@@ -283,8 +283,24 @@ object S3Ops extends GridLogging {
   val s3Endpoint = "s3.amazonaws.com"
 
   def buildS3Client(config: CommonConfig, endpointOverride: Option[String] = None, usesPathStyleURLs: Boolean = false, maybeRegionOverride: Option[Region] = None): S3Client = {
+    val credentials = endpointOverride.flatMap { endpoint =>
+      // Use static credentials if the end point is overridden to a non AWS provider
+      config.googleS3AccessKey.flatMap { accessKey =>
+        config.googleS3SecretKey.map { secretKey =>
+          // create credentials provider
+          logger.info("Usign static credentials for custom endpoint: " + endpoint)
+          import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+          val credentials = AwsBasicCredentials.create(accessKey, secretKey)
+          StaticCredentialsProvider.create(credentials)
+
+        }
+      }
+    }.getOrElse{
+      config.awsCredentials
+    }
+
     val builder = S3Client.builder()
-      .credentialsProvider(config.awsCredentials)
+      .credentialsProvider(credentials)
       .region(maybeRegionOverride.getOrElse(config.awsRegion))
       .forcePathStyle(usesPathStyleURLs)
 
@@ -299,8 +315,24 @@ object S3Ops extends GridLogging {
   }
 
   def buildPresignerClientV2(config: CommonConfig, endpointOverride: Option[String] = None, usesPathStyleURLs: Boolean = false, maybeRegionOverride: Option[Region] = None): S3Presigner = {
+    val credentials = endpointOverride.flatMap { endpoint =>
+      // Use static credentials if the end point is overridden to a non AWS provider
+      config.googleS3AccessKey.flatMap { accessKey =>
+        config.googleS3SecretKey.map { secretKey =>
+          // create credentials provider
+          logger.info("Usign static credentials for custom endpoint: " + endpoint)
+          import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+          val credentials = AwsBasicCredentials.create(accessKey, secretKey)
+          StaticCredentialsProvider.create(credentials)
+
+        }
+      }
+    }.getOrElse{
+      config.awsCredentials
+    }
+
     val builder = S3Presigner.builder()
-      .credentialsProvider(config.awsCredentials)
+      .credentialsProvider(credentials)
       .region(maybeRegionOverride.getOrElse(config.awsRegion))
       .serviceConfiguration(S3Configuration.builder()
         .pathStyleAccessEnabled(usesPathStyleURLs)
