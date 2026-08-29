@@ -1,6 +1,7 @@
 package com.gu.mediaservice.lib.aws
 
 import com.gu.mediaservice.lib.config.CommonConfig
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 
@@ -15,15 +16,15 @@ object S3Bucket {
   def apply(name: String, config: CommonConfig): S3Bucket = {
     val endpointOverride = config.awsLocalEndpoint
     val usesPathStyleURLs = endpointOverride.isDefined
-    apply(name, config, endpointOverride, usesPathStyleURLs)
+    apply(name, config, endpointOverride, usesPathStyleURLs, None)
   }
 
-  def apply(name: String, config: CommonConfig, endpointOverride: Option[String], usesPathStyleURLs: Boolean): S3Bucket =
+  def apply(name: String, config: CommonConfig, endpointOverride: Option[String], usesPathStyleURLs: Boolean, maybeRegionOverride: Option[Region]): S3Bucket =
     S3Bucket(
       name = name,
       endPoint = endpointOverride.getOrElse(S3Ops.s3Endpoint),
       usesPathStyleURLs = usesPathStyleURLs,
-      client = S3Ops.buildS3Client(config, endpointOverride, usesPathStyleURLs),
-      presigner = S3Ops.buildPresignerClientV2(config, endpointOverride, usesPathStyleURLs)
+      client = S3Ops.buildS3Client(config, endpointOverride, usesPathStyleURLs, maybeRegionOverride),
+      presigner = S3Ops.buildPresignerClientV2(config, endpointOverride, usesPathStyleURLs, maybeRegionOverride)
     )
 }
