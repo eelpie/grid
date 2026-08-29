@@ -1,6 +1,8 @@
 package com.gu.mediaservice.lib.aws
 
 import com.gu.mediaservice.lib.config.CommonConfig
+import com.typesafe.config.ConfigException
+import play.api.Configuration
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
@@ -52,4 +54,54 @@ object S3Bucket {
       client = S3Ops.buildS3Client(config, endpointOverride, usesPathStyleURLs, maybeRegionOverride),
       presigner = S3Ops.buildPresignerClientV2(config, endpointOverride, usesPathStyleURLs, maybeRegionOverride)
     )
+
+  /**
+   * Build a bucket from a config block of the form:
+   * {{{
+   *   s3.image.bucket {
+   *     name          = "media-service-image-bucket"  # required
+   *     endpoint      = "s3.eu-west-1.amazonaws.com"   # optional
+   *     pathStyleUrls = false                          # optional, defaults to `endpoint` being set
+   *     region        = "eu-west-1"                    # optional
+   *   }
+   * }}}
+   * where `bucketConfigPath` is the path to the block, e.g. "s3.image.bucket".
+   *
+   * When `endpoint` is absent the bucket falls back to the localstack endpoint in DEV and the
+   * real AWS S3 endpoint otherwise (the same behaviour as `S3Bucket(name, config)`).
+   */
+  def fromConfig(bucketConfigPath: String, config: CommonConfig): S3Bucket =
+    fromConfig(config.configuration, bucketConfigPath, config)
+
+  def fromConfigOpt(bucketConfigPath: String, config: CommonConfig): Option[S3Bucket] =
+    fromConfigOpt(config.configuration, bucketConfigPath, config)
+
+  /** As `fromConfig` but reading the block from an arbitrary (possibly scoped) `Configuration`
+    * - e.g. an auth provider's own config block. */
+  def fromConfig(source: Configuration, bucketConfigPath: String, config: CommonConfig): S3Bucket =
+    fromConfigOpt(source, bucketConfigPath, config).getOrElse(
+      throw new IllegalStateException(s"Missing required S3 bucket config: '$bucketConfigPath.name'")
+    )
+
+  def fromConfigOpt(source: Configuration, bucketConfigPath: String, config: CommonConfig): Option[S3Bucket] = {
+    val maybeName = try {
+      source.getOptional[String](s"$bucketConfigPath.name")
+    } catch {
+      case e: ConfigException.WrongType =>
+        throw new IllegalStateException(
+          s"S3 bucket config '$bucketConfigPath' must be an object with a 'name' key, " +
+            s"""e.g. `$bucketConfigPath { name = "my-bucket" }`. """ +
+            s"""The legacy string form `$bucketConfigPath = "my-bucket"` is no longer supported.""",
+          e
+        )
+    }
+    maybeName.map { name =>
+      val endpointOverride = source.getOptional[String](s"$bucketConfigPath.endpoint").filter(_.nonEmpty)
+        .orElse(config.awsLocalEndpoint)
+      val usesPathStyleURLs = source.getOptional[Boolean](s"$bucketConfigPath.pathStyleUrls")
+        .getOrElse(endpointOverride.isDefined)
+      val maybeRegionOverride = source.getOptional[String](s"$bucketConfigPath.region").filter(_.nonEmpty).map(Region.of)
+      apply(name, config, endpointOverride, usesPathStyleURLs, maybeRegionOverride)
+    }
+  }
 }
