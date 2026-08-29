@@ -23,15 +23,15 @@ import scala.jdk.CollectionConverters._
 case class S3Object(uri: URI, size: Long, metadata: S3Metadata)
 
 object S3Object {
-  def objectUrl(bucket: String, key: String): URI = {
+  def objectUrl(bucket: S3Bucket, key: String): URI = {
     val bucketUrl = s"$bucket.${S3Ops.s3Endpoint}"
     new URI("http", bucketUrl, s"/$key", null)
   }
 
-  def apply(bucket: String, key: String, size: Long, metadata: S3Metadata): S3Object =
+  def apply(bucket: S3Bucket, key: String, size: Long, metadata: S3Metadata): S3Object =
     apply(objectUrl(bucket, key), size, metadata)
 
-  def apply(bucket: String, key: String, file: File, mimeType: Option[MimeType], lastModified: Option[DateTime],
+  def apply(bucket: S3Bucket, key: String, file: File, mimeType: Option[MimeType], lastModified: Option[DateTime],
             meta: Map[String, String] = Map.empty, cacheControl: Option[String] = None): S3Object = {
     S3Object(
       bucket,
@@ -175,7 +175,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
           HeadObjectRequest.builder().key(id).bucket(bucket.name).build()
         )
 
-        S3Object(bucket.name, id, metadata.contentLength(), S3Metadata(metadata))
+        S3Object(bucket, id, metadata.contentLength(), S3Metadata(metadata))
       }(markers)
     }
 
@@ -191,7 +191,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
     }.flatMap {
       case Some(metadata) =>
         logger.info(logMarker, s"Skipping storing of S3 file $id as key is already present in bucket ${bucket.name}")
-        Future.successful(S3Object(bucket.name, id, metadata.contentLength(), S3Metadata(metadata)))
+        Future.successful(S3Object(bucket, id, metadata.contentLength(), S3Metadata(metadata)))
       case None =>
         store(bucket, id, file, mimeType, meta, cacheControl)
     }
@@ -204,7 +204,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
       val listing = bucket.client.listObjectsV2(req)
       val s3Objects = listing.contents().asScala.toList
       s3Objects.map(s3Object => {
-        S3Object(bucket.name, s3Object.key(), size = s3Object.size(), metadata = getMetadata(bucket, s3Object.key()))
+        S3Object(bucket, s3Object.key(), size = s3Object.size(), metadata = getMetadata(bucket, s3Object.key()))
       })
     }
 
