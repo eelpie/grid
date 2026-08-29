@@ -1,7 +1,7 @@
 package model
 
 import com.drew.imaging.ImageProcessingException
-import com.gu.mediaservice.lib.aws.{S3Metadata, S3Object, S3ObjectMetadata}
+import com.gu.mediaservice.lib.aws.{S3Bucket, S3Metadata, S3Object, S3ObjectMetadata}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.LogMarker
@@ -53,7 +53,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
 
     def mockStore = (a: StorableImage) =>
       Future.successful(
-        S3Object("madeupname", "madeupkey", a.file, Some(a.mimeType), None, a.meta, None)
+        mockS3Object
       )
 
     def storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object] = mockStore
