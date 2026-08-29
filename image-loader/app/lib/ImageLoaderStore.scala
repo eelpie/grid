@@ -50,7 +50,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
 
     val bucket = config.maybeBucketForUIUploads.get
     val putObjectRequest = PutObjectRequest.builder()
-      .bucket(bucket.bucket).key(s"${instance.id}/$uploadedBy/$filename").metadata(Map(
+      .bucket(bucket.name).key(s"${instance.id}/$uploadedBy/$filename").metadata(Map(
         "media-id" -> mediaId).asJava)
       .build()
     val putObjectPresignRequest =

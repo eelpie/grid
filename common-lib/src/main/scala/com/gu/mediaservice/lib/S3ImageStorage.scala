@@ -17,7 +17,7 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
   def storeImage(bucket: S3Bucket, id: String, file: File, mimeType: Option[MimeType],
                  meta: Map[String, String] = Map.empty, overwrite: Boolean)
                 (implicit logMarker: LogMarker) = {
-    logger.info(logMarker, s"bucket: ${bucket.bucket}, id: $id, meta: $meta")
+    logger.info(logMarker, s"bucket: ${bucket.name}, id: $id, meta: $meta")
     val eventualObject = if (overwrite) {
       store(bucket, id, file, mimeType, meta, cacheSetting)
     } else {
@@ -29,15 +29,15 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
 
   def deleteImage(bucket: S3Bucket, key: String)(implicit logMarker: LogMarker) = Future {
     deleteObject(bucket, key)
-    logger.info(logMarker, s"Deleted image $key from bucket ${bucket.bucket}")
+    logger.info(logMarker, s"Deleted image $key from bucket ${bucket.name}")
   }
 
   def deleteVersionedImage(bucket: S3Bucket, id: String)(implicit logMarker: LogMarker) = Future {
     val objectVersion = getMetadata(bucket, id).objectVersion.getOrElse(
-      throw new IllegalStateException(s"No version id found for $id in bucket ${bucket.bucket}")
+      throw new IllegalStateException(s"No version id found for $id in bucket ${bucket.name}")
     )
     deleteVersion(bucket, id, objectVersion)
-    logger.info(logMarker, s"Deleted image $id from bucket ${bucket.bucket} (version: $objectVersion)")
+    logger.info(logMarker, s"Deleted image $id from bucket ${bucket.name} (version: $objectVersion)")
   }
 
   def deleteFolder(bucket: S3Bucket, id: String)(implicit logMarker: LogMarker): Future[Unit] = list(bucket, id).map { files =>

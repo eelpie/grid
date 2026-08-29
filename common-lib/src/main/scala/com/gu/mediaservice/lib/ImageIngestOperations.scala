@@ -34,7 +34,7 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, co
   private def storeOriginalImage(storableImage: StorableOriginalImage)
                         (implicit logMarker: LogMarker): Future[S3Object] = {
     val instanceSpecificKey = instanceAwareOriginalImageKey(storableImage)
-    logger.info(s"Storing original image to instance specific key:${imageBucket.bucket} / $instanceSpecificKey")
+    logger.info(s"Storing original image to instance specific key:${imageBucket.name} / $instanceSpecificKey")
     storeImage(imageBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
       storableImage.meta, overwrite = false)
   }
@@ -42,7 +42,7 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, co
   private def storeThumbnailImage(storableImage: StorableThumbImage)
                                  (implicit logMarker: LogMarker): Future[S3Object] = {
     val instanceSpecificKey = instanceAwareThumbnailImageKey(storableImage)
-    logger.info(s"Storing thumbnail to instance specific key: ${thumbnailBucket.bucket} / $instanceSpecificKey")
+    logger.info(s"Storing thumbnail to instance specific key: ${thumbnailBucket.name} / $instanceSpecificKey")
     storeImage(thumbnailBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
       overwrite = true)
   }
@@ -50,7 +50,7 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, co
   private def storeOptimisedImage(storableImage: StorableOptimisedImage)
                                  (implicit logMarker: LogMarker): Future[S3Object] = {
     val instanceSpecificKey = optimisedPngKeyFromId(storableImage.id)(storableImage.instance)
-    logger.info(s"Storing optimised image to instance specific key: ${thumbnailBucket.bucket} / $instanceSpecificKey")
+    logger.info(s"Storing optimised image to instance specific key: ${thumbnailBucket.name} / $instanceSpecificKey")
     storeImage(imageBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
       overwrite = true)
   }
@@ -91,7 +91,7 @@ sealed trait ImageWrapper {
 }
 sealed trait StorableImage extends ImageWrapper {
   def toProjectedS3Object(thumbBucket: S3Bucket): S3Object = S3Object(
-    thumbBucket.bucket,
+    thumbBucket.name,
     ImageIngestOperations.fileKeyFromId(id)(instance),
     file,
     Some(mimeType),
@@ -103,7 +103,7 @@ sealed trait StorableImage extends ImageWrapper {
 case class StorableThumbImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage
 case class StorableOriginalImage(id: String, file: File, mimeType: MimeType, lastModified: DateTime, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage {
   override def toProjectedS3Object(thumbBucket: S3Bucket): S3Object = S3Object(
-    thumbBucket.bucket,
+    thumbBucket.name,
     ImageIngestOperations.fileKeyFromId(id)(instance),
     file,
     Some(mimeType),
@@ -113,7 +113,7 @@ case class StorableOriginalImage(id: String, file: File, mimeType: MimeType, las
 }
 case class StorableOptimisedImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage {
   override def toProjectedS3Object(thumbBucket: S3Bucket): S3Object = S3Object(
-    thumbBucket.bucket,
+    thumbBucket.name,
     ImageIngestOperations.optimisedPngKeyFromId(id)(instance),
     file,
     Some(mimeType),
