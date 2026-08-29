@@ -18,6 +18,7 @@ import play.api.mvc.DefaultControllerComponents
 import play.api.test.{FakeRequest, WsTestClient}
 import play.api.{Configuration, Environment}
 
+import java.net.URI
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.Future
 
@@ -45,7 +46,7 @@ class ApiKeyAuthenticationProviderTest extends AsyncFreeSpec with Matchers with 
       Future.successful(())
     }
 
-    override def keyStore: KeyStore = new KeyStore(S3Bucket("not-used", "s3.amazonaws.com", usesPathStyleURLs = false, client = null, presigner = null), resources.commonConfig, s3) {
+    override def keyStore: KeyStore = new KeyStore(S3Bucket("not-used", new URI("https://s3.amazonaws.com"), usesPathStyleURLs = false, client = null, presigner = null), resources.commonConfig, s3) {
       override def lookupIdentity(key: String)(implicit instance: Instance): Option[ApiAccessor] = {
         key match {
           case "key-chuckle" => Some(ApiAccessor("brothers", Internal))
