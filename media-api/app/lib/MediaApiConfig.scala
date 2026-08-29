@@ -1,5 +1,6 @@
 package lib
 
+import com.gu.mediaservice.lib.aws.S3Bucket
 import com.gu.mediaservice.lib.config.{CommonConfigWithElastic, GridConfigResources}
 import com.gu.mediaservice.lib.elasticsearch.filters
 import com.sksamuel.elastic4s.ElasticApi.{matchPhraseQuery, should}
@@ -14,13 +15,13 @@ import scala.collection.immutable
 import scala.util.Try
 
 case class StoreConfig(
-  storeBucket: String,
+  storeBucket: S3Bucket,
   storeKey: String
 )
 
 class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithElastic(resources) {
-  val configBucket: String = string("s3.config.bucket")
-  val usageMailBucket: String = string("s3.usagemail.bucket")
+  val configBucket: S3Bucket = S3Bucket(string("s3.config.bucket"), this)
+  val usageMailBucket: S3Bucket = S3Bucket(string("s3.usagemail.bucket"), this)
 
   val quotaStoreKey: String = string("quota.store.key")
   val quotaStoreConfig: StoreConfig = StoreConfig(configBucket, quotaStoreKey)
