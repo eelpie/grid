@@ -6,11 +6,11 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import java.net.URI
 
-case class S3Bucket(name: String, endPoint: String, usesPathStyleURLs: Boolean, client: S3Client, presigner: S3Presigner) {
+case class S3Bucket(name: String, endPoint: URI, usesPathStyleURLs: Boolean, client: S3Client, presigner: S3Presigner) {
 
   def objectUrl(key: String): URI = {
     val bucketBaseURL = bucketURL()
-    new URI("http", bucketBaseURL.getHost, bucketBaseURL.getPath + key, null)
+    new URI(bucketBaseURL.getScheme, bucketBaseURL.getHost, bucketBaseURL.getPath + key, null)
   }
 
   def keyFromURL(url: URI): String = {
@@ -24,9 +24,9 @@ case class S3Bucket(name: String, endPoint: String, usesPathStyleURLs: Boolean, 
 
   def bucketURL(): URI = {
     if (usesPathStyleURLs) {
-      new URI("https", endPoint, s"/$name/", null)
+      new URI(endPoint.getScheme, endPoint.getHost, s"/$name/", null)
     } else {
-      new URI("https", s"$name.$endPoint", "/", null)
+      new URI(endPoint.getScheme, s"$name.${endPoint.getHost}", "/", null)
     }
   }
 
@@ -47,7 +47,7 @@ object S3Bucket {
   def apply(name: String, config: CommonConfig, endpointOverride: Option[String], usesPathStyleURLs: Boolean, maybeRegionOverride: Option[Region]): S3Bucket =
     S3Bucket(
       name = name,
-      endPoint = endpointOverride.getOrElse(S3Ops.s3Endpoint),
+      endPoint = new URI(endpointOverride.getOrElse(S3Ops.s3Endpoint)),
       usesPathStyleURLs = usesPathStyleURLs,
       client = S3Ops.buildS3Client(config, endpointOverride, usesPathStyleURLs, maybeRegionOverride),
       presigner = S3Ops.buildPresignerClientV2(config, endpointOverride, usesPathStyleURLs, maybeRegionOverride)
