@@ -1,20 +1,18 @@
 package lib
 
-import java.util.concurrent.atomic.AtomicReference
-
-import org.apache.pekko.actor.{Cancellable, Scheduler}
 import com.gu.mediaservice.lib.BaseStore
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap}
-import com.gu.mediaservice.lib.aws.S3
-import com.gu.mediaservice.lib.logging.GridLogging
+import com.gu.mediaservice.model.usage._
 import com.gu.mediaservice.model.{Agencies, Agency, UsageRights}
-import com.gu.mediaservice.model.usage.{DigitalUsage, PrintUsage, PublishedUsageStatus, RemovedUsageStatus, UnknownUsageStatus, Usage, UsageStatus, UsageType}
+import org.apache.pekko.actor.{Cancellable, Scheduler}
 import org.joda.time.{DateTime, Duration}
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 
-import scala.concurrent.{ExecutionContext, Future}
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
@@ -76,7 +74,7 @@ object UsageStore extends GridLogging {
 
 class UsageStore(
   getSupplierQuotaCount: String => Future[SupplierQuotaCount],
-  quotaStore: QuotaStore
+  quotaStore: QuotaStore,
 )(implicit val ec: ExecutionContext) extends GridLogging {
 
   private val store: AtomicReference[Map[String, SupplierUsageStatus]] = new AtomicReference(Map.empty)
@@ -139,7 +137,7 @@ class UsageStore(
 
 class QuotaStore(
   quotaFile: String,
-  bucket: String,
+  bucket: S3Bucket,
   config: MediaApiConfig,
   s3: S3
 )(implicit ec: ExecutionContext) extends BaseStore[String, SupplierUsageQuota](bucket, config, s3)(ec) {

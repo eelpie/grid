@@ -1,6 +1,6 @@
 package com.gu.mediaservice.lib
 
-import com.gu.mediaservice.lib.aws.S3
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.GridLogging
 import org.apache.pekko.actor.{Cancellable, Scheduler}
@@ -12,7 +12,7 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 
-abstract class BaseStore[TStoreKey, TStoreVal](bucket: String, config: CommonConfig, s3: S3)(implicit ec: ExecutionContext)
+abstract class BaseStore[TStoreKey, TStoreVal](bucket: S3Bucket, config: CommonConfig, s3: S3)(implicit ec: ExecutionContext)
   extends GridLogging {
 
   protected val store: AtomicReference[Map[TStoreKey, TStoreVal]] = new AtomicReference(Map.empty)
