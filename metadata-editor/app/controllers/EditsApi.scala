@@ -5,14 +5,14 @@ import com.gu.mediaservice.lib.argo.model.Link
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
 import com.gu.mediaservice.lib.auth.Authentication.Principal
 import com.gu.mediaservice.lib.auth.Permissions.EditMetadata
-import com.gu.mediaservice.lib.config.{RuntimeUsageRightsConfig, UsageRightsConfigProvider}
+import com.gu.mediaservice.lib.config.{InstanceForRequest, RuntimeUsageRightsConfig, UsageRightsConfigProvider}
 import com.gu.mediaservice.model._
 import lib.EditsConfig
 import model.UsageRightsProperty
 import model.UsageRightsLease
 import play.api.libs.json._
 import play.api.mvc.Security.AuthenticatedRequest
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{AnyContent, BaseController, ControllerComponents, Request}
 
 import scala.concurrent.ExecutionContext
 
@@ -20,36 +20,41 @@ class EditsApi(auth: Authentication,
                config: EditsConfig,
                authorisation: Authorisation,
                override val controllerComponents: ControllerComponents)(implicit val ec: ExecutionContext)
-  extends BaseController with ArgoHelpers {
+  extends BaseController with ArgoHelpers with InstanceForRequest {
 
 
     // TODO: add links to the different responses esp. to the reference image
-  val indexResponse = {
+  def indexResponse()(implicit instance: Instance) = {
     val indexData = Map("description" -> "This is the Metadata Editor Service")
     val indexLinks = List(
-      Link("edits",             s"${config.rootUri}/metadata/{id}"),
-      Link("archived",          s"${config.rootUri}/metadata/{id}/archived"),
-      Link("labels",            s"${config.rootUri}/metadata/{id}/labels"),
-      Link("usageRights",       s"${config.rootUri}/metadata/{id}/usage-rights"),
-      Link("metadata",          s"${config.rootUri}/metadata/{id}/metadata"),
-      Link("usage-rights-list", s"${config.rootUri}/usage-rights/categories"),
-      Link("filtered-usage-rights-list", s"${config.rootUri}/usage-rights/filtered-categories")
+      Link("edits",             s"${config.rootUri(instance)}/metadata/{id}"),
+      Link("archived",          s"${config.rootUri(instance)}/metadata/{id}/archived"),
+      Link("labels",            s"${config.rootUri(instance)}/metadata/{id}/labels"),
+      Link("usageRights",       s"${config.rootUri(instance)}/metadata/{id}/usage-rights"),
+      Link("metadata",          s"${config.rootUri(instance)}/metadata/{id}/metadata"),
+      Link("usage-rights-list", s"${config.rootUri(instance)}/usage-rights/categories"),
+      Link("filtered-usage-rights-list", s"${config.rootUri(instance)}/usage-rights/filtered-categories")
     )
     respond(indexData, indexLinks)
   }
 
-  def index = auth { indexResponse }
+  def index = auth { request =>
+    implicit val instance: Instance = instanceOf(request)
+    indexResponse()
+  }
 
-  val usageRightsResponse = {
+  def usageRightsResponse()(implicit request: Request[AnyContent]) = {
     val usageRights = config.applicableUsageRights.toList
 
     val usageRightsData = usageRights
-      .map(u => CategoryResponse.fromUsageRights(u, config))
+          .map(u => CategoryResponse.fromUsageRights(u, config))
 
     respond(usageRightsData)
   }
 
-  def getUsageRights = auth { usageRightsResponse }
+  def getUsageRights = auth { request =>
+    usageRightsResponse()(request)
+  }
 
   def filteredUsageRightsResponse(request: AuthenticatedRequest[AnyContent, Principal]) = {
     val usageRights = config.applicableUsageRights.toList

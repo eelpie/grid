@@ -3,17 +3,18 @@ package controllers
 import com.gu.mediaservice.lib.ImageFields
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.auth.Authentication.Request
+import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
+import com.gu.mediaservice.model.Instance
 import lib.elasticsearch.{AggregateSearchParams, CompletionSuggestionResults, ElasticSearch}
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{BaseController, ControllerComponents}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class SuggestionController(auth: Authentication, elasticSearch: ElasticSearch,
                            override val controllerComponents: ControllerComponents)(implicit val ec: ExecutionContext)
-  extends BaseController with ArgoHelpers with ImageFields with AggregateResponses {
+  extends BaseController with ArgoHelpers with ImageFields with AggregateResponses with InstanceForRequest {
 
   def suggestMetadataCredit(q: Option[String], size: Option[Int]) = suggestion("suggestMetadataCredit", q, size)
 
@@ -22,7 +23,8 @@ class SuggestionController(auth: Authentication, elasticSearch: ElasticSearch,
   // TODO: work with analysed fields
   // TODO: recover with HTTP error if invalid field
   // TODO: Add validation, especially if you use length
-  def metadataSearch(field: String, q: Option[String]) = auth.async { request =>
+  def metadataSearch(field: String, q: Option[String]) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "metadata-search",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -33,6 +35,7 @@ class SuggestionController(auth: Authentication, elasticSearch: ElasticSearch,
   }
 
   def editsSearch(field: String, q: Option[String]) = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "edits-search",
       "requestId" -> RequestLoggingFilter.getRequestId(request),
@@ -43,6 +46,8 @@ class SuggestionController(auth: Authentication, elasticSearch: ElasticSearch,
   }
 
   private def suggestion(field: String, query: Option[String], size: Option[Int]) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
+
     query.flatMap(q => if (q.nonEmpty) Some(q) else None).map { q =>
       elasticSearch.completionSuggestion(field, q, size.getOrElse(10))
     }.getOrElse(

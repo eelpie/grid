@@ -1,29 +1,32 @@
 package lib.storage
 
-import software.amazon.awssdk.services.s3.model.{CopyObjectRequest, DeleteObjectRequest, GetObjectRequest, GetObjectResponse, PutObjectRequest, S3Exception}
-
-import java.time.Duration
-import scala.jdk.CollectionConverters.MapHasAsJava
-import software.amazon.awssdk.core.ResponseInputStream
-import software.amazon.awssdk.services.s3.presigner.S3Presigner
-import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
 import lib.ImageLoaderConfig
 import com.gu.mediaservice.lib
-import com.gu.mediaservice.lib.logging.LogMarker
+import com.gu.mediaservice.lib.aws
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.model.Instance
+import software.amazon.awssdk.core.ResponseInputStream
+import software.amazon.awssdk.services.s3.model._
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
 
 import java.io.File
+import java.time.Duration
+import scala.concurrent.Future
+import scala.jdk.CollectionConverters.MapHasAsJava
 
 class S3FileDoesNotExistException extends Exception()
 
-class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config) {
+class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperations(config.imageBucket, config.thumbnailBucket, config) with GridLogging {
 
   private def handleNotFound[T](key: String)(doWork: => T)(loggingIfNotFound: => Unit): T = {
     try {
       doWork
     } catch {
-      case e: S3Exception if e.statusCode() == 404 || e.statusCode() == 403 =>
+      case e: S3Exception if e.statusCode() == 404 || e.statusCode() == 403 => {
+        logger.warn(s"AmazonS3Exception ${e.statusCode()} for key '$key'")
         loggingIfNotFound
         throw new S3FileDoesNotExistException
+      }
       case other: Throwable => throw other
     }
   }
@@ -35,19 +38,19 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
     logger.error(logMarker, s"Attempted to read $key from ingest bucket, but it does not exist.")
   }
 
-  def queueS3Object(uploader: String, filename: String, s3Meta: Map[String, String], file: File)(implicit logMarker: LogMarker) = {
+  def queueS3Object(uploader: String, filename: String, s3Meta: Map[String, String], file: File)(implicit logMarker: LogMarker, instance: Instance): Future[aws.S3Object] = {
     store(
         config.maybeIngestBucket.get,
-        s"$uploader/$filename",
+        s"${instance.id}/$uploader/$filename",
         file,
         mimeType = None, // we don't care as this is just the queue bucket
         meta = s3Meta,
       )
   }
-  def generatePreSignedUploadUrl(filename: String, duration: Duration, uploadedBy: String, mediaId: String): String = {
+  def generatePreSignedUploadUrl(filename: String, duration: Duration, uploadedBy: String, mediaId: String)(implicit instance: Instance): String = {
 
     val putObjectRequest = PutObjectRequest.builder()
-      .bucket(config.maybeBucketForUIUploads.get).key(s"$uploadedBy/$filename").metadata(Map(
+      .bucket(config.maybeBucketForUIUploads.get).key(s"${instance.id}/$uploadedBy/$filename").metadata(Map(
         "media-id" -> mediaId).asJava)
       .build()
     val putObjectPresignRequest =
@@ -63,9 +66,9 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key){
     client.copyObject(
       CopyObjectRequest.builder()
-        .sourceBucket(config.maybeIngestBucket.get)
+        .sourceBucket(config.maybeIngestBucket.get)  // TODO Naked get - make optional
         .sourceKey(key)
-        .destinationBucket(config.maybeFailBucket.get)
+        .destinationBucket(config.maybeFailBucket.get)   // TODO Naked get - make optional
         .destinationKey(key)
         .build()
     )

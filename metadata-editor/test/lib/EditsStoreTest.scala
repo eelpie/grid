@@ -1,6 +1,6 @@
 package lib
 
-import com.gu.mediaservice.model.{Edits, ImageMetadata}
+import com.gu.mediaservice.model.{Edits, ImageMetadata, Instance}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
@@ -21,27 +21,29 @@ import scala.jdk.CollectionConverters._
 class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with BeforeAndAfterAll {
 
   implicit val defaultPatience: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds), interval = Span(100, Millis))
+  implicit val instance: Instance = Instance(id = "an-instance")
 
   private val dynamoContainer = new LocalStackContainer(DockerImageName.parse("localstack/localstack:1.4.0")).withServices(DYNAMODB)
   dynamoContainer.start()
 
   val testTableName: String = "test-edits-table-" + UUID.randomUUID().toString
 
-  private val dynamoClient2: DynamoDbClient = DynamoDbClient.builder().
+  private val dynamoClient = DynamoDbClient.builder().
     endpointOverride(dynamoContainer.getEndpointOverride(DYNAMODB)).
     region(Region.of(dynamoContainer.getRegion)).
     credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(dynamoContainer.getAccessKey, dynamoContainer.getSecretKey))).build()
 
-  private val store = new EditsStore(dynamoClient2, testTableName) {
-  }
+  private val store = new EditsStore(dynamoClient, testTableName)
 
   override def beforeAll(): Unit = {
     def createTableRequestFor(tableName: String): CreateTableRequest = {
       val attributeDefinitions = List(
+        AttributeDefinition.builder.attributeName("instance").attributeType(ScalarAttributeType.S).build(),
         AttributeDefinition.builder.attributeName("id").attributeType(ScalarAttributeType.S).build()
       )
       val keySchema = List(
-        KeySchemaElement.builder.attributeName("id").keyType(KeyType.HASH).build()
+        KeySchemaElement.builder.attributeName("instance").keyType(KeyType.HASH).build(),
+        KeySchemaElement.builder.attributeName("id").keyType(KeyType.RANGE).build()
       )
       val provisionedThroughput = ProvisionedThroughput.builder.readCapacityUnits(1L).writeCapacityUnits(1L).build()
       val request = CreateTableRequest.builder
@@ -53,7 +55,7 @@ class EditsStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Bef
       request
     }
 
-    dynamoClient2.createTable(createTableRequestFor(testTableName))
+    dynamoClient.createTable(createTableRequestFor(testTableName))
   }
 
   override def afterAll(): Unit = {
