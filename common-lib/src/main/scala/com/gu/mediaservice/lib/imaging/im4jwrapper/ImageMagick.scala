@@ -58,10 +58,6 @@ object ImageMagick extends GridLogging {
     op.resize(maxSize, maxSize)
     op
   }
-  def scale(op: IMOperation)(dimensions: Dimensions): IMOperation = {
-    op.scale(dimensions.width, dimensions.height)
-    op
-  }
   def format(op: IMOperation)(definition: String): IMOperation = {
     op.format(definition)
     op
@@ -73,13 +69,5 @@ object ImageMagick extends GridLogging {
   def flatten(op: IMOperation): IMOperation = {
     op.flatten()
     op
-  }
-
-  def runConvertCmd(op: IMOperation, useImageMagick: Boolean)(implicit logMarker: LogMarker): Future[Unit] = {
-    Stopwatch.async(s"Using ${if(useImageMagick) "imagemagick" else "graphicsmagick"} for imaging conversion operation '$op'") {
-      Future {
-        new ConvertCmd(!useImageMagick).run(op)
-      }
-    }
   }
 }
