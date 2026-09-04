@@ -24,10 +24,6 @@ object ImageMagick extends GridLogging {
     op.quality(qual)
     op
   }
-  def unsharp(op: IMOperation)(radius: Double, sigma: Double, amount: Double): IMOperation = {
-    op.unsharp(radius, sigma, amount)
-    op
-  }
   def stripMeta(op: IMOperation): IMOperation = {
     op.strip()
     op
