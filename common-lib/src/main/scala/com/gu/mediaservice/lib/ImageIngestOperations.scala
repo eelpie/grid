@@ -1,17 +1,15 @@
 package com.gu.mediaservice.lib
 
 
-import com.gu.mediaservice.lib.aws.S3Object
+import com.gu.mediaservice.lib.aws.{S3Bucket, S3Object}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model.{Instance, MimeType}
 import com.typesafe.scalalogging.StrictLogging
 import org.joda.time.DateTime
-import software.amazon.awssdk.services.s3.model.{Delete, DeleteObjectsRequest, ObjectIdentifier}
 
 import java.io.File
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters._
 
 object ImageIngestOperations {
   def fileKeyFromId(id: String)(implicit instance: Instance): String = instance.id + "/" + snippetForId(id)
@@ -21,7 +19,7 @@ object ImageIngestOperations {
   private def snippetForId(id: String) = id.take(6).mkString("/") + "/" + id
 }
 
-class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config: CommonConfig, isVersionedS3: Boolean = false)
+class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, config: CommonConfig, isVersionedS3: Boolean = false)
   extends S3ImageStorage(config) with StrictLogging {
 
   import ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
@@ -36,7 +34,7 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
   private def storeOriginalImage(storableImage: StorableOriginalImage)
                         (implicit logMarker: LogMarker): Future[S3Object] = {
     val instanceSpecificKey = instanceAwareOriginalImageKey(storableImage)
-    logger.info(s"Storing original image to instance specific key:$imageBucket / $instanceSpecificKey")
+    logger.info(s"Storing original image to instance specific key:${imageBucket.name} / $instanceSpecificKey")
     storeImage(imageBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
       storableImage.meta, overwrite = false)
   }
@@ -44,7 +42,7 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
   private def storeThumbnailImage(storableImage: StorableThumbImage)
                                  (implicit logMarker: LogMarker): Future[S3Object] = {
     val instanceSpecificKey = instanceAwareThumbnailImageKey(storableImage)
-    logger.info(s"Storing thumbnail to instance specific key: $thumbnailBucket / $instanceSpecificKey")
+    logger.info(s"Storing thumbnail to instance specific key: ${thumbnailBucket.name} / $instanceSpecificKey")
     storeImage(thumbnailBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
       overwrite = true)
   }
@@ -52,29 +50,15 @@ class ImageIngestOperations(imageBucket: String, thumbnailBucket: String, config
   private def storeOptimisedImage(storableImage: StorableOptimisedImage)
                                  (implicit logMarker: LogMarker): Future[S3Object] = {
     val instanceSpecificKey = optimisedPngKeyFromId(storableImage.id)(storableImage.instance)
-    logger.info(s"Storing optimised image to instance specific key: $thumbnailBucket / $instanceSpecificKey")
+    logger.info(s"Storing optimised image to instance specific key: ${thumbnailBucket.name} / $instanceSpecificKey")
     storeImage(imageBucket, instanceSpecificKey, storableImage.file, Some(storableImage.mimeType),
       overwrite = true)
   }
 
-
-  private def bulkDelete(bucket: String, keys: List[String]): Future[Map[String, Boolean]] = keys match {
+  private def bulkDelete(bucket: S3Bucket, keys: List[String]): Future[Map[String, Boolean]] = keys match {
     case Nil => Future.successful(Map.empty)
     case _ => Future {
-      val objects = keys.map { key =>
-        ObjectIdentifier.builder()
-          .key(key)
-          .build()
-      }.asJava
-      val response = client.deleteObjects(
-        DeleteObjectsRequest.builder().bucket(bucket)
-          .delete(Delete.builder().objects(objects).build())
-          .build()
-      )
-      val errorKeys = response.errors().asScala.toList.map(_.key())
-      keys.map { key =>
-        key -> !errorKeys.contains(key)
-      }.toMap
+      deleteObjects(bucket, keys)
     }
   }
 
@@ -106,7 +90,7 @@ sealed trait ImageWrapper {
   val instance: Instance
 }
 sealed trait StorableImage extends ImageWrapper {
-  def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
+  def toProjectedS3Object(thumbBucket: S3Bucket): S3Object = S3Object(
     thumbBucket,
     ImageIngestOperations.fileKeyFromId(id)(instance),
     file,
@@ -118,7 +102,7 @@ sealed trait StorableImage extends ImageWrapper {
 
 case class StorableThumbImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage
 case class StorableOriginalImage(id: String, file: File, mimeType: MimeType, lastModified: DateTime, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage {
-  override def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
+  override def toProjectedS3Object(thumbBucket: S3Bucket): S3Object = S3Object(
     thumbBucket,
     ImageIngestOperations.fileKeyFromId(id)(instance),
     file,
@@ -128,7 +112,7 @@ case class StorableOriginalImage(id: String, file: File, mimeType: MimeType, las
   )
 }
 case class StorableOptimisedImage(id: String, file: File, mimeType: MimeType, meta: Map[String, String] = Map.empty, instance: Instance) extends StorableImage {
-  override def toProjectedS3Object(thumbBucket: String): S3Object = S3Object(
+  override def toProjectedS3Object(thumbBucket: S3Bucket): S3Object = S3Object(
     thumbBucket,
     ImageIngestOperations.optimisedPngKeyFromId(id)(instance),
     file,
