@@ -70,10 +70,6 @@ object ImageMagick extends GridLogging {
     op.depth(depth)
     op
   }
-  def setBackgroundColour(op: IMOperation)(backgroundColour: String): IMOperation = {
-    op.background(backgroundColour)
-    op
-  }
   def flatten(op: IMOperation): IMOperation = {
     op.flatten()
     op
