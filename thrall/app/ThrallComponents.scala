@@ -140,7 +140,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   } yield {
     val embedder = new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
     logger.info("Listening for embedding requests on queue: " + queueUrl)
-    new EmbeddingSqsConsumer(queueUrl, sqsAsyncClient, embedder, store, lowPriorityMessageSender)(actorSystem, materializer, executionContext).start()
+    new EmbeddingSqsConsumer(queueUrl, sqsAsyncClient, embedder, store, messageSender)(actorSystem, materializer, executionContext).start()
   }
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
