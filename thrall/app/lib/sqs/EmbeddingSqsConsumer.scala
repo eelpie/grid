@@ -17,7 +17,7 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder: Embedder, thrallStore: ThrallStore, lowPriorityMessageSender: ThrallMessageSender)
+class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder: Embedder, thrallStore: ThrallStore, messageSender: ThrallMessageSender)
                           (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext)
   extends StrictLogging {
 
@@ -62,7 +62,7 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
                 embedding = embedding,
                 instance = Instance(id = parsed.instance)
               )
-              lowPriorityMessageSender.publish(updateEmbeddingMessage)
+              messageSender.publish(updateEmbeddingMessage)
             }
 
           }.getOrElse {
