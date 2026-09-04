@@ -1,6 +1,6 @@
-import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, S3Vectors, ThrallMessageSender}
-import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, Management}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
@@ -31,9 +31,25 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   val imageResponse = new ImageResponse(config, s3, usageQuota)
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
-  val embedder = new Embedder(new Bedrock(config), new SimpleSqsMessageConsumer(config.queueUrl, config))
 
-  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3, mediaApiMetrics, wsClient, authorisation, embedder, usageEvents)
+  private val maybeGcpProjectId = config.gcpProjectId
+  private val vertexApiLocation = "eu"
+  private val maybeGoogleCloudEmbedding = for {
+    gcpProjectId <- maybeGcpProjectId
+  } yield {
+    new GoogleCloudEmbedding(projectId = gcpProjectId, location = vertexApiLocation)
+  }
+
+  private val maybeEmbedding = maybeGoogleCloudEmbedding
+
+  val maybeEmbedder: Option[Embedder] = for {
+    embedding <- maybeEmbedding
+    queueUrl <- config.embedderQueueUrl
+  } yield {
+    new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
+  }
+
+  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, controllerComponents, s3, mediaApiMetrics, wsClient, authorisation, maybeEmbedder, usageEvents)
   val suggestionController = new SuggestionController(auth, elasticSearch, controllerComponents)
   val aggController = new AggregationController(auth, elasticSearch, controllerComponents)
   val usageController = new UsageController(auth, config, elasticSearch, usageQuota, controllerComponents)

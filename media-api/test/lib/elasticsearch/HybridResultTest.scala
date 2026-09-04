@@ -1,7 +1,7 @@
 package lib.elasticsearch
 
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{CohereV4Embedding, Embedding, Handout, Image}
+import com.gu.mediaservice.model.{Embedding, GeminiEmbedding2, Handout, Image}
 import com.sksamuel.elastic4s.requests.searches.SearchHit
 import org.scalactic.Tolerance
 import org.scalatest.OptionValues
@@ -39,7 +39,7 @@ class HybridResultTest extends AnyFunSpec with Matchers with OptionValues with T
 
   private def imageWithEmbedding(id: String, embedding: Option[List[Double]]): Image =
     createImage(id, Handout()).copy(
-      embedding = embedding.map(vec => Embedding(cohereEmbedV4 = Some(CohereV4Embedding(image = vec))))
+      embedding = embedding.map(vec => Embedding(geminiEmbedding2 = Some(GeminiEmbedding2(image = vec))))
     )
 
   private def sourceWrapperFor(image: Image): SourceWrapper[Image] =

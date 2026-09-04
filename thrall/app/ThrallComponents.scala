@@ -1,6 +1,7 @@
 import com.gu.kinesis.{KinesisRecord, KinesisSource, ConsumerConfig => KclPekkoStreamConfig}
 import com.gu.mediaservice.GridClient
-import com.gu.mediaservice.lib.aws.{S3Ops, S3Vectors, ThrallMessageSender}
+import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.instances.{Instances, InstancesClient}
 import com.gu.mediaservice.lib.logging.MarkerMap
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -11,16 +12,17 @@ import instances.{InstanceMessageSender, InstanceUsageMessage}
 import lib._
 import lib.elasticsearch._
 import lib.kinesis.{KinesisConfig, ThrallEventConsumer}
+import lib.sqs.EmbeddingSqsConsumer
 import org.apache.pekko.Done
 import org.apache.pekko.stream.scaladsl.Source
 import play.api.ApplicationLoader.Context
 import router.Routes
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.sqs.SqsClient
 import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest
+import software.amazon.awssdk.services.sqs.{SqsAsyncClient, SqsClient}
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 
 class ThrallComponents(context: Context) extends GridComponents(context, new ThrallConfig(_)) with StrictLogging with AssetsComponents
@@ -91,8 +93,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   val streamRunning: Future[Done] = thrallStreamProcessor.run()
 
-  val s3Vectors = new S3Vectors(config)
-
   Source.repeat(()).throttle(1, per = 5.minute).map(_ => {
     implicit val logMarker: MarkerMap = MarkerMap()
     getInstances().map { instances =>
@@ -117,12 +117,42 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   }).run()
 
+  private val lowPriorityMessageSender = new ThrallMessageSender(config.thrallKinesisLowPriorityStreamConfig)
+
+  private val sqsAsyncClient: SqsAsyncClient = SqsAsyncClient.builder()
+    .region(Region.EU_WEST_1)
+    .build()
+
+  private val maybeGcpProjectId = config.gcpProjectId
+  private val vertexApiLocation = "eu"
+  private val maybeGoogleCloudEmbedding = for {
+    gcpProjectId <- maybeGcpProjectId
+  } yield {
+    new GoogleCloudEmbedding(projectId = gcpProjectId, location = vertexApiLocation)
+  }
+
+  private val maybeEmbedding = maybeGoogleCloudEmbedding
+
+  private val maybeEmbedder = for {
+    embedding <- maybeEmbedding
+    queueUrl <- config.embeddingsQueueUrl // TODO name inconsistant with imageloader
+  } yield {
+    new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
+  }
+
+  for {
+    queueUrl <- config.embeddingsQueueUrl
+    embedder <- maybeEmbedder // This could be the embedding direct?
+  } yield {
+    logger.info("Listening for embedding requests on queue: " + queueUrl)
+    new EmbeddingSqsConsumer(queueUrl, sqsAsyncClient, embedder, store, messageSender)(actorSystem, materializer, executionContext).start()
+  }
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
   val maybeCustomReapableEligibility = config.maybeReapableEligibilityClass(applicationLifecycle)
 
   val thrallController = new ThrallController(es, store, migrationSourceWithSender.send, messageSender, actorSystem, auth, config.services, controllerComponents, gridClient)
-  val reaperController = new ReaperController(es, store, s3Vectors, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents, wsClient, usageEvents)
+  val reaperController = new ReaperController(es, store, authorisation, config, actorSystem.scheduler, maybeCustomReapableEligibility, softDeletedMetadataTable, thrallMetrics, auth, config.services, controllerComponents, wsClient, usageEvents)
   val healthCheckController = new HealthCheck(es, streamRunning.isCompleted, config, controllerComponents)
 
   override lazy val router = new Routes(httpErrorHandler, thrallController, reaperController, healthCheckController, management, assets)

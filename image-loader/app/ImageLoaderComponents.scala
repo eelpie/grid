@@ -1,6 +1,7 @@
 import app.photofox.vipsffm.{Vips, VipsHelper}
 import com.gu.mediaservice.GridClient
-import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, S3, SimpleSqsMessageConsumer}
+import com.gu.mediaservice.lib.aws.{Embedder, S3, SimpleSqsMessageConsumer}
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.play.GridComponents
@@ -34,11 +35,24 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val notifications = new Notifications(config)
   val downloader = new Downloader()(ec,wsClient)
 
-  val maybeEmbedder: Option[Embedder] = config.maybeImageEmbedderQueueUrl
-    .filter(_ => config.shouldEmbed)
-    .map {queueUrl =>
-      new Embedder(new Bedrock(config), new SimpleSqsMessageConsumer(queueUrl, config))
-    }
+  private val maybeGcpProjectId = config.gcpProjectId
+  private val vertexApiLocation = "eu"
+  private val maybeGoogleCloudEmbedding = for {
+    gcpProjectId <- maybeGcpProjectId
+  } yield {
+    new GoogleCloudEmbedding(projectId = gcpProjectId, location = vertexApiLocation)
+  }
+
+  private val maybeEmbedding = maybeGoogleCloudEmbedding
+
+  val maybeEmbedder: Option[Embedder] = for {
+    embedding <- maybeEmbedding
+    queueUrl <- config.maybeImageEmbedderQueueUrl.filter(_ => config.shouldEmbed)
+  } yield {
+
+    logger.info("Image loader is configured to queue embedding requests to: " + queueUrl)
+      new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
+  }
 
   private val s3 = new S3(config)
 
