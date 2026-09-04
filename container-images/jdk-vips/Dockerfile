@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-noble
+FROM eclipse-temurin:25-resolute
 RUN apt-get update
 RUN apt-get -y --no-install-suggests install -f build-essential ninja-build  python3-pip bc wget
 RUN apt-get -y --no-install-suggests install meson
@@ -21,7 +21,13 @@ RUN apt -y --no-install-suggests install \
     libpango1.0-dev \
     libopenjp2-7-dev \
     liblcms2-dev \
-    libimagequant-dev
+    libimagequant-dev \
+    libheif-dev \
+    libheif-plugin-libde265 \
+    libheif-plugin-x265 \
+    libheif-plugins-all \
+    libheif-plugin-libde265 \
+    libheif-plugin-aomdec
 
 WORKDIR /tmp
 RUN wget https://github.com/libvips/libvips/releases/download/v8.18.4/vips-8.18.4.tar.xz
