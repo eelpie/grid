@@ -5,6 +5,7 @@ import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
 import org.joda.time.{DateTime, DateTimeZone}
 import software.amazon.awssdk.core.ResponseInputStream
+import software.amazon.awssdk.core.checksums.{RequestChecksumCalculation, ResponseChecksumValidation}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.model._
@@ -302,7 +303,13 @@ object S3Ops extends GridLogging {
     val builder = S3Client.builder()
       .credentialsProvider(credentials)
       .region(maybeRegionOverride.getOrElse(config.awsRegion))
-      .forcePathStyle(usesPathStyleURLs)
+      .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
+      .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
+      .serviceConfiguration(S3Configuration.builder()
+        .chunkedEncodingEnabled(false)
+        .pathStyleAccessEnabled(usesPathStyleURLs)
+        .build()
+      )
 
     val withEndpoint = endpointOverride match {
       case Some(endpoint) =>
