@@ -66,7 +66,7 @@ protected class SingleHostServices(val domain: String) extends Services {
 
   val guardianWitnessBaseUri: String = "https://n0ticeapis.com"
 
-  override def corsAllowedDomains(instance: Instance): Set[String] = Set(kahunaBaseUri(instance), apiBaseUri(instance), thrallBaseUri(instance))
+  override def corsAllowedDomains(instance: Instance): Set[String] = Set(kahunaBaseUri(instance))
 
   val redirectUriParam = "redirectUri"
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
