@@ -32,7 +32,9 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
 
   override def httpFilters: Seq[EssentialFilter] = Seq(
       instanceSpecificCorsFilter,
-    // csrfFilter,  TODO Ineffective as gateway is not setting correct hostname headers!
+      // csrfFilter is not enabled here: every Grid app except thrall exposes only JSON APIs consumed via fetch/XHR,
+      // which never render a page to seed a session CSRF token. Thrall enables it itself (ThrallComponents) because
+      // it has real server-rendered HTML forms.
       securityHeadersFilter, // TODO needs to be replemented to be request/instance specfic
       gzipFilter,
       new RequestLoggingFilter(materializer),
