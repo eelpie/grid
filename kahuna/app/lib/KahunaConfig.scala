@@ -2,10 +2,8 @@ package lib
 
 import com.gu.mediaservice.lib.auth.Permissions.Pinboard
 import com.gu.mediaservice.lib.auth.SimplePermission
-import com.gu.mediaservice.lib.aws.S3Bucket
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
 import com.gu.mediaservice.model.Instance
-import play.api.libs.json._
 
 case class ScriptToLoad(
   host: String,
@@ -22,8 +20,8 @@ class KahunaConfig(resources: GridConfigResources) extends CommonConfig(resource
 
   val sentryDsn: Option[String] = stringOpt("sentry.dsn").filterNot(_.isEmpty)
 
-  val thumbOrigin: String = string("origin.thumb")
-  val cropOrigin: String = string("origin.crops")
+  val thumbOrigin: String = this.thumbnailBucket.bucketURL().toString
+  val cropOrigin: String = this.imgPublishingBucket.bucketURL().toString
 
   val costFilterLabel: Option[String] = stringOpt("costFilter.label")
   val costFilterChargeable: Option[Boolean] = booleanOpt("costFilter.chargeable")
