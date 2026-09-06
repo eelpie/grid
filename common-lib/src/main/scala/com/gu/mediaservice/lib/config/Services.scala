@@ -62,7 +62,7 @@ class SingleHostServices(val domain: String) extends Services {
 
   override def thrallBaseUri(instance: Instance): String = vhostServiceName("thrall", instance)
 
-  override def corsAllowedDomains(instance: Instance): Set[String] = Set(kahunaBaseUri(instance), apiBaseUri(instance), thrallBaseUri(instance))
+  override def corsAllowedDomains(instance: Instance): Set[String] = Set(kahunaBaseUri(instance))
 
   val redirectUriParam = "redirectUri"
   val redirectUriPlaceholder = s"{?$redirectUriParam}"
