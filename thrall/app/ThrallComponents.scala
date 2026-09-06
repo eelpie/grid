@@ -14,6 +14,7 @@ import lib.kinesis.{KinesisConfig, ThrallEventConsumer}
 import org.apache.pekko.Done
 import org.apache.pekko.stream.scaladsl.Source
 import play.api.ApplicationLoader.Context
+import play.api.mvc.EssentialFilter
 import router.Routes
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
@@ -26,6 +27,11 @@ import scala.language.postfixOps
 class ThrallComponents(context: Context) extends GridComponents(context, new ThrallConfig(_)) with StrictLogging with AssetsComponents
   with Instances {
   final override val buildInfo = utils.buildinfo.BuildInfo
+
+  // Unlike other Grid apps, thrall serves real server-rendered HTML admin forms (see app/views), so it needs
+  // Play's CSRF filter to issue and validate tokens for them. Insert it right after CORS, matching GridComponents'
+  // base ordering, rather than enabling it for every Grid app (the rest are JSON APIs with no CSRF token flow).
+  override def httpFilters: Seq[EssentialFilter] = super.httpFilters.patch(1, Seq(csrfFilter), 0)
 
   val store = new ThrallStore(config)
   val metadataEditorNotifications = new MetadataEditorNotifications(config)
