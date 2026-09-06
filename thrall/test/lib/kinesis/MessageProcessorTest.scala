@@ -5,6 +5,7 @@ import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model.{DeleteImageMessage, Instance, NoRights, SyndicationRights, UpdateImageSyndicationMetadataMessage}
 import helpers.Fixtures
+import instances.InstanceMessageSender
 import lib.{MetadataEditorNotifications, ThrallStore}
 import lib.elasticsearch.{ElasticSearch, ElasticSearchDeleteResponse, ElasticSearchUpdateResponse, ImageNotDeletable}
 import org.joda.time.DateTime
@@ -27,7 +28,7 @@ class MessageProcessorTest extends AnyFunSpec with Matchers with ScalaFutures wi
   private class Fixture {
     val es: ElasticSearch = mock[ElasticSearch]
     val store: ThrallStore = mock[ThrallStore]
-    val processor = new MessageProcessor(es, store, mock[MetadataEditorNotifications], mock[GridClient], mock[Authentication])
+    val processor = new MessageProcessor(es, store, mock[MetadataEditorNotifications], mock[GridClient], mock[Authentication], mock[InstanceMessageSender])
   }
 
   describe("syndication updates") {

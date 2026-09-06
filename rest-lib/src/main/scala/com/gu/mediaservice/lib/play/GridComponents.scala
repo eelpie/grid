@@ -54,8 +54,9 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
     sentryInitialised
     Seq(
       instanceSpecificCorsFilter,
-      // csrfFilter,  TODO Ineffective as gateway is not setting correct hostname headers!
-      securityHeadersFilter,
+      // csrfFilter is not enabled here: every Grid app except thrall exposes only JSON APIs consumed via fetch/XHR,
+      // which never render a page to seed a session CSRF token. Thrall enables it itself (ThrallComponents) because
+      // it has real server-rendered HTML forms.      securityHeadersFilter,
       gzipFilter,
       new RequestLoggingFilter(materializer),
       // After RequestLoggingFilter so the request id is available to tag transactions with.
