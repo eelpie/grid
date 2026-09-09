@@ -103,7 +103,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("IMG_0128.HEIC")
 
       val outputFile = new File("/Users/tony/Desktop/thumbnail-heic.jpg")
-      val browserViewableImageImage = BrowserViewableImage("TODO", image, Jpeg, Map.empty, false, Instance("TODO"))
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Jpeg, Map.empty, Instance("TODO"))
 
       val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
