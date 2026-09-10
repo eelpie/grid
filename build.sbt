@@ -126,7 +126,7 @@ lazy val commonLib = project("common-lib").settings(
     "software.amazon.awssdk" % "bedrockruntime" % awsSdkV2Version,
     "com.adobe.xmp" % "xmpcore" % "6.1.11",
     ws,
-    "com.google.genai" % "google-genai" % "1.53.0" exclude("com.fasterxml.jackson.module", "jackson-module-kotlin"),
+    "com.google.genai" % "google-genai" % "1.70.0",
     "org.testcontainers" % "testcontainers-elasticsearch" % "2.0.5" % Test,
   ),
   dependencyOverrides += "ch.qos.logback" % "logback-classic" % "1.2.13" % Test
