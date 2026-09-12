@@ -53,7 +53,7 @@ object HybridResult extends GridLogging {
   )(implicit logMarker: LogMarker): Option[HybridResult] =
     resolveHit(hit).map { image =>
       val semanticScore = image.instance.embedding
-        .flatMap(_.cohereEmbedV4)
+        .flatMap(_.geminiEmbedding2)  // TODO deduplicate
         // We can't use the dot product shortcut because image vectors
         // are truncated 256-dim versions of a normalised 1536-dim vector,
         // meaning they will not have magnitude 1.

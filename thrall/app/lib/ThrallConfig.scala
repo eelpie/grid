@@ -11,9 +11,9 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import software.amazon.awssdk.http.Protocol
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.cloudwatch.{CloudWatchAsyncClient, CloudWatchAsyncClientBuilder}
-import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
-import software.amazon.awssdk.services.kinesis.{KinesisAsyncClient, KinesisAsyncClientBuilder}
+import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
+import software.amazon.awssdk.services.kinesis.KinesisAsyncClient
 import software.amazon.kinesis.metrics.MetricsLevel
 
 import java.net.URI
@@ -82,4 +82,7 @@ class ThrallConfig(resources: GridConfigResources) extends CommonConfigWithElast
 
   val instanceUsageQueueName: String = string("instance.usage.queue.name")
 
+  val embeddingsQueueUrl: Option[String] = stringOpt("sqs.image.embedder.queue.url")
+
+  val gcpProjectId: Option[String] = stringOpt("gcp.project.id")
 }

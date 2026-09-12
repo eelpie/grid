@@ -1,20 +1,16 @@
 package model
 
-import java.io.File
-import java.net.URI
-import java.util.{Date, UUID}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Instance, _}
+import com.gu.mediaservice.model._
 import com.gu.mediaservice.model.leases.LeasesByMedia
 import lib.DigestedFile
 import model.upload.OptimiseWithPngQuant
 import org.joda.time.{DateTime, DateTimeZone}
-import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{times, verify, when}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
@@ -22,15 +18,12 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.libs.json.{JsArray, JsString}
-import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3vectors.model.PutVectorsResponse
-import play.api.mvc.RequestHeader
 import test.lib.ResourceHelpers
 
-import java.nio.file.Path
+import java.io.File
+import java.net.URI
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.jdk.CollectionConverters._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with MockitoSugar {
 
@@ -42,7 +35,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val imageOperations = new ImageOperations(ctxPath)
 
-  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, dummyBucket("img-bucket"), dummyBucket("thumb-bucket"))
+  private val config = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, dummyBucket("img-bucket"), dummyBucket("thumb-bucket"), dummyBucket("embeddingSource-bucket"), dummyBucket("embeddings-bucket"))
 
   private val maybeEmbedder = None
 
