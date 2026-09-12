@@ -1,11 +1,10 @@
-import play.sbt.PlayImport.PlayKeys._
+import com.typesafe.sbt.packager.docker.*
+import play.sbt.PlayImport.PlayKeys.*
 import sbt.Package.FixedTimestamp
 
-import scala.sys.process._
+import scala.collection.JavaConverters.*
+import scala.sys.process.*
 import scala.util.control.NonFatal
-import scala.collection.JavaConverters._
-
-import com.typesafe.sbt.packager.debian.JDebPackaging
 
 // We need to keep the timestamps to allow caching headers to work as expected on assets.
 // The below should work, but some problem in one of the plugins (possible the play plugin? or sbt-web?) causes
@@ -53,6 +52,7 @@ val commonSettings = Seq(
     "org.scalatestplus" %% "mockito-3-4" % "3.1.4.0" % Test,
     "org.mockito" % "mockito-core" % "2.18.0" % Test,
     "org.scalamock" %% "scalamock" % "5.1.0" % Test,
+    "org.testcontainers" % "localstack" % "1.21.4" % Test
   ),
   dependencyOverrides ++= jacksonOverrides,
 
@@ -91,6 +91,7 @@ val maybeBBCLib: Option[sbt.ProjectReference] = if(bbcBuildProcess) Some(bbcProj
 
 lazy val commonLib = project("common-lib").settings(
   libraryDependencies ++= Seq(
+    "com.google.guava" % "guava" % "33.5.0-jre",
     "com.gu" %% "editorial-permissions-client" % "7.0.0",
     "com.gu" %% "pan-domain-auth-play_3-0" % "19.0.0",
     "software.amazon.awssdk" % "iam" % awsSdkV2Version,
@@ -124,7 +125,7 @@ lazy val commonLib = project("common-lib").settings(
     "software.amazon.awssdk" % "bedrockruntime" % awsSdkV2Version,
     "software.amazon.awssdk" % "s3vectors" % awsSdkV2Version,
     ws,
-    "org.testcontainers" % "elasticsearch" % "1.21.4" % Test,
+    "org.testcontainers" % "testcontainers-elasticsearch" % "2.0.2" % Test,
   ),
   dependencyOverrides += "ch.qos.logback" % "logback-classic" % "1.2.13" % Test
 )
@@ -141,9 +142,9 @@ lazy val auth = playProject("auth", 9011)
 
 lazy val collections = playProject("collections", 9010)
 
-lazy val cropper = playProject("cropper", 9006)
+lazy val cropper = playImageLoaderProject("cropper", 9006)
 
-lazy val imageLoader = playProject("image-loader", 9003).settings {
+lazy val imageLoader = playImageLoaderProject("image-loader", 9003).settings {
   libraryDependencies ++= Seq(
     "org.apache.tika" % "tika-core" % "3.2.3",
     "com.drewnoakes" % "metadata-extractor" % "2.19.0"
@@ -180,7 +181,7 @@ lazy val thrall = playProject("thrall", 9002)
       "software.amazon.awssdk" % "kinesis" % awsSdkV2Version,
       "software.amazon.awssdk" % "dynamodb" % awsSdkV2Version,
       "com.gu" %% "kcl-pekko-stream" % "0.1.2",
-      "org.testcontainers" % "elasticsearch" % "1.19.2" % Test,
+      "org.testcontainers" % "testcontainers-elasticsearch" % "2.0.2" % Test,
       "com.google.protobuf" % "protobuf-java" % "3.19.6"
     ),
     dependencyOverrides ++= Seq(
@@ -190,8 +191,6 @@ lazy val thrall = playProject("thrall", 9002)
 
 lazy val usage = playProject("usage", 9009).settings(
   libraryDependencies ++= Seq(
-    "com.gu" %% "content-api-client-default" % "32.0.0",
-    "com.gu" %% "content-api-client-aws" % "1.0.1",
     "io.reactivex" %% "rxscala" % "0.27.0",
     "software.amazon.kinesis" % "amazon-kinesis-client" % awsKclVersion,
     // explicit dependencies on kinesis and dynamodb to upgrade the versions used by kcl
@@ -241,39 +240,53 @@ val buildInfo = Seq(
 )
 
 def playProject(projectName: String, port: Int, path: Option[String] = None): Project = {
-  val commonProject = project(projectName, path)
-    .enablePlugins(PlayScala, JDebPackaging, SystemdPlugin, BuildInfoPlugin)
+  project(projectName, path)
+    .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
+      dockerBaseImage := "eclipse-temurin:11",
+      dockerExposedPorts := Seq(port),
       playDefaultPort := port,
-      debianPackageDependencies := Seq("java11-runtime-headless"),
-      Linux / maintainer := "Guardian Developers <dig.dev.software@theguardian.com>",
-      Linux / packageSummary := description.value,
-      packageDescription := description.value,
 
       bashScriptEnvConfigLocation := Some("/etc/environment"),
-      Debian / makeEtcDefault := None,
-      Debian / packageBin := {
-        val originalFileName = (Debian / packageBin).value
-        val (base, ext) = originalFileName.baseAndExt
-        val newBase = base.replace(s"_${version.value}_all","")
-        val newFileName = file(originalFileName.getParent) / s"$newBase.$ext"
-        IO.move(originalFileName, newFileName)
-        println(s"Renamed $originalFileName to $newFileName")
-        newFileName
-      },
       Universal / mappings ++= Seq(
         file("common-lib/src/main/resources/application.conf") -> "conf/application.conf",
         file("common-lib/src/main/resources/logback.xml") -> "conf/logback.xml"
       ),
       Universal / javaOptions ++= Seq(
         "-Dpidfile.path=/dev/null",
-        s"-Dconfig.file=/usr/share/$projectName/conf/application.conf",
-        s"-Dlogger.file=/usr/share/$projectName/conf/logback.xml",
-        "-J-Xlog:gc*",
-        s"-J-Xlog:gc:/var/log/$projectName/gc.log"
-      )
-    ))
-  //Add the BBC library dependency if defined
-  maybeBBCLib.fold(commonProject){commonProject.dependsOn(_)}
+        s"-Dconfig.file=/opt/docker/conf/application.conf",
+        s"-Dlogger.file=/opt/docker/conf/logback.xml",
+        "-XX:+PrintCommandLineFlags", "-XX:MaxRAMPercentage=40"
+      ))
+    )
+}
+
+def playImageLoaderProject(projectName: String, port: Int, path: Option[String] = None): Project = {
+  project(projectName, path)
+    .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
+    .dependsOn(restLib)
+    .settings(commonSettings ++ buildInfo ++ Seq(
+      dockerBaseImage := "eu.gcr.io/grid-301122/jdk-vips:25-8.18.4",
+      dockerExposedPorts := Seq(port),
+      dockerCommands ++= Seq(
+        Cmd("ENV", "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so")
+      ),
+      playDefaultPort := port,
+
+      bashScriptEnvConfigLocation := Some("/etc/environment"),
+      Universal / mappings ++= Seq(
+        file("common-lib/src/main/resources/application.conf") -> "conf/application.conf",
+        file("common-lib/src/main/resources/logback.xml") -> "conf/logback.xml",
+        file("image-loader/cmyk.icc") -> "cmyk.icc",
+        file("image-loader/facebook-TINYsRGB_c2.icc") -> "facebook-TINYsRGB_c2.icc",
+        file("image-loader/grayscale.icc") -> "grayscale.icc",
+        file("image-loader/srgb.icc") -> "srgb.icc"
+      ),
+      Universal / javaOptions ++= Seq(
+        "-Dpidfile.path=/dev/null",
+        s"-Dconfig.file=/opt/docker/conf/application.conf",
+        s"-Dlogger.file=/opt/docker/conf/logback.xml",
+        "-XX:+PrintCommandLineFlags"
+  )))
 }

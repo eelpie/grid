@@ -1,7 +1,5 @@
 package controllers
 
-import org.apache.pekko.actor.Scheduler
-import com.gu.mediaservice.lib.{DateTimeUtils, ImageIngestOperations}
 import com.gu.mediaservice.lib.auth.Permissions.DeleteImage
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, BaseControllerWithLoginRedirects}
 import com.gu.mediaservice.lib.aws.S3Vectors
@@ -9,15 +7,16 @@ import com.gu.mediaservice.lib.config.Services
 import com.gu.mediaservice.lib.elasticsearch.ReapableEligibility
 import com.gu.mediaservice.lib.logging.{GridLogging, MarkerMap}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
+import com.gu.mediaservice.lib.{DateTimeUtils, ImageIngestOperations}
 import com.gu.mediaservice.model.{ImageStatusRecord, SoftDeletedMetadata}
-import lib.{BatchDeletionIds, ThrallConfig, ThrallMetrics, ThrallStore}
 import lib.elasticsearch.ElasticSearch
+import lib.{BatchDeletionIds, ThrallConfig, ThrallMetrics, ThrallStore}
+import org.apache.pekko.actor.Scheduler
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents}
 import scalaz.NonEmptyList
-import software.amazon.awssdk.core.sync.RequestBody
-import software.amazon.awssdk.services.s3.model.{ListObjectsV2Request, PutObjectRequest, DeleteObjectRequest}
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
@@ -41,9 +40,8 @@ class ReaperController(
   override val controllerComponents: ControllerComponents,
 )(implicit val ec: ExecutionContext) extends BaseControllerWithLoginRedirects with GridLogging {
 
-  private val CONTROL_FILE_NAME = "PAUSED"
-
   private val INTERVAL = config.reaperInterval //default 15 minutes, based on max of 1000 per reap, this interval will max out at 96,000 images per day
+  private val isPaused = config.reaperPaused
 
   implicit val logMarker: MarkerMap = MarkerMap()
 
@@ -54,8 +52,8 @@ class ReaperController(
     }
   }
 
-  (config.maybeReaperBucket, config.maybeReaperCountPerRun) match {
-    case (Some(reaperBucket), Some(countOfImagesToReap)) =>
+  config.maybeReaperCountPerRun match {
+    case Some(countOfImagesToReap) =>
       // We always want the reaps to occur at predictable times (e.g. on the hour, then 15, 30, 45 minutes past)
       // However, if the first reap is imminent, then skip it, to avoid double reaps during deployment when both
       // instances are up and running simultaneously
@@ -68,7 +66,7 @@ class ReaperController(
         interval = INTERVAL,
       ){ () =>
         try {
-          if (store.doesObjectExist(reaperBucket, CONTROL_FILE_NAME)) {
+          if (isPaused) {
             logger.info("Reaper is paused")
             es.countTotalSoftReapable(isReapable).map(metrics.softReapable.increment(Nil, _))
             es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.increment(Nil, _))
@@ -86,7 +84,7 @@ class ReaperController(
           case NonFatal(e) => logger.error("Reap failed", e)
         }
       }
-    case _ => logger.info("scheduled reaper will not run since 's3.reaper.bucket' and 'reaper.countPerRun' need to be configured in thrall.conf")
+    case _ => logger.info("scheduled reaper will not run because 'reaper.countPerRun' needs to be configured in thrall.conf")
   }
 
   private def batchDeleteWrapper(count: Int)(func: (Int, String) => Future[JsValue]) = auth.async { request =>
@@ -188,7 +186,6 @@ class ReaperController(
     case (None, _) => NotImplemented("'s3.reaper.bucket' not configured in thrall.conf")
     case (_, None) => NotImplemented("'reaper.countPerRun' not configured in thrall.conf")
     case (Some(reaperBucket), Some(countOfImagesToReap)) =>
-      val isPaused = store.doesObjectExist(reaperBucket, CONTROL_FILE_NAME)
       val recentRecords = List(now, now.minusDays(1), now.minusDays(2)).flatMap { day =>
         val s3DirName = s3DirNameFromDate(day)
         val softDeletes = store.client.listObjectsV2(
@@ -217,20 +214,6 @@ class ReaperController(
         case Some(res) => Ok(res).as(JSON)
         case None => NotFound
       }
-  }}
-
-  def pauseReaper = auth { config.maybeReaperBucket match {
-    case None => NotImplemented("Reaper bucket not configured")
-    case Some(reaperBucket) =>
-      store.putString(reaperBucket, CONTROL_FILE_NAME, "")
-      Redirect(routes.ReaperController.index)
-  }}
-
-  def resumeReaper = auth { config.maybeReaperBucket match {
-    case None => NotImplemented("Reaper bucket not configured")
-    case Some(reaperBucket) =>
-      store.client.deleteObject(DeleteObjectRequest.builder().bucket(reaperBucket).key(CONTROL_FILE_NAME).build())
-      Redirect(routes.ReaperController.index)
   }}
 
 }
