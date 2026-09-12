@@ -4,6 +4,7 @@ import com.gu.mediaservice.lib.AttributeValueConverterProvider
 import com.gu.mediaservice.lib.aws.DynamoDB.jsonWithNullAsEmptyString
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.lib.usage.ItemToMediaUsage
+import com.gu.mediaservice.model.Instance
 import com.gu.mediaservice.model.usage.{MediaUsage, PendingUsageStatus, PublishedUsageStatus, UsageTableFullKey}
 import lib.{BadInputException, WithLogMarker}
 import play.api.libs.json._
@@ -29,28 +30,25 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
   lazy val tableSchema = TableSchema.documentSchemaBuilder()
     .addIndexPartitionKey(TableMetadata.primaryIndexName(), hashKeyName, AttributeValueType.S)
     .addIndexSortKey(TableMetadata.primaryIndexName(), rangeKeyName, AttributeValueType.S)
-    .addIndexPartitionKey(
-      imageIndexName,
-      imageIndexName,
-      AttributeValueType.S
-    )
+    .addIndexPartitionKey(imageIndexName, "instance", AttributeValueType.S)
+    .addIndexSortKey(imageIndexName, imageIndexName, AttributeValueType.S)
     .attributeConverterProviders(AttributeValueConverterProvider, AttributeConverterProvider.defaultProvider())
     .build()
   lazy val table = dynamo.table(tableName, tableSchema)
 
-  def queryByUsageId(id: String): Future[Option[MediaUsage]] = Future {
+  def queryByUsageId(id: String)(implicit instance: Instance): Future[Option[MediaUsage]] = Future {
     UsageTableFullKey.build(id).flatMap((tableFullKey: UsageTableFullKey) => {
 
       val key = Key.builder()
-        .partitionValue(tableFullKey.hashKey)
+        .partitionValue(instanceAwareHashKey(tableFullKey.hashKey))
         .sortValue(tableFullKey.rangeKey)
         .build()
       val queryResult = table.query(QueryConditional.keyEqualTo(key))
-      queryResult.items().asScala.map(ItemToMediaUsage.transform).headOption
+      queryResult.items().asScala.map(ItemToMediaUsage.transform).map(unwindInstanceAwareHashkey).headOption
     })
   }
 
-  def queryByImageId(id: String)(implicit logMarkerWithId: LogMarker): Future[List[MediaUsage]] = Future {
+  def queryByImageId(id: String)(implicit logMarkerWithId: LogMarker, instance: Instance): Future[List[MediaUsage]] = Future {
 
     if (id.trim.isEmpty)
       throw new BadInputException("Empty string received for image id")
@@ -58,7 +56,8 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
     logger.info(logMarkerWithId, s"Querying usages table for $id")
 
     val key = Key.builder()
-      .partitionValue(id)
+      .partitionValue(instance.id)
+      .sortValue(id)
       .build()
 
     val queryResult = table.index(imageIndexName).query(QueryConditional.keyEqualTo(key))
@@ -67,6 +66,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
       .asScala
       .flatMap(_.items().asScala)
       .map(ItemToMediaUsage.transform)
+      .map(unwindInstanceAwareHashkey)
       .toList
 
     logger.info(logMarkerWithId, s"Query of usages table for $id found ${unsortedUsages.size} results")
@@ -101,9 +101,10 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
       }
   }.toList
 
-  def matchUsageGroup(usageGroupWithContext: WithLogMarker[UsageGroup]): Observable[WithLogMarker[Set[MediaUsage]]] = {
+  def matchUsageGroup(usageGroupWithContext: WithLogMarker[(UsageGroup, Instance)]): Observable[WithLogMarker[Set[MediaUsage]]] = {
     implicit val logMarker: LogMarker = usageGroupWithContext.logMarker
-    val usageGroup = usageGroupWithContext.value
+    val usageGroup = usageGroupWithContext.value._1
+    implicit val instance: Instance = usageGroupWithContext.value._2
 
     logger.info(logMarker, s"Trying to match UsageGroup: ${usageGroup.grouping}")
 
@@ -112,7 +113,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
 
       logger.info(logMarker, s"Querying table for $grouping")
       val key = Key.builder()
-        .partitionValue(grouping)
+        .partitionValue(instanceAwareHashKey(grouping))
         .build()
       val request =
         QueryEnhancedRequest.builder()
@@ -123,6 +124,7 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
 
       val usages = queryResult.items().asScala
         .map(ItemToMediaUsage.transform)
+        .map(unwindInstanceAwareHashkey)
         .toSet
 
       logger.info(logMarker, s"Built matched UsageGroup ${usageGroup.grouping} (${usages.size})")
@@ -131,29 +133,29 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
     })
   }
 
-  def create(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def create(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildCreateRecord(mediaUsage))
 
-  def update(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def update(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildUpdateRecord(mediaUsage))
 
-  def markAsRemoved(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): Observable[JsObject] =
+  def markAsRemoved(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] =
     upsertFromRecord(UsageRecord.buildMarkAsRemovedRecord(mediaUsage))
 
-  def deleteRecord(mediaUsage: MediaUsage)(implicit logMarker: LogMarker): EnhancedDocument = {
+  def deleteRecord(mediaUsage: MediaUsage)(implicit logMarker: LogMarker, instance: Instance): EnhancedDocument = {
     logger.info(logMarker, s"deleting usage ${mediaUsage.usageId} for media id ${mediaUsage.mediaId}")
 
     val key = Key.builder()
-      .partitionValue(mediaUsage.grouping)
+      .partitionValue(instanceAwareHashKey(mediaUsage.grouping))
       .sortValue(mediaUsage.usageId.toString)
       .build()
 
     table.deleteItem(DeleteItemEnhancedRequest.builder().key(key).build())
   }
 
-  private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker): Observable[JsObject] = Observable.from(Future {
+  private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker, instance: Instance): Observable[JsObject] = Observable.from(Future {
       val key = Map(
-        hashKeyName -> AttributeValue.builder().s(record.hashKey).build(),
+        hashKeyName -> AttributeValue.builder().s(instanceAwareHashKey(record.hashKey)).build(),
         rangeKeyName -> AttributeValue.builder().s(record.rangeKey).build()
       ).asJava
 
@@ -177,4 +179,15 @@ class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging 
       val doc = EnhancedDocument.fromAttributeValueMap(updateResponse.attributes())
       jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject]
     })
+
+  private def unwindInstanceAwareHashkey(mediaUsage: MediaUsage)(implicit instance: Instance): MediaUsage = {
+    mediaUsage.copy(grouping = mediaUsage.grouping.drop(instance.id.length + 1))
+  }
+  private def instanceAwareHashKey(record: UsageRecord)(implicit instance: Instance) = {
+    instance.id + "/" + record.hashKey
+  }
+
+  private def instanceAwareHashKey(hashKey: String)(implicit instance: Instance) = {
+    instance.id + "/" + hashKey
+  }
 }

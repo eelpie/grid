@@ -47,13 +47,10 @@ const subjects = [
 
 const fileTypes = ["jpeg", "tiff", "png"];
 
-const staffPhotographerOrganisation =
-  window._clientConfig.staffPhotographerOrganisation;
-
 const isSearch = [
-  `${staffPhotographerOrganisation}-owned-photo`,
-  `${staffPhotographerOrganisation}-owned-illustration`,
-  `${staffPhotographerOrganisation}-owned`,
+  `owned-photo`,
+  `owned-illustration`,
+  `owned`,
   "under-quota",
   "deleted"
 ];

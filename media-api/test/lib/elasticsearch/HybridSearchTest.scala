@@ -4,6 +4,7 @@ import org.apache.pekko.actor.{ActorSystem, Scheduler}
 import com.gu.mediaservice.lib.VectorUtils.{firstBasisVector, vectorWithCosineSimilarity}
 import com.gu.mediaservice.lib.config.GridConfigResources
 import com.gu.mediaservice.lib.elasticsearch.{ElasticSearchAliases, ElasticSearchConfig, ElasticSearchExecutions}
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.testlib.ElasticSearchDockerBase
@@ -18,6 +19,7 @@ import play.api.Configuration
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.Json
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -31,7 +33,8 @@ class HybridSearchTest extends AnyFunSpec
   with Fixtures
   with MockitoSugar {
 
-  private val index = "images"
+  implicit val instance: Instance = Instance(UUID.randomUUID().toString)
+  private val index = instance.id + "_index"
 
   private val applicationLifecycle = new ApplicationLifecycle {
     override def addStopHook(hook: () => Future[_]): Unit = {}
@@ -55,7 +58,7 @@ class HybridSearchTest extends AnyFunSpec
     replicas = 0
   )
 
-  private lazy val ES = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => List.empty, mock[Scheduler])
+  private lazy val ES = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => List.empty, mock[Scheduler], mock[InstancesClient])
   lazy val client = ES.client
 
   private val oneHundredMilliseconds = Duration(100, MILLISECONDS)
@@ -85,7 +88,7 @@ class HybridSearchTest extends AnyFunSpec
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    ES.ensureIndexExistsAndAliasAssigned()
+    ES.ensureIndexExistsAndAliasAssigned(alias = ES.imagesCurrentAlias(instance), instance.id + "_index")
 
     implicit val logMarker: LogMarker = MarkerMap()
     purgeTestImages
@@ -146,7 +149,7 @@ class HybridSearchTest extends AnyFunSpec
     })
   }
 
-  private def totalImages: Long = Await.result(ES.client.execute(ElasticDsl.search(ES.imagesCurrentAlias)).map {
+  private def totalImages: Long = Await.result(ES.client.execute(ElasticDsl.search(ES.imagesCurrentAlias(instance))).map {
     _.result.totalHits
   }, oneHundredMilliseconds)
 
