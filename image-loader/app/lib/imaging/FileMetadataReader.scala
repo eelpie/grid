@@ -1,7 +1,5 @@
 package lib.imaging
 
-import java.io.File
-import java.util.concurrent.Executors
 import com.adobe.internal.xmp.XMPMetaFactory
 import com.drew.imaging.ImageMetadataReader
 import com.drew.metadata.exif.{ExifDirectoryBase, ExifIFD0Directory, ExifSubIFDDirectory}
@@ -11,19 +9,20 @@ import com.drew.metadata.jpeg.JpegDirectory
 import com.drew.metadata.png.PngDirectory
 import com.drew.metadata.xmp.XmpDirectory
 import com.drew.metadata.{Directory, Metadata}
-import com.gu.mediaservice.lib.{ImageWrapper, StorableImage}
+import com.gu.mediaservice.lib.ImageWrapper
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick._
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.model._
-import model.upload.UploadRequest
-import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json.JsValue
 
-import scala.jdk.CollectionConverters._
-import scala.collection.compat._
+import java.io.File
+import java.util.TimeZone
+import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 object FileMetadataReader extends GridLogging {
 
@@ -109,7 +108,9 @@ object FileMetadataReader extends GridLogging {
           metaTagsMap ++ dateTimeCreated ++ digitalDateTimeCreated
 
         case d: ExifSubIFDDirectory =>
-          val dateTimeCreated = Option(d.getDateOriginal).map(d => dateToUTCString(new DateTime(d))).map("Date/Time Original Composite" -> _)
+          // Explicitly parse as UTC: EXIF date/time strings don't carry a timezone, and metadata-extractor
+          // otherwise falls back to the JVM's default timezone, making the result depend on server config.
+          val dateTimeCreated = Option(d.getDateOriginal(TimeZone.getTimeZone("UTC"))).map(d => dateToUTCString(new DateTime(d))).map("Date/Time Original Composite" -> _)
           metaTagsMap ++ dateTimeCreated
 
         case _ => metaTagsMap
