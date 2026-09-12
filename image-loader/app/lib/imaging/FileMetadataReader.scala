@@ -1,29 +1,25 @@
 package lib.imaging
 
-import java.io.File
-import java.util.concurrent.Executors
 import com.adobe.internal.xmp.XMPMetaFactory
 import com.drew.imaging.ImageMetadataReader
 import com.drew.metadata.exif.{ExifDirectoryBase, ExifIFD0Directory, ExifSubIFDDirectory}
 import com.drew.metadata.icc.IccDirectory
 import com.drew.metadata.iptc.IptcDirectory
-import com.drew.metadata.jpeg.JpegDirectory
 import com.drew.metadata.png.PngDirectory
 import com.drew.metadata.xmp.XmpDirectory
 import com.drew.metadata.{Directory, Metadata}
-import com.gu.mediaservice.lib.{ImageWrapper, StorableImage}
-import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick._
-import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.model._
-import model.upload.UploadRequest
-import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json.JsValue
 
-import scala.jdk.CollectionConverters._
-import scala.collection.compat._
+import java.io.File
+import java.util.TimeZone
+import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 object FileMetadataReader extends GridLogging {
 
@@ -53,26 +49,22 @@ object FileMetadataReader extends GridLogging {
   private implicit val ctx: ExecutionContext =
     ExecutionContext.fromExecutor(Executors.newCachedThreadPool)
 
-  def fromIPTCHeaders(image: File, imageId:String): Future[FileMetadata] =
-    for {
-      metadata <- readMetadata(image)
+  def fromIPTCHeaders(image: File, imageId:String, maybeMimeType: Option[MimeType] = None)(implicit logMarker: LogMarker): Future[FileMetadata] = {
+    // TODO optimize out this duplicate read if possible
+    val eventualMetadata = readMetadata(image)
+    val eventualC2PA = Future {
+      maybeMimeType.map { mimeType =>
+        if (C2paDetector.hasC2paManifest(image, mimeType)) FileMetadata.C2paAvailable else FileMetadata.NoC2PA
+      }.getOrElse(FileMetadata.NoC2PA)
     }
-    yield getMetadataWithIPTCHeaders(metadata, imageId) // FIXME: JPEG, JFIF, Photoshop, GPS, File
-
-  def fromIPTCHeadersWithColorInfo(image: ImageWrapper)(implicit logMarker: LogMarker): Future[FileMetadata] =
-    fromIPTCHeadersWithColorInfo(image.file, image.id, image.mimeType)
-
-  def fromIPTCHeadersWithColorInfo(image: File, imageId:String, mimeType: MimeType)(implicit logMarker: LogMarker): Future[FileMetadata] =
     for {
-      metadata <- readMetadata(image)
-      colourModelInformation <- getColorModelInformation(image, metadata, mimeType)
+      metadata <- eventualMetadata
+      c2pa: Map[String, JsValue] <- eventualC2PA
     }
-    yield getMetadataWithIPTCHeaders(metadata, imageId).copy(
-      colourModelInformation = colourModelInformation,
-      c2pa = if (C2paDetector.hasC2paManifest(image, mimeType)) FileMetadata.C2paAvailable else FileMetadata.NoC2PA
-    )
+    yield getMetadataWithIPTCHeaders(metadata, imageId, c2pa) // FIXME: JPEG, JFIF, Photoshop, GPS, File
+  }
 
-  private def getMetadataWithIPTCHeaders(metadata: Metadata, imageId:String): FileMetadata =
+  private def getMetadataWithIPTCHeaders(metadata: Metadata, imageId:String, c2pa: Map[String, JsValue]): FileMetadata =
     FileMetadata(
       iptc = exportDirectory(metadata, classOf[IptcDirectory]),
       exif = exportDirectory(metadata, classOf[ExifIFD0Directory]),
@@ -81,7 +73,8 @@ object FileMetadataReader extends GridLogging {
       icc = redactLongFieldValues(imageId, "ICC")(exportDirectory(metadata, classOf[IccDirectory])),
       getty = exportGettyDirectory(metadata, imageId),
       colourModel = None,
-      colourModelInformation = Map()
+      colourModelInformation = Map(),
+      c2pa = c2pa
     )
 
   // Export all the metadata in the directory
@@ -109,7 +102,9 @@ object FileMetadataReader extends GridLogging {
           metaTagsMap ++ dateTimeCreated ++ digitalDateTimeCreated
 
         case d: ExifSubIFDDirectory =>
-          val dateTimeCreated = Option(d.getDateOriginal).map(d => dateToUTCString(new DateTime(d))).map("Date/Time Original Composite" -> _)
+          // Explicitly parse as UTC: EXIF date/time strings don't carry a timezone, and metadata-extractor
+          // otherwise falls back to the JVM's default timezone, making the result depend on server config.
+          val dateTimeCreated = Option(d.getDateOriginal(TimeZone.getTimeZone("UTC"))).map(d => dateToUTCString(new DateTime(d))).map("Date/Time Original Composite" -> _)
           metaTagsMap ++ dateTimeCreated
 
         case _ => metaTagsMap
@@ -186,69 +181,6 @@ object FileMetadataReader extends GridLogging {
 
   private def dateToUTCString(date: DateTime): String = ISODateTimeFormat.dateTime.print(date.withZone(DateTimeZone.UTC))
 
-
-  def orientation(image: File): Future[Option[OrientationMetadata]] = {
-    for {
-      metadata <- readMetadata(image)
-    } yield {
-
-      for {
-        exifDirectory <- Option(metadata.getFirstDirectoryOfType(classOf[ExifIFD0Directory]))
-        exifOrientation <- Option(exifDirectory.getInteger(ExifDirectoryBase.TAG_ORIENTATION))
-        orientation = OrientationMetadata(exifOrientation = Some(exifOrientation))
-        orientationWhichTransformsImage <- Seq(orientation).find(_.transformsImage())
-      } yield {
-        orientationWhichTransformsImage
-      }
-    }
-  }
-
-  def dimensions(image: File, mimeType: Option[MimeType]): Future[Option[Dimensions]] =
-    for {
-      metadata <- readMetadata(image)
-    }
-    yield {
-
-      mimeType match {
-
-        case Some(Jpeg) => for {
-          jpegDir <- Option(metadata.getFirstDirectoryOfType(classOf[JpegDirectory]))
-
-        } yield Dimensions(jpegDir.getImageWidth, jpegDir.getImageHeight)
-
-        case Some(Png) => for {
-          pngDir <- Option(metadata.getFirstDirectoryOfType(classOf[PngDirectory]))
-
-        } yield {
-          val width = pngDir.getInt(PngDirectory.TAG_IMAGE_WIDTH)
-          val height = pngDir.getInt(PngDirectory.TAG_IMAGE_HEIGHT)
-          Dimensions(width, height)
-        }
-
-        case Some(Tiff) => for {
-          exifDir <- Option(metadata.getFirstDirectoryOfType(classOf[ExifIFD0Directory]))
-
-        } yield {
-          val width = exifDir.getInt(ExifDirectoryBase.TAG_IMAGE_WIDTH)
-          val height = exifDir.getInt(ExifDirectoryBase.TAG_IMAGE_HEIGHT)
-          Dimensions(width, height)
-        }
-
-        case _ => None
-
-      }
-    }
-
-  def getColorModelInformation(image: File, metadata: Metadata, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Map[String, String]] = {
-
-    val source = addImage(image)
-
-    val formatter = format(source)("%r")
-
-    runIdentifyCmd(formatter, useImageMagick = false).map{ imageType => getColourInformation(metadata, imageType.headOption, mimeType) }
-      .recover { case _ => getColourInformation(metadata, None, mimeType) }
-  }
-
   // bits per sample might be a useful value, eg. "1", "8"; or it might be annoying like "1 bits/component/pixel", "8 8 8 bits/component/pixel"
   // either way we want everything up to the first space
   private def extractBitsPerSample(data: String): Option[String] = data.split(" ").headOption
@@ -296,8 +228,14 @@ object FileMetadataReader extends GridLogging {
   private def nonEmptyTrimmed(nullableStr: String): Option[String] =
     Option(nullableStr) map (_.trim) filter (_.nonEmpty)
 
-  private def readMetadata(file: File): Future[Metadata] = Future {
-    ImageMetadataReader.readMetadata(file)
+  private def readMetadata(file: File)(implicit logMarker: LogMarker): Future[Metadata] = {
+    val stopwatch = Stopwatch.start
+    Future {
+      ImageMetadataReader.readMetadata(file)
+    }.map { result =>
+      logger.info(addLogMarkers(stopwatch.elapsed),"Finished readMetadata")
+      result
+    }
   }
 
   // Helper to flatten maps of options

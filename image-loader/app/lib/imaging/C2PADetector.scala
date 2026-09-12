@@ -55,6 +55,7 @@ object C2paDetector {
         case Jpeg => hasJpegApp11Jumbf(file)
         case Png => hasPngC2PAChunk(file)
         case Tiff => hasTiffC2PATag(file)
+        case _ => false
       }
     } catch {
       case NonFatal(_) => false
