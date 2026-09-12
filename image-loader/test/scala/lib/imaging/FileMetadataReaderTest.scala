@@ -563,7 +563,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
       "Date/Time Original" -> "2015:04:15 01:08:44",
       "Date/Time Original Composite" -> "2015-04-15T01:08:44.880Z",
       "White Balance Mode" -> "Auto white balance",
-      "Shutter Speed Value" -> "1/1599 sec",
+      "Shutter Speed Value" -> "1/1600 sec",
       "Exif Image Width" -> "5760 pixels",
       "Focal Plane Y Resolution" -> "1/1600 cm",
       "Sub-Sec Time Original" -> "88",
