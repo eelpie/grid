@@ -23,6 +23,7 @@ import com.sksamuel.elastic4s.requests.searches.aggs.responses.Aggregations
 import com.sksamuel.elastic4s.requests.searches.aggs.responses.bucket.{DateHistogram, Terms}
 import com.sksamuel.elastic4s.requests.searches.queries.Query
 import com.sksamuel.elastic4s.requests.searches.knn.Knn
+import com.sksamuel.elastic4s.requests.searches.sort.SortOrder
 import com.sksamuel.elastic4s.requests.searches.queries.matches.MultiMatchQueryBuilderType.BEST_FIELDS
 import com.sksamuel.elastic4s.requests.searches.queries.matches.{FieldWithOptionalBoost, MultiMatchQuery}
 import lib.elasticsearch.ResultSource.{Both, Lexical, Semantic}
@@ -456,7 +457,9 @@ class ElasticSearch(
       .size(params.length)
 
     val withKnn: SearchRequest = similarTo.map { _ =>
-      searchRequest
+      // Without an explicit tiebreaker, hits with equal/near-equal kNN scores can reorder
+      // between from/size pages, since Elasticsearch merges approximate per-shard candidates.
+      searchRequest.sortBy(scoreSort(SortOrder.DESC), fieldSort("id").order(SortOrder.ASC))
     }.getOrElse {
       searchRequest.sortBy(sort)
     }
