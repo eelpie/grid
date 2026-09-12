@@ -27,6 +27,11 @@ trait ElasticSearchClient extends ElasticSearchExecutions with GridLogging {
   private val tenSeconds = Duration(10, SECONDS)
   private val thirtySeconds = Duration(30, SECONDS)
   protected val scrollKeepAlive = 5.minutes
+  // ES sends no Keep-Alive header, so Apache's default strategy keeps pooled connections open
+  // indefinitely. A load balancer or NAT sitting between us and ES can silently drop one while idle,
+  // which then surfaces as a "Connection reset" on the next reuse. Cap connection lifetime below that
+  // idle timeout so the pool proactively recycles connections instead of relying on it.
+  private val connectionKeepAlive = 5.minutes
 
   def url: String
 
@@ -46,6 +51,11 @@ trait ElasticSearchClient extends ElasticSearchExecutions with GridLogging {
     val restClient = org.elasticsearch.client.RestClient
       .builder(hosts: _*)
       .setCompressionEnabled(true) // request gzip from ES; reduces response body ~5-6×
+      .setHttpClientConfigCallback { (httpClientBuilder: org.apache.http.impl.nio.client.HttpAsyncClientBuilder) =>
+        httpClientBuilder
+          .setKeepAliveStrategy((_, _) => connectionKeepAlive.toMillis)
+          .setDefaultIOReactorConfig(org.apache.http.impl.nio.reactor.IOReactorConfig.custom().setSoKeepAlive(true).build())
+      }
       .build()
     ElasticClient(JavaClient.fromRestClient(restClient))
   }
