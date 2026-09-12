@@ -67,7 +67,8 @@ trait ElasticSearchClient extends ElasticSearchExecutions with GridLogging {
   }
 
   def healthCheck(): Future[Boolean] = {
-      Future.successful(true) // TODO reimplement
+    implicit val logMarker: MarkerMap = MarkerMap()
+    executeAndLog(clusterHealth(), "Healthcheck").map(_ => true).recover { case _ => false }
   }
 
   case class IndexWithAliases(name: String, aliases: Seq[String])
