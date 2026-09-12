@@ -37,7 +37,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
         "Coded Character Set" -> "UTF-8",
         "Application Record Version" -> "4",
         "Caption/Abstract" -> "Austria's Matthias Mayer attends the men's downhill training of the FIS Alpine Skiing World Cup in Kitzbuehel, Austria, on January 22, 2015.       AFP PHOTO / CHRISTOF STACHECHRISTOF STACHE/AFP/Getty Images",
-        "Enveloped Record Version" -> "4",
+        "Envelope Record Version" -> "4",
         "Credit" -> "AFP/Getty Images",
         "Source" -> "AFP",
         "City" -> "KITZBUEHEL",
