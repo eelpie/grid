@@ -1,29 +1,24 @@
 package lib.imaging
 
-import java.io.File
-import java.util.concurrent.Executors
 import com.adobe.internal.xmp.XMPMetaFactory
 import com.drew.imaging.ImageMetadataReader
 import com.drew.metadata.exif.{ExifDirectoryBase, ExifIFD0Directory, ExifSubIFDDirectory}
 import com.drew.metadata.icc.IccDirectory
 import com.drew.metadata.iptc.IptcDirectory
-import com.drew.metadata.jpeg.JpegDirectory
 import com.drew.metadata.png.PngDirectory
 import com.drew.metadata.xmp.XmpDirectory
 import com.drew.metadata.{Directory, Metadata}
-import com.gu.mediaservice.lib.{ImageWrapper, StorableImage}
-import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick._
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.model._
-import model.upload.UploadRequest
-import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json.JsValue
 
-import scala.jdk.CollectionConverters._
-import scala.collection.compat._
+import java.io.File
+import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 object FileMetadataReader extends GridLogging {
 
@@ -53,13 +48,22 @@ object FileMetadataReader extends GridLogging {
   private implicit val ctx: ExecutionContext =
     ExecutionContext.fromExecutor(Executors.newCachedThreadPool)
 
-  def fromIPTCHeaders(image: File, imageId:String)(implicit logMarker: LogMarker): Future[FileMetadata] =
-    for {
-      metadata <- readMetadata(image)
+  def fromIPTCHeaders(image: File, imageId:String, maybeMimeType: Option[MimeType] = None)(implicit logMarker: LogMarker): Future[FileMetadata] = {
+    // TODO optimize out this duplicate read if possible
+    val eventualMetadata = readMetadata(image)
+    val eventualC2PA = Future {
+      maybeMimeType.map { mimeType =>
+        if (C2paDetector.hasC2paManifest(image, mimeType)) FileMetadata.C2paAvailable else FileMetadata.NoC2PA
+      }.getOrElse(FileMetadata.NoC2PA)
     }
-    yield getMetadataWithIPTCHeaders(metadata, imageId) // FIXME: JPEG, JFIF, Photoshop, GPS, File
+    for {
+      metadata <- eventualMetadata
+      c2pa: Map[String, JsValue] <- eventualC2PA
+    }
+    yield getMetadataWithIPTCHeaders(metadata, imageId, c2pa) // FIXME: JPEG, JFIF, Photoshop, GPS, File
+  }
 
-  private def getMetadataWithIPTCHeaders(metadata: Metadata, imageId:String): FileMetadata =
+  private def getMetadataWithIPTCHeaders(metadata: Metadata, imageId:String, c2pa: Map[String, JsValue]): FileMetadata =
     FileMetadata(
       iptc = exportDirectory(metadata, classOf[IptcDirectory]),
       exif = exportDirectory(metadata, classOf[ExifIFD0Directory]),
@@ -68,7 +72,8 @@ object FileMetadataReader extends GridLogging {
       icc = redactLongFieldValues(imageId, "ICC")(exportDirectory(metadata, classOf[IccDirectory])),
       getty = exportGettyDirectory(metadata, imageId),
       colourModel = None,
-      colourModelInformation = Map()
+      colourModelInformation = Map(),
+      c2pa = c2pa
     )
 
   // Export all the metadata in the directory

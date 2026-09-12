@@ -251,7 +251,7 @@ object Uploader extends GridLogging {
     val stopwatch = Stopwatch.start
     (mimeType match {
       //case Some(Png | Tiff | Jpeg) => FileMetadataReader.fromIPTCHeadersWithColorInfo(f, imageId, mimeType.get)
-      case _ => FileMetadataReader.fromIPTCHeaders(f, imageId)
+      case _ => FileMetadataReader.fromIPTCHeaders(f, imageId, mimeType)
     }).map { result =>
       logger.info(addLogMarkers(stopwatch.elapsed), "Finished toFileMetadata")
       result
