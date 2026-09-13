@@ -69,8 +69,8 @@ case class PrintUsageMetadata(
     orderedBy.map(o => "orderedBy" -> DbString(o)) ++
     layoutId.map(l => "layoutId" -> DbLong(l)) ++
     edition.map(e => "edition" -> DbInt(e)) ++
-    notes.map(n => "notes" -> DbString(n)) ++
-    source.map(s => "source" -> DbString(s))
+    notes.filter(_.nonEmpty).map(n => "notes" -> DbString(n)) ++
+    source.filter(_.nonEmpty).map(s => "source" -> DbString(s))
 
 }
 object PrintUsageMetadata {
