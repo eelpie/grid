@@ -32,8 +32,7 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   }
 
   def getS3Object(key: String)(implicit logMarker: LogMarker): ResponseInputStream[GetObjectResponse] = handleNotFound(key) {
-      client.getObject(
-        GetObjectRequest.builder().bucket(config.maybeIngestBucket.get).key(key).build())
+      getObject(config.maybeIngestBucket.get, key)
   } {
     logger.error(logMarker, s"Attempted to read $key from ingest bucket, but it does not exist.")
   }
@@ -49,8 +48,9 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
   }
   def generatePreSignedUploadUrl(filename: String, duration: Duration, uploadedBy: String, mediaId: String)(implicit instance: Instance): String = {
 
+    val bucket = config.maybeBucketForUIUploads.get
     val putObjectRequest = PutObjectRequest.builder()
-      .bucket(config.maybeBucketForUIUploads.get).key(s"${instance.id}/$uploadedBy/$filename").metadata(Map(
+      .bucket(bucket.name).key(s"${instance.id}/$uploadedBy/$filename").metadata(Map(
         "media-id" -> mediaId).asJava)
       .build()
     val putObjectPresignRequest =
@@ -59,28 +59,21 @@ class ImageLoaderStore(config: ImageLoaderConfig) extends lib.ImageIngestOperati
         .signatureDuration(duration)
         .build();
 
-    val req = presigner.presignPutObject(putObjectPresignRequest)
+    val req = presignPutObject(bucket, putObjectPresignRequest)
     req.url().toExternalForm
   }
 
-  def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key){
-    client.copyObject(
-      CopyObjectRequest.builder()
-        .sourceBucket(config.maybeIngestBucket.get)  // TODO Naked get - make optional
-        .sourceKey(key)
-        .destinationBucket(config.maybeFailBucket.get)   // TODO Naked get - make optional
-        .destinationKey(key)
-        .build()
-    )
+  def moveObjectToFailedBucket(key: String)(implicit logMarker: LogMarker): Unit = handleNotFound(key){
+    val sourceBucket = config.maybeIngestBucket.get  // TODO Naked get - make optional
+    val destinationBucket = config.maybeFailBucket.get // TODO Naked get - make optional
+    copy(key, sourceBucket, destinationBucket)
     deleteObjectFromIngestBucket(key)
   } {
     logger.warn(logMarker, s"Attempted to copy $key from ingest bucket to fail bucket, but it does not exist.")
   }
 
-  def deleteObjectFromIngestBucket(key: String)(implicit logMarker: LogMarker) = handleNotFound(key) {
-    client.deleteObject(
-      DeleteObjectRequest.builder().bucket(config.maybeIngestBucket.get).key(key).build())
-    ()
+  def deleteObjectFromIngestBucket(key: String)(implicit logMarker: LogMarker): Unit = handleNotFound(key) {
+    deleteObject(config.maybeIngestBucket.get, key)
   } {
     logger.warn(logMarker, s"Attempted to delete $key from ingest bucket, but it does not exist.")
   }

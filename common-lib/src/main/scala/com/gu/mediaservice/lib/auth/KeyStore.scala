@@ -1,15 +1,15 @@
 package com.gu.mediaservice.lib.auth
 
 import com.gu.mediaservice.lib.BaseStore
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.model.Instance
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
 
-import scala.jdk.CollectionConverters._
-import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 
-class KeyStore(bucket: String, config: CommonConfig)(implicit ec: ExecutionContext)
-  extends BaseStore[String, ApiAccessor](bucket, config)(ec) {
+class KeyStore(bucket: S3Bucket, config: CommonConfig, s3: S3)(implicit ec: ExecutionContext)
+  extends BaseStore[String, ApiAccessor](bucket, config, s3)(ec) {
 
   def lookupIdentity(key: String)(implicit instance: Instance): Option[ApiAccessor] = store.get().get(instance.id + "/" + key)
 
@@ -20,9 +20,9 @@ class KeyStore(bucket: String, config: CommonConfig)(implicit ec: ExecutionConte
   }
 
   private def fetchAll: Map[String, ApiAccessor] = {
-    val contents = s3.client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).build())
-      .contents().asScala.toList
-    val keys = contents.map(_.key())
+    val objects = Await.result(s3.listPaginating(bucket, None), 10.seconds)
+    logger.info(s"fetchAll found ${objects.size} objects")
+    val keys = objects.map( s3Object => bucket.keyFromURL(s3Object.uri))
     keys.flatMap(k => getS3Object(k).map(k -> ApiAccessor(_))).toMap
   }
 }

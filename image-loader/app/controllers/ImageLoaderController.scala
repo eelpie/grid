@@ -1,9 +1,5 @@
 package controllers
 
-import org.apache.pekko.Done
-import org.apache.pekko.stream.Materializer
-import org.apache.pekko.stream.scaladsl.Source
-import software.amazon.awssdk.services.sqs.model.{Message => SQSMessage}
 import com.drew.imaging.ImageProcessingException
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.ImageIngestOperations.fileKeyFromId
@@ -12,7 +8,7 @@ import com.gu.mediaservice.lib.argo.model.Link
 import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, OnBehalfOfPrincipal, UserPrincipal}
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider
-import com.gu.mediaservice.lib.aws.{S3Ops, SimpleSqsMessageConsumer, SqsHelpers}
+import com.gu.mediaservice.lib.aws.{S3Bucket, SimpleSqsMessageConsumer, SqsHelpers}
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.formatting.printDateTime
@@ -38,9 +34,7 @@ import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 import play.api.mvc._
-import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.cloudwatch.model.Dimension
-import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.{GetObjectRequest, HeadObjectRequest, NoSuchKeyException}
 import software.amazon.awssdk.services.sqs.model.{Message => SQSMessage}
 
@@ -460,7 +454,7 @@ class ImageLoaderController(auth: Authentication,
           logger.info(context, "image found")
           Ok(Json.toJson(img)).as(ArgoMediaType)
         case None =>
-          val s3Path = "s3://" + config.imageBucket + "/" + ImageIngestOperations.fileKeyFromId(imageId)
+          val s3Path = "s3://" + config.imageBucket.name + "/" + ImageIngestOperations.fileKeyFromId(imageId)
           logger.info(context, "image not found")
           respondError(NotFound, "image-not-found", s"Could not find image: $imageId in s3 at $s3Path")
       } recover {
@@ -637,10 +631,10 @@ class ImageLoaderController(auth: Authentication,
       }
   }
 
-  lazy val replicaS3: S3Client = S3Ops.buildS3Client(config, maybeRegionOverride = Some(Region.US_WEST_1))
-  def doesObjectExist(bucket: String, key: String) = {
+  // TODO is this a duplicate with S3?
+  def doesObjectExist(bucket: S3Bucket, key: String) = {
     try {
-      replicaS3.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build())
+      bucket.client.headObject(HeadObjectRequest.builder().bucket(bucket.name).key(key).build())
       true
     } catch {
       case _: NoSuchKeyException => false
@@ -674,8 +668,8 @@ class ImageLoaderController(auth: Authentication,
 
           logger.info(logMarker, s"Restoring image $imageId from replica bucket $replicaBucket (key: $s3Key)")
 
-          val replicaObject = replicaS3.getObject(
-            GetObjectRequest.builder().bucket(replicaBucket).key(s3Key).build()
+          val replicaObject = replicaBucket.client.getObject(
+            GetObjectRequest.builder().bucket(replicaBucket.name).key(s3Key).build()
           )
           val lastModified = replicaObject.response().lastModified()
           val metaMap = replicaObject.response().metadata().asScala.toMap
