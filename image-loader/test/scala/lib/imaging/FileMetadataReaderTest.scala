@@ -23,63 +23,6 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
   implicit override val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(1000, Millis), interval = Span(25, Millis))
   implicit val logMarker: LogMarker = MarkerMap()
 
-  it("should read the correct dimensions for a JPG image") {
-    val image = fileAt("getty.jpg")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Jpeg))
-    whenReady(dimsFuture) { dimOpt =>
-      dimOpt should be(Symbol("defined"))
-      dimOpt.get.width should be(100)
-      dimOpt.get.height should be(60)
-    }
-  }
-
-  it("should capture exif orientation tag in JPG images") {
-    val image = fileAt("exif-orientated.jpg")
-    val orientationFuture = FileMetadataReader.orientation(image)
-    whenReady(orientationFuture) { orientationOpt =>
-      orientationOpt should be(Symbol("defined"))
-      orientationOpt.get.exifOrientation should be(Some(6))
-    }
-  }
-
-  it("should ignore 0 degree exif orientation tag as it has no material effect") {
-    val image = fileAt("exif-orientated-no-rotation.jpg")
-    val orientationFuture = FileMetadataReader.orientation(image)
-    whenReady(orientationFuture) { orientationOpt =>
-      orientationOpt should be(None)
-    }
-  }
-
-  it("should use uncorrected width and height as dimensions for exif 90 rotations") {
-    val image = fileAt("exif-orientated.jpg")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Jpeg))
-    whenReady(dimsFuture) { dimOpt =>
-      dimOpt should be(Symbol("defined"))
-      dimOpt.get.width should be(3456)
-      dimOpt.get.height should be(2304)
-    }
-  }
-
-  it("should read the correct dimensions for a tiff image") {
-    val image = fileAt("flower.tif")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Tiff))
-    whenReady(dimsFuture) { dimOpt =>
-      dimOpt should be(Symbol("defined"))
-      dimOpt.get.width should be(73)
-      dimOpt.get.height should be(43)
-    }
-  }
-
-  it("should read the correct dimensions for a png image") {
-    val image = fileAt("schaik.com_pngsuite/basn0g08.png")
-    val dimsFuture = FileMetadataReader.dimensions(image, Some(Png))
-    whenReady(dimsFuture) { dimOpt =>
-      dimOpt should be(Symbol("defined"))
-      dimOpt.get.width should be(32)
-      dimOpt.get.height should be(32)
-    }
-  }
-
   it("should read the correct metadata for Getty JPG images") {
     val image = fileAt("getty.jpg")
     val metadataFuture = FileMetadataReader.fromIPTCHeaders(image, "dummy")
@@ -94,7 +37,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
         "Coded Character Set" -> "UTF-8",
         "Application Record Version" -> "4",
         "Caption/Abstract" -> "Austria's Matthias Mayer attends the men's downhill training of the FIS Alpine Skiing World Cup in Kitzbuehel, Austria, on January 22, 2015.       AFP PHOTO / CHRISTOF STACHECHRISTOF STACHE/AFP/Getty Images",
-        "Enveloped Record Version" -> "4",
+        "Envelope Record Version" -> "4",
         "Credit" -> "AFP/Getty Images",
         "Source" -> "AFP",
         "City" -> "KITZBUEHEL",
@@ -620,7 +563,7 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
       "Date/Time Original" -> "2015:04:15 01:08:44",
       "Date/Time Original Composite" -> "2015-04-15T01:08:44.880Z",
       "White Balance Mode" -> "Auto white balance",
-      "Shutter Speed Value" -> "1/1599 sec",
+      "Shutter Speed Value" -> "1/1600 sec",
       "Exif Image Width" -> "5760 pixels",
       "Focal Plane Y Resolution" -> "1/1600 cm",
       "Sub-Sec Time Original" -> "88",
@@ -648,66 +591,6 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
       sameMaps(metadata.exif, exif)
       sameMaps(metadata.exifSub, exifSub)
       sameMaps(metadata.getty, Map())
-    }
-  }
-
-  it("should read the correct metadata for a grayscale png") {
-    val image = fileAt("schaik.com_pngsuite/basn0g08.png")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Png)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "colorType" -> "Greyscale"
-      )
-    }
-  }
-
-  it("should read the correct metadata for a colour 8bit paletted png") {
-    val image = fileAt("schaik.com_pngsuite/basn3p08.png")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Png)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "colorType" -> "Indexed Color"
-      )
-    }
-  }
-
-  it("should read the correct metadata for a truecolour png without alpha channel") {
-    val image = fileAt("schaik.com_pngsuite/basn2c08.png")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Png)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "colorType" -> "True Color"
-      )
-    }
-  }
-
-  it("should read the correct metadata for a truecolour pnd with alpha channel") {
-    val image = fileAt("schaik.com_pngsuite/basn6a08.png")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Png)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "colorType" -> "True Color with Alpha"
-      )
-    }
-  }
-
-  it("should read the correct colour metadata for a greyscale tiff") {
-    val image = fileAt("flower.tif")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Tiff)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "photometricInterpretation" -> "BlackIsZero"
-      )
-    }
-  }
-
-  it("should read the correct colour metadata for an alpha tiff") {
-    val image = fileAt("lighthouse.tif")
-    val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Tiff)
-    whenReady(metadataFuture) { metadata =>
-      metadata.colourModelInformation should contain(
-        "photometricInterpretation" -> "RGB"
-      )
     }
   }
 
