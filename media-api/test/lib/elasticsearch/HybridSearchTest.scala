@@ -65,17 +65,17 @@ class HybridSearchTest extends AnyFunSpec
   private val fiveSeconds = Duration(5, SECONDS)
 
   // The vector we'll "search" with - represents the user's query embedding.
-  private val queryEmbedding: List[Double] = firstBasisVector(256)
+  private val queryEmbedding: List[Double] = firstBasisVector(768)  // TODO push to the in use embedder implementation
 
   private def aiImage(id: String, title: String, vector: List[Double]): Image = {
     val base = createImage(id = id, usageRights = Handout(), vector = Some(vector))
     base.copy(metadata = base.metadata.copy(title = Some(title)))
   }
 
-  // 256-dim vectors to match the `embedding.cohereEmbedV4.image` dense_vector
+  // 768-dim vectors to match the `embedding.geminiEmbedding2.image` dense_vector
   // mapping, each constructed to have a known cosine similarity to the queryEmbedding.
   private def vectorWithScore(score: Double): List[Double] = {
-    vectorWithCosineSimilarity(256, score)
+    vectorWithCosineSimilarity(768, score)
   }
 
   // The full set of images shared by every spec below; indexed once in beforeAll.
