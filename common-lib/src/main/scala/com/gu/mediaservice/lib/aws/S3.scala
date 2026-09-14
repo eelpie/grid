@@ -300,16 +300,28 @@ object S3Ops extends GridLogging {
       config.awsCredentials
     }
 
-    val builder = S3Client.builder()
-      .credentialsProvider(credentials)
-      .region(maybeRegionOverride.getOrElse(config.awsRegion))
-      .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
-      .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
-      .serviceConfiguration(S3Configuration.builder()
-        .chunkedEncodingEnabled(false)
-        .pathStyleAccessEnabled(usesPathStyleURLs)
-        .build()
-      )
+    val isGCP = endpointOverride.exists { endpoint =>
+      endpoint.contains("storage.googleapis.com")
+    }
+
+    val builder = if (!isGCP) {
+      S3Client.builder()
+        .credentialsProvider(credentials)
+        .region(maybeRegionOverride.getOrElse(config.awsRegion))
+        .forcePathStyle(usesPathStyleURLs)
+    } else {
+
+      S3Client.builder()
+        .credentialsProvider(credentials)
+        .region(maybeRegionOverride.getOrElse(config.awsRegion))
+        .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
+        .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
+        .serviceConfiguration(S3Configuration.builder()
+          .chunkedEncodingEnabled(false)
+          .pathStyleAccessEnabled(usesPathStyleURLs)
+          .build()
+        )
+    }
 
     val withEndpoint = endpointOverride match {
       case Some(endpoint) =>
