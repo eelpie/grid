@@ -280,7 +280,7 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
 object S3Ops extends GridLogging {
   // TODO make this localstack friendly
   // TODO: Make this region aware - i.e. RegionUtils.getRegion(region).getServiceEndpoint(AmazonS3.ENDPOINT_PREFIX)
-  val s3Endpoint = "s3.amazonaws.com"
+  val s3Endpoint = "https://s3.amazonaws.com"
 
   def buildS3Client(config: CommonConfig, endpointOverride: Option[String] = None, usesPathStyleURLs: Boolean = false, maybeRegionOverride: Option[Region] = None): S3Client = {
     val builder = S3Client.builder()
