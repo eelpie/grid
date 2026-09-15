@@ -184,7 +184,7 @@ class ImageOperations(playPath: String) extends GridLogging {
           VipsOption.String("export-profile", "srgb")
         )
 
-        val inMemoryCopy = VImage.pngloadBuffer(arena, thumbnail.pngsaveBuffer(VipsOption.Int("compression", 0)))
+        val inMemoryCopy = toInMemoryCopy(arena, thumbnail)
 
         val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
           logger.info("Rotating thumbnail: " + angle)
@@ -319,6 +319,11 @@ class ImageOperations(playPath: String) extends GridLogging {
         throw new UnsupportedCropOutputTypeException
     }
   }
+
+  private def toInMemoryCopy(arena: Arena, thumbnail: VImage) = {
+    VImage.pngloadBuffer(arena, thumbnail.pngsaveBuffer(VipsOption.Int("compression", 0)))
+  }
+
 }
 
 object ImageOperations extends GridLogging {
@@ -391,4 +396,5 @@ object ImageOperations extends GridLogging {
 
     paletteType > 0 || numberOfBands < 3
   }
+
 }
