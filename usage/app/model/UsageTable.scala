@@ -5,27 +5,26 @@ import com.gu.mediaservice.lib.aws.DynamoDB.jsonWithNullAsEmptyString
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.lib.usage.ItemToMediaUsage
 import com.gu.mediaservice.model.usage.{MediaUsage, PendingUsageStatus, PublishedUsageStatus, UsageTableFullKey}
-import lib.{BadInputException, UsageConfig, WithLogMarker}
+import lib.{BadInputException, WithLogMarker}
 import play.api.libs.json._
 import rx.lang.scala.Observable
 import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument
-import software.amazon.awssdk.enhanced.dynamodb.model.{DeleteItemEnhancedRequest, QueryConditional, QueryEnhancedRequest, UpdateItemEnhancedRequest}
-import software.amazon.awssdk.enhanced.dynamodb.{AttributeConverterProvider, AttributeValueType, DynamoDbEnhancedClient, Key, TableMetadata, TableSchema}
+import software.amazon.awssdk.enhanced.dynamodb.model.{DeleteItemEnhancedRequest, QueryConditional, QueryEnhancedRequest}
+import software.amazon.awssdk.enhanced.dynamodb._
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.{AttributeValue, ReturnValue, UpdateItemRequest}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters.{IterableHasAsScala, IteratorHasAsScala, MapHasAsJava, MapHasAsScala}
+import scala.jdk.CollectionConverters.{IterableHasAsScala, IteratorHasAsScala, MapHasAsJava}
 
-class UsageTable(config: UsageConfig) extends GridLogging {
+class UsageTable(client: DynamoDbClient, tableName: String) extends GridLogging {
 
   val hashKeyName = "grouping"
   val rangeKeyName = "usage_id"
   val imageIndexName = "media_id"
 
 
-  lazy val client: DynamoDbClient = config.withAWSCredentials(DynamoDbClient.builder()).build()
   lazy val dynamo: DynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(client).build()
   lazy val tableSchema = TableSchema.documentSchemaBuilder()
     .addIndexPartitionKey(TableMetadata.primaryIndexName(), hashKeyName, AttributeValueType.S)
@@ -37,7 +36,7 @@ class UsageTable(config: UsageConfig) extends GridLogging {
     )
     .attributeConverterProviders(AttributeValueConverterProvider, AttributeConverterProvider.defaultProvider())
     .build()
-  lazy val table = dynamo.table(config.usageRecordTable, tableSchema)
+  lazy val table = dynamo.table(tableName, tableSchema)
 
   def queryByUsageId(id: String): Future[Option[MediaUsage]] = Future {
     UsageTableFullKey.build(id).flatMap((tableFullKey: UsageTableFullKey) => {
@@ -81,14 +80,14 @@ class UsageTable(config: UsageConfig) extends GridLogging {
     )
   }
 
-  def hidePendingIfRemoved(usages: List[MediaUsage]): List[MediaUsage] = usages.filterNot((mediaUsage: MediaUsage) => {
+  private def hidePendingIfRemoved(usages: List[MediaUsage]): List[MediaUsage] = usages.filterNot((mediaUsage: MediaUsage) => {
     mediaUsage.status match {
       case PendingUsageStatus => mediaUsage.isRemoved
       case _ => false
     }
   })
 
-  def hidePendingIfPublished(usages: List[MediaUsage]): List[MediaUsage] = usages.groupBy(_.grouping).flatMap {
+  private def hidePendingIfPublished(usages: List[MediaUsage]): List[MediaUsage] = usages.groupBy(_.grouping).flatMap {
     case (_, groupedUsages) =>
       val publishedUsage = groupedUsages.find(_.status match {
         case PublishedUsageStatus => true
@@ -96,9 +95,9 @@ class UsageTable(config: UsageConfig) extends GridLogging {
       })
 
       if (publishedUsage.isEmpty) {
-          groupedUsages.headOption
+        groupedUsages.headOption
       } else {
-          publishedUsage
+        publishedUsage
       }
   }.toList
 
@@ -152,7 +151,7 @@ class UsageTable(config: UsageConfig) extends GridLogging {
     table.deleteItem(DeleteItemEnhancedRequest.builder().key(key).build())
   }
 
-  def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker): Observable[JsObject] = Observable.from(Future {
+  private def upsertFromRecord(record: UsageRecord)(implicit logMarker: LogMarker): Observable[JsObject] = Observable.from(Future {
       val key = Map(
         hashKeyName -> AttributeValue.builder().s(record.hashKey).build(),
         rangeKeyName -> AttributeValue.builder().s(record.rangeKey).build()
@@ -169,13 +168,13 @@ class UsageTable(config: UsageConfig) extends GridLogging {
 
       client.updateItem(request)
 
-  })
-  .onErrorResumeNext(e => {
-    logger.error(logMarker, s"Dynamo update fail for $record!", e)
-    Observable.error(e)
-  })
-  .map(updateResponse => {
-    val doc = EnhancedDocument.fromAttributeValueMap(updateResponse.attributes())
-    jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject]
-  })
+    })
+    .onErrorResumeNext(e => {
+      logger.error(logMarker, s"Dynamo update fail for $record!", e)
+      Observable.error(e)
+    })
+    .map(updateResponse => {
+      val doc = EnhancedDocument.fromAttributeValueMap(updateResponse.attributes())
+      jsonWithNullAsEmptyString(Json.parse(doc.toJson)).as[JsObject]
+    })
 }

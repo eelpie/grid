@@ -46,12 +46,12 @@ object RetryHandler extends GridLogging {
 
     def handleWithRetry[T](f: WithMarkers[T], retries: Int, delay: FiniteDuration): WithMarkers[T] = (marker) => {
       implicit val scheduler: Scheduler = actorSystem.scheduler
+      val attempts = retries + 1
       var count = 0
-
       def attempt = () => {
         count = count + 1
         val markerWithRetry = combineMarkers(marker, MarkerMap("retryCount" -> count))
-        logger.info(markerWithRetry, s"Attempt $count of $retries")
+        logger.info(markerWithRetry, s"Attempt $count of $attempts")
 
         f(markerWithRetry)
       }

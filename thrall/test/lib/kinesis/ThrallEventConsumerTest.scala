@@ -1,10 +1,13 @@
 package lib.kinesis
 
-import lib.elasticsearch.ElasticSearchTestBase
+import helpers.Fixtures
 import org.scalatest.EitherValues
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 
-class ThrallEventConsumerTest extends ElasticSearchTestBase with MockitoSugar with EitherValues {
+
+class ThrallEventConsumerTest extends AnyFreeSpec with Matchers with Fixtures with MockitoSugar with EitherValues {
   "parse message" - {
     "parse minimal message" in {
       val j =
@@ -16,7 +19,7 @@ class ThrallEventConsumerTest extends ElasticSearchTestBase with MockitoSugar wi
           |}
           |""".stripMargin.getBytes()
       val m2 = ThrallEventConsumer.parseRecord(j, java.time.Instant.EPOCH)
-      m2.isRight shouldEqual (true)
+      m2.isRight shouldEqual true
       m2.value.subject shouldBe "DeleteImageMessage"
     }
   }
