@@ -30,18 +30,18 @@ RUN apt -y --no-install-suggests install \
     libheif-plugin-aomdec
 
 WORKDIR /tmp
-RUN wget https://github.com/libvips/libvips/releases/download/v8.18.4/vips-8.18.4.tar.xz
-RUN tar xf vips-8.18.4.tar.xz
-WORKDIR /tmp/vips-8.18.4
+RUN wget https://github.com/libvips/libvips/releases/download/v8.18.6/vips-8.18.6.tar.xz
+RUN tar xf vips-8.18.6.tar.xz
+WORKDIR /tmp/vips-8.18.6
 RUN meson setup build
-WORKDIR /tmp/vips-8.18.4/build
+WORKDIR /tmp/vips-8.18.6/build
 RUN meson compile
 RUN meson test
 RUN meson install
 RUN ldconfig
 
-RUN rm /tmp/vips-8.18.4.tar.xz
-RUN rm -r /tmp/vips-8.18.4/
+RUN rm /tmp/vips-8.18.6.tar.xz
+RUN rm -r /tmp/vips-8.18.6/
 
 RUN apt -y --no-install-suggests install \
   pngquant \
