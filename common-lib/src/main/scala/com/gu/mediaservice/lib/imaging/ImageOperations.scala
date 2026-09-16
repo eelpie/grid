@@ -192,7 +192,7 @@ class ImageOperations(playPath: String) extends GridLogging {
           VipsOption.String("export-profile", "srgb")
         )
 
-        val inMemoryCopy = VImage.pngloadBuffer(arena, thumbnail.pngsaveBuffer(VipsOption.Int("compression", 0)))
+        val inMemoryCopy = thumbnail.copyMemory()
 
         val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
           logger.info("Rotating thumbnail: " + angle)
@@ -349,4 +349,19 @@ object ImageOperations extends GridLogging {
     }
   }
 
+  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
+
+  def isGraphicVips(image: VImage)(implicit arena: Arena): Boolean = {
+    val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
+   logger.info("Number of bands: " + numberOfBands)
+    // Indexed plus alpha would be 2 bands
+
+    val format = VipsHelper.image_get_format(image.getUnsafeStructAddress)
+    logger.info("Format: " + format)
+
+    val paletteType = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "palette")
+    logger.info("Palette type: " + paletteType)
+
+    paletteType > 0 || numberOfBands < 3
+  }
 }
