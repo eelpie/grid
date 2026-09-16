@@ -591,7 +591,6 @@ class MediaApi(
 
     val baseRequest = ws.url(uri)
       .withHttpHeaders(Authentication.originalServiceHeaderName -> config.appName,
-        HttpHeaders.ORIGIN -> config.rootUri(instance),
         HttpHeaders.CONTENT_TYPE -> ContentType.APPLICATION_JSON.getMimeType)
 
     val request = onBehalfOfPrincipal(baseRequest)
