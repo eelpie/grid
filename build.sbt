@@ -267,7 +267,7 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "eu.gcr.io/grid-301122/jdk-vips:25-8.18.4",
+      dockerBaseImage := "eu.gcr.io/grid-301122/jdk-vips:25-8.18.6",
       dockerExposedPorts := Seq(port),
       dockerCommands ++= Seq(
         Cmd("ENV", "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so")
