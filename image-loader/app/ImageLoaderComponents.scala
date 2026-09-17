@@ -1,5 +1,5 @@
 import com.gu.mediaservice.GridClient
-import com.gu.mediaservice.lib.aws.{Bedrock, S3Vectors, SimpleSqsMessageConsumer, Embedder}
+import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, S3Vectors, SimpleSqsMessageConsumer}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.play.GridComponents
@@ -28,11 +28,15 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val notifications = new Notifications(config)
   val downloader = new Downloader()(ec,wsClient)
 
-  val maybeEmbedder: Option[Embedder] = config.maybeImageEmbedderQueueUrl
-    .filter(_ => config.shouldEmbed)
-    .map {queueUrl =>
-      new Embedder(new Bedrock(config), new SimpleSqsMessageConsumer(queueUrl, config))
-    }
+  private val maybeEmbedding = Some(new Bedrock(config))
+
+  val maybeEmbedder: Option[Embedder] = for {
+    embedding <- maybeEmbedding
+    queueUrl <- config.maybeImageEmbedderQueueUrl.filter(_ => config.shouldEmbed)
+  } yield {
+
+    new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
+  }
 
   val uploader = new Uploader(store, config, imageOperations, notifications, maybeEmbedder, imageProcessor, gridClient, auth)
   val projector = Projector(config, imageOperations, imageProcessor, auth, maybeEmbedder)
@@ -43,7 +47,7 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val metrics = new ImageLoaderMetrics(config, actorSystem, applicationLifecycle)
 
   val controller = new ImageLoaderController(
-    auth, downloader, store, maybeIngestQueue, uploadStatusTable, notifications, config, uploader, quarantineUploader, projector, controllerComponents, gridClient, authorisation, metrics, applicationLifecycle)
+    auth, downloader, store, maybeIngestQueue, uploadStatusTable, config, uploader, quarantineUploader, projector, controllerComponents, gridClient, authorisation, metrics, usageEvents, wsClient, applicationLifecycle)
   val uploadStatusController = new UploadStatusController(auth, uploadStatusTable, config, controllerComponents, authorisation)
   val imageLoaderManagement = new ImageLoaderManagement(controllerComponents, buildInfo, controller.maybeIngestQueueAndProcessor)
 

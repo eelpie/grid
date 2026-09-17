@@ -15,5 +15,4 @@ trait MatchFields extends ImageFields {
     Seq("labels").map(editsField) ++
     config.queriableIdentifiers.map(identifierField) ++
     Seq("restrictions").map(usageRightsField)
-
 }
