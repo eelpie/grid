@@ -666,7 +666,7 @@ class MediaApi(
     user: String,
     partnerName: Option[String] = None,
     startPending: Option[String] = None,
-  )(implicit logMarker: LogMarker, instance: Instance): Unit = {
+  )(implicit logMarker: LogMarker): Unit = {
     val baseRequest = ws.url(uri)
       .withMethod("POST")
       .withHttpHeaders(Authentication.originalServiceHeaderName -> config.appName,
