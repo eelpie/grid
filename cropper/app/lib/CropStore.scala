@@ -78,12 +78,13 @@ class CropStore(config: CropperConfig) extends S3ImageStorage(config) with CropS
   def translateImgHost(uri: URI): URI =
     new URI("https", config.imgPublishingHost, uri.getPath, uri.getFragment)
 
-  private def folderForImagesCrops(id: Bucket, instance: Instance) = {
+  private def folderForImagesCrops(id: String, instance: Instance) = {
     instance.id + "/" + id
   }
 
   private def signedCropAssetUrl(uri: URI): URI = {
-    signUrlTony(config.imgPublishingBucket, uri).toURI
+    val key = config.imgPublishingBucket.keyFromURL(uri)
+    signUrlTony(config.imgPublishingBucket, key).toURI
   }
 
 }
