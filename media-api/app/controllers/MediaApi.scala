@@ -702,7 +702,7 @@ class MediaApi(
     user: String,
     partnerName: Option[String] = None,
     startPending: Option[String] = None,
-  )(implicit logMarker: LogMarker, instance: Instance): Unit = {
+  )(implicit logMarker: LogMarker): Unit = {
     if (MediaApi.shouldSkipUsageRecording(uri, user)) {
       logger.info(logMarker, s"Skipping usages request to $uri for $user")
       Future.successful(())
