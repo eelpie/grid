@@ -24,10 +24,6 @@ object ImageMagick extends GridLogging {
     op.quality(qual)
     op
   }
-  def unsharp(op: IMOperation)(radius: Double, sigma: Double, amount: Double): IMOperation = {
-    op.unsharp(radius, sigma, amount)
-    op
-  }
   def stripMeta(op: IMOperation): IMOperation = {
     op.strip()
     op
@@ -74,14 +70,6 @@ object ImageMagick extends GridLogging {
     op.depth(depth)
     op
   }
-  def interlace(op: IMOperation)(interlacedHow: String): IMOperation = {
-    op.interlace(interlacedHow)
-    op
-  }
-  def setBackgroundColour(op: IMOperation)(backgroundColour: String): IMOperation = {
-    op.background(backgroundColour)
-    op
-  }
   def flatten(op: IMOperation): IMOperation = {
     op.flatten()
     op
@@ -91,18 +79,6 @@ object ImageMagick extends GridLogging {
     Stopwatch.async(s"Using ${if(useImageMagick) "imagemagick" else "graphicsmagick"} for imaging conversion operation '$op'") {
       Future {
         new ConvertCmd(!useImageMagick).run(op)
-      }
-    }
-  }
-
-  def runIdentifyCmd(op: IMOperation, useImageMagick: Boolean)(implicit logMarker: LogMarker): Future[List[String]] = {
-    Stopwatch.async(s"Using ${if (useImageMagick) "imagemagick" else "graphicsmagick"} for imaging identification operation '$op'") {
-      Future {
-        val cmd = new IdentifyCmd(!useImageMagick)
-        val output = new ArrayListOutputConsumer()
-        cmd.setOutputConsumer(output)
-        cmd.run(op)
-        output.getOutput.asScala.toList
       }
     }
   }
