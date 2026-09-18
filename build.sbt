@@ -89,6 +89,8 @@ lazy val bbcProject = project("bbc").dependsOn(restLib % "compile->compile;test-
 
 val maybeBBCLib: Option[sbt.ProjectReference] = if(bbcBuildProcess) Some(bbcProject) else None
 
+val otelVersion = "1.41.0" // Use the latest stable version
+
 lazy val commonLib = project("common-lib").settings(
   libraryDependencies ++= Seq(
     "com.google.guava" % "guava" % "33.5.0-jre",
@@ -128,6 +130,13 @@ lazy val commonLib = project("common-lib").settings(
     ws,
     "com.google.genai" % "google-genai" % "1.70.0",
     "org.testcontainers" % "testcontainers-elasticsearch" % "2.0.5" % Test,
+
+    "io.opentelemetry" % "opentelemetry-api" % otelVersion,
+    // Include these if you are manually configuring the SDK without the Java Agent:
+    "io.opentelemetry" % "opentelemetry-sdk" % otelVersion,
+    "io.opentelemetry" % "opentelemetry-sdk-extension-autoconfigure" % otelVersion,
+    "io.opentelemetry" % "opentelemetry-exporter-otlp" % otelVersion,
+    "io.opentelemetry" % "opentelemetry-exporter-logging" % otelVersion
   ),
   dependencyOverrides += "ch.qos.logback" % "logback-classic" % "1.2.13" % Test
 )
