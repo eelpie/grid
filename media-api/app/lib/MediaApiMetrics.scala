@@ -2,6 +2,8 @@ package lib
 
 import com.gu.mediaservice.lib.auth.{ApiAccessor, Syndication}
 import com.gu.mediaservice.lib.metrics.CloudWatchMetrics
+import io.opentelemetry.api.metrics.LongCounter
+import io.opentelemetry.sdk.OpenTelemetrySdk
 import org.apache.pekko.actor.ActorSystem
 import play.api.inject.ApplicationLifecycle
 import software.amazon.awssdk.services.cloudwatch.model.Dimension
@@ -12,6 +14,9 @@ class MediaApiMetrics(config: MediaApiConfig, actorSystem: ActorSystem, applicat
   extends CloudWatchMetrics(s"${config.stage}/MediaApi", config, actorSystem, applicationLifecycle) {
 
   val searchQueries = new TimeMetric("ElasticSearch")
+
+  private val meter = MediaApiMetrics.openTelemetrySdk.getMeter("media-api")
+  private val openTelemetryImageDownloadMetric: LongCounter = meter.counterBuilder("image.download").build()
 
   def searchTypeDimension(value: String): Dimension =
     Dimension.builder().name("SearchType").value(value).build()
@@ -26,7 +31,7 @@ class MediaApiMetrics(config: MediaApiConfig, actorSystem: ActorSystem, applicat
     val metricName = "OptimisedImageDownload"
   }
 
-  def incrementImageDownload(apiKey: ApiAccessor, downloadType: DownloadType) = {
+  def incrementImageDownload(apiKey: ApiAccessor, downloadType: DownloadType): Unit = {
     val metric = new CountMetric(apiKey.tier.toString)
 
     // CW Metrics have a maximum of 10 dimensions per metric.
@@ -39,5 +44,11 @@ class MediaApiMetrics(config: MediaApiConfig, actorSystem: ActorSystem, applicat
     val dimension = Dimension.builder().name(downloadType.metricName).value(dimensionValue).build()
 
     metric.increment(List(dimension))
+    openTelemetryImageDownloadMetric.add(1)
   }
+}
+
+object MediaApiMetrics {
+  import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk
+  private val openTelemetrySdk: OpenTelemetrySdk = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk
 }
