@@ -1,6 +1,7 @@
 import com.gu.kinesis.{KinesisRecord, KinesisSource, ConsumerConfig => KclPekkoStreamConfig}
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.embeddings.GoogleCloudEmbedding
 import com.gu.mediaservice.lib.instances.{Instances, InstancesClient}
 import com.gu.mediaservice.lib.logging.MarkerMap
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
@@ -127,6 +128,14 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
   private val lowPriorityMessageSender = new ThrallMessageSender(config.thrallKinesisLowPriorityStreamConfig)
 
   private val bedrock = new Bedrock(config)
+
+  private val maybeGcpProjectId = config.gcpProjectId
+  private val vertexApiLocation = "eu"
+  private val maybeGoogleCloudEmbedding = for {
+    gcpProjectId <- maybeGcpProjectId
+  } yield {
+    new GoogleCloudEmbedding(projectId = gcpProjectId, location = vertexApiLocation)
+  }
 
   private val maybeEmbedding = Some(bedrock)
 
