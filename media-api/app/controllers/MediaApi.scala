@@ -148,6 +148,7 @@ class MediaApi(
 
   def index = auth { request =>
     implicit val instance: Instance = instanceOf(request)
+    mediaApiMetrics.incrementHealthcheckMetric()
     indexResponse(request.user)
   }
 

@@ -12,6 +12,7 @@ class MediaApiMetrics(config: MediaApiConfig, actorSystem: ActorSystem, applicat
   extends CloudWatchMetrics(s"${config.stage}/MediaApi", config, actorSystem, applicationLifecycle) {
 
   val searchQueries = new TimeMetric("ElasticSearch")
+  val openTelemetryHealthcheckMetric = new OpenTelemetryMetrics.CountMetric("healthcheck")
   val openTelemetryImageDownloadMetric = new OpenTelemetryMetrics.CountMetric("image.download")
 
   def searchTypeDimension(value: String): Dimension =
@@ -25,6 +26,11 @@ class MediaApiMetrics(config: MediaApiConfig, actorSystem: ActorSystem, applicat
   }
   case object OptimisedDownloadType extends DownloadType {
     val metricName = "OptimisedImageDownload"
+  }
+
+  def incrementHealthcheckMetric(): Unit = {
+    logger.info("ping!")
+    openTelemetryHealthcheckMetric.increment()
   }
 
   def incrementImageDownload(apiKey: ApiAccessor, downloadType: DownloadType): Unit = {
