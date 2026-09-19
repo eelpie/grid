@@ -1,11 +1,12 @@
 package com.gu.mediaservice.lib.imaging
 
-import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
+import app.photofox.vipsffm.enums.{VipsCompassDirection, VipsIntent, VipsInterpretation}
 import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VBlob, VImage, VipsHelper, VipsOption}
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
+import com.gu.mediaservice.lib.embeddings.EmbeddingSourceImageFormat
 import com.gu.mediaservice.lib.imaging.ImageOperations.thumbMimeType
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
@@ -209,6 +210,70 @@ class ImageOperations(playPath: String) extends GridLogging {
     }.recoverWith {
       case e: Throwable =>
         logger.error("Error creating thumbnail", e)
+        Future.failed(e)
+    }
+  }
+
+  // Given an original image return a rendering of it which
+  // can be ingested by an embedding prediction end point.
+  def createEmbeddingSource(originalImageFile: File,
+                            orientationMetadata: Option[OrientationMetadata],
+                            embeddingSourceImageFormat: EmbeddingSourceImageFormat,
+                            outputFile: File
+                           ): Future[File] = {
+    Future {
+      val arena = Arena.ofConfined
+
+      val embeddingLongestAxis = embeddingSourceImageFormat.longestAxis
+      val embeddingFormat = embeddingSourceImageFormat.format
+
+      try {
+        val thumbnail = VImage.thumbnail(arena, originalImageFile.getAbsolutePath, embeddingLongestAxis,
+          VipsOption.Boolean("auto-rotate", false),
+          VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL),
+          VipsOption.String("export-profile", "srgb")
+        )
+
+        val inMemoryCopy = VImage.newFromMemory(arena, thumbnail.writeToMemory(),
+          thumbnail.getWidth, thumbnail.getHeight,
+          VipsHelper.image_get_bands(thumbnail.getUnsafeStructAddress),
+          VipsHelper.image_get_format(thumbnail.getUnsafeStructAddress)
+        )
+
+        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+          logger.info("Rotating thumbnail: " + angle)
+          inMemoryCopy.rotate(angle)
+        }.getOrElse {
+          inMemoryCopy
+        }
+        logger.info("Created embedding source: " + rotated.getWidth + "x" + rotated.getHeight)
+
+        // Letter box to preserve aspect ratio of subjects
+        val letterBoxed = if (embeddingSourceImageFormat.letterBox) {
+          rotated.gravity(
+            VipsCompassDirection.COMPASS_DIRECTION_CENTRE,
+            embeddingLongestAxis,
+            embeddingLongestAxis,
+          )
+        } else {
+          rotated
+        }
+
+        saveImageToFile(letterBoxed, embeddingFormat, 90, outputFile)
+        arena.close()
+
+        logger.info("Created embedding source with length: " + outputFile.length())
+        outputFile
+
+      } catch {
+        case e: Throwable =>
+          arena.close()
+          throw e
+      }
+
+    }.recoverWith {
+      case e: Throwable =>
+        logger.error("Error creating embedding source", e)
         Future.failed(e)
     }
   }

@@ -1,5 +1,6 @@
 options:
   machineType: 'N1_HIGHCPU_8'
+timeout: '1200s'
 steps:
   - name: 'node:24-alpine'
     entrypoint: 'npm'
@@ -15,9 +16,11 @@ steps:
     args: [ 'run', 'dist' ]
 
   - name: 'gcr.io/$PROJECT_ID/scala-sbt:1.11.7-jdk-25'
-    args: ['docker:publishLocal']
+    args: ['compile', 'collections/test', 'leases/test', 'media-api/test', 'docker:publishLocal']
     env:
-    - 'DOCKER_API_VERSION=1.41'
+     - 'DOCKER_HOST=unix:///var/run/docker.sock'
+     - 'DOCKER_API_VERSION=1.41'
+
   - name: 'gcr.io/cloud-builders/docker'
     args: ['tag', 'auth:0.1', 'eu.gcr.io/$PROJECT_ID/auth:$BRANCH_NAME']
   - name: 'gcr.io/cloud-builders/docker'

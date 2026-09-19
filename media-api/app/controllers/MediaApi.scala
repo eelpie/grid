@@ -22,6 +22,7 @@ import com.sksamuel.elastic4s.requests.searches.queries.Query
 import lib._
 import lib.elasticsearch._
 import lib.querysyntax.Condition
+import lib.querysyntax.{Match, SimilarField, SimilarValue}
 import org.apache.http.entity.ContentType
 import org.apache.pekko.stream.scaladsl.StreamConverters
 import org.http4s.UriTemplate
@@ -322,6 +323,36 @@ class MediaApi(
       .recover{ case error => respondError(InternalServerError, "cannot-get", s"Cannot get soft-deleted metadata ${error}") }
   }
 
+  def downloadImageExportMaster(imageId: String, exportId: String) = auth.async { implicit request =>
+    implicit val instance: Instance = instanceOf(request)
+    implicit val logMarker: LogMarker = MarkerMap(
+      "requestType" -> "download-image-export-master",
+      "requestId" -> RequestLoggingFilter.getRequestId(request),
+      "imageId" -> imageId,
+      "exportId" -> exportId,
+    ) ++ RequestLoggingFilter.loggablePrincipal(request.user)
+
+    elasticSearch.getImageById(imageId) map {
+      case Some(source) if isVisibleToAccessor(request.user, source) =>
+        val maybeResult = for {
+          export <- source.exports.find(_.id.contains(exportId))
+          asset <- export.master
+          key = config.imgPublishingBucket.keyFromURL(asset.file)
+          s3Object <- Try(s3.getObject(config.imgPublishingBucket, key)).toOption
+          file = StreamConverters.fromInputStream(() => s3Object)
+          entity = HttpEntity.Streamed(file, asset.size, asset.mimeType.map(_.name))
+          result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset, config.shortenDownloadFilename))
+        } yield {
+          if(config.recordDownloadAsUsage) {
+            postToUsages(config.usageUri(instance) + "/usages/download", auth.getOnBehalfOfPrincipal(request.user), source.id, Authentication.getIdentity(request.user))
+          }
+          result
+        }
+        maybeResult.getOrElse(ExportNotFound)
+      case _ => ImageNotFound(imageId)
+    }
+  }
+
   def downloadImageExport(imageId: String, exportId: String, width: Int) = auth.async { implicit request =>
     implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
@@ -618,11 +649,12 @@ class MediaApi(
       EmbeddedEntity(uri = imageUri, data = Some(imageData), imageLinks, imageActions)
     }
 
-    def performSearchAndRespond(searchParams: SearchParams)(implicit instance: Instance) = for {
+    def performSearchAndRespond(searchParams: SearchParams, maybeSimilarToVector: Option[Seq[Float]])(implicit instance: Instance) = for {
       SearchResults(hits, totalCount, extraCounts) <- elasticSearch.search(
         searchParams.copy(
           shouldFlagGraphicImages = shouldFlagGraphicImages,
-        )
+        ),
+        maybeSimilarToVector
       )
       imageEntities = hits map (hitToImageEntity _).tupled
       prevLink = getPrevLink(searchParams)
@@ -699,6 +731,7 @@ class MediaApi(
         )
 
         val filterOpt = buildAiFilter(parts.filterConditions, params)
+        val eventualMaybeEmbedding = embeddingForImageId(imageId)
 
         // Compute the filtered pool total and ticker count badges in parallel with the
         // KNN search, so similar-image results show the same "Best k of N matches" total
@@ -706,16 +739,11 @@ class MediaApi(
         val filterTotalAndCounts = elasticSearch.countMatchingFilterWithExtraCounts(filterOpt)
 
         for {
-          maybeImage <- elasticSearch.getImageById(imageId)
-          maybeEmbedding = maybeImage
-            .filter(image => isVisibleToAccessor(request.user, image))
-            .flatMap(_.embedding)
-            .flatMap(_.cohereEmbedV4)
-            .map(_.image)
+          maybeEmbedding <- eventualMaybeEmbedding
           searchResults <- maybeEmbedding match {
             // If we have an embedding, perform the KNN search. If not, return an empty result set.
             case Some(embedding) =>
-              elasticSearch.semanticSearch(embedding, k = k, numCandidates = Math.max(k * 2, 100), filterOpt = filterOpt)
+              elasticSearch.knnSearch(embedding, k = k, numCandidates = Math.max(k * 2, 100), filterOpt = filterOpt)
             case None =>
               Future.successful(SearchResults(Nil, total = 0, extraCounts = None))
           }
@@ -765,7 +793,7 @@ class MediaApi(
                 query = semanticQuery,
                 queryEmbedding = embedding,
                 k = k,
-                numCandidates = Math.max(k * 2, 100),
+                numCandidates = k * 2,
                 vecWeight = vecWeight,
                 filterOpt = filterOpt
               )
@@ -814,13 +842,47 @@ class MediaApi(
       } else {
         _searchParams
       }
-      SearchParams.validate(searchParams).fold(
+
+      val x: Future[Result] = SearchParams.validate(searchParams).fold(
         // TODO: respondErrorCollection?
         errors => Future.successful(respondError(UnprocessableEntity, InvalidUriParams.errorKey,
           errors.map(_.message).mkString(", "))
-        ),
-        params => performSearchAndRespond(params)
+        ), { params: SearchParams =>
+          // Extract the similar parameter from the structured query
+          val maybeSimilarImageId = params.structuredQuery.flatMap {
+            case Match(SimilarField, SimilarValue(imageId)) =>
+                logger.info("Saw similar parameter: " + imageId)
+                Some(imageId)
+            case _ => None
+          }.headOption
+
+          val eventualMaybeSimilarToVector = maybeSimilarImageId.map { imageId =>
+            embeddingForImageId(imageId)
+          }.getOrElse {
+            Future {
+              None
+            }
+          }
+
+          eventualMaybeSimilarToVector.flatMap { maybeSimilarToVector =>
+            performSearchAndRespond(params, maybeSimilarToVector)
+          }
+        }
       )
+      x
+    }
+  }
+
+  private def embeddingForImageId(imageId: String)(implicit logMarker: LogMarker, instance: Instance, request: Authentication.Request[AnyContent]): Future[Option[List[Float]]] = {
+    for {
+      maybeImage <- elasticSearch.getImageById(imageId)
+      maybeEmbedding: Option[List[Float]] = maybeImage
+        .filter(image => isVisibleToAccessor(request.user, image))
+        .flatMap(_.embedding)
+        .flatMap(_.geminiEmbedding2)
+        .map(_.image.map(_.toFloat))
+    } yield {
+      maybeEmbedding
     }
   }
 

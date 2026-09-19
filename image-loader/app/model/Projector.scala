@@ -1,16 +1,17 @@
 package model
 
+import _root_.play.api.libs.json._
 import _root_.play.api.libs.ws.WSRequest
-import com.gu.mediaservice.lib.ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
+import com.gu.mediaservice.lib.ImageIngestOperations.{embeddingKeyFromId, fileKeyFromId, optimisedPngKeyFromId}
 import com.gu.mediaservice.lib._
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.aws.{Embedder, S3, S3Bucket}
+import com.gu.mediaservice.lib.aws.{Embedder, S3, S3Bucket, S3Object}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
-import com.gu.mediaservice.model.{Image, Instance, MimeType, UploadInfo}
+import com.gu.mediaservice.model.{Embedding, Image, Instance, MimeType, Png, UploadInfo}
 import com.gu.mediaservice.{GridClient, ImageDataMerger}
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3}
 import lib.{DigestedFile, ImageLoaderConfig}
@@ -135,8 +136,8 @@ class Projector(config: ImageUploadOpsCfg,
     val uploadInfo_ = UploadInfo(filename = extractedS3Meta.uploadFileName, isFeedUpload = extractedS3Meta.isFeedUpload)
 
     MimeTypeDetection.guessMimeType(tempFile_) match {
-      case util.Left(unsupported) => Future.failed(unsupported)
-      case util.Right(mimeType) =>
+      case scala.util.Left(unsupported) => Future.failed(unsupported)
+      case scala.util.Right(mimeType) =>
         val uploadRequest = UploadRequest(
           imageId = id_,
           tempFile = tempFile_,
@@ -167,18 +168,24 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
 
 
   def projectImageFromUploadRequest(uploadRequest: UploadRequest)
-                                   (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
+                                   (implicit ec: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Image] = {
     val dependenciesWithProjectionsOnly: ImageUploadOpsDependencies = ImageUploadOpsDependencies(
       config,
       imageOps,
       projectOriginalFileAsS3Model,
       projectThumbnailFileAsS3Model,
       projectOptimisedPNGFileAsS3Model,
+      createEmbeddingsSource = (_, _, _) => Future.successful(None),
+      projectEmbeddingSourceAsS3Model,
       tryFetchThumbFile = fetchThumbFile,
-      tryFetchOptimisedFile = fetchOptimisedFile
+      tryFetchOptimisedFile = fetchOptimisedFile,
+      tryFetchEmbedding = fetchEmbeddingResult,
+      maybeEmbedder = maybeEmbedder,
+      // Projection reuses a previously-computed embedding via fetchEmbedding/tryFetchEmbedding above,
+      // and projectEmbeddingSourceAsS3Model never uploads the source image, so recreating it here would be wasted work.
     )
 
-    fromUploadRequestShared(uploadRequest, dependenciesWithProjectionsOnly, processor, optimiseOps)
+    fromUploadRequestShared(uploadRequest, dependenciesWithProjectionsOnly, processor, optimiseOps).map(_._1)
   }
 
   private def projectOriginalFileAsS3Model(storableOriginalImage: StorableOriginalImage) =
@@ -189,6 +196,30 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
 
   private def projectOptimisedPNGFileAsS3Model(storableOptimisedImage: StorableOptimisedImage) =
     Future.successful(storableOptimisedImage.toProjectedS3Object(config.originalFileBucket))
+
+  private def projectEmbeddingSourceAsS3Model(storableEmbeddingSourceImage: Option[StorableEmbeddingSourceImage]): Future[Option[S3Object]] = {
+    Future.successful {
+      storableEmbeddingSourceImage.map { storableEmbeddingSourceImage =>
+        storableEmbeddingSourceImage.toProjectedS3Object(config.embedSourceBucket)
+      }
+    }
+  }
+
+  private def fetchEmbeddingResult(imageId: String, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[Embedding]] = {
+    val key = embeddingKeyFromId(imageId)(instance)
+    val doesResultExist = Future { s3.doesObjectExist(config.embeddingsBucket, key) } recover { case _ => false }
+    doesResultExist.flatMap {
+      case false =>
+        logger.warn(logMarker, s"embedding did not exist in bucket ${config.embeddingsBucket} at key $key")
+        Future.successful(None) // falls back to no previously computed embedding
+      case true =>
+        Future {
+          s3.getObjectAsString(config.embeddingsBucket, key).flatMap { json =>
+            Json.parse(json).validate[Embedding].asOpt
+          }
+        }
+    }
+  }
 
   private def fetchThumbFile(
     imageId: String, outFile: File, instance: Instance)(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
