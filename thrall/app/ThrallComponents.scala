@@ -127,8 +127,6 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   private val lowPriorityMessageSender = new ThrallMessageSender(config.thrallKinesisLowPriorityStreamConfig)
 
-  private val bedrock = new Bedrock(config)
-
   private val maybeGcpProjectId = config.gcpProjectId
   private val vertexApiLocation = "eu"
   private val maybeGoogleCloudEmbedding = for {
@@ -137,7 +135,7 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
     new GoogleCloudEmbedding(projectId = gcpProjectId, location = vertexApiLocation)
   }
 
-  private val maybeEmbedding = Some(bedrock)
+  private val maybeEmbedding = maybeGoogleCloudEmbedding
 
   private val sqsAsyncClient: SqsAsyncClient = SqsAsyncClient.builder()
     .region(Region.EU_WEST_1)
