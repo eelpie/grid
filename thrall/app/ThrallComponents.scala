@@ -128,13 +128,18 @@ class ThrallComponents(context: Context) extends GridComponents(context, new Thr
 
   private val bedrock = new Bedrock(config)
 
+  private val maybeEmbedding = Some(bedrock)
+
   private val sqsAsyncClient: SqsAsyncClient = SqsAsyncClient.builder()
     .region(Region.EU_WEST_1)
     .build()
 
-  config.embeddingsQueueUrl.foreach { queueUrl =>
+  for {
+    queueUrl <- config.embeddingsQueueUrl
+    embedding <- maybeEmbedding
+  } yield {
+    val embedder = new Embedder(embedding, new SimpleSqsMessageConsumer(queueUrl, config))
     logger.info("Listening for embedding requests on queue: " + queueUrl)
-    val embedder = new Embedder(bedrock, new SimpleSqsMessageConsumer(queueUrl, config))
     new EmbeddingSqsConsumer(queueUrl, sqsAsyncClient, embedder, store, lowPriorityMessageSender)(actorSystem, materializer, executionContext).start()
   }
 
