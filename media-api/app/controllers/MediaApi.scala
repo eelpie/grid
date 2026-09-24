@@ -636,18 +636,23 @@ class MediaApi(
       EmbeddedEntity(uri = imageUri, data = Some(imageData), imageLinks, imageActions)
     }
 
-    def performSearchAndRespond(searchParams: SearchParams, maybeSimilarToVector: Option[Seq[Float]])(implicit instance: Instance) = for {
-      SearchResults(hits, totalCount, extraCounts) <- elasticSearch.search(
-        searchParams.copy(
-          shouldFlagGraphicImages = shouldFlagGraphicImages,
-        ),
-        maybeSimilarToVector
-      )
-      imageEntities = hits map (hitToImageEntity _).tupled
-      prevLink = getPrevLink(searchParams)
-      nextLink = getNextLink(searchParams, totalCount)
-      links = List(prevLink, nextLink).flatten
-    } yield respondCollection(imageEntities, Some(searchParams.offset), Some(totalCount), extraCounts, links)
+    def performSearchAndRespond(searchParams: SearchParams, maybeSimilarToVector: Option[Seq[Float]])(implicit instance: Instance) = {
+      // Captured before querying so images indexed while the search runs count as "new" for the client
+      val serverTime = DateTime.now()
+      for {
+        SearchResults(hits, totalCount, extraCounts) <- elasticSearch.search(
+          searchParams.copy(
+            shouldFlagGraphicImages = shouldFlagGraphicImages,
+          ),
+          maybeSimilarToVector
+        )
+        imageEntities = hits map (hitToImageEntity _).tupled
+        prevLink = getPrevLink(searchParams)
+        nextLink = getNextLink(searchParams, totalCount)
+        links = List(prevLink, nextLink).flatten
+      } yield respondCollection(imageEntities, Some(searchParams.offset), Some(totalCount),
+        Some(extraCounts.getOrElse(ExtraCounts()).copy(serverTime = Some(serverTime))), links)
+    }
 
     val _searchParams = SearchParams(request)
     val hasDeletePermission = authorisation.isUploaderOrHasPermission(request.user, "", DeleteImagePermission)

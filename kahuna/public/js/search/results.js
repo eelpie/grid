@@ -290,9 +290,11 @@ results.controller('SearchResultsCtrl', [
           results.resize(totalLength);
         }
 
-        function updateLastSearchBoundary() {
+        function updateLastSearchBoundary(images) {
           const until = $stateParams.until || null;
-          const latestTime = until || moment().toISOString();
+          // Prefer the server's clock (from the search response) over the client's
+          const serverTime = images.$response?.$$state?.value?.actions?.serverTime;
+          const latestTime = until || serverTime || moment().toISOString();
 
           if (latestTime && ! isReloadingPreviousSearch) {
             lastSearchFirstResultTime = latestTime;
@@ -311,7 +313,7 @@ results.controller('SearchResultsCtrl', [
 
           ctrl.isAiSearch = isAiSearch;
 
-          updateLastSearchBoundary();
+          updateLastSearchBoundary(images);
 
           return images;
         }

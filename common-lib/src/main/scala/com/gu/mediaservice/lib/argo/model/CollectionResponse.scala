@@ -5,6 +5,7 @@ import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import com.gu.mediaservice.lib.argo.WriteHelpers
 import com.sksamuel.elastic4s.requests.searches.aggs.AbstractAggregation
+import org.joda.time.DateTime
 
 case class ExtraCountConfig(
   searchClause: String,
@@ -27,8 +28,11 @@ case class FilterPoolCounts(
 )
 
 case class ExtraCounts(
-  tickerCounts: Map[String, ExtraCount],
-  filterPoolCounts: Option[FilterPoolCounts] = None
+  tickerCounts: Map[String, ExtraCount] = Map.empty,
+  filterPoolCounts: Option[FilterPoolCounts] = None,
+  // Server clock at the moment the search ran, so clients can bound a result set
+  // (`until`) without relying on their own, possibly skewed, clock.
+  serverTime: Option[DateTime] = None
 )
 
 case class CollectionResponse[T](
@@ -46,6 +50,7 @@ object CollectionResponse extends WriteHelpers {
 
   implicit val extraCountWrites: Writes[ExtraCount] = Json.writes[ExtraCount]
   implicit val filterPoolCountsWrites: Writes[FilterPoolCounts] = Json.writes[FilterPoolCounts]
+  implicit val serverTimeWrites: Writes[DateTime] = Writes(d => JsString(d.toString))
   implicit val extraCountsWrites: Writes[ExtraCounts] = Json.writes[ExtraCounts]
 
   implicit def collectionResponseWrites[T: Writes]: Writes[CollectionResponse[T]] = (
