@@ -408,7 +408,7 @@ class ElasticSearch(
 
 
     val similarTo: Option[Knn] = maybeSimilarToVector.map { s =>
-      knnSimilarClause(s.toList, 1000, 2000)
+      knnSimilarClause(s.toList, 1000, 5000)
     }
 
     val filterOpt: Option[Query] = queryBuilder.buildFilterOpt(params, searchFilters, syndicationFilter)
