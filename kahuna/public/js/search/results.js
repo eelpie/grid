@@ -290,9 +290,15 @@ results.controller('SearchResultsCtrl', [
           results.resize(totalLength);
         }
 
-        function updateLastSearchBoundary() {
+        function updateLastSearchBoundary(images) {
           const until = $stateParams.until || null;
-          const latestTime = until || moment().toISOString();
+          // Prefer the server's uploadTime of the newest matching image over the
+          // client clock, so clock skew or late indexing can't let an image slip
+          // into the result set and shift the positions of loaded images.
+          const newestUploadTime = images && images.data && images.data.length > 0
+            ? images.data[0].data.uploadTime
+            : null;
+          const latestTime = until || newestUploadTime || moment().toISOString();
 
           if (latestTime && ! isReloadingPreviousSearch) {
             lastSearchFirstResultTime = latestTime;
@@ -311,7 +317,7 @@ results.controller('SearchResultsCtrl', [
 
           ctrl.isAiSearch = isAiSearch;
 
-          updateLastSearchBoundary();
+          updateLastSearchBoundary(images);
 
           return images;
         }
