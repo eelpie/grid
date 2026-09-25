@@ -185,25 +185,13 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
                       colourModel: Option[String],
                       orientationMetadata: Option[OrientationMetadata]
                      )(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
-
-
     Future {
       Vips.run { arena =>
         val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
           VipsOption.Boolean("auto-rotate", false), // example of an option,
         )
-
-        thumbnail.jpegsave(outputFile.getAbsolutePath,
-          VipsOption.Int("Q", qual.toInt),
-          //VipsOption.Boolean("optimize-scans", true),
-          //VipsOption.Boolean("optimize-coding", true),
-          //VipsOption.Boolean("interlace", true),
-          //VipsOption.Boolean("trellis-quant", true),
-          // VipsOption.Int("quant-table", 3),
-          VipsOption.Boolean("strip", true)
-        )
+        saveImageToFile(thumbnail, qual, outputFile)
       }
-
       (outputFile, thumbMimeType)
     }
   }
