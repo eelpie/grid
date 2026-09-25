@@ -1,6 +1,7 @@
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, S3, S3Vectors, SimpleSqsMessageConsumer}
-import com.gu.mediaservice.lib.imaging.ImageOperations
+import com.gu.mediaservice.lib.imaging.MagickImageOperations
+import com.gu.mediaservice.lib.aws.{Bedrock, S3Vectors, SimpleSqsMessageConsumer, Embedder}
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.{ImageLoaderController, ImageLoaderManagement, UploadStatusController}
@@ -24,7 +25,7 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   val store = new ImageLoaderStore(config)
   val maybeIngestQueue = config.maybeIngestSqsQueueUrl.map(queueUrl => new SimpleSqsMessageConsumer(queueUrl, config))
   val uploadStatusTable = new UploadStatusTable(config)
-  val imageOperations = new ImageOperations(context.environment.rootPath.getAbsolutePath)
+  val imageOperations = new MagickImageOperations(context.environment.rootPath.getAbsolutePath)
   val notifications = new Notifications(config)
   val downloader = new Downloader()(ec,wsClient)
 
