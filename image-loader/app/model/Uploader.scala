@@ -10,8 +10,8 @@ import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, S3Bucket, S3Object, UpdateMessage}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.formatting._
-import com.gu.mediaservice.lib.imaging.ImageOperations
-import com.gu.mediaservice.lib.imaging.ImageOperations.{optimisedMimeType, thumbMimeType}
+import com.gu.mediaservice.lib.imaging.{ImageOperations, MagickImageOperations}
+import com.gu.mediaservice.lib.imaging.MagickImageOperations.{optimisedMimeType, thumbMimeType}
 import com.gu.mediaservice.lib.logging._
 import com.gu.mediaservice.lib.metadata.{FileMetadataHelper, ImageMetadataConverter}
 import com.gu.mediaservice.lib.net.URI
@@ -142,7 +142,7 @@ object Uploader extends GridLogging {
 
     val tempDirForRequest: File = Files.createTempDirectory(deps.config.tempDir.toPath, "upload").toFile
 
-    val colourModelFuture = ImageOperations.identifyColourModel(uploadRequest.tempFile, originalMimeType)
+    val colourModelFuture = MagickImageOperations.identifyColourModel(uploadRequest.tempFile, originalMimeType)
     val sourceDimensionsFuture = FileMetadataReader.dimensions(uploadRequest.tempFile, Some(originalMimeType))
     val sourceOrientationMetadataFuture = FileMetadataReader.orientation(uploadRequest.tempFile)
 
