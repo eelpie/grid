@@ -1,6 +1,5 @@
 package controllers
 
-import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.model._
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
