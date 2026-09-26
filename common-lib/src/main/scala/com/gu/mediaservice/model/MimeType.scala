@@ -11,6 +11,7 @@ sealed trait MimeType {
     case Png => "image/png"
     case Tiff => "image/tiff"
     case Heif => "image/heif"
+    case Webp => "image/webp"
   }
 
   def fileExtension: String = s".${name.split('/').reverse.head}"
@@ -25,6 +26,7 @@ object MimeType extends GridLogging {
     case "image/tiff" => Tiff
     case "image/heif" => Heif
     case "image/heic" => Heif
+    case "image/webp" => Webp
 
     // Support crops created in the early years of Grid (~2016) which state mime type w/out an 'image/' prefix
     // TODO correct these values in a reindex
@@ -55,3 +57,4 @@ object Jpeg extends MimeType {
 object Png extends MimeType
 object Tiff extends MimeType
 object Heif extends MimeType
+object Webp extends MimeType
