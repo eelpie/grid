@@ -31,12 +31,11 @@ trait ImageOperations {
   def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
   def resizeImage(
-                   sourceFile: File,
-                   sourceMimeType: Option[MimeType],
+                   sourceImage: VImage,
                    dimensions: Dimensions,
-                   qual: Double = 100d,
-                   tempDir: File,
+                   quality: Int = 100,
+                   outputFile: File,
                    fileType: MimeType
-                 )(implicit logMarker: LogMarker): Future[File]
+                 )(implicit logMarker: LogMarker, arena: Arena): Future[File]
 
 }
