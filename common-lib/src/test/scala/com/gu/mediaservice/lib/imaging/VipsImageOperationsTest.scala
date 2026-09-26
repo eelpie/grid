@@ -110,7 +110,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     it("should output resized image to file in chosen format") {
       implicit val arena: Arena = Arena.ofShared()
       val fullSizedImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
-      val imageOperations = new ImageOperations("")
+      val imageOperations = new VipsImageOperations("")
 
       val outputFile = new File("/Users/tony/Desktop/out5.jpg")
 
@@ -124,7 +124,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("render LAB colour spaces correctly in sRGB") {
       implicit val arena: Arena = Arena.ofShared
-      val imageOperations = new ImageOperations("")
+      val imageOperations = new VipsImageOperations("")
 
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
       val outputFile = new File("/Users/tony/Desktop/out6.jpg")
@@ -139,7 +139,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("render LAB colour spaces correctly as PNG") {
       implicit val arena: Arena = Arena.ofShared
-      val imageOperations = new ImageOperations("")
+      val imageOperations = new VipsImageOperations("")
 
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
       val outputFile = new File("/Users/tony/Desktop/out7.png")
@@ -154,7 +154,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("render LAB 16 bit colour spaces correctly") {
       implicit val arena: Arena = Arena.ofShared
-      val imageOperations = new ImageOperations("")
+      val imageOperations = new VipsImageOperations("")
 
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB16.tif").getAbsolutePath)
       val outputFile = new File("/Users/tony/Desktop/out8.jpg")
@@ -169,7 +169,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("render PNG with alpha correctly") {
       implicit val arena: Arena = Arena.ofShared
-      val imageOperations = new ImageOperations("")
+      val imageOperations = new VipsImageOperations("")
 
       val image = fileAt("with-alpha.png")
       val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
@@ -185,7 +185,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("render LAB TIFF with alpha correctly") {
       implicit val arena: Arena = Arena.ofShared
-      val imageOperations = new ImageOperations("")
+      val imageOperations = new VipsImageOperations("")
 
       val image = fileAt("lab8-with-alpha.tif")
       val fullSizedImage = VImage.newFromFile(arena, image.getAbsolutePath)
@@ -204,7 +204,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     it("should return false for RGB for a Jpeg with no alpha") {
       implicit val arena: Arena = Arena.ofShared
       val image =  VImage.newFromFile(arena, fileAt("rgb-wo-profile.jpg").getAbsolutePath)
-      val hasAlpha = ImageOperations.hasAlpha(image)
+      val hasAlpha = VipsImageOperations.hasAlpha(image)
       arena.close()
       hasAlpha should be(false)
     }
@@ -212,7 +212,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     it("should return true for PNG with alpha") {
       implicit val arena: Arena = Arena.ofShared
       val image = VImage.newFromFile(arena, fileAt("with-alpha.png").getAbsolutePath)
-      val hasAlpha = ImageOperations.hasAlpha(image)
+      val hasAlpha = VipsImageOperations.hasAlpha(image)
       arena.close()
       hasAlpha should be(true)
     }
@@ -353,35 +353,35 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     it("should return not graphic for true colour jpeg") {
       val arena = Arena.ofConfined
       val image = VImage.newFromFile(arena, fileAt("exif-orientated-no-rotation.jpg").getAbsolutePath)
-      ImageOperations.isGraphic(image)(arena) should be(false)
+      VipsImageOperations.isGraphic(image)(arena) should be(false)
       arena.close()
     }
 
     it("should return is graphic for depth 2 tiff") {
       val arena = Arena.ofConfined
       val image = VImage.newFromFile(arena, fileAt("flower.tif").getAbsolutePath)
-      ImageOperations.isGraphic(image)(arena) should be(true)
+      VipsImageOperations.isGraphic(image)(arena) should be(true)
       arena.close()
     }
 
     it("should return is graphic for depth 4 png with alpha") {
       val arena = Arena.ofConfined
       val image = VImage.newFromFile(arena, fileAt("schaik.com_pngsuite/tbbn0g04.png").getAbsolutePath)
-      ImageOperations.isGraphic(image)(arena) should be(true)
+      VipsImageOperations.isGraphic(image)(arena) should be(true)
       arena.close()
     }
 
     it("should return is graphic for depth 8 indexed png") {
       val arena = Arena.ofConfined
       val image = VImage.newFromFile(arena, fileAt("schaik.com_pngsuite/basn3p08.png").getAbsolutePath)
-      ImageOperations.isGraphic(image)(arena) should be(true)
+      VipsImageOperations.isGraphic(image)(arena) should be(true)
       arena.close()
     }
 
   }
 
   describe("cropping") {
-    val operations = new ImageOperations("")
+    val operations = new VipsImageOperations("")
 
     it("should create unscaled master crop to resize from full sized images") {
       implicit val arena: Arena = Arena.ofConfined
