@@ -30,17 +30,17 @@ RUN apt -y --no-install-suggests install \
     libheif-plugin-aomdec
 
 WORKDIR /tmp
-RUN wget https://github.com/libvips/libvips/releases/download/v8.18.6/vips-8.18.6.tar.xz
-RUN tar xf vips-8.18.6.tar.xz
-WORKDIR /tmp/vips-8.18.6
+RUN wget https://github.com/libvips/libvips/releases/download/v8.18.7/vips-8.18.7.tar.xz
+RUN tar xf vips-8.18.7.tar.xz
+WORKDIR /tmp/vips-8.18.7
 RUN meson setup build
-WORKDIR /tmp/vips-8.18.6/build
+WORKDIR /tmp/vips-8.18.7/build
 RUN meson compile
 RUN meson test
 RUN meson install
 RUN ldconfig
 
-RUN rm /tmp/vips-8.18.6.tar.xz
-RUN rm -r /tmp/vips-8.18.6/
+RUN rm /tmp/vips-8.18.7.tar.xz
+RUN rm -r /tmp/vips-8.18.7/
 
 RUN apt -y --no-install-suggests install libjemalloc-dev
