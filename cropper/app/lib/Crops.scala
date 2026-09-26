@@ -104,7 +104,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: VipsImageO
       logger.info("Requesting master file save")
       val eventualMasterSaved = Future {
         val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
-        imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
+        imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))  // TODO saveToFileShouldBePrivate
         masterCropFile
       }
 
