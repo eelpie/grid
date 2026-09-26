@@ -602,6 +602,14 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
     }
   }
 
+  it("should include c2pa in fromIPTCHeaders response") {
+    val image = fileAt("c2pa/c2pa-present.jpg")
+    val metadataFuture = FileMetadataReader.fromIPTCHeaders(image, "dummy")
+    whenReady(metadataFuture) { metadata =>
+      metadata.c2pa shouldBe FileMetadata.C2paAvailable
+    }
+  }
+
   it("should read the correct metadata for a grayscale png") {
     val image = fileAt("schaik.com_pngsuite/basn0g08.png")
     val metadataFuture = FileMetadataReader.fromIPTCHeadersWithColorInfo(image, "dummy", Png)
