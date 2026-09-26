@@ -52,11 +52,14 @@ object FileMetadataReader extends GridLogging {
   private implicit val ctx: ExecutionContext =
     ExecutionContext.fromExecutor(Executors.newCachedThreadPool)
 
-  def fromIPTCHeaders(image: File, imageId:String)(implicit logMarker: LogMarker): Future[FileMetadata] =
+  def fromIPTCHeaders(image: File, imageId:String, maybeMimeType: Option[MimeType] = None)(implicit logMarker: LogMarker): Future[FileMetadata] =
     for {
       metadata <- readMetadata(image)
+      c2pa <- readC2PA(image, maybeMimeType)
     }
-    yield getMetadataWithIPTCHeaders(metadata, imageId) // FIXME: JPEG, JFIF, Photoshop, GPS, File
+    yield getMetadataWithIPTCHeaders(metadata, imageId).copy(
+      c2pa = c2pa
+    )
 
   def fromIPTCHeadersWithColorInfo(image: ImageWrapper)(implicit logMarker: LogMarker): Future[FileMetadata] =
     fromIPTCHeadersWithColorInfo(image.file, image.id, image.mimeType)
@@ -254,6 +257,14 @@ object FileMetadataReader extends GridLogging {
     }.map { result =>
       logger.info(addLogMarkers(stopwatch.elapsed),"Finished readMetadata")
       result
+    }
+  }
+
+  private def readC2PA(image: File, maybeMimeType: Option[MimeType]): Future[Map[String, JsValue]] = {
+    Future {
+      maybeMimeType.map { mimeType =>
+        if (C2paDetector.hasC2paManifest(image, mimeType)) FileMetadata.C2paAvailable else FileMetadata.NoC2PA
+      }.getOrElse(FileMetadata.NoC2PA)
     }
   }
 
