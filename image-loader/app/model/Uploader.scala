@@ -20,7 +20,7 @@ import com.gu.mediaservice.syntax.MessageSubjects
 import com.gu.mediaservice.{GridClient, ImageDataMerger}
 import lib.imaging.{FileMetadataReader, MimeTypeDetection}
 import lib.storage.ImageLoaderStore
-import lib.{DigestedFile, ImageLoaderConfig, Notifications}
+import lib.{DigestedFile, ImageLoaderConfig, ImageLoaderMetrics, Notifications}
 import model.Uploader.{fromUploadRequestShared, toImageUploadOpsCfg}
 import model.upload.{OptimiseOps, UploadRequest}
 import org.joda.time.DateTime
@@ -84,6 +84,7 @@ case class ImageUploadOpsDependencies(
   tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
   tryFetchEmbedding: (String, Instance) => Future[Option[Embedding]] = (_, _) => Future.successful(None),
   maybeEmbedder: Option[Embedder],
+  recordThumbnailGenerationDuration: (Long, Boolean) => Unit = (_, _) => (),
 )
 
 
@@ -284,7 +285,8 @@ object Uploader extends GridLogging {
     import deps._
 
     def generateThumbnail(tempFile: File) = {
-      for {
+      val startNanos = System.nanoTime()
+      (for {
         thumbData <- imageOps.createThumbnail(
           browserViewableImage,
           config.thumbWidth,
@@ -292,7 +294,9 @@ object Uploader extends GridLogging {
           tempFile,
           orientationMetadata,
         )
-      } yield thumbData
+      } yield thumbData).andThen {
+        case result => recordThumbnailGenerationDuration(System.nanoTime() - startNanos, result.isSuccess)
+      }
     }
 
     for {
@@ -348,7 +352,8 @@ class Uploader(
                imageProcessor: ImageProcessor,
   gridClient: GridClient,
   auth: Authentication,
-  optimiseOps: OptimiseOps
+  optimiseOps: OptimiseOps,
+  metrics: ImageLoaderMetrics
 )(
   implicit val ec: ExecutionContext
 ) extends MessageSubjects with ArgoHelpers {
@@ -376,7 +381,7 @@ class Uploader(
 
   private def fromUploadRequest(uploadRequest: UploadRequest)
                                (implicit logMarker: LogMarker, instance: Instance): Future[ImageUpload] = {
-    val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps, storeSource, storeThumbnail, storeOptimisedImage, createEmbeddingsSource = createEmbeddingsSource, storeEmbeddingSource, maybeEmbedder = maybeEmbedder)
+    val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps, storeSource, storeThumbnail, storeOptimisedImage, createEmbeddingsSource = createEmbeddingsSource, storeEmbeddingSource, maybeEmbedder = maybeEmbedder, recordThumbnailGenerationDuration = metrics.recordThumbnailGenerationDuration)
     Stopwatch.async("finalImage") {
       val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor, optimiseOps)
       uploadRequest.identifiers.foreach{
