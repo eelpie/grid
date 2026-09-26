@@ -2,6 +2,7 @@ package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.VImage
 import com.gu.mediaservice.lib.BrowserViewableImage
+import com.gu.mediaservice.lib.embeddings.EmbeddingSourceImageFormat
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model._
 
@@ -27,6 +28,14 @@ trait ImageOperations {
                       outputFile: File,
                       orientationMetadata: Option[OrientationMetadata]
                      )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])]
+
+  // Given the path to an original image write a rendering of it which
+  // can be ingested by an embedding prediction end point.
+  def createEmbeddingSource(originalImageFile: File,
+                            orientationMetadata: Option[OrientationMetadata],
+                            embeddingSourceImageFormat: EmbeddingSourceImageFormat,
+                            outputFile: File
+                           ): Future[File]
 
   def cropImage(
                  sourceFile: File,
