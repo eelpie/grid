@@ -57,13 +57,12 @@ class ImageLoaderComponents(context: Context) extends GridComponents(context, ne
   private val s3 = new S3(config)
 
   val optimiseOps = new OptimiseWithPngQuant(imageOperations)
-  val uploader = new Uploader(store, config, imageOperations, notifications, maybeEmbedder, imageProcessor, gridClient, auth, optimiseOps)
+  val metrics = new ImageLoaderMetrics(config, actorSystem, applicationLifecycle)
+  val uploader = new Uploader(store, config, imageOperations, notifications, maybeEmbedder, imageProcessor, gridClient, auth, optimiseOps, metrics)
   val projector = Projector(config, s3, imageOperations, imageProcessor, auth, maybeEmbedder, optimiseOps)
   val quarantineUploader: Option[QuarantineUploader] = config.maybeQuarantineBucket.map(_ =>
     new QuarantineUploader(new QuarantineStore(config), config)
   )
-
-  val metrics = new ImageLoaderMetrics(config, actorSystem, applicationLifecycle)
 
   val controller = new ImageLoaderController(
     auth, downloader, store, maybeIngestQueue, uploadStatusTable, config, uploader, quarantineUploader, projector, controllerComponents, gridClient, authorisation, metrics, usageEvents, wsClient, applicationLifecycle)
