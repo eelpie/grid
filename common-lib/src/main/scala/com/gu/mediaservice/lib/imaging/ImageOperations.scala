@@ -11,9 +11,8 @@ import java.lang.foreign.Arena
 import scala.concurrent.Future
 
 trait ImageOperations {
-trait ImageOperations {
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File]
+  //def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File]
 
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                       width: Int,
