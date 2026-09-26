@@ -594,6 +594,14 @@ class FileMetadataReaderTest extends AnyFunSpec with Matchers with ScalaFutures 
     }
   }
 
+  it("should include c2pa in fromIPTCHeaders response") {
+    val image = fileAt("c2pa/c2pa-present.jpg")
+    val metadataFuture = FileMetadataReader.fromIPTCHeaders(image, "dummy")
+    whenReady(metadataFuture) { metadata =>
+      metadata.c2pa shouldBe FileMetadata.C2paAvailable
+    }
+  }
+
   def sameMaps[T](actual: Map[String, T], expected: Map[String, T]) = {
     // Detect mismatching keys
     actual.keys should be(expected.keys)
