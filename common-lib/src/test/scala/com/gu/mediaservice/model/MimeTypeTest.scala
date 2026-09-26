@@ -30,12 +30,14 @@ class MimeTypeTest extends AnyFunSpec with Matchers {
     Jpeg.name should be ("image/jpeg")
     Png.name should be ("image/png")
     Tiff.name should be ("image/tiff")
+    Webp.name should be ("image/webp")
   }
 
   it("should have a file extension") {
     Jpeg.fileExtension should be (".jpg")
     Png.fileExtension should be (".png")
     Tiff.fileExtension should be (".tiff")
+    Webp.fileExtension should be (".webp")
   }
 
   it("should serialise to json") {
@@ -48,6 +50,7 @@ class MimeTypeTest extends AnyFunSpec with Matchers {
     JsString("image/jpeg").as[MimeType] should be (Jpeg)
     JsString("image/png").as[MimeType] should be (Png)
     JsString("image/tiff").as[MimeType] should be (Tiff)
+    JsString("image/webp").as[MimeType] should be (Webp)
   }
 
   it("should raise an UnsupportedMimeTypeException when deserialising an unsupported mime type") {
