@@ -19,7 +19,7 @@ case object InvalidCropRequest extends Exception("Crop request invalid for image
 
 case class MasterCrop(image: VImage, dimensions: Dimensions, aspectRatio: Float)
 
-class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOperations, imageBucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext) extends GridLogging {
+class Crops(config: CropperConfig, store: CropStore, imageOperations: VipsImageOperations, imageBucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext) extends GridLogging {
   import Files._
 
   private val cropQuality = 75
@@ -104,7 +104,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       logger.info("Requesting master file save")
       val eventualMasterSaved = Future {
         val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
-        imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
+        imageOperations.saveImageToFile(masterCrop.image, cropType, masterQuality, masterCropFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))  // TODO saveToFileShouldBePrivate
         masterCropFile
       }
 
