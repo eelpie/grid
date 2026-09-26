@@ -44,6 +44,17 @@ class ImageLoaderMetrics(config: ImageLoaderConfig, actorSystem: ActorSystem, ap
     val attributes = Attributes.of(AttributeKey.booleanKey("succeeded"), java.lang.Boolean.valueOf(succeeded))
     processingDurationHistogram.record(durationNanos / 1e9, attributes)
   }
+
+  private val thumbnailGenerationDurationHistogram: DoubleHistogram = meter
+    .histogramBuilder(ImageLoaderMetrics.thumbnailGenerationDurationName)
+    .setDescription("Time taken to generate a thumbnail")
+    .setUnit("s")
+    .build()
+
+  def recordThumbnailGenerationDuration(durationNanos: Long, succeeded: Boolean): Unit = {
+    val attributes = Attributes.of(AttributeKey.booleanKey("succeeded"), java.lang.Boolean.valueOf(succeeded))
+    thumbnailGenerationDurationHistogram.record(durationNanos / 1e9, attributes)
+  }
 }
 
 object ImageLoaderMetrics {
@@ -51,12 +62,15 @@ object ImageLoaderMetrics {
   import io.opentelemetry.sdk.metrics.{Aggregation, InstrumentSelector, View}
 
   val processingDurationName = "ingest.processing.duration"
+  val thumbnailGenerationDurationName = "ingest.thumbnail.generation.duration"
 
   private val openTelemetrySdk: OpenTelemetrySdk = AutoConfiguredOpenTelemetrySdk.builder()
     .addMeterProviderCustomizer((builder, _) =>
-      builder.registerView(
-        InstrumentSelector.builder().setName(processingDurationName).build(),
-        View.builder().setAggregation(Aggregation.base2ExponentialBucketHistogram()).build()
+      List(processingDurationName, thumbnailGenerationDurationName).foldLeft(builder)((b, name) =>
+        b.registerView(
+          InstrumentSelector.builder().setName(name).build(),
+          View.builder().setAggregation(Aggregation.base2ExponentialBucketHistogram()).build()
+        )
       )
     )
     .build()
