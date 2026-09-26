@@ -156,6 +156,10 @@ class MagickImageOperations(playPath: String) extends GridLogging {
     case Tiff =>
       logger.error("Attempting to optimize a Tiff crop. Cropping as Tiff is not supported.")
       throw new UnsupportedCropOutputTypeException
+
+    case Heif =>
+      logger.error("Attempting to optimize a Heif crop. Cropping as Heif is not supported.")
+      throw new UnsupportedCropOutputTypeException
   }
 
   val thumbUnsharpRadius = 0.5d
