@@ -44,6 +44,17 @@ class ImageLoaderMetrics(config: ImageLoaderConfig, actorSystem: ActorSystem, ap
     val attributes = Attributes.of(AttributeKey.booleanKey("succeeded"), java.lang.Boolean.valueOf(succeeded))
     processingDurationHistogram.record(durationNanos / 1e9, attributes)
   }
+
+  private val thumbnailGenerationDurationHistogram: DoubleHistogram = meter
+    .histogramBuilder("ingest.thumbnail.generation.duration")
+    .setDescription("Time taken to generate a thumbnail")
+    .setUnit("s")
+    .build()
+
+  def recordThumbnailGenerationDuration(durationNanos: Long, succeeded: Boolean): Unit = {
+    val attributes = Attributes.of(AttributeKey.booleanKey("succeeded"), java.lang.Boolean.valueOf(succeeded))
+    thumbnailGenerationDurationHistogram.record(durationNanos / 1e9, attributes)
+  }
 }
 
 object ImageLoaderMetrics {
