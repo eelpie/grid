@@ -1,11 +1,13 @@
 package com.gu.mediaservice.lib.imaging
 
-import java.io.File
+import app.photofox.vipsffm.VImage
 
+import java.io.File
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model._
 
+import java.lang.foreign.Arena
 import scala.concurrent.Future
 
 trait ImageOperations {
@@ -21,16 +23,10 @@ trait ImageOperations {
 
   def cropImage(
                  sourceFile: File,
-                 sourceMimeType: Option[MimeType],
                  bounds: Bounds,
-                 qual: Double = 100d,
-                 tempDir: File,
-                 iccColourSpace: Option[String],
-                 colourModel: Option[String],
-                 fileType: MimeType,
-                 isTransformedFromSource: Boolean,
+                 metadata: ImageMetadata,
                  orientationMetadata: Option[OrientationMetadata]
-               )(implicit logMarker: LogMarker): Future[File]
+               )(implicit logMarker: LogMarker, arena: Arena): VImage
 
   def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
