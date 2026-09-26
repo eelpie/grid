@@ -11,6 +11,7 @@ import java.lang.foreign.Arena
 import scala.concurrent.Future
 
 trait ImageOperations {
+trait ImageOperations {
 
   def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File]
 
@@ -28,7 +29,7 @@ trait ImageOperations {
                  orientationMetadata: Option[OrientationMetadata]
                )(implicit logMarker: LogMarker, arena: Arena): VImage
 
-  def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
+  //ef optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
   def resizeImage(
                    sourceImage: VImage,
