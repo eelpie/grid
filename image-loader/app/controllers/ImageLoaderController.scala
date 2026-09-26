@@ -204,7 +204,10 @@ class ImageLoaderController(auth: Authentication,
                 }
                 Future.unit
               } else {
-                attemptToProcessIngestedFile(s3IngestObject, isUiUpload)(logMarker)(instance) map { digestedFile =>
+                val processingStartNanos = System.nanoTime()
+                attemptToProcessIngestedFile(s3IngestObject, isUiUpload)(logMarker)(instance).andThen {
+                  case result => metrics.recordProcessingDuration(System.nanoTime() - processingStartNanos, result.isSuccess)
+                } map { digestedFile =>
                   metrics.successfulIngestsFromQueue.incrementBothWithAndWithoutDimensions(metricDimensions)
                   usageEvents.successfulIngestFromQueue(instance = instance, image = digestedFile.digest, filesize = s3IngestObject.contentLength )
                   logger.info(logMarker, s"Successfully processed image ${digestedFile.file.getName}")
