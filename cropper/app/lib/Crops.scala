@@ -42,23 +42,23 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: VipsImageO
     metadata: ImageMetadata,
     orientationMetadata: Option[OrientationMetadata]
   )(implicit logMarker: LogMarker, arena: Arena): MasterCrop = {
-
     Stopwatch(s"creating master crop for ${apiImage.id}") {
       val source = crop.specification
-    logger.info(logMarker, s"creating master crop for ${apiImage.id}")
-    val masterImage = imageOperations.cropImage(
-      sourceFile,
-      source.bounds,
-      metadata,
-      orientationMetadata = orientationMetadata
-    )
+      logger.info(logMarker, s"creating master crop for ${apiImage.id}")
+      val croppedImage = imageOperations.cropImage(
+        sourceFile,
+        source.bounds,
+        metadata,
+        orientationMetadata = orientationMetadata
+      )
 
-      //file: File <- imageOperations.appendMetadata(strip, metadata)
+      val masterCrop = imageOperations.appendMetadata(croppedImage, metadata)
+
       val dimensions = Dimensions(source.bounds.width, source.bounds.height)
       val dirtyAspect = source.bounds.width.toFloat / source.bounds.height
       val aspect = crop.specification.aspectRatio.flatMap(AspectRatio.clean).getOrElse(dirtyAspect)
 
-      MasterCrop(masterImage, dimensions, aspect)
+      MasterCrop(masterCrop, dimensions, aspect)
     }
   }
 

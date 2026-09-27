@@ -55,7 +55,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       cropped
     }
 
-    appendMetadata(correctedForICCProfile, metadata)
+    correctedForICCProfile
   }
 
   private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
