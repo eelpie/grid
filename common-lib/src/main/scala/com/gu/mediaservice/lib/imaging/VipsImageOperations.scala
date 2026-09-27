@@ -33,6 +33,14 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     "Greyscale" -> profilePath("grayscale.icc")
   )
 
+  def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage = {
+    makeXmpBlog(metadata).foreach { xmpBlob =>
+      logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
+      image.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
+    }
+    image
+  }
+
   def cropImage(
                      sourceFile: File,
                      bounds: Bounds,
@@ -62,14 +70,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
       cropped
     }
 
-    // Apply crop metadata
-    // https://developers.google.com/search/docs/appearance/structured-data/image-license-metadata#iptc-photo-metadata
-    makeXmpBlog(metadata).foreach { xmpBlob =>
-      logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
-      correctedForICCProfile.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
-    }
-
-    correctedForICCProfile
+    appendMetadata(correctedForICCProfile, metadata)
   }
 
   private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
