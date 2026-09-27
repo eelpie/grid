@@ -139,6 +139,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
+  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
+
   def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File, quantise: Boolean = false): File = {
     logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
     mimeType match {
