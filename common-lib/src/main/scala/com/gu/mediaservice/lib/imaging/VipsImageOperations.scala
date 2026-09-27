@@ -70,7 +70,7 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
       cropped
     }
 
-    appendMetadata(correctedForICCProfile, metadata)
+    correctedForICCProfile
   }
 
   private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
