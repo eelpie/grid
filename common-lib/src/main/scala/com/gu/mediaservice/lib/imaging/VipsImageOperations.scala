@@ -18,6 +18,14 @@ import scala.concurrent.Future
 
 class VipsImageOperations extends GridLogging with ImageOperations {
 
+  def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage = {
+    makeXmpBlog(metadata).foreach { xmpBlob =>
+      logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
+      image.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
+    }
+    image
+  }
+
   def cropImage(
                      sourceFile: File,
                      bounds: Bounds,
@@ -47,14 +55,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       cropped
     }
 
-    // Apply crop metadata
-    // https://developers.google.com/search/docs/appearance/structured-data/image-license-metadata#iptc-photo-metadata
-    makeXmpBlog(metadata).foreach { xmpBlob =>
-      logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
-      correctedForICCProfile.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
-    }
-
-    correctedForICCProfile
+    appendMetadata(correctedForICCProfile, metadata)
   }
 
   private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
