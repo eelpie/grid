@@ -18,21 +18,6 @@ import scala.concurrent.Future
 class VipsImageOperations(playPath: String) extends GridLogging with ImageOperations {
   import ImageMagick._
 
-  private def profilePath(fileName: String): String = s"$playPath/$fileName"
-
-  private def rgbProfileLocation(optimised: Boolean): String = {
-    if (optimised)
-      profilePath("facebook-TINYsRGB_c2.icc")
-    else
-      profilePath("srgb.icc")
-  }
-
-  private val profileLocations = Map(
-    "RGB" -> profilePath("srgb.icc"),
-    "CMYK" -> profilePath("cmyk.icc"),
-    "Greyscale" -> profilePath("grayscale.icc")
-  )
-
   def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage = {
     makeXmpBlog(metadata).foreach { xmpBlob =>
       logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
