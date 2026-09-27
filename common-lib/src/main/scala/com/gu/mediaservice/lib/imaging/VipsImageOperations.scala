@@ -211,4 +211,6 @@ class VipsImageOperations(playPath: String) extends GridLogging with ImageOperat
     }
   }
 
+  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
+  
 }
