@@ -204,7 +204,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     it("should return false for RGB for a Jpeg with no alpha") {
       implicit val arena: Arena = Arena.ofShared
       val image =  VImage.newFromFile(arena, fileAt("rgb-wo-profile.jpg").getAbsolutePath)
-      val hasAlpha = VipsImageOperations.hasAlpha(image)
+      val hasAlpha = imageOperations.hasAlpha(image)
       arena.close()
       hasAlpha should be(false)
     }
@@ -212,7 +212,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     it("should return true for PNG with alpha") {
       implicit val arena: Arena = Arena.ofShared
       val image = VImage.newFromFile(arena, fileAt("with-alpha.png").getAbsolutePath)
-      val hasAlpha = VipsImageOperations.hasAlpha(image)
+      val hasAlpha = imageOperations.hasAlpha(image)
       arena.close()
       hasAlpha should be(true)
     }
@@ -353,28 +353,28 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     it("should return not graphic for true colour jpeg") {
       val arena = Arena.ofConfined
       val image = VImage.newFromFile(arena, fileAt("exif-orientated-no-rotation.jpg").getAbsolutePath)
-      VipsImageOperations.isGraphic(image)(arena) should be(false)
+      imageOperations.isGraphic(image)(arena) should be(false)
       arena.close()
     }
 
     it("should return is graphic for depth 2 tiff") {
       val arena = Arena.ofConfined
       val image = VImage.newFromFile(arena, fileAt("flower.tif").getAbsolutePath)
-      VipsImageOperations.isGraphic(image)(arena) should be(true)
+      imageOperations.isGraphic(image)(arena) should be(true)
       arena.close()
     }
 
     it("should return is graphic for depth 4 png with alpha") {
       val arena = Arena.ofConfined
       val image = VImage.newFromFile(arena, fileAt("schaik.com_pngsuite/tbbn0g04.png").getAbsolutePath)
-      VipsImageOperations.isGraphic(image)(arena) should be(true)
+      imageOperations.isGraphic(image)(arena) should be(true)
       arena.close()
     }
 
     it("should return is graphic for depth 8 indexed png") {
       val arena = Arena.ofConfined
       val image = VImage.newFromFile(arena, fileAt("schaik.com_pngsuite/basn3p08.png").getAbsolutePath)
-      VipsImageOperations.isGraphic(image)(arena) should be(true)
+      imageOperations.isGraphic(image)(arena) should be(true)
       arena.close()
     }
 

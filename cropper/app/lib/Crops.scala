@@ -4,7 +4,7 @@ import app.photofox.vipsffm.VImage
 import app.photofox.vipsffm.jextract.VipsRaw
 import com.gu.mediaservice.lib.Files
 import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
-import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations}
+import com.gu.mediaservice.lib.imaging.{ExportResult, VipsImageOperations}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
 
@@ -91,8 +91,8 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: VipsImageO
       implicit val arena: Arena = Arena.ofShared()
       val masterCrop = createMasterCrop(apiImage, sourceFile, crop, apiImage.metadata, apiImage.source.orientationMetadata)
 
-      val isGraphic = VipsImageOperations.isGraphic(masterCrop.image)
-      val hasAlpha = VipsImageOperations.hasAlpha(masterCrop.image)
+      val isGraphic = imageOperations.isGraphic(masterCrop.image)
+      val hasAlpha = imageOperations.hasAlpha(masterCrop.image)
       val cropType = Crops.cropType(mimeType, isGraphic = isGraphic, hasAlpha = hasAlpha)
 
 
