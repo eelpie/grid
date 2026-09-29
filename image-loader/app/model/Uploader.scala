@@ -83,6 +83,7 @@ case class ImageUploadOpsDependencies(
   tryFetchEmbedding: (String, Instance) => Future[Option[Embedding]] = (_, _) => Future.successful(None),
   maybeEmbedder: Option[Embedder],
   recordThumbnailGenerationDuration: (Long, Boolean) => Unit = (_, _) => (),
+  recordEmbeddingSourceGenerationDuration: Long => Unit = (_) => (),
 )
 
 
@@ -319,6 +320,7 @@ object Uploader extends GridLogging {
                                      tempDir: File)(implicit executionContext: ExecutionContext): Future[Option[StorableEmbeddingSourceImage]] = {
     import deps._
     maybeEmbedder.map { embedder =>
+      val startNanos = System.nanoTime()
       createTempFile("embeddingsource-", embedder.embeddingSourceImageFormat().format.fileExtension, tempDir).flatMap { tempFile =>
         val eventualEmbeddingSource = imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata, embedder.embeddingSourceImageFormat(), tempFile)
         eventualEmbeddingSource.map { embeddingSource =>
@@ -327,6 +329,9 @@ object Uploader extends GridLogging {
             mimeType = embedder.embeddingSourceImageFormat().format
           ).asStorableEmbeddingSourceImage)
         }
+      }.map { r =>
+        recordEmbeddingSourceGenerationDuration(System.nanoTime() - startNanos)
+        r
       }
     }.getOrElse {
       logger.info("Skipping createEmbeddingsSource because no embedder is configured")
@@ -400,7 +405,7 @@ class Uploader(
 
   private def fromUploadRequest(uploadRequest: UploadRequest)
                                (implicit logMarker: LogMarker, instance: Instance): Future[ImageUpload] = {
-    val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps, storeSource, storeThumbnail, storeOptimisedImage, storeEmbeddingSource, maybeEmbedder = maybeEmbedder, recordThumbnailGenerationDuration = metrics.recordThumbnailGenerationDuration)
+    val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps, storeSource, storeThumbnail, storeOptimisedImage, storeEmbeddingSource, maybeEmbedder = maybeEmbedder, recordThumbnailGenerationDuration = metrics.recordThumbnailGenerationDuration, recordEmbeddingSourceGenerationDuration = metrics.recordEmbeddingSourceGenerationDuration)
     Stopwatch.async("finalImage") {
       val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor, optimiseOps)
       uploadRequest.identifiers.foreach{
