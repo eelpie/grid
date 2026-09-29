@@ -51,9 +51,20 @@ class ImageLoaderMetrics(config: ImageLoaderConfig, actorSystem: ActorSystem, ap
     .setUnit("s")
     .build()
 
+  private val embeddingSourceGenerationDurationHistogram: DoubleHistogram = meter
+    .histogramBuilder(ImageLoaderMetrics.embeddingSourceGenerationDurationName)
+    .setDescription("Time taken to generate a thumbnail")
+    .setUnit("s")
+    .build()
+
+
   def recordThumbnailGenerationDuration(durationNanos: Long, succeeded: Boolean): Unit = {
     val attributes = Attributes.of(AttributeKey.booleanKey("succeeded"), java.lang.Boolean.valueOf(succeeded))
     thumbnailGenerationDurationHistogram.record(durationNanos / 1e9, attributes)
+  }
+
+  def recordEmbeddingSourceGenerationDuration(durationNanos: Long): Unit = {
+    embeddingSourceGenerationDurationHistogram.record(durationNanos / 1e9)
   }
 }
 
@@ -63,6 +74,7 @@ object ImageLoaderMetrics {
 
   val processingDurationName = "ingest.processing.duration"
   val thumbnailGenerationDurationName = "ingest.thumbnail.generation.duration"
+  val embeddingSourceGenerationDurationName = "ingest.embeddingsource.generation.duration"
 
   private val openTelemetrySdk: OpenTelemetrySdk = AutoConfiguredOpenTelemetrySdk.builder()
     .addMeterProviderCustomizer((builder, _) =>
