@@ -425,6 +425,9 @@ class Uploader(
             mimeType = embedder.embeddingSourceImageFormat().format
           ).asStorableEmbeddingSourceImage)
         }
+      }.map { r =>
+        metrics.recordEmbeddingSourceGenerationDuration(System.nanoTime() - startNanos)
+        r
       }
     }.getOrElse {
       logger.info("Skipping createEmbeddingsSource because no embedder is configured")

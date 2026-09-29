@@ -51,9 +51,20 @@ class ImageLoaderMetrics(config: ImageLoaderConfig, actorSystem: ActorSystem, ap
     .setUnit("s")
     .build()
 
+  private val embeddingSourceGenerationDurationHistogram: DoubleHistogram = meter
+    .histogramBuilder("ingest.embeddingsource.generation.duration")
+    .setDescription("Time taken to generate a embedding")
+    .setUnit("s")
+    .build()
+
+
   def recordThumbnailGenerationDuration(durationNanos: Long, succeeded: Boolean): Unit = {
     val attributes = Attributes.of(AttributeKey.booleanKey("succeeded"), java.lang.Boolean.valueOf(succeeded))
     thumbnailGenerationDurationHistogram.record(durationNanos / 1e9, attributes)
+  }
+
+  def recordEmbeddingSourceGenerationDuration(durationNanos: Long): Unit = {
+    embeddingSourceGenerationDurationHistogram.record(durationNanos / 1e9)
   }
 }
 
