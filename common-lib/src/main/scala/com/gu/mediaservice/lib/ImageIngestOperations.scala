@@ -69,6 +69,7 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, em
   }
 
   def getEmbeddingStoreImage(key: String): ResponseInputStream[GetObjectResponse] = {
+    logger.info(s"getEmbeddingStoreImage from bucket ${embeddingSourceBucket.bucketURL()} / $key")
     getObject(embeddingSourceBucket, key)
   }
 
