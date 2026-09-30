@@ -77,14 +77,6 @@ object ImageLoaderMetrics {
   val embeddingSourceGenerationDurationName = "ingest.embeddingsource.generation.duration"
 
   private val openTelemetrySdk: OpenTelemetrySdk = AutoConfiguredOpenTelemetrySdk.builder()
-    .addMeterProviderCustomizer((builder, _) =>
-      List(processingDurationName, thumbnailGenerationDurationName).foldLeft(builder)((b, name) =>
-        b.registerView(
-          InstrumentSelector.builder().setName(name).build(),
-          View.builder().setAggregation(Aggregation.base2ExponentialBucketHistogram()).build()
-        )
-      )
-    )
     .build()
     .getOpenTelemetrySdk
 }
