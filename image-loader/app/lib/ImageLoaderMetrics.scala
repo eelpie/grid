@@ -53,7 +53,7 @@ class ImageLoaderMetrics(config: ImageLoaderConfig, actorSystem: ActorSystem, ap
 
   private val embeddingSourceGenerationDurationHistogram: DoubleHistogram = meter
     .histogramBuilder(ImageLoaderMetrics.embeddingSourceGenerationDurationName)
-    .setDescription("Time taken to generate a thumbnail")
+    .setDescription("Time taken to generate a embedding")
     .setUnit("s")
     .build()
 
