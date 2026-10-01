@@ -103,6 +103,23 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
+  def getColorModelInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[Map[String, String]] = {
+    val stopWatch = Stopwatch.start
+    Future {
+      var result: Map[String, String] = Map.empty
+      Vips.run { arena =>
+        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+        result = Map {
+          "hasAlpha" -> image.hasAlpha.toString
+        }
+      }
+      result
+    }.map { result =>
+      logger.info(addLogMarkers(stopWatch.elapsed), "Finished getColorModelInformation")
+      result
+    }
+  }
+
   private def saveImageToFile(image: VImage, qual: Double, outputFile: File): File = {
     logger.info(s"Saving image to file: " + outputFile.getAbsolutePath)
     image.jpegsave(outputFile.getAbsolutePath,
