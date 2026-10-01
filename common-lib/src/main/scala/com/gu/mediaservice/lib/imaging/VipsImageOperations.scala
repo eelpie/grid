@@ -105,6 +105,24 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
+  def getColorModelInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[Map[String, String]] = {
+    Future {
+      implicit val arena: Arena = Arena.ofConfined()
+      try {
+        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+        Map {
+          "hasAlpha" -> hasAlpha(image).toString
+        }
+      } catch {
+        case e: Exception =>
+          logger.error(logMarker, "Error during getColorModelInformation", e)
+          throw e
+      } finally {
+        arena.close()
+      }
+    }
+  }
+
   def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
 
   private def saveImageToFile(image: VImage, qual: Double, outputFile: File): File = {
