@@ -35,11 +35,11 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
     val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, ResourceHelpers.dummyBucket("img-bucket"), ResourceHelpers.dummyBucket("thumb-bucket"))
 
   /**
-    * @todo: I flailed about until I found a path that worked, but
-    *        what arcane magic System.getProperty relies upon, and exactly
-    *        _how_ it will break in CI, I do not know
-    */
-  val imageOps: ImageOperations = new VipsImageOperations()
+   * @todo: I flailed about until I found a path that worked, but
+   *        what arcane magic System.getProperty relies upon, and exactly
+   *        _how_ it will break in CI, I do not know
+   */
+  val imageOps: VipsImageOperations = new VipsImageOperations()
 
   private def imageUpload(
                    fileName: String,

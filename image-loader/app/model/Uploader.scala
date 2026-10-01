@@ -9,7 +9,7 @@ import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.formatting._
-import com.gu.mediaservice.lib.imaging.ImageOperations
+import com.gu.mediaservice.lib.imaging.VipsImageOperations
 import com.gu.mediaservice.lib.imaging.ImageOperations.{optimisedMimeType, thumbMimeType}
 import com.gu.mediaservice.lib.logging._
 import com.gu.mediaservice.lib.metadata.{FileMetadataHelper, ImageMetadataConverter}
@@ -70,7 +70,7 @@ case class ImageUploadOpsCfg(
 
 case class ImageUploadOpsDependencies(
   config: ImageUploadOpsCfg,
-  imageOps: ImageOperations,
+  imageOps: VipsImageOperations,
   storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object],
   storeOrProjectThumbFile: StorableThumbImage => Future[S3Object],
   storeOrProjectOptimisedImage: StorableOptimisedImage => Future[S3Object],
@@ -139,6 +139,8 @@ object Uploader extends GridLogging {
     val tempDirForRequest: File = Files.createTempDirectory(deps.config.tempDir.toPath, "upload").toFile
 
     val colourModelFuture = deps.imageOps.identifyColourModel(uploadRequest.tempFile, originalMimeType)
+    val colorModelInformationFuture = deps.imageOps.getColorModelInformation(uploadRequest.tempFile)
+
     val sourceDimensionsFuture = FileMetadataReader.dimensions(uploadRequest.tempFile, Some(originalMimeType))
     val sourceOrientationMetadataFuture = FileMetadataReader.orientation(uploadRequest.tempFile)
 
@@ -169,8 +171,9 @@ object Uploader extends GridLogging {
       }
       thumbDimensions <- FileMetadataReader.dimensions(thumbViewableImage.file, Some(thumbViewableImage.mimeType))
       colourModel <- colourModelFuture
+      colourModelInformation <- colorModelInformationFuture
     } yield {
-      val fullFileMetadata = fileMetadata.copy(colourModel = colourModel)
+      val fullFileMetadata = fileMetadata.copy(colourModel = colourModel).copy(colourModelInformation = colourModelInformation)
       val metadata = ImageMetadataConverter.fromFileMetadata(fullFileMetadata, s3Source.metadata.objectMetadata.lastModified)
 
       val sourceAsset = Asset.fromS3Object(s3Source, sourceDimensions, sourceOrientationMetadata)
@@ -314,7 +317,7 @@ object Uploader extends GridLogging {
 class Uploader(
   val store: ImageLoaderStore,
   val config: ImageLoaderConfig,
-  val imageOps: ImageOperations,
+  val imageOps: VipsImageOperations,
   val notifications: Notifications,
   val maybeEmbedder: Option[Embedder],
                imageProcessor: ImageProcessor,
