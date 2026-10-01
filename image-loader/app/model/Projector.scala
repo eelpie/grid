@@ -5,7 +5,7 @@ import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws.{Embedder, S3, S3Bucket}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.config.InstanceForRequest
-import com.gu.mediaservice.lib.imaging.ImageOperations
+import com.gu.mediaservice.lib.imaging.{ImageOperations, VipsImageOperations}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
 import com.gu.mediaservice.lib._
@@ -29,7 +29,7 @@ object Projector {
 
   import Uploader.toImageUploadOpsCfg
 
-  def apply(config: ImageLoaderConfig, s3: S3, imageOps: ImageOperations, processor: ImageProcessor, auth: Authentication, maybeEmbedder: Option[Embedder])(implicit ec: ExecutionContext): Projector
+  def apply(config: ImageLoaderConfig, s3: S3, imageOps: VipsImageOperations, processor: ImageProcessor, auth: Authentication, maybeEmbedder: Option[Embedder])(implicit ec: ExecutionContext): Projector
   = new Projector(toImageUploadOpsCfg(config), s3, imageOps, processor, auth, maybeEmbedder)
 }
 
@@ -79,7 +79,7 @@ object S3FileExtractedMetadata {
 
 class Projector(config: ImageUploadOpsCfg,
                 s3: S3,
-                imageOps: ImageOperations,
+                imageOps: VipsImageOperations,
                 processor: ImageProcessor,
                 auth: Authentication,
                 maybeEmbedder: Option[Embedder]) extends GridLogging with InstanceForRequest {
@@ -155,7 +155,7 @@ class Projector(config: ImageUploadOpsCfg,
 }
 
 class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
-                               imageOps: ImageOperations,
+                               imageOps: VipsImageOperations,
                                processor: ImageProcessor,
                                s3: S3,
                                maybeEmbedder: Option[Embedder],
