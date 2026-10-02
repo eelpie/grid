@@ -12,11 +12,11 @@ userActions.controller('userActionCtrl',
 
             ctrl.$onInit = () => {
               ctrl.feedbackFormLink = window._clientConfig.feedbackFormLink;
-              ctrl.logoutUri = document.querySelector('link[rel="auth-uri"]').href + "logout";
+              ctrl.logoutUri = document.querySelector('link[rel="auth-uri"]').href + "/logout";
               ctrl.additionalLinks = window._clientConfig.additionalNavigationLinks;
               ctrl.shouldBlurGraphicImages = graphicImageBlurService.shouldBlurGraphicImages;
               ctrl.toggleShouldBlurGraphicImages = graphicImageBlurService.toggleShouldBlurGraphicImages;
-              ctrl.explainerContentFile = `/assets/js/common/blurring/${window._clientConfig.staffPhotographerOrganisation}-explainer.html`;
+              ctrl.explainerContentFile = `/assets/js/common/blurring/explainer.html`;
               ctrl.isYetToAcknowledgeBlurGraphicImages = graphicImageBlurService.isYetToAcknowledgeBlurGraphicImages;
               ctrl.acceptDefaultOfBlurringGraphicImages = () => {
                 graphicImageBlurService.acceptDefaultOfBlurringGraphicImages();

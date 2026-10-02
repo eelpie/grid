@@ -2,14 +2,15 @@ package lib
 
 import org.apache.pekko.Done
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.{ActorMaterializer, Materializer}
+import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import org.apache.pekko.util.ByteString
 import com.gu.kinesis.KinesisRecord
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.aws.UpdateMessage
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.json.JsonByteArrayUtil
-import com.gu.mediaservice.model.{MigrateImageMessage, StaffPhotographer, ThrallMessage}
+import com.gu.mediaservice.model.{Instance, MigrateImageMessage, StaffPhotographer, ThrallMessage}
 import helpers.Fixtures
 import lib.elasticsearch.{ElasticSearch, ScrolledSearchResults}
 import lib.kinesis.ThrallEventConsumer
@@ -30,9 +31,11 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
   private implicit val ec: ExecutionContext = actorSystem.dispatcher
   private implicit val materializer: Materializer = Materializer.matFromSystem(actorSystem)
 
+  private val anInstance = Instance("an-instance")
+
   describe("Stream merging strategy") {
     def createKinesisRecord: KinesisRecord = KinesisRecord(
-      data = ByteString(JsonByteArrayUtil.toByteArray(UpdateMessage(subject = "delete-image", id = Some("my-id")))),
+      data = ByteString(JsonByteArrayUtil.toByteArray(UpdateMessage(subject = "delete-image", id = Some("my-id"), instance = anInstance))),
       partitionKey = "",
       explicitHashKey = None,
       sequenceNumber = "",
@@ -42,7 +45,7 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
     )
 
     def createMigrationRecord: MigrationRecord = MigrationRecord(
-      payload = MigrateImageMessage("id", Right((createImage("batman", StaffPhotographer("Bruce Wayne", "Wayne Enterprises")), 1L))),
+      payload = MigrateImageMessage("id", Right((createImage("batman", StaffPhotographer("Bruce Wayne", "Wayne Enterprises")), 1L)), Instance("an-instance")),
       approximateArrivalTimestamp = OffsetDateTime.now().toInstant
     )
 
@@ -103,26 +106,30 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
   describe("Migration source with sender") {
     val projectedImage = createImage("batman", StaffPhotographer("Bruce Wayne", "Wayne Enterprises"))
     lazy val mockGrid = mock[GridClient]
-    when(mockGrid.getImageLoaderProjection(any(), any())(any()))
+    when(mockGrid.getImageLoaderProjection(any(), any())(any(), any()))
       .thenReturn(Future.successful(Some(projectedImage)))
 
     lazy val mockEs = mock[ElasticSearch]
     when(mockEs.continueScrollingImageIdsToMigrate(any())(any(), any()))
       .thenReturn(Future.successful(ScrolledSearchResults(List.empty, None)))
-    when(mockEs.startScrollingImageIdsToMigrate(any())(any(), any()))
+    when(mockEs.startScrollingImageIdsToMigrate(any())(any(), any(), any()))
     .thenReturn(Future.successful(ScrolledSearchResults(List.empty, None)))
 
     val uiPrioritySource: Source[KinesisRecord, Future[Done.type]] =
       Source.empty[KinesisRecord].mapMaterializedValue(_ => Future.successful(Done))
     val automationPrioritySource: Source[KinesisRecord, Future[Done.type]] =
       Source.empty[KinesisRecord].mapMaterializedValue(_ => Future.successful(Done))
-    val migrationSourceWithSender: MigrationSourceWithSender = MigrationSourceWithSender(
+
+    lazy val mockInstancesClient = mock[InstancesClient]
+
+    val migrationSourceWithSender: MigrationSourceWithSender = new MigrationSourceWithSenderFactory(
       materializer,
       (req: WSRequest) => req,
       mockEs,
       mockGrid,
-      projectionParallelism = 1
-    )
+      projectionParallelism = 1,
+      mockInstancesClient,
+    ).build()
 
     lazy val mockConsumer: ThrallEventConsumer = mock[ThrallEventConsumer]
     when(mockConsumer.processMessage(any[ThrallMessage]))
@@ -137,11 +144,13 @@ class ThrallStreamProcessorTest extends AnyFunSpec with BeforeAndAfterAll with M
     )
 
     it("can send messages manually") {
+      when(mockInstancesClient.getInstances()(any)).thenReturn(Future.successful(Seq.empty))
+
       val stream = streamProcessor.createStream()
 
-      val request = MigrationRequest("id", 1L)
+      val request = MigrationRequest("id", 1L, anInstance)
 
-      val expectedMigrationMessage = MigrateImageMessage("id", Right(projectedImage, 1L))
+      val expectedMigrationMessage = MigrateImageMessage("id", Right(projectedImage, 1L), anInstance)
 
       migrationSourceWithSender.send(request)
 

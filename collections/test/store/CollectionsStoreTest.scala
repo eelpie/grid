@@ -1,14 +1,13 @@
 package store
 
-import com.gu.mediaservice.model.{ActionData, Collection}
+import com.gu.mediaservice.model.{ActionData, Collection, Instance}
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.testcontainers.containers.localstack.LocalStackContainer
-import org.testcontainers.containers.localstack.LocalStackContainer.Service.DYNAMODB
+import org.testcontainers.localstack.LocalStackContainer
 import org.testcontainers.utility.DockerImageName
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
@@ -25,13 +24,15 @@ class CollectionsStoreTest extends AnyFunSpec with Matchers with ScalaFutures wi
 
   implicit val defaultPatience: PatienceConfig = PatienceConfig(timeout = Span(2, Seconds), interval = Span(100, Millis))
 
-  private val dynamoContainer = new LocalStackContainer(DockerImageName.parse("localstack/localstack:1.4.0")).withServices(DYNAMODB)
+  private val dynamoContainer = new LocalStackContainer(DockerImageName.parse("localstack/localstack:1.4.0")).withServices("dynamodb")
   dynamoContainer.start()
 
   private val dynamoClient = DynamoDbAsyncClient.builder().
-    endpointOverride(dynamoContainer.getEndpointOverride(DYNAMODB)).
+    endpointOverride(dynamoContainer.getEndpoint).
     region(Region.of(dynamoContainer.getRegion)).
     credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(dynamoContainer.getAccessKey, dynamoContainer.getSecretKey))).build()
+
+  private implicit val instance: Instance = Instance("an-instance")
 
   private val collectionsTable = "test-collections-table-" + UUID.randomUUID().toString
   private val collectionsTableForAllTest = "test-collections-table-" + UUID.randomUUID().toString
@@ -41,10 +42,12 @@ class CollectionsStoreTest extends AnyFunSpec with Matchers with ScalaFutures wi
   override def beforeAll(): Unit = {
     def createTableRequestFor(tableName: String): CreateTableRequest = {
       val attributeDefinitions = List(
-        AttributeDefinition.builder.attributeName("id").attributeType(ScalarAttributeType.S).build()
+        AttributeDefinition.builder.attributeName("id").attributeType(ScalarAttributeType.S).build(),
+        AttributeDefinition.builder.attributeName("instance").attributeType(ScalarAttributeType.S).build()
       )
       val keySchema = List(
-        KeySchemaElement.builder.attributeName("id").keyType(KeyType.HASH).build()
+        KeySchemaElement.builder.attributeName("instance").keyType(KeyType.HASH).build(),
+        KeySchemaElement.builder.attributeName("id").keyType(KeyType.RANGE).build()
       )
       val provisionedThroughput = ProvisionedThroughput.builder.readCapacityUnits(1L).writeCapacityUnits(1L).build()
       val request = CreateTableRequest.builder

@@ -7,17 +7,18 @@ import org.joda.time.{DateTime, DateTimeZone}
 import software.amazon.awssdk.core.ResponseInputStream
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
-import software.amazon.awssdk.services.s3.model.{GetObjectRequest, GetObjectResponse, HeadObjectRequest, HeadObjectResponse, ListObjectsV2Request, NoSuchKeyException, PutObjectRequest}
+import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
+import software.amazon.awssdk.services.s3.{S3Client, S3Configuration}
 
 import java.io.File
-import java.net.URI
+import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets
 import java.time.Duration
-import scala.jdk.CollectionConverters._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 case class S3Object(uri: URI, size: Long, metadata: S3Metadata)
 
@@ -52,10 +53,14 @@ case class S3Metadata(userMetadata: Map[String, String], objectMetadata: S3Objec
 
 object S3Metadata {
   def apply(meta: HeadObjectResponse): S3Metadata = {
+    val maybeMineType = Try {
+      Option(meta.contentType()).filterNot(_.toLowerCase == "application/octet-stream").map(MimeType.apply)
+    }.toOption.flatten
+
     S3Metadata(
       meta.metadata().asScala.toMap,
       S3ObjectMetadata(
-        contentType = Option(meta.contentType()).filterNot(_.toLowerCase == "application/octet-stream").map(MimeType.apply),
+        contentType = maybeMineType,
         cacheControl = Option(meta.cacheControl()),
         lastModified = Option(meta.lastModified()).map(l => new DateTime(l.toEpochMilli).withZone(DateTimeZone.UTC))
       )
@@ -101,6 +106,28 @@ class S3(config: CommonConfig) extends GridLogging with ContentDisposition with 
 
     val req = presigner.presignGetObject(getObjectPresignRequest)
     req.url().toExternalForm
+  }
+
+  def signUrlTony(bucket: Bucket, url: URI, expiration: DateTime = cachableExpiration()): URL = {
+    // get path and remove leading `/`
+    val key: Key = url.getPath.drop(1)
+
+    val nowMillis = System.currentTimeMillis()
+    val targetExpirationMillis = expiration.getMillis
+    val remainingSeconds = Math.max(1, (targetExpirationMillis - nowMillis) / 1000)
+
+    val getObjectRequest = GetObjectRequest.builder()
+      .bucket(bucket)
+      .key(key)
+      .build()
+
+    val getObjectPresignRequest = GetObjectPresignRequest.builder()
+      .getObjectRequest(getObjectRequest)
+      .signatureDuration(Duration.ofSeconds(remainingSeconds))
+      .build()
+
+    val req = presigner.presignGetObject(getObjectPresignRequest)
+    req.url()
   }
 
   def getObject(bucket: Bucket, url: URI): ResponseInputStream[GetObjectResponse]= {

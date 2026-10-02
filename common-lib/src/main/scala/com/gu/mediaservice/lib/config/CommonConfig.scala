@@ -44,6 +44,8 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
 
   val localLogShipping: Boolean = sys.env.getOrElse("LOCAL_LOG_SHIPPING", "false").toBoolean
 
+  val thrallAppName = stringOpt("thrall.kinesis.app.name").getOrElse("thrall")
+  val thrallLowPriorityAppName = stringOpt("thrall.kinesis.lowPriority.app.name").getOrElse("thrall-low-priority")
   val thrallKinesisStream = string("thrall.kinesis.stream.name")
   val thrallKinesisLowPriorityStream = string("thrall.kinesis.lowPriorityStream.name")
 
@@ -76,7 +78,9 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
 
   val maybeBucketForUIUploads: Option[String] = maybeQuarantineBucket orElse maybeIngestBucket
 
-  val maybeUploadLimitInBytes: Option[Int] = intOpt("upload.limit.mb").map(_ * 1_000_000)
+  val maybeUploadLimitInBytes: Option[Int] = intOpt("upload.limit.mb").map(_ * 1024 * 1024)
+
+  val instancesEndpoint: String = string("instance.service.instances")
 
   // Note: had to make these lazy to avoid init order problems ;_;
   val domainRoot: String = string("domain.root")
@@ -85,8 +89,7 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
 
   val corsAllowedOrigins: Set[String] = getStringSet("security.cors.allowedOrigins")
 
-  private val singleHostUrl: String = string("single.host.url")
-  val services = new SingleHostServices(singleHostUrl)
+  val services = new SingleHostServices(domainRoot)
 
   /**
    * Load in a list of domain metadata specifications from configuration. For example:
@@ -129,6 +132,9 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
 
   val recordDownloadAsUsage: Boolean = boolean("image.record.download")
   val shortenDownloadFilename: Boolean = boolean("image.download.shorten")
+  val myInstancesEndpoint: String = string("instance.service.my")
+
+  val usageEventsQueueName: String = string("usageEvents.queue.name")
 
   /**
    * Load in a list of external staff photographers, internal staff photographers, contracted photographers,
@@ -262,4 +268,5 @@ abstract class CommonConfig(resources: GridConfigResources) extends AwsClientBui
 
   private def missing(key: String, type_ : String): Nothing =
     sys.error(s"Required $type_ configuration property missing: $key")
+
 }
