@@ -1,6 +1,7 @@
 package com.gu.mediaservice.lib.imaging
 
-import app.photofox.vipsffm.{VImage, Vips, VipsOption}
+import app.photofox.vipsffm.enums.VipsInterpretation
+import app.photofox.vipsffm.{VImage, Vips, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick.ctx
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
@@ -76,7 +77,31 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
   def transformImage(sourceFile: File, sourceMimeType: Option[MimeType], tempDir: File)(implicit logMarker: LogMarker): Future[(File, MimeType)] = ???
 
-  def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]] = ???
+  def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]] = {
+    val stopWatch = Stopwatch.start
+    Future {
+      var result: Option[String] = None
+      Vips.run { arena =>
+        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+        // TODO better way to go straight from int to enum?
+        val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == VipsHelper.image_get_interpretation(image.getUnsafeStructAddress))
+        result = maybeInterpretation match {
+          case Some(VipsInterpretation.INTERPRETATION_B_W) => Some("Greyscale")
+          case Some(VipsInterpretation.INTERPRETATION_CMYK) => Some("CMYK")
+          case Some(VipsInterpretation.INTERPRETATION_LAB) => Some("LAB")
+          case Some(VipsInterpretation.INTERPRETATION_LABS) => Some("LAB")
+          case Some(VipsInterpretation.INTERPRETATION_RGB16) => Some("RGB")
+          case Some(VipsInterpretation.INTERPRETATION_sRGB) => Some("RGB")
+          case _ => None
+        }
+      }
+      result
+
+    }.map { result =>
+      logger.info(addLogMarkers(stopWatch.elapsed), "Finished identifyColourModel")
+      result
+    }
+  }
 
   private def saveImageToFile(image: VImage, qual: Double, outputFile: File): File = {
     logger.info(s"Saving image to file: " + outputFile.getAbsolutePath)
