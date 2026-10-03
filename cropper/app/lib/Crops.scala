@@ -40,8 +40,8 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     crop: Crop,
     mediaType: MimeType,
     colourModel: Option[String],
-    orientationMetadata: Option[OrientationMetadata],
-  )(implicit logMarker: LogMarker, instance: Instance): Future[MasterCrop] = {
+    orientationMetadata: Option[OrientationMetadata]
+  )(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Future[MasterCrop] = {
 
     Stopwatch.async(s"creating master crop for ${apiImage.id}") {
       val source = crop.specification
@@ -123,10 +123,10 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val secureUrl = s3.signUrlTony(imageBucket, key)
 
     implicit val arena: Arena = Arena.ofShared()
+    val sourceFile = File.createTempFile("cropSource", "", config.tempDir) // TODO function for this
 
     val result = Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
-        sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         colourModelAndInformation <- imageOperations.getImageInformation(sourceFile)
         colourModel = colourModelAndInformation._3
         masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, colourModel, apiImage.source.orientationMetadata)

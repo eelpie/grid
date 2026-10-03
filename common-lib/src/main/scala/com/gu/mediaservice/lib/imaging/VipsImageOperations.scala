@@ -29,11 +29,9 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                      fileType: MimeType,
                      isTransformedFromSource: Boolean,
                      orientationMetadata: Option[OrientationMetadata]
-                   )(implicit logMarker: LogMarker): Future[File] = {
+                   )(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
 
     Future {
-      val arena = Arena.ofConfined
-
       // Read source image
       val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
       // Orient
@@ -63,9 +61,9 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
       // TODO separate this local file create from the vips master image create
       val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
+      logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
       saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
 
-      arena.close()
       outputFile
     }
   }
