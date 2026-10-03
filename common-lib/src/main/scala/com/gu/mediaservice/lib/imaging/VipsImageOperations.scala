@@ -225,22 +225,23 @@ class VipsImageOperations extends GridLogging with ImageOperations {
   def transformImage(sourceFile: File, sourceMimeType: Option[MimeType], tempDir: File)(implicit logMarker: LogMarker): Future[(File, MimeType)] = ???
 
   def getImageInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[Dimensions], Option[OrientationMetadata], Option[String], Map[String, String])] = {
-    for {
-      dimsAndOrientation <- dimensionsAndOrientation(sourceFile)
-      colourInformation <- getColourModelAndInformation(sourceFile)
-    } yield {
-      (dimsAndOrientation._1, dimsAndOrientation._2, colourInformation._1, colourInformation._2)
-    }
-  }
-
-  def getColourModelAndInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[String], Map[String, String])] = {
     Future {
+      var dimensions: Option[Dimensions] = None
+      var maybeExifOrientationWhichTransformsImage: Option[OrientationMetadata] = None
       var colourModel: Option[String] = None
       var colourModelInformation: Map[String, String] = Map.empty
 
       val arena = Arena.ofConfined
       try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+
+        dimensions = Some(Dimensions(width = image.getWidth, height = image.getHeight))
+
+        val exifOrientation = VipsHelper.image_get_orientation(image.getUnsafeStructAddress)
+        val orientation = Some(OrientationMetadata(
+          exifOrientation = Some(exifOrientation)
+        ))
+        maybeExifOrientationWhichTransformsImage = Seq(orientation).flatten.find(_.transformsImage())
 
         // TODO better way to go straight from int to enum?
         val maybeInterpretation = VipsInterpretation.values().toSeq.find(_.getRawValue == VipsHelper.image_get_interpretation(image.getUnsafeStructAddress))
@@ -264,35 +265,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           throw e
       }
       arena.close()
-      (colourModel, colourModelInformation)
-    }
-  }
 
-  def dimensionsAndOrientation(sourceFile: File): Future[(Option[Dimensions], Option[OrientationMetadata])] = {
-    Future {
-      var dimensions: Option[Dimensions] = None
-      var maybeExifOrientationWhichTransformsImage: Option[OrientationMetadata] = None
-
-      val arena = Arena.ofConfined
-      try {
-        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-
-        dimensions = Some(Dimensions(width = image.getWidth, height = image.getHeight))
-
-        val exifOrientation = VipsHelper.image_get_orientation(image.getUnsafeStructAddress)
-        val orientation = Some(OrientationMetadata(
-          exifOrientation = Some(exifOrientation)
-        ))
-        maybeExifOrientationWhichTransformsImage = Seq(orientation).flatten.find(_.transformsImage())
-      } catch {
-        case e: Exception =>
-          logger.error("Error during createThumbnail", e)
-          arena.close()
-          throw e
-      }
-      arena.close()
-
-      (dimensions, maybeExifOrientationWhichTransformsImage)
+      (dimensions, maybeExifOrientationWhichTransformsImage, colourModel, colourModelInformation)
     }
   }
 
