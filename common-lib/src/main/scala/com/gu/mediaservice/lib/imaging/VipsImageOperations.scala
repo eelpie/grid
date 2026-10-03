@@ -29,24 +29,20 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                      fileType: MimeType,
                      isTransformedFromSource: Boolean,
                      orientationMetadata: Option[OrientationMetadata]
-                   )(implicit logMarker: LogMarker): Future[File] = {
-
-    Future {
-      val arena = Arena.ofConfined
-
-      // Read source image
-      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-      // Orient
-      val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-        image.rotate(angle)
-      }.getOrElse {
-        image
-      }
-      // TODO correct colour
-      // TODO strip meta data
-      // Output colour profile
-      val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
-      // TODO depth adjust
+                   )(implicit logMarker: LogMarker, arena: Arena): File = {
+    // Read source image
+    val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+    // Orient
+    val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+      image.rotate(angle)
+    }.getOrElse {
+      image
+    }
+    // TODO correct colour
+    // TODO strip meta data
+    // Output colour profile
+    val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
+    // TODO depth adjust
 
     // If we saw and ICC profile than we will need to transform
     val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
@@ -61,22 +57,20 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
       val master = correctedForICCProfile
 
-      // TODO separate this local file create from the vips master image create
-      val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-      logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
-      master.jpegsave(outputFile.getAbsolutePath,
-        VipsOption.Int("Q", qual.toInt),
-        //VipsOption.Boolean("optimize-scans", true),
-        //VipsOption.Boolean("optimize-coding", true),
-        //VipsOption.Boolean("interlace", true),
-        //VipsOption.Boolean("trellis-quant", true),
-        // VipsOption.Int("quant-table", 3),
-        VipsOption.Boolean("strip", true)
-      )
+    // TODO separate this local file create from the vips master image create
+    val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
+    logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
+    master.jpegsave(outputFile.getAbsolutePath,
+      VipsOption.Int("Q", qual.toInt),
+      //VipsOption.Boolean("optimize-scans", true),
+      //VipsOption.Boolean("optimize-coding", true),
+      //VipsOption.Boolean("interlace", true),
+      //VipsOption.Boolean("trellis-quant", true),
+      // VipsOption.Int("quant-table", 3),
+      VipsOption.Boolean("strip", true)
+    )
 
-      arena.close()
-      outputFile
-    }
+    outputFile
   }
 
   private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
