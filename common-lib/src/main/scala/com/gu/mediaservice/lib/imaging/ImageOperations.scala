@@ -43,7 +43,6 @@ trait ImageOperations {
                    qual: Int = 100,
                    tempDir: File,
                    fileType: MimeType,
-                   sourceDimensions: Dimensions // TODO really needed?
                  )(implicit logMarker: LogMarker, arena: Arena): File
 
   def getImageInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[Dimensions], Option[OrientationMetadata], Option[String], Map[String, String])]
