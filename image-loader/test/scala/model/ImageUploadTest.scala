@@ -3,7 +3,7 @@ package model
 import com.drew.imaging.ImageProcessingException
 import com.gu.mediaservice.lib.aws.{S3Metadata, S3Object, S3ObjectMetadata}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
-import com.gu.mediaservice.lib.imaging.{ImageOperations, VipsImageOperations}
+import com.gu.mediaservice.lib.imaging.VipsImageOperations
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.lib.{StorableImage, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
 import com.gu.mediaservice.model._
@@ -86,10 +86,10 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       storeOrProjectOriginalFile = mockDependencies.storeOrProjectOriginalFile,
       storeOrProjectThumbFile = mockDependencies.storeOrProjectThumbFile,
       storeOrProjectOptimisedFile = mockDependencies.storeOrProjectOptimisedImage,
-      optimiseOps = OptimiseWithPngQuant,
       uploadRequest = uploadRequest,
       deps = mockDependencies,
       processor = ImageProcessor.identity,
+      new OptimiseWithPngQuant(imageOps)
     )
 
     // Assertions; Failure will auto-fail
