@@ -161,7 +161,7 @@ class PandaAuthenticationProvider(
       system = providerConfiguration.getOptional[String]("panda.system").getOrElse("media-service"),
       bucketName = providerConfiguration.getOptional[String]("panda.bucketName").getOrElse("pan-domain-auth-settings"),
       settingsFileKey = providerConfiguration.getOptional[String]("panda.settingsFileKey").getOrElse(s"$domain.settings"),
-      s3Client = S3Ops.buildS3Client(resources.commonConfig, localstackAware=resources.commonConfig.useLocalAuth)
+      s3Client = S3Ops.buildS3Client(resources.commonConfig, usesPathStyleURLs = resources.commonConfig.useLocalAuth)
     )
   }
 
