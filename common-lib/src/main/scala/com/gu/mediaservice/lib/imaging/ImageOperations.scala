@@ -36,7 +36,7 @@ trait ImageOperations {
                  fileType: MimeType,
                  isTransformedFromSource: Boolean,
                  orientationMetadata: Option[OrientationMetadata]
-               )(implicit logMarker: LogMarker): Future[File]
+               )(implicit logMarker: LogMarker, arena: Arena): Future[File]
 
   def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 

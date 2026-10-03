@@ -35,37 +35,29 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                  fileType: MimeType,
                  isTransformedFromSource: Boolean,
                  orientationMetadata: Option[OrientationMetadata]
-               )(implicit logMarker: LogMarker): Future[File] = {
+               )(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
     Future {
-      implicit val arena: Arena = Arena.ofConfined
+      // Read source image
+      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+      // Orient
+      val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+        image.rotate(angle)
+      }.getOrElse {
+        image
+      }
+      val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
 
-      try {
-        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+      // If we saw and ICC profile than we will need to transform
+      val correctedForICCProfile = correctForICCProfile(cropped)
 
-        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-          image.rotate(angle)
-        }.getOrElse {
-          image
-        }
-
-        val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
-
-        // If we saw and ICC profile than we will need to transform
-        val correctedForICCProfile = correctForICCProfile(cropped)
-
-        val master = correctedForICCProfile
+      val master = correctedForICCProfile
 
         val outputFile = createTempFileInTempDir("crop", fileType, tempDir)
-        saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
-        outputFile
+      logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
+      saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
 
-      } catch {
-        case e: Exception =>
-          logger.error(logMarker, "Error while cropping image", e)
-          throw e
-      } finally {
-        arena.close()
-      }
+
+      outputFile
     }
   }
 
