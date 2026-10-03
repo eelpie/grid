@@ -1,12 +1,11 @@
 package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.VImage
-
-import java.io.File
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model._
 
+import java.io.File
 import java.lang.foreign.Arena
 import scala.concurrent.Future
 
@@ -40,7 +39,7 @@ trait ImageOperations {
                  fileType: MimeType,
                  isTransformedFromSource: Boolean,
                  orientationMetadata: Option[OrientationMetadata]
-               )(implicit logMarker: LogMarker): Future[File]
+               )(implicit logMarker: LogMarker, arena: Arena): File
 
   def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
