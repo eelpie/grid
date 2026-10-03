@@ -29,21 +29,18 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                      fileType: MimeType,
                      isTransformedFromSource: Boolean,
                      orientationMetadata: Option[OrientationMetadata]
-                   )(implicit logMarker: LogMarker): Future[File] = {
+                   )(implicit logMarker: LogMarker, arena: Arena): File = {
+    // Read source image
+    val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+    // Orient
+    val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+      image.rotate(angle)
+    }.getOrElse {
+      image
+    }
 
-    Future {
-      val arena = Arena.ofConfined
-
-      // Read source image
-      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-      // Orient
-      val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-        image.rotate(angle)
-      }.getOrElse {
-        image
-      }
-      // Output colour profile
-      val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
+    // Output colour profile
+    val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
 
       // If we saw and ICC profile than we will need to transform
       val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
@@ -56,15 +53,14 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         cropped
       }
 
-      val master = correctedForICCProfile
+    val master = correctedForICCProfile
 
-      // TODO separate this local file create from the vips master image create
-      val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-      saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
+    // TODO separate this local file create from the vips master image create
+    val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
+    logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
+    saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
 
-      arena.close()
-      outputFile
-    }
+    outputFile
   }
 
   private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
