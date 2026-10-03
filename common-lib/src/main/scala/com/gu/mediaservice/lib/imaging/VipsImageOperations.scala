@@ -29,45 +29,41 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                  fileType: MimeType,
                  isTransformedFromSource: Boolean,
                  orientationMetadata: Option[OrientationMetadata]
-               )(implicit logMarker: LogMarker): Future[File] = {
+               )(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
     Future {
-      val arena = Arena.ofConfined
-
-      try {
-        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-
-        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-          image.rotate(angle)
-        }.getOrElse {
-          image
-        }
-
-        val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
-
-        // If we saw and ICC profile than we will need to transform
-        val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
-        val correctedForICCProfile = if (needsICCTransform ) {
-          cropped.iccTransform("srgb",
-            VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),     // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
-          )
-        } else {
-          // LAB gets corrupted by a needless icc_transform
-          cropped
-        }
-
-        val master = correctedForICCProfile
-
-        // TODO separate this local file create from the vips master image create
-        val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-        saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
-        outputFile
-      } catch {
-        case e: Exception =>
-          logger.error(logMarker, "Error while cropping image", e)
-          throw e
-      } finally {
-        arena.close()
+      // Read source image
+      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+      // Orient
+      val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+        image.rotate(angle)
+      }.getOrElse {
+        image
       }
+      // TODO correct colour
+      // TODO strip meta data
+      // Output colour profile
+      val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
+      // TODO depth adjust
+
+      // If we saw and ICC profile than we will need to transform
+      val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
+      val correctedForICCProfile = if (needsICCTransform) {
+        cropped.iccTransform("srgb",
+          VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL), // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
+        )
+      } else {
+        // LAB gets corrupted by a needless icc_transform
+        cropped
+      }
+
+      val master = correctedForICCProfile
+
+      // TODO separate this local file create from the vips master image create
+      val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
+      logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
+      saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
+
+      outputFile
     }
   }
 
