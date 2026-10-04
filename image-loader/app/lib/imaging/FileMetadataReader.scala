@@ -11,7 +11,7 @@ import com.drew.metadata.xmp.XmpDirectory
 import com.drew.metadata.{Directory, Metadata}
 import com.gu.mediaservice.lib.ImageWrapper
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick._
-import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.model._
 import org.joda.time.format.ISODateTimeFormat
@@ -52,7 +52,7 @@ object FileMetadataReader extends GridLogging {
   private implicit val ctx: ExecutionContext =
     ExecutionContext.fromExecutor(Executors.newCachedThreadPool)
 
-  def fromIPTCHeaders(image: File, imageId:String): Future[FileMetadata] =
+  def fromIPTCHeaders(image: File, imageId:String)(implicit logMarker: LogMarker): Future[FileMetadata] =
     for {
       metadata <- readMetadata(image)
     }
@@ -175,7 +175,7 @@ object FileMetadataReader extends GridLogging {
   private def dateToUTCString(date: DateTime): String = ISODateTimeFormat.dateTime.print(date.withZone(DateTimeZone.UTC))
 
 
-  def orientation(image: File): Future[Option[OrientationMetadata]] = {
+  def orientation(image: File)(implicit logMarker: LogMarker): Future[Option[OrientationMetadata]] = {
     for {
       metadata <- readMetadata(image)
     } yield {
@@ -274,8 +274,14 @@ object FileMetadataReader extends GridLogging {
   private def nonEmptyTrimmed(nullableStr: String): Option[String] =
     Option(nullableStr) map (_.trim) filter (_.nonEmpty)
 
-  private def readMetadata(file: File): Future[Metadata] = Future {
-    ImageMetadataReader.readMetadata(file)
+  private def readMetadata(file: File)(implicit logMarker: LogMarker): Future[Metadata] = {
+    val stopwatch = Stopwatch.start
+    Future {
+      ImageMetadataReader.readMetadata(file)
+    }.map { result =>
+      logger.info(addLogMarkers(stopwatch.elapsed),"Finished readMetadata")
+      result
+    }
   }
 
   // Helper to flatten maps of options
