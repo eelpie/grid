@@ -58,5 +58,7 @@ trait ImageOperations {
 
   def dimensions(sourceFile: File): Future[Option[Dimensions]]
 
+  def orientation(sourceFile: File): Future[Option[OrientationMetadata]]
+
 }
 
