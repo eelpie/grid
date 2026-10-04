@@ -112,10 +112,9 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         masterCrop <- createMasterCrop(apiImage, sourceFile, crop, apiImage.source.orientationMetadata)
 
-        isGraphic = false
-        hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
-
-        cropType = Crops.cropType(mimeType, isGraphic, hasAlpha)
+        isGraphic = imageOperations.isGraphic(masterCrop.image)
+        hasAlpha = imageOperations.hasAlpha(masterCrop.image)
+        cropType = Crops.cropType(mimeType, isGraphic = isGraphic, hasAlpha = hasAlpha)
 
         // pngs are always lossless, so quality only means effort spent compressing them. We don't
         // care too much about filesize of master crops, so skip expensive compression to get faster cropping
