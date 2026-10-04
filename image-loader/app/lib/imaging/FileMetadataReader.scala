@@ -5,12 +5,9 @@ import com.drew.imaging.ImageMetadataReader
 import com.drew.metadata.exif.{ExifDirectoryBase, ExifIFD0Directory, ExifSubIFDDirectory}
 import com.drew.metadata.icc.IccDirectory
 import com.drew.metadata.iptc.IptcDirectory
-import com.drew.metadata.jpeg.JpegDirectory
 import com.drew.metadata.png.PngDirectory
 import com.drew.metadata.xmp.XmpDirectory
 import com.drew.metadata.{Directory, Metadata}
-import com.gu.mediaservice.lib.ImageWrapper
-import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick._
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.model._
@@ -174,58 +171,6 @@ object FileMetadataReader extends GridLogging {
 
   private def dateToUTCString(date: DateTime): String = ISODateTimeFormat.dateTime.print(date.withZone(DateTimeZone.UTC))
 
-
-  def orientation(image: File)(implicit logMarker: LogMarker): Future[Option[OrientationMetadata]] = {
-    for {
-      metadata <- readMetadata(image)
-    } yield {
-
-      for {
-        exifDirectory <- Option(metadata.getFirstDirectoryOfType(classOf[ExifIFD0Directory]))
-        exifOrientation <- Option(exifDirectory.getInteger(ExifDirectoryBase.TAG_ORIENTATION))
-        orientation = OrientationMetadata(exifOrientation = Some(exifOrientation))
-        orientationWhichTransformsImage <- Seq(orientation).find(_.transformsImage())
-      } yield {
-        orientationWhichTransformsImage
-      }
-    }
-  }
-
-  def dimensions(image: File, mimeType: Option[MimeType])(implicit logMarker: LogMarker): Future[Option[Dimensions]] =
-    for {
-      metadata <- readMetadata(image)
-    }
-    yield {
-
-      mimeType match {
-
-        case Some(Jpeg) => for {
-          jpegDir <- Option(metadata.getFirstDirectoryOfType(classOf[JpegDirectory]))
-
-        } yield Dimensions(jpegDir.getImageWidth, jpegDir.getImageHeight)
-
-        case Some(Png) => for {
-          pngDir <- Option(metadata.getFirstDirectoryOfType(classOf[PngDirectory]))
-
-        } yield {
-          val width = pngDir.getInt(PngDirectory.TAG_IMAGE_WIDTH)
-          val height = pngDir.getInt(PngDirectory.TAG_IMAGE_HEIGHT)
-          Dimensions(width, height)
-        }
-
-        case Some(Tiff) => for {
-          exifDir <- Option(metadata.getFirstDirectoryOfType(classOf[ExifIFD0Directory]))
-
-        } yield {
-          val width = exifDir.getInt(ExifDirectoryBase.TAG_IMAGE_WIDTH)
-          val height = exifDir.getInt(ExifDirectoryBase.TAG_IMAGE_HEIGHT)
-          Dimensions(width, height)
-        }
-
-        case _ => None
-
-      }
-    }
 
   // bits per sample might be a useful value, eg. "1", "8"; or it might be annoying like "1 bits/component/pixel", "8 8 8 bits/component/pixel"
   // either way we want everything up to the first space
