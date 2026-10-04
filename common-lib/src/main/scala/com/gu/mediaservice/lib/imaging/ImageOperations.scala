@@ -50,5 +50,9 @@ trait ImageOperations {
   def getImageInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[Dimensions], Option[OrientationMetadata], Option[String], Map[String, String])]
 
   def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File, quantise: Boolean = false, keep: Option[Int] = None): File
+
+  def isGraphic(image: VImage)(implicit arena: Arena): Boolean
+
+  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean
 }
 
