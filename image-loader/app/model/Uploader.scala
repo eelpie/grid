@@ -141,7 +141,7 @@ object Uploader extends GridLogging {
     val colourModelFuture = deps.imageOps.identifyColourModel(uploadRequest.tempFile, originalMimeType)
     val colorModelInformationFuture = deps.imageOps.getColorModelInformation(uploadRequest.tempFile)
 
-    val sourceDimensionsFuture = FileMetadataReader.dimensions(uploadRequest.tempFile, Some(originalMimeType))
+    val sourceDimensionsFuture = deps.imageOps.dimensions(uploadRequest.tempFile)
     val sourceOrientationMetadataFuture = FileMetadataReader.orientation(uploadRequest.tempFile)
 
     val storableOriginalImage = StorableOriginalImage(
@@ -169,7 +169,7 @@ object Uploader extends GridLogging {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
       }
-      thumbDimensions <- FileMetadataReader.dimensions(thumbViewableImage.file, Some(thumbViewableImage.mimeType))
+      thumbDimensions <- deps.imageOps.dimensions(thumbViewableImage.file)
       colourModel <- colourModelFuture
       colourModelInformation <- colorModelInformationFuture
     } yield {
