@@ -53,5 +53,7 @@ trait ImageOperations {
 
   def getColorModelInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[Map[String, String]]
 
+  def dimensions(sourceFile: File)(implicit logMarker: LogMarker): Future[Option[Dimensions]]
+
 }
 
