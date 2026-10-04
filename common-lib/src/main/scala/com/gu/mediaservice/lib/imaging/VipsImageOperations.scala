@@ -6,7 +6,6 @@ import app.photofox.vipsffm.{VBlob, VImage, VipsHelper, VipsOption}
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
-import com.gu.mediaservice.lib.imaging.im4jwrapper.ExifTool.{runExiftoolCmd, setTags, tagSource}
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick.ctx
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model._
@@ -297,6 +296,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         Map {
           "hasAlpha" -> hasAlpha(image).toString
         }
+        arena.close()
+        result
       } catch {
         case e: Exception =>
           logger.error(logMarker, "Error during getColorModelInformation", e)
@@ -308,45 +309,25 @@ class VipsImageOperations extends GridLogging with ImageOperations {
   }
 
   def dimensionsAndOrientation(sourceFile: File): Future[(Option[Dimensions], Option[OrientationMetadata])] = {
-    for {
-      dims <- dimensions(sourceFile)
-      orient <- orientation(sourceFile)
-    } yield {
-      (dims, orient)
-    }
-  }
-
-  def dimensions(sourceFile: File)(implicit logMarker: LogMarker): Future[Option[Dimensions]] = {
     Future {
-      val arena = Arena.ofConfined()
+      var dimensions: Option[Dimensions] = None
+      var maybeExifOrientationWhichTransformsImage: Option[OrientationMetadata] = None
+
+      val arena = Arena.ofConfined
       try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-        val width = image.getWidth
-        val height = image.getHeight
-        Some(Dimensions(width = width, height = height))
-      } catch {
-        case e: Exception =>
-          logger.error(logMarker, "Error during dimensions", e)
-          throw e
-      } finally {
-        arena.close()
-      }
-    }
-  }
 
-  def orientation(sourceFile: File): Future[Option[OrientationMetadata]] = {
-    Future {
-      val arena = Arena.ofConfined()
-      try {
-        val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+        dimensions = Some(Dimensions(width = image.getWidth, height = image.getHeight))
+
         val exifOrientation = VipsHelper.image_get_orientation(image.getUnsafeStructAddress)
         val orientation = Some(OrientationMetadata(
           exifOrientation = Some(exifOrientation)
         ))
-        Seq(orientation).flatten.find(_.transformsImage())
+        maybeExifOrientationWhichTransformsImage = Seq(orientation).flatten.find(_.transformsImage())
+        (dimensions, maybeExifOrientationWhichTransformsImage)
       } catch {
         case e: Exception =>
-          logger.error("Error during orientation", e)
+          logger.error("Error during dimensionsAndOrientation", e)
           throw e
       } finally {
         arena.close()
