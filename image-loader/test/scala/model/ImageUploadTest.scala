@@ -1,7 +1,7 @@
 package model
 
 import com.drew.imaging.ImageProcessingException
-import com.gu.mediaservice.lib.aws.{S3Bucket, S3Metadata, S3Object, S3ObjectMetadata}
+import com.gu.mediaservice.lib.aws.{S3Metadata, S3Object, S3ObjectMetadata}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.{ImageOperations, MagickImageOperations}
 import com.gu.mediaservice.lib.logging.LogMarker
@@ -86,7 +86,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       storeOrProjectOriginalFile = mockDependencies.storeOrProjectOriginalFile,
       storeOrProjectThumbFile = mockDependencies.storeOrProjectThumbFile,
       storeOrProjectOptimisedFile = mockDependencies.storeOrProjectOptimisedImage,
-      optimiseOps = OptimiseWithPngQuant,
+      new OptimiseWithPngQuant(),
       uploadRequest = uploadRequest,
       deps = mockDependencies,
       fileMetadata = FileMetadata(),
