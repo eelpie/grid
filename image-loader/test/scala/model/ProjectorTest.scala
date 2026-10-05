@@ -46,7 +46,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val s3 = mock[S3]
   private val auth = mock[Authentication]
-  private val projector = new Projector(config, s3, imageOperations, ImageProcessor.identity, auth, maybeEmbedder, new OptimiseWithPngQuant())
+  private val projector = new Projector(config, s3, imageOperations, ImageProcessor.identity, auth, maybeEmbedder, new OptimiseWithPngQuant(imageOperations))
 
   private implicit val instance: Instance = Instance("an-instance")
 
