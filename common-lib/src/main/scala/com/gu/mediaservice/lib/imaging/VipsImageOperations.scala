@@ -224,17 +224,18 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def transformImage(sourceFile: File, sourceMimeType: Option[MimeType], tempDir: File)(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
+  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType)(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
     Future {
       implicit val arena: Arena = Arena.ofConfined
       try {
-        val outputFile = createTempFileInTempDir("transformed", optimisedMimeType, tempDir)
+        val outputFile = createTempFileInTempDir("transformed", outputMimeType, tempDir)
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
         val correctedForICCProfile = correctForICCProfile(image)
 
-        saveImageToFile(correctedForICCProfile, optimisedMimeType, 85.0, outputFile, quantise = false)
-        (outputFile, optimisedMimeType)
+        // TODO quantise decision from the caller
+        saveImageToFile(correctedForICCProfile, outputMimeType, 85.0, outputFile, quantise = false)
+        (outputFile, outputMimeType)
 
       } catch {
         case e: Exception =>
