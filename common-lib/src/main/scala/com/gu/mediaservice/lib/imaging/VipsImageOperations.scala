@@ -38,7 +38,35 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                    fileType: MimeType
                  )(implicit logMarker: LogMarker): Future[File] = ???
 
-  def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = ???
+  def optimiseCrop(input: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = {
+    val arena = Arena.ofConfined
+    try {
+      val fileName: String = input.getAbsolutePath
+      val optimisedImageName: String = fileName.split('.')(0) + "optimised.png"
+      val outputFile = new File(optimisedImageName) // TODO this is awful - push up!
+
+      val image = VImage.newFromFile(arena, input.getAbsolutePath)
+      // If we saw and ICC profile than we will need to transform
+      val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
+      val correctedForICCProfile = if (needsICCTransform) {
+        image.iccTransform("srgb",
+          VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL), // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
+        )
+      } else {
+        // LAB gets corrupted by a needless icc_transform
+        image
+      }
+
+      saveImageToFile(correctedForICCProfile: VImage, ImageOperations.optimisedMimeType, 85, outputFile, quantise = true)
+      arena.close()
+      outputFile
+
+    } catch {
+      case _: Exception =>
+        arena.close()
+        throw new Exception(s"Failed to optimise file ${input.getAbsolutePath}")
+    }
+  }
 
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                       width: Int,
