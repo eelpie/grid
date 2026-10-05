@@ -15,7 +15,7 @@ trait OptimiseOps {
   def optimiseMimeType: MimeType
 }
 
-object OptimiseWithPngQuant extends OptimiseOps {
+class OptimiseWithPngQuant extends OptimiseOps {
 
   override def optimiseMimeType: MimeType = Png
 
