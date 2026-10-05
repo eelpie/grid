@@ -6,9 +6,8 @@ import com.gu.mediaservice.lib.aws.S3
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.VipsImageOperations
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.leases.LeasesByMedia
 import com.gu.mediaservice.model._
-import lib.{DigestedFile, ImageLoaderConfig}
+import com.gu.mediaservice.model.leases.LeasesByMedia
 import lib.DigestedFile
 import model.upload.OptimiseWithPngQuant
 import org.joda.time.{DateTime, DateTimeZone}
@@ -40,7 +39,7 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val s3 = mock[S3]
   private val auth = mock[Authentication]
-  private val optimiseOps = new OptimiseWithPngQuant()
+  private val optimiseOps = new OptimiseWithPngQuant(imageOperations)
 
   private val projector = new Projector(imageUploadOpsConfig, s3, imageOperations, ImageProcessor.identity, auth, maybeEmbedder, optimiseOps)
 
