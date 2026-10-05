@@ -22,7 +22,7 @@ import lib.imaging.{FileMetadataReader, MimeTypeDetection}
 import lib.storage.ImageLoaderStore
 import lib.{DigestedFile, ImageLoaderConfig, Notifications}
 import model.Uploader.{fromUploadRequestShared, toImageUploadOpsCfg}
-import model.upload.{OptimiseOps, OptimiseWithPngQuant, UploadRequest}
+import model.upload.{OptimiseOps, UploadRequest}
 import org.joda.time.DateTime
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest
 
@@ -99,7 +99,7 @@ object Uploader extends GridLogging {
     )
   }
 
-  def fromUploadRequestShared(uploadRequest: UploadRequest, deps: ImageUploadOpsDependencies, processor: ImageProcessor)
+  def fromUploadRequestShared(uploadRequest: UploadRequest, deps: ImageUploadOpsDependencies, processor: ImageProcessor, optimiseOps: OptimiseOps)
                              (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
 
     import deps._
@@ -115,7 +115,7 @@ object Uploader extends GridLogging {
         storeOrProjectOriginalFile,
         storeOrProjectThumbFile,
         storeOrProjectOptimisedImage,
-        OptimiseWithPngQuant,
+        optimiseOps,
         uploadRequest,
         deps,
         fileMetadata,
@@ -344,7 +344,8 @@ class Uploader(
   val maybeEmbedder: Option[Embedder],
                imageProcessor: ImageProcessor,
   gridClient: GridClient,
-  auth: Authentication
+  auth: Authentication,
+  optimiseOps: OptimiseOps
 )(
   implicit val ec: ExecutionContext
 ) extends MessageSubjects with ArgoHelpers {
@@ -375,7 +376,7 @@ class Uploader(
     val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps,
       storeSource, storeThumbnail, storeOptimisedImage)
     Stopwatch.async("finalImage") {
-      val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor)
+      val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor, optimiseOps)
       uploadRequest.identifiers.foreach{
         case (ImageStorageProps.derivativeOfMediaIdsIdentifierKey, commaSeparatedMediaIdsToAddUsagesTo) =>
           commaSeparatedMediaIdsToAddUsagesTo.split(",").map(_.trim).foreach(
