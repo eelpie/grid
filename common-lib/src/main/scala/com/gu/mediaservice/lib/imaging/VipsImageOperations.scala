@@ -79,11 +79,27 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         val resized = image.resize(scale)
 
         val outputFile = File.createTempFile(s"resize-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-        resized.jpegsave(outputFile.getAbsolutePath,
-          VipsOption.Int("Q", qual.toInt),
-          VipsOption.Boolean("strip", false)
-        )
-        outputFile
+        fileType match {
+          case Jpeg =>
+            resized.jpegsave(outputFile.getAbsolutePath,
+              VipsOption.Int("Q", qual.toInt),
+              VipsOption.Int("keep", VipsRaw.VIPS_FOREIGN_KEEP_NONE)
+            )
+            outputFile
+
+          case Png =>
+            // val optimisedImageName: String = fileName.split('.')(0) + "optimised.png"
+            //      Seq("pngquant","-s8",  "--quality", "1-85", fileName, "--output", optimisedImageName).!
+            resized.pngsave(outputFile.getAbsolutePath,
+              VipsOption.Int("Q", qual.toInt),
+              VipsOption.Int("keep", VipsRaw.VIPS_FOREIGN_KEEP_NONE)
+            )
+            outputFile
+
+          case _ =>
+            logger.error(s"Cropping to $fileType is not supported.")
+            throw new UnsupportedCropOutputTypeException
+        }
 
       } catch {
         case e: Exception =>
