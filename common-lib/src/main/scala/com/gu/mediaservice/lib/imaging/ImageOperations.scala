@@ -53,7 +53,7 @@ trait ImageOperations {
                    fileType: MimeType
                  )(implicit logMarker: LogMarker): Future[File]
 
-  def transformImage(sourceFile: File, sourceMimeType: Option[MimeType], tempDir: File)(implicit logMarker: LogMarker): Future[(File, MimeType)]
+  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType)(implicit logMarker: LogMarker): Future[(File, MimeType)]
 
   def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]]
 
