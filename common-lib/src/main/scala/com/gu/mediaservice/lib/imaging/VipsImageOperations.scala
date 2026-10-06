@@ -78,13 +78,38 @@ class VipsImageOperations extends GridLogging with ImageOperations {
   def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = ???
 
   def resizeImage(
-                   sourceFile: File,
-                   sourceMimeType: Option[MimeType],
-                   dimensions: Dimensions,
-                   qual: Double = 100d,
-                   tempDir: File,
-                   fileType: MimeType
-                 )(implicit logMarker: LogMarker): Future[File] = ???
+                       sourceFile: File,
+                       sourceMimeType: Option[MimeType],
+                       dimensions: Dimensions,
+                       qual: Double = 100d,
+                       tempDir: File,
+                       fileType: MimeType
+                     )(implicit logMarker: LogMarker): Future[File] = {
+
+    Future {
+      val arena = Arena.ofConfined
+
+      val outputFile = File.createTempFile(s"resize-", s"${fileType.fileExtension}", tempDir) // TODO function for this
+
+      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+
+      val scale = dimensions.width.toDouble / image.getWidth.toDouble
+      val resized = image.resize(scale)
+
+      resized.jpegsave(outputFile.getAbsolutePath,
+        VipsOption.Int("Q", qual.toInt),
+        //VipsOption.Boolean("optimize-scans", true),
+        //VipsOption.Boolean("optimize-coding", true),
+        //VipsOption.Boolean("interlace", true),
+        //VipsOption.Boolean("trellis-quant", true),
+        // VipsOption.Int("quant-table", 3),
+        VipsOption.Boolean("strip", false)
+      )
+
+      arena.close()
+      outputFile
+    }
+  }
 
   def optimiseCrop(input: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = {
     val arena = Arena.ofConfined
