@@ -102,60 +102,50 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       implicit val arena: Arena = Arena.ofConfined()
       val fullSizedImage = fileAt("IMG_4403.jpg")
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Jpeg), Dimensions(1000, 800), 95, FileUtils.getTempDirectory, Jpeg)
+      val resized = vipsImageOperations.resizeImage(fullSizedImage, Some(Jpeg), Dimensions(1000, 800), 95, FileUtils.getTempDirectory, Jpeg)
 
-      whenReady(eventualResized) { resized =>
-        arena.close()
-        resized.isFile should be(true)
-      }
+      arena.close()
+      resized.isFile should be(true)
     }
 
     it("render LAB colour spaces correctly in sRGB") {
       implicit val arena: Arena = Arena.ofShared
       val fullSizedImage = fileAt("halfdome_LAB.tif")
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
+      val resized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
 
-      whenReady(eventualResized) { resized =>
-        arena.close()
-        resized.isFile should be(true)
-      }
+      arena.close()
+      resized.isFile should be(true)
     }
 
     it("render LAB colour spaces correctly as PNG") {
       implicit val arena: Arena = Arena.ofShared
       val fullSizedImage = fileAt("halfdome_LAB.tif")
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Jpeg), Dimensions(140, 100), 85, FileUtils.getTempDirectory, Jpeg)
+      val resized = vipsImageOperations.resizeImage(fullSizedImage, Some(Jpeg), Dimensions(140, 100), 85, FileUtils.getTempDirectory, Jpeg)
 
-      whenReady(eventualResized) { resized =>
-        arena.close()
-        resized.isFile should be(true)
-      }
+      arena.close()
+      resized.isFile should be(true)
     }
 
     it("render LAB 16 bit colour spaces correctly") {
       implicit val arena: Arena = Arena.ofShared
       val fullSizedImage = fileAt("halfdome_LAB16.tif")
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
+      val resized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
 
-      whenReady(eventualResized) { resized =>
-        arena.close()
-        resized.isFile should be(true)
-      }
+      arena.close()
+      resized.isFile should be(true)
     }
 
     it("render PNG with alpha correctly") {
       implicit val arena: Arena = Arena.ofShared
       val fullSizedImage = fileAt("with-alpha.png")
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Png), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Png)
+      val resized = vipsImageOperations.resizeImage(fullSizedImage, Some(Png), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Png)
 
-      whenReady(eventualResized) { resized =>
-        arena.close()
-        resized.isFile should be(true)
-      }
+      arena.close()
+      resized.isFile should be(true)
     }
 
     it("render LAB TIFF with alpha correctly") {
@@ -163,12 +153,10 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val fullSizedImage = fileAt("lab8-with-alpha.tif")
       val outputFile = new File("/Users/tony/Desktop/out13.jpg")
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, outputFile, Jpeg)
+      val resized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, outputFile, Jpeg)
 
-      whenReady(eventualResized) { resized =>
-        arena.close()
-        resized.isFile should be(true)
-      }
+      arena.close()
+      resized.isFile should be(true)
     }
   }
 
