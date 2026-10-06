@@ -68,7 +68,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: VipsImageO
   private def createCrops(sourceImage: VImage, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Seq[(File, String, Dimensions)] = {
     Stopwatch(s"creating crops for ${apiImage.id}") {
       val resizes = dimensionList.map { dimensions =>
-        val file = imageOperations.resizeImage(sourceImage, apiImage.source.mimeType, dimensions, cropQuality, config.tempDir, cropType)
+        val file = imageOperations.resizeImage(sourceImage, dimensions, cropQuality, config.tempDir, cropType)
         val filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
         (file, filename, dimensions)
       }
