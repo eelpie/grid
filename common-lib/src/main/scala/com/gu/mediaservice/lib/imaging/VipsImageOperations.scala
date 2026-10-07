@@ -1,7 +1,7 @@
 package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.VipsInterpretation
-import app.photofox.vipsffm.{VImage, Vips, VipsHelper, VipsOption}
+import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick.ctx
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
@@ -51,26 +51,29 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     val stopwatch = Stopwatch.start
 
     Future {
-      Vips.run { arena =>
-        try {
-          val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
-            VipsOption.Boolean("auto-rotate", false),
-            VipsOption.String("export-profile", "srgb")
-          )
-          val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-            logger.info("Rotating thumbnail: " + angle)
-            thumbnail.rotate(angle)
-          }.getOrElse {
-            thumbnail
-          }
+      val arena = Arena.ofConfined
 
-          saveImageToFile(rotated, qual, outputFile)
-        } catch {
-          case e: Exception =>
-            logger.error("Error during createThumbnail", e)
-            throw e
+      try {
+        val thumbnail = VImage.thumbnail(arena, browserViewableImage.file.getAbsolutePath, width,
+          VipsOption.Boolean("auto-rotate", false),
+          VipsOption.String("export-profile", "srgb")
+        )
+        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
+          logger.info("Rotating thumbnail: " + angle)
+          thumbnail.rotate(angle)
+        }.getOrElse {
+          thumbnail
         }
+
+        saveImageToFile(rotated, qual, outputFile)
+      } catch {
+        case e: Exception =>
+          logger.error("Error during createThumbnail", e)
+          arena.close()
+          throw e
       }
+      arena.close()
+
       logger.info(addLogMarkers(stopwatch.elapsed), "Finished creating thumbnail")
       (outputFile, thumbMimeType)
     }
@@ -80,9 +83,11 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
   def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]] = {
     val stopWatch = Stopwatch.start
+
     Future {
+      val arena = Arena.ofConfined
       var result: Option[String] = None
-      Vips.run { arena =>
+      try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
         val interpretationRawValue = VipsHelper.image_get_interpretation(image.getUnsafeStructAddress)
@@ -97,7 +102,13 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           case Some(VipsInterpretation.INTERPRETATION_sRGB) => Some("RGB")
           case _ => None
         }
+      } catch {
+        case e: Exception =>
+          logger.error("Error during createThumbnail", e)
+          arena.close()
+          throw e
       }
+      arena.close()
       result
 
     }.map { result =>
@@ -110,12 +121,20 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     val stopWatch = Stopwatch.start
     Future {
       var result: Map[String, String] = Map.empty
-      Vips.run { arena =>
+
+      val arena = Arena.ofConfined
+      try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
         result = Map {
           "hasAlpha" -> hasAlpha(image)
         }
+      } catch {
+        case e: Exception =>
+          logger.error("Error during createThumbnail", e)
+          arena.close()
+          throw e
       }
+      arena.close()
       result
     }.map { result =>
       logger.info(addLogMarkers(stopWatch.elapsed), "Finished getColorModelInformation")
@@ -126,12 +145,20 @@ class VipsImageOperations extends GridLogging with ImageOperations {
   def dimensions(sourceFile: File): Future[Option[Dimensions]] = {
     Future {
       var dimensions: Option[Dimensions] = None
-      Vips.run { arena =>
+
+      val arena = Arena.ofConfined
+      try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
         val width = image.getWidth
         val height = image.getHeight
         dimensions = Some(Dimensions(width = width, height = height))
+      } catch {
+        case e: Exception =>
+          logger.error("Error during createThumbnail", e)
+          arena.close()
+          throw e
       }
+      arena.close()
       dimensions
     }
   }
@@ -139,13 +166,21 @@ class VipsImageOperations extends GridLogging with ImageOperations {
   def orientation(sourceFile: File): Future[Option[OrientationMetadata]] = {
     Future {
       var orientation: Option[OrientationMetadata] = None
-      Vips.run { arena =>
+
+      val arena = Arena.ofConfined
+      try {
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
         val exifOrientation = VipsHelper.image_get_orientation(image.getUnsafeStructAddress)
         orientation = Some(OrientationMetadata(
           exifOrientation = Some(exifOrientation)
         ))
+      } catch {
+        case e: Exception =>
+          logger.error("Error during createThumbnail", e)
+          arena.close()
+          throw e
       }
+      arena.close()
       Seq(orientation).flatten.find(_.transformsImage())
     }
   }
