@@ -12,7 +12,6 @@ import org.scalatest.time.{Millis, Span}
 
 import java.io.File
 import java.lang.foreign.Arena
-import scala.concurrent.Future
 
 class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
@@ -100,10 +99,47 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
   describe("resize") {
     it("should output resized image to file in chosen format") {
-      implicit val arena: Arena = Arena.ofConfined
-      val fullSizedJpegImage = fileAt("IMG_4403.jpg")
+      implicit val arena: Arena = Arena.ofConfined()
+      val fullSizedImage = fileAt("IMG_4403.jpg")
 
-      val eventualResized: Future[File] = vipsImageOperations.resizeImage(fullSizedJpegImage, Some(Jpeg), Dimensions(140, 100), 85, FileUtils.getTempDirectory, Jpeg)
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Jpeg), Dimensions(1000, 800), 95, FileUtils.getTempDirectory, Jpeg)
+
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    it("render LAB colour spaces correctly in sRGB") {
+      implicit val arena: Arena = Arena.ofShared
+      val fullSizedImage = fileAt("halfdome_LAB.tif")
+
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
+
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    it("render LAB colour spaces correctly as PNG") {
+      implicit val arena: Arena = Arena.ofShared
+      val fullSizedImage = fileAt("halfdome_LAB.tif")
+
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Jpeg), Dimensions(140, 100), 85, FileUtils.getTempDirectory, Jpeg)
+
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    it("render LAB 16 bit colour spaces correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val fullSizedImage = fileAt("halfdome_LAB16.tif")
+
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
+
       whenReady(eventualResized) { resized =>
         arena.close()
         resized.isFile should be(true)
