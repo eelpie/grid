@@ -8,6 +8,7 @@ import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLo
 import com.gu.mediaservice.model._
 
 import java.io._
+import java.lang.foreign.Arena
 import scala.concurrent.Future
 
 
@@ -102,6 +103,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       result
     }
   }
+
+  def hasAlpha(image: VImage)(implicit arena: Arena): Boolean = image.hasAlpha
 
   private def saveImageToFile(image: VImage, qual: Double, outputFile: File): File = {
     logger.info(s"Saving image to file: " + outputFile.getAbsolutePath)
