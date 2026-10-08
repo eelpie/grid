@@ -14,6 +14,8 @@ import java.io._
 import java.lang.foreign.Arena
 import java.nio.charset.StandardCharsets
 import scala.concurrent.Future
+import scala.jdk.CollectionConverters.CollectionHasAsScala
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 
 class VipsImageOperations extends GridLogging with ImageOperations {
@@ -86,32 +88,35 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = {
-    Future {
-      // appendMetadata as a separate step is a poor fit for libvips
-      // and this will force another read / write recompression.
-      logger.info(s"appendMetadata to ${sourceFile.getAbsolutePath}")
-      val arena = Arena.ofConfined()
-      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+  private def manuallyStripMetadata(stripped: VImage): VImage = {
+    stripped.remove("exif-data")
+    stripped.remove("iptc-data")
+    stripped.remove("xmp-data")
+    stripped.remove("icc-profile-data")
+    stripped.remove("jpeg-thumbnail-data")
+    stripped.remove("orientation")
 
-      // cropType is not available on the appendMetadata interface; infer it
-      val vipsLoader = Option(image.getString("vips-loader")).getOrElse("")
-      logger.info(s"vips-loader for ${sourceFile.getAbsolutePath} was: $vipsLoader")
-      val cropType = vipsLoader match {
-        case l if l.startsWith("jpegload") => Jpeg
-        case l if l.startsWith("pngload") => Png
-        case l =>
-          logger.warn(s"Unexpected vips-loader '$l' for ${sourceFile.getAbsolutePath}; saving as Jpeg")
-          Jpeg
+    stripped.getFields.asScala.foreach { field =>
+      if (field.startsWith("exif-")) {
+        stripped.remove(field)
       }
-
-      makeXmpBlog(metadata).foreach { xmpBlob =>
-        logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
-        image.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
-      }
-
-      saveImageToFile(image, cropType, 95, sourceFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
     }
+    stripped
+  }
+
+  def appendMetadata(sourceFile: File, metadata: ImageMetadata): VImage = {
+    // appendMetadata as a separate step is a poor fit for libvips
+    // and this will force another read / write recompression.
+    logger.info(s"appendMetadata to ${sourceFile.getAbsolutePath}")
+    val arena = Arena.ofConfined()
+    val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+
+    makeXmpBlog(metadata).foreach { xmpBlob =>
+      logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
+      image.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
+    }
+    image
+    image
   }
 
   def resizeImage(
