@@ -19,7 +19,7 @@ trait ImageOperations {
   val thumbMimeType: MimeType = ImageOperations.thumbMimeType
   val optimisedMimeType: MimeType = ImageOperations.optimisedMimeType
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata)(implicit arena: Arena): VImage
+  def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage
 
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                       width: Int,

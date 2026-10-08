@@ -15,7 +15,6 @@ import java.lang.foreign.Arena
 import java.nio.charset.StandardCharsets
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.CollectionHasAsScala
-import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 
 class VipsImageOperations extends GridLogging with ImageOperations {
@@ -104,12 +103,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     stripped
   }
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata)(implicit arena: Arena): VImage = {
-    // appendMetadata as a separate step is a poor fit for libvips
-    // and this will force another read / write recompression.
-    logger.info(s"appendMetadata to ${sourceFile.getAbsolutePath}")
-    val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
-
+  def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage = {
+    logger.info(s"appendMetadata to image")
     makeXmpBlog(metadata).foreach { xmpBlob =>
       logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
       image.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
