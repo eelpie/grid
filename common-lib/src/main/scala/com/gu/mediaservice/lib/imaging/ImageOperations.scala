@@ -43,7 +43,7 @@ trait ImageOperations {
                    qual: Int = 100,
                    tempDir: File,
                    fileType: MimeType
-                 )(implicit logMarker: LogMarker, arena: Arena): File
+                 )(implicit logMarker: LogMarker, arena: Arena): Future[File]
 
   def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType)(implicit logMarker: LogMarker): Future[(File, MimeType)]
 

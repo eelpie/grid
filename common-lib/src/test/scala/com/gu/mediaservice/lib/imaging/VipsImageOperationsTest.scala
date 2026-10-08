@@ -6,6 +6,7 @@ import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
 import org.apache.commons.io.FileUtils
+import org.mockito.Mockito.when
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
@@ -110,10 +111,12 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val fullSizedImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
       val outputFile = File.createTempFile("resized", ".jpg")
 
-      val resized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(1000, 800), 95, outputFile, Jpeg)
+      val eventuallyResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(1000, 800), 95, outputFile, Jpeg)
 
-      arena.close()
-      resized.isFile should be(true)
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
     }
 
     it("render LAB colour spaces correctly in sRGB") {
@@ -121,10 +124,12 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
       val outputFile = File.createTempFile("resized-lab", ".jpg")
 
-      val resized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+      val eventuallyResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
 
-      arena.close()
-      resized.isFile should be(true)
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
     }
 
     it("render LAB colour spaces correctly as PNG") {
@@ -132,10 +137,12 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
       val outputFile = File.createTempFile("resized-lab", ".png")
 
-      val resized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(140, 100), 85, outputFile, Jpeg)
+      val eventuallyResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(140, 100), 85, outputFile, Jpeg)
 
-      arena.close()
-      resized.isFile should be(true)
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
     }
 
     it("render LAB 16 bit colour spaces correctly") {
@@ -143,10 +150,12 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB16.tif").getAbsolutePath)
       val outputFile = File.createTempFile("resized-lab16", ".jpg")
 
-      val resized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+      val eventuallyResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
 
-      arena.close()
-      resized.isFile should be(true)
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
     }
 
     it("render PNG with alpha correctly") {
@@ -154,10 +163,12 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val fullSizedImage = VImage.newFromFile(arena, fileAt("with-alpha.png").getAbsolutePath)
       val outputFile = new File("/Users/tony/Desktop/resized-png-with-alpha.png")
 
-      val resized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png)
+      val eventuallyResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, outputFile, Png)
 
-      arena.close()
-      resized.isFile should be(true)
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
     }
 
     it("render LAB TIFF with alpha correctly") {
@@ -165,10 +176,12 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val fullSizedImage = VImage.newFromFile(arena, fileAt("lab8-with-alpha.tif").getAbsolutePath)
       val outputFile = new File("/Users/tony/Desktop/out13.jpg")
 
-      val resized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+      val eventuallyResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
 
-      arena.close()
-      resized.isFile should be(true)
+      whenReady(eventuallyResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
     }
   }
 
