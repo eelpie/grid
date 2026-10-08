@@ -2,7 +2,7 @@ package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
 import app.photofox.vipsffm.jextract.VipsRaw
-import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
+import app.photofox.vipsffm.{VBlob, VImage, VipsHelper, VipsOption}
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
@@ -98,7 +98,33 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = ???
+  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = {
+    Future {
+      // appendMetadata as a separate step is a poor fit for libvips
+      // and this will force another read / write recompression.
+      logger.info(s"appendMetadata to ${sourceFile.getAbsolutePath}")
+      val arena = Arena.ofConfined()
+      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+
+      // cropType is not available on the appendMetadata interface; infer it
+      val vipsLoader = Option(image.getString("vips-loader")).getOrElse("")
+      logger.info(s"vips-loader for ${sourceFile.getAbsolutePath} was: $vipsLoader")
+      val cropType = vipsLoader match {
+        case l if l.startsWith("jpegload") => Jpeg
+        case l if l.startsWith("pngload") => Png
+        case l =>
+          logger.warn(s"Unexpected vips-loader '$l' for ${sourceFile.getAbsolutePath}; saving as Jpeg")
+          Jpeg
+      }
+
+      makeXmpBlog(metadata).foreach { xmpBlob =>
+        logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
+        image.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
+      }
+
+      saveImageToFile(image, cropType, 95, sourceFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
+    }
+  }
 
   def resizeImage(
                        sourceFile: File,
