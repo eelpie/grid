@@ -14,6 +14,7 @@ import java.io._
 import java.lang.foreign.Arena
 import java.nio.charset.StandardCharsets
 import scala.concurrent.Future
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 
 class VipsImageOperations extends GridLogging with ImageOperations {
@@ -87,20 +88,28 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = {
-    Future {
-      val arena = Arena.ofConfined()
-      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+  private def manuallyStripMetadata(stripped: VImage): VImage = {
+    stripped.remove("exif-data")
+    stripped.remove("iptc-data")
+    stripped.remove("xmp-data")
+    stripped.remove("icc-profile-data")
+    stripped.remove("jpeg-thumbnail-data")
+    stripped.remove("orientation")
 
-      makeXmpBlog(metadata).foreach { xmpBlob =>
-        logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
-        image.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
+    stripped.getFields.asScala.foreach { field =>
+      if (field.startsWith("exif-")) {
+        stripped.remove(field)
       }
-
-      // TODO png?
-      // TODO round trip to disk solely to fit File interface
-      saveImageToFile(image, Jpeg, 95, sourceFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
     }
+    stripped
+  }
+
+  def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage = {
+    makeXmpBlog(metadata).foreach { xmpBlob =>
+      logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
+      image.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
+    }
+    image
   }
 
   def resizeImage(
