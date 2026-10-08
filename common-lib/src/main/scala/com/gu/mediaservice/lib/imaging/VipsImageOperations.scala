@@ -2,6 +2,8 @@ package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
 import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
+import com.adobe.internal.xmp.options.SerializeOptions
+import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick.ctx
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
@@ -9,6 +11,7 @@ import com.gu.mediaservice.model._
 
 import java.io._
 import java.lang.foreign.Arena
+import java.nio.charset.StandardCharsets
 import scala.concurrent.Future
 
 
@@ -72,6 +75,34 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
       arena.close()
       outputFile
+    }
+  }
+
+  private def makeXmpBlog(metadata: ImageMetadata): Option[Array[Byte]] = {
+    val mappings: Seq[(String, String, String)] = Seq(metadata.byline.map { byline =>
+      (XMPConst.NS_DC, "creator", byline)
+    },
+    metadata.credit.map { credit =>
+      (XMPConst.NS_PHOTOSHOP, "Credit", credit)
+    },
+    metadata.copyright.map { copyright =>
+      (XMPConst.NS_DC, "rights", copyright)
+    },
+    metadata.suppliersReference.map { suppliersReference =>
+      (XMPConst.NS_PHOTOSHOP, "TransmissionReference",  suppliersReference)
+    }).flatten
+
+    mappings.headOption.map { _ =>
+      val xmpMeta = XMPMetaFactory.create()
+      mappings.foreach { mapping =>
+        xmpMeta.setProperty(mapping._1, mapping._2, mapping._3)
+      }
+
+      val serializeOptions = new SerializeOptions()
+      serializeOptions.setUseCompactFormat(true)
+      serializeOptions.setUseCanonicalFormat(false)
+      val xmpXml = XMPMetaFactory.serializeToString(xmpMeta, serializeOptions)
+      xmpXml.getBytes(StandardCharsets.UTF_8)
     }
   }
 
