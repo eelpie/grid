@@ -2,7 +2,7 @@ package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
 import app.photofox.vipsffm.jextract.VipsRaw
-import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
+import app.photofox.vipsffm.{VBlob, VImage, VipsHelper, VipsOption}
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
@@ -107,7 +107,21 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = ???
+  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File] = {
+    Future {
+      val arena = Arena.ofConfined()
+      val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
+
+      makeXmpBlog(metadata).foreach { xmpBlob =>
+        logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
+        image.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
+      }
+
+      // TODO png?
+      // TODO round trip to disk solely to fit File interface
+      saveImageToFile(image, Jpeg, 95, sourceFile, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
+    }
+  }
 
   def resizeImage(
                        sourceFile: File,
