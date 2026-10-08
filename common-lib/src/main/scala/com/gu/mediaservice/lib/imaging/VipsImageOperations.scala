@@ -110,16 +110,14 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                        sourceImage: VImage,
                        dimensions: Dimensions,
                        quality: Int = 100,
-                       tempDir: File,
+                       outputFile: File,
                        fileType: MimeType
                      )(implicit logMarker: LogMarker, arena: Arena): File = {
 
     val scale = dimensions.width.toDouble / sourceImage.getWidth.toDouble
     val resized = sourceImage.resize(scale)
 
-    val outputFile = File.createTempFile(s"resize-", s"${fileType.fileExtension}", tempDir) // TODO function for this
     logger.info("Saving resized crop as JPEG tmp file to: " + outputFile.getAbsolutePath)
-
     saveImageToFile(resized, fileType, quality, outputFile, quantise = false, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))  // TODO quantise false because it is still optimiseOps's decision
   }
 
