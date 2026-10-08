@@ -21,6 +21,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
   def cropImage(
                      sourceFile: File,
                      bounds: Bounds,
+                     metadata: ImageMetadata,
                      orientationMetadata: Option[OrientationMetadata]
                    )(implicit logMarker: LogMarker, arena: Arena): VImage = {
     // Read source image
@@ -48,6 +49,13 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
 
     val master = correctedForICCProfile
+    // Apply crop metadata
+    // https://developers.google.com/search/docs/appearance/structured-data/image-license-metadata#iptc-photo-metadata
+    makeXmpBlog(metadata).foreach { xmpBlob =>
+      logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
+      master.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
+    }
+
     master
   }
 
