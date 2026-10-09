@@ -98,7 +98,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
   def resizeImage(
                        sourceImage: VImage,
                        dimensions: Dimensions,
-                       qual: Double = 100d,
+                       quality: Int = 100,
                        tempDir: File,
                        fileType: MimeType
                      )(implicit logMarker: LogMarker, arena: Arena): File = {
@@ -107,9 +107,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     val resized = sourceImage.resize(scale)
 
     val outputFile = File.createTempFile(s"resize-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-    logger.info("Saving resized crop as JPEG tmp file to: " + outputFile.getAbsolutePath)
-
-    saveImageToFile(resized, fileType, qual, outputFile, quantise = true)
+    saveImageToFile(resized, fileType, quality, outputFile, quantise = true)
   }
 
   def optimiseCrop(input: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = {
@@ -168,7 +166,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           inMemoryCopy
         }
         logger.info("Created thumbnail: " + rotated.getWidth + "x" + rotated.getHeight)
-        saveImageToFile(rotated, Jpeg, qual, outputFile)
+        saveImageToFile(rotated, Jpeg, qual.toInt, outputFile)
 
         val thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
         arena.close()
@@ -258,13 +256,13 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     paletteType > 0 || numberOfBands < 3
   }
 
-  def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File, quantise: Boolean = false, keep: Option[Int] = None): File = {
+  def saveImageToFile(image: VImage, mimeType: MimeType, quality: Int, outputFile: File, quantise: Boolean = false, keep: Option[Int] = None): File = {
     logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
     val k = keep.getOrElse(VipsRaw.VIPS_FOREIGN_KEEP_NONE)
     mimeType match {
       case Jpeg =>
         image.jpegsave(outputFile.getAbsolutePath,
-          VipsOption.Int("Q", qual.toInt),
+          VipsOption.Int("Q", quality.toInt),
           //VipsOption.Boolean("optimize-scans", true),
           VipsOption.Boolean("optimize-coding", true),
           //VipsOption.Boolean("interlace", true),
@@ -280,7 +278,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         if (quantise) {
           image.pngsave(outputFile.getAbsolutePath,
             VipsOption.Boolean("palette", true),
-            VipsOption.Int("Q", qual.toInt),
+            VipsOption.Int("Q", quality.toInt),
             VipsOption.Int("effort", 1),
             //VipsOption.Int("compression", 6),
             VipsOption.Boolean("strip", true),
