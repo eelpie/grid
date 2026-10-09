@@ -114,7 +114,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     val scale = dimensions.width.toDouble / sourceImage.getWidth.toDouble
     val resized = sourceImage.resize(scale)
 
-    saveImageToFile(resized, fileType, quality, outputFile, quantise = true)
+    saveImageToFile(resized, fileType, quality, outputFile, quantise = true, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
   }
 
   def optimiseCrop(input: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = {
