@@ -1,6 +1,7 @@
 package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
+import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm.{VImage, VipsHelper, VipsOption}
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
@@ -329,8 +330,9 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     paletteType > 0 || numberOfBands < 3
   }
 
-  private def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File, quantise: Boolean = false): File = {
+  def saveImageToFile(image: VImage, mimeType: MimeType, qual: Double, outputFile: File, quantise: Boolean = false, keep: Option[Int] = None): File = {
     logger.info(s"Saving image as $mimeType to file: " + outputFile.getAbsolutePath)
+    val k = keep.getOrElse(VipsRaw.VIPS_FOREIGN_KEEP_NONE)
     mimeType match {
       case Jpeg =>
         image.jpegsave(outputFile.getAbsolutePath,
@@ -340,7 +342,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           //VipsOption.Boolean("interlace", true),
           //VipsOption.Boolean("trellis-quant", true),
           // VipsOption.Int("quant-table", 3),
-          VipsOption.Boolean("strip", true)
+          VipsOption.Boolean("strip", true),
+          VipsOption.Int("keep", k)
         )
         outputFile
 
@@ -352,13 +355,14 @@ class VipsImageOperations extends GridLogging with ImageOperations {
             VipsOption.Int("Q", qual.toInt),
             VipsOption.Int("effort", 1),
             //VipsOption.Int("compression", 6),
-            VipsOption.Int("bitdepth", 8),
-            VipsOption.Boolean("strip", true)
+            VipsOption.Boolean("strip", true),
+            VipsOption.Int("keep", k)
           )
         } else {
           image.pngsave(outputFile.getAbsolutePath,
             //VipsOption.Int("compression", 6),
-            VipsOption.Boolean("strip", true)
+            VipsOption.Boolean("strip", true),
+            VipsOption.Int("keep", k)
           )
         }
         outputFile
