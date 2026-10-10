@@ -88,7 +88,12 @@ class RequestLoggingFilter(override val mat: Materializer)(implicit ec: Executio
       },
       response => {
         val length = response.header.headers.getOrElse("Content-Length", 0)
-        logger.info(s"""$originIp - "${request.method} ${request.uri} ${request.version}" ${response.header.status} $length "$referer" ${duration}ms""")(markers)
+        val message = s"""$originIp - "${request.method} ${request.uri} ${request.version}" ${response.header.status} $length "$referer" ${duration}ms"""
+        if (request.uri == "/management/healthcheck") {
+         logger.debug(message)(markers)
+        } else {
+          logger.info(message)(markers)
+        }
       }
 
     )

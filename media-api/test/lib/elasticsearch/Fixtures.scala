@@ -27,12 +27,10 @@ trait Fixtures {
   val NOT_USED_IN_TEST = "not used in test"
   val MOCK_CONFIG_KEYS = Seq(
     "auth.keystore.bucket",
-    "persistence.identifier",
     "thrall.kinesis.stream.name",
     "thrall.kinesis.lowPriorityStream.name",
     "domain.root",
     "content.web.baseUrl",
-    "single.host.url",
     "s3.config.bucket",
     "s3.usagemail.bucket",
     "quota.store.key",
@@ -43,6 +41,9 @@ trait Fixtures {
     "s3.thumb.bucket",
     "grid.stage",
     "grid.appName",
+    "instance.service.my",
+    "instance.service.instances",
+    "usageEvents.queue.name",
     "capi.live.url",
     "capi.apiKey",
     "capi.preview.role",
@@ -73,7 +74,7 @@ trait Fixtures {
       softDeletedMetadata = softDeletedMetadata,
       lastModified = None,
       identifiers = Map.empty,
-      uploadInfo = UploadInfo(filename = Some(s"test_$id.jpeg")),
+      uploadInfo = UploadInfo(filename = Some(s"test_$id.jpeg"), isFeedUpload = Some(false)),
       source = Asset(
         file = new URI(s"http://file/$id"),
         size = Some(292265L),

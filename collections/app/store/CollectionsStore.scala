@@ -1,19 +1,18 @@
 package store
 
+import cats.implicits._
 import com.gu.mediaservice.lib.collections.CollectionsManager
-import com.gu.mediaservice.model.{ActionData, Collection}
+import com.gu.mediaservice.model.{ActionData, Collection, Instance}
 import org.joda.time.DateTime
 import org.scanamo.generic.auto.genericDerivedFormat
-import org.scanamo.{DynamoFormat, ScanamoAsync, Table}
 import org.scanamo.syntax._
+import org.scanamo.{DynamoFormat, ScanamoAsync, Table}
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import cats.implicits._
-import org.scanamo.generic.semiauto.FieldName
 
-case class Record(id: String, collection: Collection)
+case class Record(id: String, collection: Collection, instance: String)
 
 class CollectionsStore(val tableName: String, client: DynamoDbAsyncClient) extends DynamoHelpers {
   import org.scanamo.generic.semiauto._
@@ -25,24 +24,24 @@ class CollectionsStore(val tableName: String, client: DynamoDbAsyncClient) exten
 
   private lazy val collectionsTable = Table[Record](tableName)
 
-  def getAll: Future[List[Collection]] = {
-    ScanamoAsync(client).exec(collectionsTable.scan()).map(_.sequence).flatMap(res =>
+  def getAll(implicit instance: Instance): Future[List[Collection]] = {
+    ScanamoAsync(client).exec(collectionsTable.query("instance" === instance.id)).map(_.sequence).flatMap(res =>
       handleResponse(res)(records => records.map(_.collection))
     )
   }
 
-  def add(collection: Collection): Future[Collection] = {
+  def add(collection: Collection)(implicit instance: Instance): Future[Collection] = {
     ScanamoAsync(client).exec(
       collectionsTable.update(
-        "id" === collection.pathId,
+        "id" === collection.pathId and "instance" === instance.id,
         set("collection", collection)
       )
     ).flatMap(res => handleResponse(res)(record => record.collection))
   }
 
-  def get(collectionPath: List[String]): Future[Option[Collection]] = {
+  def get(collectionPath: List[String])(implicit instance: Instance): Future[Option[Collection]] = {
     val path = CollectionsManager.pathToPathId(collectionPath)
-    ScanamoAsync(client).exec(collectionsTable.get("id" === path)).flatMap(maybeEither =>
+    ScanamoAsync(client).exec(collectionsTable.get("id" === path and "instance" === instance.id)).flatMap(maybeEither =>
       maybeEither.fold[Future[Option[Collection]]](
         Future.successful(None)
       )(res =>
@@ -51,9 +50,9 @@ class CollectionsStore(val tableName: String, client: DynamoDbAsyncClient) exten
     )
   }
 
-  def remove(collectionPath: List[String]): Future[Unit] = {
+  def remove(collectionPath: List[String])(implicit instance: Instance): Future[Unit] = {
     val path = CollectionsManager.pathToPathId(collectionPath)
-    ScanamoAsync(client).exec(collectionsTable.delete("id" === path))
+    ScanamoAsync(client).exec(collectionsTable.delete("id" === path and "instance" === instance.id))
   }
 }
 
