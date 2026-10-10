@@ -6,6 +6,7 @@ import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, SingleHostServices}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
+import com.gu.mediaservice.model.Instance
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.{Materializer, SystemMaterializer}
 import org.joda.time.{DateTime, DateTimeZone}
@@ -70,6 +71,8 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
       executionContext = global
     )
   }
+
+  implicit val instance: Instance = Instance("an-instance")
 
   "authenticationStatus" - {
     val testProviders = AuthenticationProviders(
