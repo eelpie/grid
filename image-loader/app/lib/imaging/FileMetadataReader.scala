@@ -11,7 +11,7 @@ import com.drew.metadata.xmp.XmpDirectory
 import com.drew.metadata.{Directory, Metadata}
 import com.gu.mediaservice.lib.ImageWrapper
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick._
-import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.model._
 import org.joda.time.format.ISODateTimeFormat
@@ -52,11 +52,14 @@ object FileMetadataReader extends GridLogging {
   private implicit val ctx: ExecutionContext =
     ExecutionContext.fromExecutor(Executors.newCachedThreadPool)
 
-  def fromIPTCHeaders(image: File, imageId:String): Future[FileMetadata] =
+  def fromIPTCHeaders(image: File, imageId:String, maybeMimeType: Option[MimeType] = None)(implicit logMarker: LogMarker): Future[FileMetadata] =
     for {
       metadata <- readMetadata(image)
+      c2pa <- readC2PA(image, maybeMimeType)
     }
-    yield getMetadataWithIPTCHeaders(metadata, imageId) // FIXME: JPEG, JFIF, Photoshop, GPS, File
+    yield getMetadataWithIPTCHeaders(metadata, imageId).copy(
+      c2pa = c2pa
+    )
 
   def fromIPTCHeadersWithColorInfo(image: ImageWrapper)(implicit logMarker: LogMarker): Future[FileMetadata] =
     fromIPTCHeadersWithColorInfo(image.file, image.id, image.mimeType)
@@ -187,67 +190,17 @@ object FileMetadataReader extends GridLogging {
 
   private def dateToUTCString(date: DateTime): String = ISODateTimeFormat.dateTime.print(date.withZone(DateTimeZone.UTC))
 
-
-  def orientation(image: File): Future[Option[OrientationMetadata]] = {
-    for {
-      metadata <- readMetadata(image)
-    } yield {
-
-      for {
-        exifDirectory <- Option(metadata.getFirstDirectoryOfType(classOf[ExifIFD0Directory]))
-        exifOrientation <- Option(exifDirectory.getInteger(ExifDirectoryBase.TAG_ORIENTATION))
-        orientation = OrientationMetadata(exifOrientation = Some(exifOrientation))
-        orientationWhichTransformsImage <- Seq(orientation).find(_.transformsImage())
-      } yield {
-        orientationWhichTransformsImage
-      }
-    }
-  }
-
-  def dimensions(image: File, mimeType: Option[MimeType]): Future[Option[Dimensions]] =
-    for {
-      metadata <- readMetadata(image)
-    }
-    yield {
-
-      mimeType match {
-
-        case Some(Jpeg) => for {
-          jpegDir <- Option(metadata.getFirstDirectoryOfType(classOf[JpegDirectory]))
-
-        } yield Dimensions(jpegDir.getImageWidth, jpegDir.getImageHeight)
-
-        case Some(Png) => for {
-          pngDir <- Option(metadata.getFirstDirectoryOfType(classOf[PngDirectory]))
-
-        } yield {
-          val width = pngDir.getInt(PngDirectory.TAG_IMAGE_WIDTH)
-          val height = pngDir.getInt(PngDirectory.TAG_IMAGE_HEIGHT)
-          Dimensions(width, height)
-        }
-
-        case Some(Tiff) => for {
-          exifDir <- Option(metadata.getFirstDirectoryOfType(classOf[ExifIFD0Directory]))
-
-        } yield {
-          val width = exifDir.getInt(ExifDirectoryBase.TAG_IMAGE_WIDTH)
-          val height = exifDir.getInt(ExifDirectoryBase.TAG_IMAGE_HEIGHT)
-          Dimensions(width, height)
-        }
-
-        case _ => None
-
-      }
-    }
-
   def getColorModelInformation(image: File, metadata: Metadata, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Map[String, String]] = {
-
+    val stopWatch = Stopwatch.start
     val source = addImage(image)
 
     val formatter = format(source)("%r")
 
-    runIdentifyCmd(formatter, useImageMagick = false).map{ imageType => getColourInformation(metadata, imageType.headOption, mimeType) }
-      .recover { case _ => getColourInformation(metadata, None, mimeType) }
+    runIdentifyCmd(formatter, useImageMagick = false).map { imageType => getColourInformation(metadata, imageType.headOption, mimeType) }
+      .recover { case _ => getColourInformation(metadata, None, mimeType) }.map { result =>
+      logger.info(addLogMarkers(stopWatch.elapsed), "Finished getColorModelInformation")
+      result
+    }
   }
 
   // bits per sample might be a useful value, eg. "1", "8"; or it might be annoying like "1 bits/component/pixel", "8 8 8 bits/component/pixel"
@@ -297,8 +250,22 @@ object FileMetadataReader extends GridLogging {
   private def nonEmptyTrimmed(nullableStr: String): Option[String] =
     Option(nullableStr) map (_.trim) filter (_.nonEmpty)
 
-  private def readMetadata(file: File): Future[Metadata] = Future {
-    ImageMetadataReader.readMetadata(file)
+  private def readMetadata(file: File)(implicit logMarker: LogMarker): Future[Metadata] = {
+    val stopwatch = Stopwatch.start
+    Future {
+      ImageMetadataReader.readMetadata(file)
+    }.map { result =>
+      logger.info(addLogMarkers(stopwatch.elapsed),"Finished readMetadata")
+      result
+    }
+  }
+
+  private def readC2PA(image: File, maybeMimeType: Option[MimeType]): Future[Map[String, JsValue]] = {
+    Future {
+      maybeMimeType.map { mimeType =>
+        if (C2paDetector.hasC2paManifest(image, mimeType)) FileMetadata.C2paAvailable else FileMetadata.NoC2PA
+      }.getOrElse(FileMetadata.NoC2PA)
+    }
   }
 
   // Helper to flatten maps of options

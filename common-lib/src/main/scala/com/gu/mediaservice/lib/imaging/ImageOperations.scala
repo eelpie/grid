@@ -1,11 +1,12 @@
 package com.gu.mediaservice.lib.imaging
 
-import java.io.File
-
+import app.photofox.vipsffm.VImage
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model._
 
+import java.io.File
+import java.lang.foreign.Arena
 import scala.concurrent.Future
 
 object ImageOperations {
@@ -18,44 +19,33 @@ trait ImageOperations {
   val thumbMimeType: MimeType = ImageOperations.thumbMimeType
   val optimisedMimeType: MimeType = ImageOperations.optimisedMimeType
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File]
+  def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage
 
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                       width: Int,
                       qual: Double = 100d,
                       outputFile: File,
-                      iccColourSpace: Option[String],
-                      colourModel: Option[String],
                       orientationMetadata: Option[OrientationMetadata]
-                     )(implicit logMarker: LogMarker): Future[(File, MimeType)]
+                     )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])]
 
   def cropImage(
                  sourceFile: File,
-                 sourceMimeType: Option[MimeType],
                  bounds: Bounds,
-                 qual: Double = 100d,
-                 tempDir: File,
-                 iccColourSpace: Option[String],
-                 colourModel: Option[String],
-                 fileType: MimeType,
-                 isTransformedFromSource: Boolean,
+                 metadata: ImageMetadata,
                  orientationMetadata: Option[OrientationMetadata]
-               )(implicit logMarker: LogMarker): Future[File]
+               )(implicit logMarker: LogMarker, arena: Arena): VImage
 
-  def optimiseImage(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
+  def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
 
   def resizeImage(
-                   sourceFile: File,
-                   sourceMimeType: Option[MimeType],
+                   sourceImage: VImage,
                    dimensions: Dimensions,
-                   qual: Double = 100d,
-                   tempDir: File,
+                   quality: Int = 100,
+                   outputFile: File,
                    fileType: MimeType
-                 )(implicit logMarker: LogMarker): Future[File]
+                 )(implicit logMarker: LogMarker, arena: Arena): Future[File]
 
-  def transformImage(sourceFile: File, sourceMimeType: Option[MimeType], tempDir: File)(implicit logMarker: LogMarker): Future[(File, MimeType)]
-
-  def identifyColourModel(sourceFile: File, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Option[String]]
+  def getImageInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[Dimensions], Option[OrientationMetadata], Option[String], Map[String, String])]
 
 }
 
