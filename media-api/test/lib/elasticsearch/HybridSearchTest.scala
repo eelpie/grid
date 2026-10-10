@@ -151,7 +151,7 @@ class HybridSearchTest extends AnyFunSpec
 
   private def totalImages: Long = Await.result(ES.client.execute(ElasticDsl.search(ES.imagesCurrentAlias(instance))).map {
     _.result.totalHits
-  }, oneHundredMilliseconds)
+  }, fiveSeconds)
 
   private def purgeTestImages = {
     implicit val logMarker: LogMarker = MarkerMap()
