@@ -7,6 +7,7 @@ import com.sksamuel.elastic4s.ElasticApi.{matchPhraseQuery, should}
 import com.sksamuel.elastic4s.ElasticDsl.matchQuery
 import com.sksamuel.elastic4s.requests.searches.queries.Query
 import com.sksamuel.elastic4s.requests.searches.queries.matches.MatchQuery
+import com.gu.mediaservice.model.Instance
 import org.joda.time.DateTime
 import scalaz.NonEmptyList
 
@@ -47,13 +48,13 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   }
   val fuzzyMaxExpansions: Int = intOpt("search.fuzziness.maxExpansions").getOrElse(50)
 
-  val rootUri: String = services.apiBaseUri
-  val kahunaUri: String = services.kahunaBaseUri
-  val cropperUri: String = services.cropperBaseUri
-  val loaderUri: String = services.loaderBaseUri
-  val metadataUri: String = services.metadataBaseUri
-  val imgopsUri: String = services.imgopsBaseUri
-  val imgproxyUri: String = services.imgproxyBaseUri
+  val rootUri: Instance => String  = services.apiBaseUri
+  val kahunaUri: Instance => String  = services.kahunaBaseUri
+  val cropperUri: Instance => String  = services.cropperBaseUri
+  val loaderUri: Instance => String  = services.loaderBaseUri
+  val metadataUri: Instance => String  = services.metadataBaseUri
+  val imgopsUri: Instance => String  = services.imgopsBaseUri
+  val imgproxyUri: Instance => String  = services.imgproxyBaseUri
   val useImgProxy: Boolean = boolean("images.imgproxy.enabled")
   // Optional. Unsigned, clients template their own imgproxy URLs, and anyone who knows an image's S3 key can
   // fetch it from imgproxy - see docs/06-objects-of-interest/03-imgproxy.md for when that matters.
@@ -70,10 +71,10 @@ class MediaApiConfig(resources: GridConfigResources) extends CommonConfigWithEla
   }
   val imgproxySignedUrlTtlSeconds: Option[Long] =
     configuration.getOptional[FiniteDuration]("images.imgproxy.signedUrlTtl").map(_.toSeconds).filter(_ > 0)
-  val usageUri: String = services.usageBaseUri
-  val leasesUri: String = services.leasesBaseUri
-  val authUri: String = services.authBaseUri
-  val collectionsUri: String = services.collectionsBaseUri
+  val usageUri: Instance => String  = services.usageBaseUri
+  val leasesUri: Instance => String  = services.leasesBaseUri
+  val authUri: Instance => String  = services.authBaseUri
+  val collectionsUri: Instance => String  = services.collectionsBaseUri
 
   val requiredMetadata = NonEmptyList("credit", "description", "usageRights")
   val capiPreviewUrl = string("capi.preview.url")

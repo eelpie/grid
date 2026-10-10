@@ -4,6 +4,7 @@ import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication.Principal
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, BaseControllerWithLoginRedirects}
 import lib.{ExampleSwitch, FeatureSwitches, KahunaConfig}
+import lib.{ExampleSwitch, FeatureSwitches, KahunaConfig, KahunaClientServiceUrls}
 import play.api.mvc.ControllerComponents
 import play.api.libs.json._
 
@@ -11,6 +12,8 @@ import scala.concurrent.ExecutionContext
 import com.gu.mediaservice.lib.config.FieldAlias._
 import com.gu.mediaservice.lib.config.Services
 import com.gu.mediaservice.lib.play.SentryUserContext
+import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
+import com.gu.mediaservice.model.Instance
 import play.api.mvc.Security.AuthenticatedRequest
 import play.twirl.api.Html
 
@@ -22,7 +25,7 @@ class KahunaController(
   release: String
 )(
   implicit val ec: ExecutionContext
-) extends BaseControllerWithLoginRedirects with ArgoHelpers {
+) extends BaseControllerWithLoginRedirects with ArgoHelpers with InstanceForRequest {
 
   override def auth: Authentication = authentication
 
@@ -32,7 +35,7 @@ class KahunaController(
    * Settings the browser SDK needs. The user identity is resolved here rather than in the browser so
    * that email is supplied only for authenticated users when Sentry reporting is enabled.
    */
-  private[controllers] def sentryClientConfig(maybeUser: Option[Principal]): String = {
+  private[controllers] def sentryClientConfig(maybeUser: Option[Principal])(implicit instance: Instance): String = {
     val sentry = config.sentryConfig
 
     val identity = maybeUser.flatMap(SentryUserContext.identityForPrincipal(sentry, _))
@@ -45,13 +48,14 @@ class KahunaController(
       "tracesSampleRate" -> sentry.tracesSampleRate,
       "replayOnErrorSampleRate" -> sentry.replayOnErrorSampleRate,
       "consoleCaptureLevels" -> sentry.consoleCaptureLevels,
-      "tracePropagationTargets" -> config.services.allInternalUris,
+      "tracePropagationTargets" -> config.services.allInternalUris(instance),
       "userId" -> identity.flatMap(_.id),
       "userEmail" -> identity.flatMap(_.email)
     ))
   }
 
   def index(ignored: String) = withOptionalLoginRedirect { request =>
+    implicit val instance: Instance = instanceOf(request)
 
     val maybeUser: Option[Authentication.Principal] = request match {
       case authedRequest: AuthenticatedRequest[_, _] => authedRequest.user match {
@@ -80,7 +84,7 @@ class KahunaController(
     val metadataTemplates: String = Json.toJson(config.metadataTemplates).toString()
     val announcements: String = Json.toJson(config.announcements).toString()
     val interimFilterOptions: String = Json.toJson(config.interimFilterOptions).toString()
-    val returnUri = config.rootUri + okPath
+    val returnUri = config.rootUri(instance) + okPath
     val costFilterLabel = config.costFilterLabel.getOrElse("Free to use only")
     val costFilterChargeable = config.costFilterChargeable.getOrElse(false)
     val maybeOrgOwnedValue =
@@ -90,6 +94,13 @@ class KahunaController(
         Html("undefined")
     val imageTypes = Json.toJson(config.imageTypes).toString()
     val agencyPicksIngredients = Json.toJson(config.agencyPicksIngredients).toString()
+
+    val rootUri = config.rootUri(instance)
+
+    val kahunaClientServiceUrls = KahunaClientServiceUrls(
+      rootUri = rootUri,
+      mediaApiUri = config.mediaApiUri(instance)
+    )
 
     Ok(views.html.main(
       s"${config.authUri}/login?redirectUri=$returnUri",
@@ -107,12 +118,13 @@ class KahunaController(
       featureSwitchesJson,
       imageTypes,
       agencyPicksIngredients,
-      sentryClientConfig(maybeUser)
+      sentryClientConfig(maybeUser),
+      kahunaClientServiceUrls
     ))
   }
 
   def quotas = authentication { req =>
-    Ok(views.html.quotas(config.mediaApiUri))
+    Ok(views.html.quotas(config.mediaApiUri(instanceOf(req))))
   }
 
   def notifications = authentication { req =>

@@ -6,6 +6,8 @@ import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.permissions.PermissionDefinition
 import play.api.libs.json.{JsError, JsSuccess, Json}
 import play.api.mvc.RequestHeader
+import com.gu.mediaservice.lib.config.{InstanceForRequest, Services}
+import play.api.mvc.{RequestHeader, Result}
 
 import java.net.URI
 import java.time.Instant
@@ -34,7 +36,7 @@ case class ApiAccessor(identity: String, tier: Tier,  expiresAt: Option[Instant]
   def hasExpired: Boolean = expiresAt.exists(_.isBefore(Instant.now()))
 }
 
-object ApiAccessor extends ArgoHelpers with GridLogging {
+object ApiAccessor extends ArgoHelpers with GridLogging with InstanceForRequest {
   def apply(content: String): ApiAccessor = {
     parseContentV2(content) getOrElse parseContentV1(content)
   }
@@ -67,9 +69,12 @@ object ApiAccessor extends ArgoHelpers with GridLogging {
     case Internal => request.method != "DELETE"
     case ReadOnly => request.method == "GET"
     case Syndication =>
-      val isMediaApiRequest = request.host == URI.create(services.apiBaseUri).getHost
-      request.method == "GET" && isMediaApiRequest && request.path.startsWith("/images")
+      val mediaApiBase = services.apiBaseUri(instanceOf(request))
+      val isMediaApiRequest = request.uri.startsWith(mediaApiBase)
+      val isImageRequest = isMediaApiRequest && request.uri.startsWith(mediaApiBase + "/images/")
+      request.method == "GET" && isImageRequest
     case Administrator => true
     case _ => true // Pass through for future permissioned tiers, which will be handled by the PermissionsAuthorisationProvider
   }
 }
+

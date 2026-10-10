@@ -3,6 +3,7 @@ package controllers
 import com.gu.mediaservice.lib.auth.Authentication.{InnerServicePrincipal, Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
 import com.gu.mediaservice.lib.config.{SentryConfig, SingleHostServices}
+import com.gu.mediaservice.model.Instance
 import lib.KahunaConfig
 import org.mockito.Mockito.when
 import org.scalatest.funsuite.AnyFunSuite
@@ -16,6 +17,7 @@ import scala.concurrent.ExecutionContext
 
 class KahunaControllerTest extends AnyFunSuite with Matchers with MockitoSugar {
   private implicit val ec: ExecutionContext = ExecutionContext.global
+  private implicit val instance: Instance = Instance("an-instance")
   private val email = "someone@example.com"
   private val user = UserPrincipal("Some", "One", email)
   private val enabled = SentryConfig(

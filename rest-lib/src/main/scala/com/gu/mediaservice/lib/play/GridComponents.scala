@@ -51,7 +51,7 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
   final override def httpFilters: Seq[EssentialFilter] = {
     sentryInitialised
     Seq(
-      corsFilter,
+      //corsFilter,
       //csrfFilter TODO no longer gets bypassed thanks to preceding CORS check; CORS filter does not appear to tag the request if it passes for same origin.
       securityHeadersFilter,
       gzipFilter,
@@ -63,9 +63,9 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
     )
   }
 
-  final override lazy val corsConfig: CORSConfig = CORSConfig.fromConfiguration(context.initialConfiguration).copy(
-      allowedOrigins = Origins.Matching(config.services.corsAllowedDomains)
-    )
+  //final override lazy val corsConfig: CORSConfig = CORSConfig.fromConfiguration(context.initialConfiguration).copy(
+  //    allowedOrigins = Origins.Matching(config.services.corsAllowedDomains(request))
+  //  )
 
   lazy val management = new Management(controllerComponents, buildInfo)
 
