@@ -348,6 +348,7 @@ class UsageApi(
   }
 
   def deleteUsagesByIds(mediaId: String) = AuthenticatedAndAuthorisedToDelete.async(parse.json) { req =>
+    implicit val instance: Instance = instanceOf(req)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "delete-usages-by-ids",
       "requestId" -> RequestLoggingFilter.getRequestId(req),
@@ -395,7 +396,7 @@ class UsageApi(
                 case (usageId, mediaUsage) =>
                 usageTable.deleteRecord(mediaUsage)
                 notifications.publish(
-                  UpdateMessage(subject = DeleteSingleUsage, id = Some(mediaId), usageId = Some(usageId), instance = instanceOf(req).id)
+                  UpdateMessage(subject = DeleteSingleUsage, id = Some(mediaId), usageId = Some(usageId), instance = instance)
                 )
               }
               Ok
