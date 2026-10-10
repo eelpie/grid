@@ -2,7 +2,7 @@ package model
 
 import com.gu.mediaservice.lib.ImageIngestOperations.{fileKeyFromId, optimisedPngKeyFromId}
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.aws.{Embedder, S3}
+import com.gu.mediaservice.lib.aws.{Embedder, S3, S3Bucket}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ImageOperations
@@ -29,8 +29,8 @@ object Projector {
 
   import Uploader.toImageUploadOpsCfg
 
-  def apply(config: ImageLoaderConfig, imageOps: ImageOperations, processor: ImageProcessor, auth: Authentication, maybeEmbedder: Option[Embedder])(implicit ec: ExecutionContext): Projector
-  = new Projector(toImageUploadOpsCfg(config), new S3(config), imageOps, processor, auth, maybeEmbedder)
+  def apply(config: ImageLoaderConfig, s3: S3, imageOps: ImageOperations, processor: ImageProcessor, auth: Authentication, maybeEmbedder: Option[Embedder])(implicit ec: ExecutionContext): Projector
+  = new Projector(toImageUploadOpsCfg(config), s3, imageOps, processor, auth, maybeEmbedder)
 }
 
 case class S3FileExtractedMetadata(
@@ -93,9 +93,9 @@ class Projector(config: ImageUploadOpsCfg,
       val s3Key = fileKeyFromId(imageId)
 
         if (!s3.doesObjectExist(config.originalFileBucket, s3Key))
-        throw new NoSuchImageExistsInS3(config.originalFileBucket, s3Key)
+        throw new NoSuchImageExistsInS3(config.originalFileBucket.name, s3Key)
 
-      val s3Source = Stopwatch(s"object exists, getting s3 object at s3://${config.originalFileBucket}/$s3Key to perform Image projection"){
+      val s3Source = Stopwatch(s"object exists, getting s3 object at s3://${config.originalFileBucket.name}/$s3Key to perform Image projection"){
         s3.getObject(config.originalFileBucket, s3Key)
       }(logMarker)
 
@@ -203,13 +203,13 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
   }
 
   private def fetchFile(
-    bucket: String, key: String, outFile: File
+    bucket: S3Bucket, key: String, outFile: File
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
-    logger.info(logMarker, s"Trying fetch existing image from S3 bucket - $bucket at key $key")
+    logger.info(logMarker, s"Trying fetch existing image from S3 bucket - ${bucket.name} at key $key")
     val doesFileExist = Future { s3.doesObjectExist(bucket, key) } recover { case _ => false }
     doesFileExist.flatMap {
       case false =>
-        logger.warn(logMarker, s"image did not exist in bucket $bucket at key $key")
+        logger.warn(logMarker, s"image did not exist in bucket ${bucket.name} at key $key")
         Future.successful(None) // falls back to creating from original file
       case true =>
         val obj = s3.getObject(bucket, key)
