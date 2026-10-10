@@ -23,11 +23,14 @@ trait ElasticSearchDockerBase extends BeforeAndAfterAll {
           "cluster.name" -> "media-service",
           "xpack.security.enabled" -> "false",
           "discovery.type" -> "single-node",
-          "network.host" -> "0.0.0.0"
+          "network.host" -> "0.0.0.0",
+          // Cap the heap; by default ES 8 takes half the host's memory, which starves a shared CI build machine
+          "ES_JAVA_OPTS" -> "-Xms512m -Xmx512m"
         ).asJava)
         .waitingFor(Wait.forHttp("/")
           .forPort(9200)
           .forStatusCode(200)
+          .withReadTimeout(10.seconds.toJava)
           .withStartupTimeout(180.seconds.toJava)
         )
       container.start()
