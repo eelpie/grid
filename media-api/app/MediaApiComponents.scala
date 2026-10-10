@@ -1,6 +1,6 @@
 import com.gu.contentapi.client.ScheduledExecutor
-import com.gu.mediaservice.lib.aws.{Bedrock, Embedder, S3, S3Vectors, SimpleSqsMessageConsumer, ThrallMessageSender}
-import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, InnerServiceStatusCheckController, Management}
+import com.gu.mediaservice.lib.aws._
+import com.gu.mediaservice.lib.management.{ElasticSearchHealthCheck, Management}
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers._
@@ -17,7 +17,7 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   val messageSender = new ThrallMessageSender(config.thrallKinesisStreamConfig)
   val mediaApiMetrics = new MediaApiMetrics(config, actorSystem, applicationLifecycle)
 
-  val s3Client = new S3(config)
+  private val s3 = new S3(config)
 
   val usageQuota = new UsageQuota(config, actorSystem.scheduler)
   usageQuota.quotaStore.update()
@@ -27,20 +27,19 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   val elasticSearch = new ElasticSearch(config, mediaApiMetrics, config.esConfig, () => usageQuota.usageStore.overQuotaAgencies, actorSystem.scheduler)
   elasticSearch.ensureIndexExistsAndAliasAssigned()
 
-  val imageResponse = new ImageResponse(config, s3Client, usageQuota)
+  val imageResponse = new ImageResponse(config, s3, usageQuota)
 
   val softDeletedMetadataTable = new SoftDeletedMetadataTable(config)
   val embedder = new Embedder(new Bedrock(config), new SimpleSqsMessageConsumer(config.queueUrl, config))
   val previewContentApi = new PreviewContentApi(config)(ScheduledExecutor())
 
-  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, previewContentApi, controllerComponents, s3Client, mediaApiMetrics, wsClient, authorisation, embedder)
+  val mediaApi = new MediaApi(auth, messageSender, softDeletedMetadataTable, elasticSearch, imageResponse, config, previewContentApi, controllerComponents, s3, mediaApiMetrics, wsClient, authorisation, embedder)
   val suggestionController = new SuggestionController(auth, elasticSearch, controllerComponents)
   val aggController = new AggregationController(auth, elasticSearch, controllerComponents)
   val usageController = new UsageController(auth, config, elasticSearch, usageQuota, controllerComponents)
   val elasticSearchHealthCheck = new ElasticSearchHealthCheck(controllerComponents, elasticSearch)
   val healthcheckController = new Management(controllerComponents, buildInfo)
   val configurationController = new ConfigurationController(controllerComponents)
-  val InnerServiceStatusCheckController = new InnerServiceStatusCheckController(auth, controllerComponents, config.services, wsClient)
 
   override val router = new Routes(
     httpErrorHandler,
@@ -50,7 +49,6 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
     usageController,
     configurationController,
     elasticSearchHealthCheck,
-    healthcheckController,
-    InnerServiceStatusCheckController
+    healthcheckController
   )
 }
