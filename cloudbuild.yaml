@@ -1,5 +1,5 @@
 options:
-  machineType: 'N1_HIGHCPU_8'
+  machineType: 'E2_HIGHCPU_8'
 timeout: '1200s'
 steps:
   - name: 'node:24-alpine'
