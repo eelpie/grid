@@ -351,8 +351,7 @@ class MediaApi(
         val maybeResult = for {
           export <- source.exports.find(_.id.contains(exportId))
           asset <- export.master
-          key = config.imgPublishingBucket.keyFromURL(asset.file)
-          s3Object <- Try(s3.getObject(config.imgPublishingBucket, key)).toOption
+          s3Object <- Try(s3.getObject(config.imgPublishingBucket, asset.file)).toOption
           file = StreamConverters.fromInputStream(() => s3Object)
           entity = HttpEntity.Streamed(file, asset.size, asset.mimeType.map(_.name))
           result = Result(ResponseHeader(OK), entity).withHeaders("Content-Disposition" -> getContentDisposition(source, export, asset, config.shortenDownloadFilename))
