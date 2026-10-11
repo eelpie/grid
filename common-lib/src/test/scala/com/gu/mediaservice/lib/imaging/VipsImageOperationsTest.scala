@@ -107,7 +107,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
   describe("resize") {
     it("should output resized image to file in chosen format") {
-      implicit val arena: Arena = Arena.ofConfined()
+      implicit val arena: Arena = Arena.ofShared()
       val fullSizedImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
       val outputFile = File.createTempFile("resized", ".jpg")
 
