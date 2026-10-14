@@ -14,6 +14,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
 
 class ElasticSearchTest extends ElasticSearchTestBase {
+
+  override val instance: Instance = Instance(id = UUID.randomUUID().toString)
+  implicit val i: Instance = instance
+
   "Elasticsearch" - {
      implicit val logMarker: LogMarker = MarkerMap()
 
@@ -794,11 +798,11 @@ class ElasticSearchTest extends ElasticSearchTestBase {
         }
 
         "when migration alias also exists, but does not contain doc to be updated" in {
-          ES.assignAliasTo(migrationIndexName, ES.imagesMigrationAlias)
+          ES.assignAliasTo(migrationIndexName(instance), ES.imagesMigrationAlias(instance))
           val id = UUID.randomUUID().toString
           val photog = StaffPhotographer("Tom Jenkins", "The Guardian")
           val image = createImage(id, photog)
-          Await.result(ES.directInsert(image, ES.imagesCurrentAlias), fiveSeconds)
+          Await.result(ES.directInsert(image, ES.imagesCurrentAlias(instance)), fiveSeconds)
 
           val updateDoc = """
             |{
@@ -813,7 +817,7 @@ class ElasticSearchTest extends ElasticSearchTestBase {
             indexName => s"update $id for $indexName"
           ), fiveSeconds)
 
-          val getRequest = get(ES.imagesCurrentAlias, id)
+          val getRequest = get(ES.imagesCurrentAlias(instance), id)
           val result = ES.executeAndLog(getRequest, "").await.result
 
           result.found shouldBe true
@@ -822,12 +826,12 @@ class ElasticSearchTest extends ElasticSearchTestBase {
 
           requestedImage.identifiers shouldEqual Map("test" -> "done")
 
-          ES.removeAliasFrom(migrationIndexName, ES.imagesMigrationAlias)
+          ES.removeAliasFrom(migrationIndexName(instance), ES.imagesMigrationAlias(instance))
         }
 
         "when migration index contains doc, both are updated" in {
-          ES.assignAliasTo(migrationIndexName, ES.imagesMigrationAlias)
-          ES.refreshAndRetrieveMigrationStatus()
+          ES.assignAliasTo(migrationIndexName(instance), ES.imagesMigrationAlias(instance))
+          ES.refreshAndRetrieveMigrationStatus(instance)
 
           val id = UUID.randomUUID().toString
           val photog = StaffPhotographer("Tom Jenkins", "The Guardian")
@@ -848,19 +852,19 @@ class ElasticSearchTest extends ElasticSearchTestBase {
           ), fiveSeconds)
 
           // check update done in current index
-          val getRequestCurrent = get(ES.imagesCurrentAlias, id)
+          val getRequestCurrent = get(ES.imagesCurrentAlias(instance), id)
           val resultCurrent = ES.executeAndLog(getRequestCurrent, "").await.result
 
           resultCurrent.found shouldBe true
 
           val requestedImageCurrentJson = Json.parse(resultCurrent.sourceAsString)
 
-          (requestedImageCurrentJson \ "esInfo").as[EsInfo].migration.get.migratedTo shouldBe Some(migrationIndexName)
+          (requestedImageCurrentJson \ "esInfo").as[EsInfo].migration.get.migratedTo shouldBe Some(migrationIndexName(instance))
 
           requestedImageCurrentJson.as[Image].identifiers shouldEqual Map("test" -> "done")
 
           // check update also done in migration index
-          val getRequestMigration = get(ES.imagesMigrationAlias, id)
+          val getRequestMigration = get(ES.imagesMigrationAlias(instance), id)
           val resultMigration = ES.executeAndLog(getRequestMigration, "").await.result
 
           resultMigration.found shouldBe true
@@ -871,10 +875,11 @@ class ElasticSearchTest extends ElasticSearchTestBase {
 
           requestedImageMigrationJson.as[Image].identifiers shouldEqual Map("test" -> "done")
 
-          ES.removeAliasFrom(migrationIndexName, ES.imagesMigrationAlias)
+          ES.removeAliasFrom(migrationIndexName(instance), ES.imagesMigrationAlias(instance))
         }
       }
     }
   }
   private def now = DateTime.now(DateTimeZone.UTC)
+
 }
