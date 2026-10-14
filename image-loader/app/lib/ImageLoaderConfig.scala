@@ -1,20 +1,21 @@
 package lib
 
+import com.gu.mediaservice.lib.aws.{S3Bucket, S3Ops}
+
 import java.io.File
 import com.gu.mediaservice.lib.cleanup.{ComposedImageProcessor, ImageProcessor, ImageProcessorResources}
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, ImageProcessorLoader}
 import com.gu.mediaservice.model._
 import com.typesafe.scalalogging.StrictLogging
 import play.api.inject.ApplicationLifecycle
+import software.amazon.awssdk.regions.Region
 
 import scala.concurrent.duration.FiniteDuration
 
 class ImageLoaderConfig(resources: GridConfigResources) extends CommonConfig(resources) with StrictLogging {
-  val imageBucket: String = string("s3.image.bucket")
-
-  val maybeImageReplicaBucket: Option[String] = stringOpt("s3.image.replicaBucket")
-
-  val thumbnailBucket: String = string("s3.thumb.bucket")
+  val maybeImageReplicaBucket: Option[S3Bucket] = stringOpt("s3.image.replicaBucket").map{ replicaBucketName =>
+    S3Bucket.apply(replicaBucketName, this, None, usesPathStyleURLs = false, maybeRegionOverride = Some(Region.US_WEST_1))
+  }
 
   val lowerEnvironmentSamplingPercentageAsDecimal = intOpt("s3.sampling.percentage").getOrElse(1) / 100.0
   val maybeLowerEnvironmentQueueBucketToSampleInto = stringOpt("s3.sampling.targetBucket")
