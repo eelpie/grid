@@ -1,7 +1,5 @@
 package controllers
 
-import java.net.URI
-import com.gu.contentapi.client.model.ItemQuery
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.{EntityResponse, Link, Action => ArgoAction}
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
@@ -9,7 +7,7 @@ import com.gu.mediaservice.lib.aws.UpdateMessage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.lib.usage.UsageBuilder
-import com.gu.mediaservice.model.usage.{MediaUsage, SyndicatedUsageStatus, Usage, UsageNotice, UsageStatus}
+import com.gu.mediaservice.model.usage.{MediaUsage, Usage, UsageNotice, UsageStatus}
 import com.gu.mediaservice.syntax.MessageSubjects
 import lib._
 import model._
@@ -18,6 +16,7 @@ import play.api.mvc._
 import play.utils.UriEncoding
 import rx.lang.scala.Subject
 
+import java.net.URI
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -29,7 +28,6 @@ class UsageApi(
   notifications: Notifications,
   config: UsageConfig,
   usageApiSubject: Subject[WithLogMarker[UsageGroup]],
-  liveContentApi: LiveContentApi,
   override val controllerComponents: ControllerComponents,
   playBodyParsers: PlayBodyParsers
 )(
@@ -57,9 +55,11 @@ class UsageApi(
       Link("usages-by-id", s"${config.usageUri}/usages/{id}")
     )
 
+    val digitalPostUri = URI.create(s"${config.usageUri}/usages/digital")
     val printPostUri = URI.create(s"${config.usageUri}/usages/print")
     val syndicationPostUri = URI.create(s"${config.usageUri}/usages/syndication")
     val actions = List(
+      ArgoAction("digital-usage", digitalPostUri, "POST"),
       ArgoAction("print-usage", printPostUri, "POST"),
       ArgoAction("syndication-usage", syndicationPostUri, "POST"),
     )
@@ -99,36 +99,6 @@ class UsageApi(
 
   }
 
-  def reindexForContent(contentId: String) = auth.async { req =>
-    implicit val logMarker: LogMarker = MarkerMap(
-      "requestType" -> "reindex-for-content",
-      "requestId" -> RequestLoggingFilter.getRequestId(req),
-      "contentId" -> contentId,
-    )
-
-    val query = liveContentApi.usageQuery(contentId)
-
-    liveContentApi.getResponse(query).map{response =>
-      response.content match {
-        case Some(content) =>
-          ContentHelpers
-            .getContentFirstPublished(content)
-            .map(LiveContentItem(content, _))
-            .map(_.copy(isReindex = true))
-            .foreach(_.emitAsUsageGroup(
-              usageApiSubject,
-              usageGroupOps
-            ))
-          Accepted
-        case _ =>
-          NotFound
-      }
-    }.recover { case error: Exception =>
-        logger.error(logMarker, s"UsageApi reindex for content ($contentId) failed!", error)
-        InternalServerError
-      }
-  }
-
   def forMedia(mediaId: String) = auth.async { req =>
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "usages-for-media-id",
@@ -165,6 +135,29 @@ class UsageApi(
     }
   }
 
+  val maxDigitalRequestLength: Int = 1024 * config.maxPrintRequestLengthInKb
+  val setDigitalRequestBodyParser: BodyParser[JsValue] = playBodyParsers.json(maxLength = maxDigitalRequestLength)
+
+  def setDigitalUsages = auth(setDigitalRequestBodyParser) { req => {
+
+    val digitalMediaUsageRequestResult = req.body.validate[DigitalMediaUsageRequest]
+    digitalMediaUsageRequestResult.fold(
+      e => {
+        respondError(BadRequest, "digital-media-usage-request-parse-failed", JsError.toJson(e).toString)
+      },
+      digitalMediaUsageRequest => {
+        implicit val logMarker: LogMarker = MarkerMap(
+          "requestType" -> "set-digital-media-usages",
+          "requestId" -> RequestLoggingFilter.getRequestId(req),
+        )
+        val usageGroups = usageGroupOps.buildFromDigitalMediaUsageRecords(digitalMediaUsageRequest.digitalMediaUsageRecords)
+        usageGroups.map(ug => WithLogMarker.includeUsageGroup(ug)).foreach(usageApiSubject.onNext)
+
+        Accepted
+      }
+    )
+  }}
+
   val maxPrintRequestLength: Int = 1024 * config.maxPrintRequestLengthInKb
   val setPrintRequestBodyParser: BodyParser[JsValue] = playBodyParsers.json(maxLength = maxPrintRequestLength)
 
@@ -180,7 +173,7 @@ class UsageApi(
           "requestType" -> "set-print-usages",
           "requestId" -> RequestLoggingFilter.getRequestId(req),
         )
-        val usageGroups = usageGroupOps.build(printUsageRequest.printUsageRecords)
+        val usageGroups = usageGroupOps.buildFromPrintUsageRecords(printUsageRequest.printUsageRecords)
         usageGroups.map(WithLogMarker.includeUsageGroup).foreach(usageApiSubject.onNext)
 
         Accepted

@@ -82,7 +82,7 @@ class ItemToMediaUsageTest extends AnyFunSuiteLike {
     "addedBy"      -> "parent_editor",
     "childMediaId" -> "child-media-999"
   ).asJava
-  
+
   test("testTransform dynamo v2 with simple fields") {
     val enchancedDoc = EnhancedDocument.builder()
       .attributeConverterProviders(DefaultAttributeConverterProvider.create())
@@ -167,8 +167,8 @@ class ItemToMediaUsageTest extends AnyFunSuiteLike {
     mediaUsage.digitalUsageMetadata shouldEqual Some(
       DigitalUsageMetadata(
         URI.create("https://www.theguardian.com/world/2026/jul/20/article"),
-        "Breaking News",
-        "world",
+        Some("Breaking News"),
+        Some("world"),
         Some(URI.create("https://composer.gutools.co.uk/content/123"))
       )
     )
