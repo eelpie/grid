@@ -150,34 +150,29 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def optimiseCrop(input: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = {
-    val arena = Arena.ofConfined
-    try {
-      val fileName: String = input.getAbsolutePath
-      val optimisedImageName: String = fileName.split('.')(0) + "optimised.png"
-      val outputFile = new File(optimisedImageName) // TODO this is awful - push up!
+  def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = {
+    logger.info(s"optimiseCrop called on {${resizedFile.getAbsolutePath} with crop mediaType: $mediaType")
+    // The pipeline is offered this step as a chance to do any additional operations on output crop file; like quantising PNGs
+    // If no optimisations are required then the file was returned unaltered.
+    // PNGs are lossless so we can safely follow  what the existing pipeline does here.
+    val output = mediaType match {
+      case Png =>
+        val fileName = resizedFile.getAbsolutePath
+        val optimisedImageName = fileName.split('.')(0) + "optimised.png"
 
-      val image = VImage.newFromFile(arena, input.getAbsolutePath)
-      // If we saw and ICC profile than we will need to transform
-      val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
-      val correctedForICCProfile = if (needsICCTransform) {
-        image.iccTransform("srgb",
-          VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL), // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
-        )
-      } else {
-        // LAB gets corrupted by a needless icc_transform
-        image
-      }
-
-      saveImageToFile(correctedForICCProfile: VImage, ImageOperations.optimisedMimeType, 85, outputFile, quantise = true)
-      arena.close()
-      outputFile
-
-    } catch {
-      case _: Exception =>
+        logger.info(s"Resaving PNG ${resizedFile.getAbsolutePath} with quantise=true")
+        val arena = Arena.ofConfined()
+        val image = VImage.newFromFile(arena, resizedFile.getAbsolutePath)
+        val output = new File(optimisedImageName)
+        saveImageToFile(image, mediaType, 85, output, quantise = true, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
         arena.close()
-        throw new Exception(s"Failed to optimise file ${input.getAbsolutePath}")
+        output
+
+      case _ =>
+        // no-op for anything other than PNGs
+        resizedFile
     }
+    output
   }
 
   def createThumbnail(browserViewableImage: BrowserViewableImage,
