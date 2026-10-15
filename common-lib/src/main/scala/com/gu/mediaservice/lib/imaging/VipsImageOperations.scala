@@ -6,7 +6,7 @@ import app.photofox.vipsffm.{VBlob, VImage, VipsHelper, VipsOption}
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
-import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick.ctx
+import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick.{ctx, quality}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch, addLogMarkers}
 import com.gu.mediaservice.model._
 
@@ -42,37 +42,25 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       }.getOrElse {
         image
       }
-      // TODO correct colour
-      // TODO strip meta data
       // Output colour profile
       val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
-      // TODO depth adjust
 
-    // If we saw and ICC profile than we will need to transform
-    val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
-    val correctedForICCProfile = if (needsICCTransform ) {
-      cropped.iccTransform("srgb",
-        VipsOption.Enum("intent",VipsIntent.INTENT_PERCEPTUAL),     // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
-      )
-    } else {
-      // LAB gets corrupted by a needless icc_transform
-      cropped
-    }
+      // If we saw and ICC profile than we will need to transform
+      val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
+      val correctedForICCProfile = if (needsICCTransform) {
+        cropped.iccTransform("srgb",
+          VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL), // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
+        )
+      } else {
+        // LAB gets corrupted by a needless icc_transform
+        cropped
+      }
 
       val master = correctedForICCProfile
 
       // TODO separate this local file create from the vips master image create
       val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-      logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
-      master.jpegsave(outputFile.getAbsolutePath,
-        VipsOption.Int("Q", qual.toInt),
-        //VipsOption.Boolean("optimize-scans", true),
-        //VipsOption.Boolean("optimize-coding", true),
-        //VipsOption.Boolean("interlace", true),
-        //VipsOption.Boolean("trellis-quant", true),
-        // VipsOption.Int("quant-table", 3),
-        VipsOption.Boolean("strip", true)
-      )
+      saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
 
       arena.close()
       outputFile
