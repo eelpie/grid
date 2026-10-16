@@ -301,6 +301,7 @@ object Uploader extends GridLogging {
     import deps._
     uploadRequest.mimeType match {
       case Some(mime) if config.transcodedMimeTypes.contains(mime) =>
+        logger.info(s"transformImage from {${uploadRequest.mimeType} to $ImageOperations.optimisedMimeType because in transcodedMimeTypes")
         for {
           (file, mimeType) <- imageOps.transformImage(uploadRequest.tempFile, uploadRequest.mimeType, tempDir)
         } yield BrowserViewableImage(
