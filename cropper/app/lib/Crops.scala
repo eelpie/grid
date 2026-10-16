@@ -68,7 +68,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   private def createCrops(sourceFile: File, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker, instance: Instance): Future[List[Asset]] = {
     val quality = if (cropType == Png) pngCropQuality else cropQuality
 
-    Stopwatch.async(s"creating crops for ${apiImage.id}") {
+    Stopwatch.async(s"creating crops for ${apiImage.id} as type $cropType") {
       Future.sequence(dimensionList.map { dimensions =>
         val cropLogMarker = logMarker ++ Map("crop-dimensions" -> s"${dimensions.width}x${dimensions.height}")
         for {
