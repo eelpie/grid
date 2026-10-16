@@ -231,7 +231,18 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         val outputFile = File.createTempFile(s"transformed-", optimisedMimeType.fileExtension, tempDir)
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
-        saveImageToFile(image, optimisedMimeType, 85.0, outputFile, quantise = false)
+        // If we saw and ICC profile than we will need to transform
+        val needsICCTransform = VipsHelper.image_get_typeof(arena, image.getUnsafeStructAddress, "icc-profile-data") != 0
+        val correctedForICCProfile = if (needsICCTransform) {
+          image.iccTransform("srgb",
+            VipsOption.Enum("intent", VipsIntent.INTENT_PERCEPTUAL), // Helps with CMYK; see https://github.com/libvips/libvips/issues/1110
+          )
+        } else {
+          // LAB gets corrupted by a needless icc_transform
+          image
+        }
+
+        saveImageToFile(correctedForICCProfile, optimisedMimeType, 85.0, outputFile, quantise = false)
         arena.close()
         (outputFile, optimisedMimeType)
 
