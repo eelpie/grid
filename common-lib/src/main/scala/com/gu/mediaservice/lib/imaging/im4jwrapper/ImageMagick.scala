@@ -1,14 +1,14 @@
 package com.gu.mediaservice.lib.imaging.im4jwrapper
 
-import java.util.concurrent.Executors
-import java.io.File
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
+import com.gu.mediaservice.model.{Bounds, Dimensions}
+import org.im4java.core.{IMOperation, IdentifyCmd}
 import org.im4java.process.ArrayListOutputConsumer
 
-import scala.jdk.CollectionConverters._
+import java.io.File
+import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, Future}
-import org.im4java.core.{ConvertCmd, IMOperation, IdentifyCmd}
-import com.gu.mediaservice.model.{Bounds, Dimensions}
+import scala.jdk.CollectionConverters._
 
 
 object ImageMagick extends GridLogging {
@@ -22,22 +22,6 @@ object ImageMagick extends GridLogging {
   }
   def quality(op: IMOperation)(qual: Double): IMOperation = {
     op.quality(qual)
-    op
-  }
-  def unsharp(op: IMOperation)(radius: Double, sigma: Double, amount: Double): IMOperation = {
-    op.unsharp(radius, sigma, amount)
-    op
-  }
-  def stripMeta(op: IMOperation): IMOperation = {
-    op.strip()
-    op
-  }
-  def stripProfile(op: IMOperation)(profile: String): IMOperation = {
-    op.p_profile(profile)
-    op
-  }
-  def addDestImage(op: IMOperation)(dest: File): IMOperation = {
-    op.addImage(dest.getAbsolutePath)
     op
   }
   def crop(op: IMOperation)(b: Bounds): IMOperation = {
@@ -70,29 +54,9 @@ object ImageMagick extends GridLogging {
     op.format(definition)
     op
   }
-  def depth(op: IMOperation)(depth: Int): IMOperation = {
-    op.depth(depth)
-    op
-  }
-  def interlace(op: IMOperation)(interlacedHow: String): IMOperation = {
-    op.interlace(interlacedHow)
-    op
-  }
-  def setBackgroundColour(op: IMOperation)(backgroundColour: String): IMOperation = {
-    op.background(backgroundColour)
-    op
-  }
   def flatten(op: IMOperation): IMOperation = {
     op.flatten()
     op
-  }
-
-  def runConvertCmd(op: IMOperation, useImageMagick: Boolean)(implicit logMarker: LogMarker): Future[Unit] = {
-    Stopwatch.async(s"Using ${if(useImageMagick) "imagemagick" else "graphicsmagick"} for imaging conversion operation '$op'") {
-      Future {
-        new ConvertCmd(!useImageMagick).run(op)
-      }
-    }
   }
 
   def runIdentifyCmd(op: IMOperation, useImageMagick: Boolean)(implicit logMarker: LogMarker): Future[List[String]] = {
