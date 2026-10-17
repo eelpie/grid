@@ -213,7 +213,7 @@ object Uploader extends GridLogging {
                                          tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]],
                                          instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
-    if (optimiseOps.shouldOptimise(browserViewableImage.mimeType, optimisedFileMetadata)) {
+    if (optimiseOps.shouldOptimise(browserViewableImage, optimisedFileMetadata)) {
       for {
         tempFile <- createTempFile("optimisedpng-", optimisedMimeType.fileExtension, tempDir)
         maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, tempFile, instance)

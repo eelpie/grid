@@ -1,6 +1,6 @@
 package model.upload
 
-import com.gu.mediaservice.lib.ImageWrapper
+import com.gu.mediaservice.lib.{BrowserViewableImage, ImageWrapper}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap, Stopwatch}
 import com.gu.mediaservice.model.{FileMetadata, MimeType, Png, Tiff}
@@ -11,7 +11,7 @@ import scala.concurrent.{ExecutionContext, Future}
 trait OptimiseOps {
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, tempDir: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)]
-  def shouldOptimise(mimeType: MimeType, fileMetadata: FileMetadata): Boolean
+  def shouldOptimise(browserViewableImage: BrowserViewableImage, fileMetadata: FileMetadata): Boolean
 }
 
 class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps with GridLogging {
@@ -28,9 +28,11 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     }(marker)
   }
 
-  def shouldOptimise(mimeType: MimeType, fileMetadata: FileMetadata): Boolean = {
+  def shouldOptimise(browserViewableImage: BrowserViewableImage, fileMetadata: FileMetadata): Boolean = {
     // Decide which source images we feel will be slow to render in the UI.
     // These are the ones we will generate an optimised image for.
+    val mimeType = browserViewableImage.mimeType
+
     val isTiff = mimeType == Tiff
 
     val isTrueColour = fileMetadata.colourModelInformation.get("colorType") match {
