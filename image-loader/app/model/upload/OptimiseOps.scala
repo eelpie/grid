@@ -32,15 +32,18 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
   }
 
   def shouldOptimise(mimeType: MimeType, fileMetadata: FileMetadata): Boolean = {
-    mimeType match {
-      case Png =>
-        fileMetadata.colourModelInformation.get("colorType") match {
-          case Some("True Color") => true
-          case Some("True Color with Alpha") => true
-          case _ => false
-        }
-      case Tiff => true // TODO This should be done better, it could be better optimised into a jpeg if there is no transparency.
+    // Decide which source images we feel will be slow to render in the UI.
+    // These are the ones we will generate an optimised image for.
+    val isTiff = mimeType == Tiff
+
+    val isTrueColour = fileMetadata.colourModelInformation.get("colorType") match {
+      case Some("True Color") => true
+      case Some("True Color with Alpha") => true
       case _ => false
     }
+
+    val isTrueColourPng = isTrueColour && mimeType == Png
+
+    isTiff || isTrueColourPng
   }
 }
