@@ -280,8 +280,8 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
   describe("getColorModelInformation") {
     it("should show hasAlpha false for image without alpha channel") {
       val image = fileAt("IMG_4403.jpg")
-      val getImageInformationFuture = vipsImageOperations.getImageInformation(image)
-      whenReady(getImageInformationFuture) { imageInformation =>
+      val imageInformationFuture = vipsImageOperations.getImageInformation(image)
+      whenReady(imageInformationFuture) { imageInformation =>
         imageInformation._4 should contain(
           "hasAlpha" -> "false"
         )
