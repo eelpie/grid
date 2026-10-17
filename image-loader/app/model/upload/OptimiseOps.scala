@@ -4,7 +4,6 @@ import com.gu.mediaservice.lib.ImageWrapper
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap, Stopwatch}
 import com.gu.mediaservice.model.{FileMetadata, MimeType, Png, Tiff}
-import lib.ImageLoaderConfig
 
 import java.io.File
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,7 +15,7 @@ trait OptimiseOps {
   def shouldOptimise(mimeType: MimeType, fileMetadata: FileMetadata): Boolean
 }
 
-class OptimiseWithPngQuant(config: ImageLoaderConfig) extends OptimiseOps with GridLogging {
+class OptimiseWithPngQuant() extends OptimiseOps with GridLogging {
 
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, optimisedFile: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = Future {
@@ -52,13 +51,10 @@ class OptimiseWithPngQuant(config: ImageLoaderConfig) extends OptimiseOps with G
     }
 
     // OptimiseWithPngQuant.toOptimisedFile does not actually make the optimised file from the original file as the interface implies
-    // It relies on all the file formats which pass shouldOptimise also have been selected as transcodeMimeTypes
-    // and having been converted to PNGs upstream.
-    // If Tiff files were not configured in transcodeMimeTypes then pngquant would be
-    // past a tif file to quantise and will fail; breaking uploads.
-    val canBeOptimisedByOptimiseWithPngQuant = mimeType == Png || config.transcodedMimeTypes.contains(mimeType)
+    // OptimiseWithPngQuant will only work for PNG source files.
+    val canBeOptimisedByOptimiseWithPngQuant = mimeType == Png
     if (!canBeOptimisedByOptimiseWithPngQuant) {
-      logger.warn(s"OptimiseWithPngQuant was asked to optimise a mimetype ($mimeType) which is not a PNG or in transcodedMimeTypes and already been transformed to a PNG")
+      logger.warn(s"OptimiseWithPngQuant was asked to optimise a mimetype ($mimeType) which is not a PNG; ignoring")
     }
     shouldBeOptimised && canBeOptimisedByOptimiseWithPngQuant
   }
