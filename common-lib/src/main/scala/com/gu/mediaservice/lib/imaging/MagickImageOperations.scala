@@ -12,9 +12,6 @@ import scala.concurrent.Future
 import scala.sys.process._
 
 
-case class ExportResult(id: String, masterCrop: Asset, othersizings: List[Asset])
-class UnsupportedCropOutputTypeException extends Exception
-
 class MagickImageOperations(playPath: String) extends GridLogging with ImageOperations {
   import ExifTool._
   import ImageMagick._
