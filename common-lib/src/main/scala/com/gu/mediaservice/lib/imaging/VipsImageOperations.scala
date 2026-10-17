@@ -104,18 +104,16 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     stripped
   }
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): VImage = {
+  def appendMetadata(sourceFile: File, metadata: ImageMetadata)(implicit arena: Arena): VImage = {
     // appendMetadata as a separate step is a poor fit for libvips
     // and this will force another read / write recompression.
     logger.info(s"appendMetadata to ${sourceFile.getAbsolutePath}")
-    val arena = Arena.ofConfined()
     val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
     makeXmpBlog(metadata).foreach { xmpBlob =>
       logger.info("Tagging master crop with XMP metadata: " + new String(xmpBlob))
       image.set("xmp-data", VBlob.newFromBytes(arena, xmpBlob))
     }
-    image
     image
   }
 
