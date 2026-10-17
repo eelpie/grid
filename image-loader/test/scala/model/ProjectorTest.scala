@@ -9,6 +9,7 @@ import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model.leases.LeasesByMedia
 import com.gu.mediaservice.model._
 import lib.{DigestedFile, ImageLoaderConfig}
+import lib.DigestedFile
 import model.upload.OptimiseWithPngQuant
 import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.Mockito.{times, verify, when}
@@ -35,15 +36,13 @@ class ProjectorTest extends AnyFreeSpec with Matchers with ScalaFutures with Moc
 
   private val imageOperations = new MagickImageOperations(ctxPath)
 
-  private val imageUploadOpsConfig = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, Nil, dummyBucket("img-bucket"), dummyBucket("thumb-bucket"))
-  private val imageLoaderConfig = mock[ImageLoaderConfig]
-  when(imageLoaderConfig.transcodedMimeTypes).thenReturn(imageUploadOpsConfig.transcodedMimeTypes)
+  private val imageUploadOpsConfig = ImageUploadOpsCfg(new File("/tmp"), 256, 85d, dummyBucket("img-bucket"), dummyBucket("thumb-bucket"))
 
   private val maybeEmbedder = None
 
   private val s3 = mock[S3]
   private val auth = mock[Authentication]
-  private val optimiseOps = new OptimiseWithPngQuant(imageLoaderConfig)
+  private val optimiseOps = new OptimiseWithPngQuant()
 
   private val projector = new Projector(imageUploadOpsConfig, s3, imageOperations, ImageProcessor.identity, auth, maybeEmbedder, optimiseOps)
 
