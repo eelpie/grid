@@ -241,7 +241,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         }
 
         // TODO quantise decision from the caller
-        saveImageToFile(correctedForICCProfile, outputMimeType, 85.0, outputFile, quantise = false)
+        saveImageToFile(correctedForICCProfile, outputMimeType, 85, outputFile, quantise = false)
         arena.close()
         (outputFile, optimisedMimeType)
 
