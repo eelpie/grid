@@ -12,7 +12,7 @@ import com.gu.mediaservice.lib.formatting._
 import com.gu.mediaservice.lib.imaging.{ImageOperations, VipsImageOperations}
 import com.gu.mediaservice.lib.imaging.ImageOperations.{optimisedMimeType, thumbMimeType}
 import com.gu.mediaservice.lib.logging._
-import com.gu.mediaservice.lib.metadata.{FileMetadataHelper, ImageMetadataConverter}
+import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.lib.net.URI
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.syntax.MessageSubjects
@@ -159,13 +159,12 @@ object Uploader extends GridLogging {
       browserViewableImage <- eventualBrowserViewableImage
       s3Source <- sourceStoreFuture
       mergedUploadRequest = patchUploadRequestWithS3Metadata(uploadRequest, s3Source)
-      optimisedFileMetadata <- FileMetadataReader.fromIPTCHeadersWithColorInfo(browserViewableImage)
       sourceDimensions <- sourceDimensionsFuture
       sourceOrientationMetadata <- sourceOrientationMetadataFuture
       thumbViewableImage <- createThumbFuture(browserViewableImage, deps, tempDirForRequest, uploadRequest.instance, orientationMetadata = sourceOrientationMetadata)
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
-        tempDirForRequest, optimiseOps, browserViewableImage, optimisedFileMetadata, deps.tryFetchOptimisedFile, uploadRequest.instance)
+         tempDirForRequest, optimiseOps, browserViewableImage, deps.tryFetchOptimisedFile, uploadRequest.instance)
       s3PngOption <- maybeStorableOptimisedImage match {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
@@ -209,7 +208,6 @@ object Uploader extends GridLogging {
                                          tempDir: File,
                                          optimiseOps: OptimiseOps,
                                          browserViewableImage: BrowserViewableImage,
-                                         optimisedFileMetadata: FileMetadata,
                                          tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]],
                                          instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
