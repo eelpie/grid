@@ -1,17 +1,19 @@
 package model.upload
 
-import com.gu.mediaservice.lib.{BrowserViewableImage, ImageWrapper}
+import app.photofox.vipsffm.{VImage, VipsHelper}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap, Stopwatch}
-import com.gu.mediaservice.model.{FileMetadata, MimeType, Png, Tiff}
+import com.gu.mediaservice.lib.{BrowserViewableImage, ImageWrapper}
+import com.gu.mediaservice.model.{MimeType, Png, Tiff}
 
 import java.io.File
+import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
 
 trait OptimiseOps {
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, tempDir: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)]
-  def shouldOptimise(browserViewableImage: BrowserViewableImage, fileMetadata: FileMetadata): Boolean
+  def shouldOptimise(browserViewableImage: BrowserViewableImage): Boolean
 }
 
 class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps with GridLogging {
@@ -28,19 +30,19 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     }(marker)
   }
 
-  def shouldOptimise(browserViewableImage: BrowserViewableImage, fileMetadata: FileMetadata): Boolean = {
+  def shouldOptimise(browserViewableImage: BrowserViewableImage): Boolean = {
     // Decide which source images we feel will be slow to render in the UI.
     // These are the ones we will generate an optimised image for.
     val mimeType = browserViewableImage.mimeType
 
     val isTiff = mimeType == Tiff
 
-    val isTrueColour = fileMetadata.colourModelInformation.get("colorType") match {
-      case Some("True Color") => true
-      case Some("True Color with Alpha") => true
-      case _ => false
-    }
+    val arena = Arena.ofConfined()
+    val image = VImage.newFromFile(arena, browserViewableImage.file.getAbsolutePath)
+    val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
+    arena.close()
 
+    val isTrueColour = numberOfBands >= 3
     val isTrueColourPng = isTrueColour && mimeType == Png
 
     isTiff || isTrueColourPng
