@@ -58,16 +58,6 @@ object FileMetadataReader extends GridLogging {
     }
     yield getMetadataWithIPTCHeaders(metadata, imageId) // FIXME: JPEG, JFIF, Photoshop, GPS, File
 
-  def fromIPTCHeadersWithColorInfo(image: File, imageId:String, mimeType: MimeType)(implicit logMarker: LogMarker): Future[FileMetadata] =
-    for {
-      metadata <- readMetadata(image)
-      colourModelInformation <- getColorModelInformation(image, metadata, mimeType)
-    }
-    yield getMetadataWithIPTCHeaders(metadata, imageId).copy(
-      colourModelInformation = colourModelInformation,
-      c2pa = if (C2paDetector.hasC2paManifest(image, mimeType)) FileMetadata.C2paAvailable else FileMetadata.NoC2PA
-    )
-
   private def getMetadataWithIPTCHeaders(metadata: Metadata, imageId:String): FileMetadata =
     FileMetadata(
       iptc = exportDirectory(metadata, classOf[IptcDirectory]),
@@ -236,16 +226,6 @@ object FileMetadataReader extends GridLogging {
 
       }
     }
-
-  def getColorModelInformation(image: File, metadata: Metadata, mimeType: MimeType)(implicit logMarker: LogMarker): Future[Map[String, String]] = {
-
-    val source = addImage(image)
-
-    val formatter = format(source)("%r")
-
-    runIdentifyCmd(formatter, useImageMagick = false).map{ imageType => getColourInformation(metadata, imageType.headOption, mimeType) }
-      .recover { case _ => getColourInformation(metadata, None, mimeType) }
-  }
 
   // bits per sample might be a useful value, eg. "1", "8"; or it might be annoying like "1 bits/component/pixel", "8 8 8 bits/component/pixel"
   // either way we want everything up to the first space
