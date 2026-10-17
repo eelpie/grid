@@ -58,9 +58,6 @@ object FileMetadataReader extends GridLogging {
     }
     yield getMetadataWithIPTCHeaders(metadata, imageId) // FIXME: JPEG, JFIF, Photoshop, GPS, File
 
-  def fromIPTCHeadersWithColorInfo(image: ImageWrapper)(implicit logMarker: LogMarker): Future[FileMetadata] =
-    fromIPTCHeadersWithColorInfo(image.file, image.id, image.mimeType)
-
   def fromIPTCHeadersWithColorInfo(image: File, imageId:String, mimeType: MimeType)(implicit logMarker: LogMarker): Future[FileMetadata] =
     for {
       metadata <- readMetadata(image)
