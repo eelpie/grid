@@ -1,14 +1,12 @@
 package com.gu.mediaservice.lib.imaging.im4jwrapper
 
-import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
+import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.{Bounds, Dimensions}
-import org.im4java.core.{IMOperation, IdentifyCmd}
-import org.im4java.process.ArrayListOutputConsumer
+import org.im4java.core.IMOperation
 
 import java.io.File
 import java.util.concurrent.Executors
-import scala.concurrent.{ExecutionContext, Future}
-import scala.jdk.CollectionConverters._
+import scala.concurrent.ExecutionContext
 
 
 object ImageMagick extends GridLogging {
@@ -57,17 +55,5 @@ object ImageMagick extends GridLogging {
   def flatten(op: IMOperation): IMOperation = {
     op.flatten()
     op
-  }
-
-  def runIdentifyCmd(op: IMOperation, useImageMagick: Boolean)(implicit logMarker: LogMarker): Future[List[String]] = {
-    Stopwatch.async(s"Using ${if (useImageMagick) "imagemagick" else "graphicsmagick"} for imaging identification operation '$op'") {
-      Future {
-        val cmd = new IdentifyCmd(!useImageMagick)
-        val output = new ArrayListOutputConsumer()
-        cmd.setOutputConsumer(output)
-        cmd.run(op)
-        output.getOutput.asScala.toList
-      }
-    }
   }
 }
