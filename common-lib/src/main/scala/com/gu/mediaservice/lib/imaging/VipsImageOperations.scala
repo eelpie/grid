@@ -25,7 +25,6 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                  qual: Double = 100d,
                  tempDir: File,
                  fileType: MimeType,
-                 isTransformedFromSource: Boolean,
                  orientationMetadata: Option[OrientationMetadata],
                  metadata: ImageMetadata
                )(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
