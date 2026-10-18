@@ -118,31 +118,6 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File = {
-    logger.info(s"optimiseCrop called on {${resizedFile.getAbsolutePath} with crop mediaType: $mediaType")
-    // The pipeline is offered this step as a chance to do any additional operations on output crop file; like quantising PNGs
-    // If no optimisations are required then the file was returned unaltered.
-    // PNGs are lossless so we can safely follow  what the existing pipeline does here.
-    val output = mediaType match {
-      case Png =>
-        val fileName = resizedFile.getAbsolutePath
-        val optimisedImageName = fileName.split('.')(0) + "optimised.png"
-
-        logger.info(s"Resaving PNG ${resizedFile.getAbsolutePath} with quantise=true")
-        val arena = Arena.ofConfined()
-        val image = VImage.newFromFile(arena, resizedFile.getAbsolutePath)
-        val output = new File(optimisedImageName)
-        saveImageToFile(image, mediaType, 85, output, quantise = true, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP))
-        arena.close()
-        output
-
-      case _ =>
-        // no-op for anything other than PNGs
-        resizedFile
-    }
-    output
-  }
-
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                           width: Int,
                           qual: Double = 100d,
