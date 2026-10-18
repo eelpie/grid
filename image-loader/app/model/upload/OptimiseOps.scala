@@ -16,7 +16,7 @@ trait OptimiseOps {
 
 class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps with GridLogging {
 
-  def toOptimisedFile(file: File, imageWrapper: ImageWrapper, optimisedFile: File)
+  def toOptimisedFile(file: File, imageWrapper: ImageWrapper, tempDir: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = {
 
     val marker = MarkerMap(
@@ -24,7 +24,7 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     )
 
     Stopwatch("toOptimisedFile") {
-      imageOperations.transformImage(imageWrapper.file, optimisedFile, ImageOperations.optimisedMimeType)
+      imageOperations.transformImage(imageWrapper.file, tempDir, ImageOperations.optimisedMimeType)
     }(marker)
   }
 

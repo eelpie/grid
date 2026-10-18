@@ -217,7 +217,7 @@ object Uploader extends GridLogging {
         (optimisedFile, optimisedMimeType) <- {
           maybeDownloadedOptimisedFile match {
             case Some(optData) => Future.successful(optData)
-            case None => optimiseOps.toOptimisedFile(browserViewableImage.file, browserViewableImage, tempFile)
+            case None => optimiseOps.toOptimisedFile(browserViewableImage.file, browserViewableImage, tempDir)
           }
         }
       } yield Some(
