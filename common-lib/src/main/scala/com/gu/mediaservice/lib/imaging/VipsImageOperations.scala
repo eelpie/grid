@@ -248,7 +248,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
       } catch {
         case e: Exception =>
-          logger.error("Error during createThumbnail", e)
+          logger.error("Error during transformImage", e)
           arena.close()
           throw e
       }
@@ -278,7 +278,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         }
       } catch {
         case e: Exception =>
-          logger.error("Error during createThumbnail", e)
+          logger.error("Error during getImageInformation", e)
           arena.close()
           throw e
       }
