@@ -51,12 +51,12 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       val quality = if (mediaType == Png) pngCropQuality else masterCropQuality
 
       for {
-        strip <- imageOperations.cropImage(
+        file <- imageOperations.cropImage(
           sourceFile, apiImage.source.mimeType, source.bounds, quality, config.tempDir,
           iccColourSpace, mediaType, isTransformedFromSource = false,
-          orientationMetadata = orientationMetadata
+          orientationMetadata = orientationMetadata,
+          metadata = metadata
         )
-        file: File <- imageOperations.appendMetadata(strip, metadata)
         dimensions = Dimensions(source.bounds.width, source.bounds.height)
         filename = outputFilename(apiImage, source.bounds, dimensions.width, mediaType, isMaster = true)
         sizing = store.storeCropSizing(file, filename, mediaType, crop, dimensions)
