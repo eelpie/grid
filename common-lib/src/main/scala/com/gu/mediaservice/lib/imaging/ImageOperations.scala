@@ -42,7 +42,8 @@ trait ImageOperations {
                    dimensions: Dimensions,
                    qual: Double = 100d,
                    tempDir: File,
-                   fileType: MimeType
+                   fileType: MimeType,
+                   quantise: Boolean
                  )(implicit logMarker: LogMarker, arena: Arena): Future[File]
 
   def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType)(implicit logMarker: LogMarker): Future[(File, MimeType)]
