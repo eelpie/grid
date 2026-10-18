@@ -105,7 +105,6 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("IMG_4403.jpg")
 
       val eventualMasterCrop = vipsImageOperations.cropImage(image,
-        Some(Jpeg),
         Bounds(1000, 600, 2000, 1000),
         99.0,
         tempDirForOutputFiles,
@@ -125,7 +124,6 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("cmyk.jpg")
 
       val eventualMasterCrop = vipsImageOperations.cropImage(image,
-        Some(Jpeg),
         Bounds(0, 0, 5, 4),
         99.0,
         tempDirForOutputFiles,
