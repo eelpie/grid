@@ -7,7 +7,6 @@ import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
-import lib.Crops.cropType
 
 import java.io.File
 import java.lang.foreign.Arena
@@ -18,7 +17,7 @@ case object InvalidImage extends Exception("Invalid image cannot be cropped")
 case object MissingMimeType extends Exception("Missing mimeType from source API")
 case object InvalidCropRequest extends Exception("Crop request invalid for image dimensions")
 
-case class MasterCrop(sizing: Future[Asset], file: File, image: VImage, dimensions: Dimensions, aspectRatio: Float)
+case class MasterCrop(image: VImage, dimensions: Dimensions, aspectRatio: Float)
 
 class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOperations, imageBucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext) extends GridLogging {
   import Files._
@@ -44,26 +43,19 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     Stopwatch.async(s"creating master crop for ${apiImage.id}") {
       val source = crop.specification
       val metadata = apiImage.metadata
-      // pngs are always lossless, so quality only means effort spent compressing them. We don't
-      // care too much about filesize of master crops, so skip expensive compression to get faster cropping
-      val quality = if (mediaType == Png) pngCropQuality else masterCropQuality
 
       for {
         image <- imageOperations.cropImage(
-          sourceFile, source.bounds, quality, config.tempDir,
+          sourceFile, source.bounds, config.tempDir,
           mediaType,
           orientationMetadata = orientationMetadata,
           metadata = metadata
         )
-        outputFile = File.createTempFile(s"crop-", s"${mediaType.fileExtension}", config.tempDir) // TODO function for this
-        file = imageOperations.saveImageToFile(image, mediaType, quality, outputFile, quantise = false, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP()))
         dimensions = Dimensions(source.bounds.width, source.bounds.height)
-        filename = outputFilename(apiImage, source.bounds, dimensions.width, mediaType, isMaster = true)
-        sizing = store.storeCropSizing(outputFile, filename, mediaType, crop, dimensions)
         dirtyAspect = source.bounds.width.toFloat / source.bounds.height
         aspect = crop.specification.aspectRatio.flatMap(AspectRatio.clean).getOrElse(dirtyAspect)
       }
-      yield MasterCrop(sizing, file, image, dimensions, aspect)
+      yield MasterCrop(image, dimensions, aspect)
     }
   }
 
@@ -120,21 +112,27 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val key = imageBucket.keyFromURL(secureFile)
     val secureUrl = s3.signUrlTony(imageBucket, key)
 
+    // pngs are always lossless, so quality only means effort spent compressing them. We don't
+    // care too much about filesize of master crops, so skip expensive compression to get faster cropping
+    val quality = if (cropType == Png) pngCropQuality else masterCropQuality
+
     implicit val arena: Arena = Arena.ofShared()
 
     val result = Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, apiImage.source.orientationMetadata)
-
         outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
-
         sizes <- createCrops(masterCrop.image, outputDims, apiImage, crop, cropType)
-        masterSize <- masterCrop.sizing
 
-        _ <- Future.sequence(List(sourceFile, masterCrop.file).map(delete))
+        masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
+        _ = imageOperations.saveImageToFile(masterCrop.image, cropType, quality, masterCropFile, quantise = false, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP()))
+        masterCropFilename = outputFilename(apiImage, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true)
+        masterAsset <- store.storeCropSizing(masterCropFile, masterCropFilename, cropType, crop, masterCrop.dimensions)
+
+        _ <- Future.sequence(List(sourceFile, masterCropFile).map(delete))
       }
-      yield ExportResult(apiImage.id, masterSize, sizes)
+      yield ExportResult(apiImage.id, masterAsset, sizes)
     }
 
     arena.close()
