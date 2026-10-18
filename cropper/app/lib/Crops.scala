@@ -80,11 +80,10 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
             quality,
             config.tempDir,
             cropType)(cropLogMarker, arena)
-          optimisedFile = imageOperations.optimiseCrop(file, cropType)(cropLogMarker)
+          // TODO Decision on quantisation required
           filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
-          sizing <- store.storeCropSizing(optimisedFile, filename, cropType, crop, dimensions)(cropLogMarker)
+          sizing <- store.storeCropSizing(file, filename, cropType, crop, dimensions)(cropLogMarker)
           _ <- delete(file)
-          _ <- delete(optimisedFile)
         }
         yield {
           sizing
