@@ -49,7 +49,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
       for {
         file <- imageOperations.cropImage(
-          sourceFile, apiImage.source.mimeType, source.bounds, quality, config.tempDir,
+          sourceFile, source.bounds, quality, config.tempDir,
           mediaType,
           orientationMetadata = orientationMetadata,
           metadata = metadata
