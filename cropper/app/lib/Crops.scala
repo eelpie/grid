@@ -109,8 +109,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val secureUrl = s3.signUrlTony(imageBucket, key)
 
     implicit val arena: Arena = Arena.ofShared()
-
-    val result = Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
+    Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         masterCrop <- createMasterCrop(apiImage, sourceFile, crop, apiImage.source.orientationMetadata)
@@ -148,10 +147,11 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         _ <- Future.sequence(List(sourceFile, masterCropFile).map(delete))
       }
       yield ExportResult(apiImage.id, masterAsset, resizeAssets)
-    }
 
-    arena.close()
-    result
+    }.map { exportResult =>
+      arena.close()
+      exportResult
+    }
   }
 }
 
