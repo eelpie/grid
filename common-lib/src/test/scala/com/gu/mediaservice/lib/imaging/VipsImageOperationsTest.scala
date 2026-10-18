@@ -112,7 +112,8 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
         None,
         Jpeg,
         isTransformedFromSource = false,
-        None
+        None,
+        ImageMetadata()
       )
 
       whenReady(eventualMasterCrop) { r =>
@@ -133,7 +134,8 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
         None,
         Jpeg,
         isTransformedFromSource = false,
-        None
+        None,
+        ImageMetadata()
       )
 
       whenReady(eventualMasterCrop) { r =>

@@ -16,7 +16,7 @@ object ImageOperations {
 
 trait ImageOperations {
 
-  def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File]
+  def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage
 
   def createThumbnail(browserViewableImage: BrowserViewableImage,
                       width: Int,
@@ -34,7 +34,8 @@ trait ImageOperations {
                  iccColourSpace: Option[String],
                  fileType: MimeType,
                  isTransformedFromSource: Boolean,
-                 orientationMetadata: Option[OrientationMetadata]
+                 orientationMetadata: Option[OrientationMetadata],
+                 metadata: ImageMetadata
                )(implicit logMarker: LogMarker, arena: Arena): Future[File]
 
   def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
