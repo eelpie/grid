@@ -31,7 +31,6 @@ trait ImageOperations {
   def cropImage(
                  sourceFile: File,
                  bounds: Bounds,
-                 qual: Double = 100d,
                  tempDir: File,
                  fileType: MimeType,
                  orientationMetadata: Option[OrientationMetadata],
