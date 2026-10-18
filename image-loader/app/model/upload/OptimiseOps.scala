@@ -1,55 +1,53 @@
 package model.upload
 
-import com.gu.mediaservice.lib.ImageWrapper
-import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap, Stopwatch}
-import com.gu.mediaservice.model.{FileMetadata, MimeType, Png, Tiff}
+import app.photofox.vipsffm.{VImage, VipsHelper}
+import com.gu.mediaservice.lib.imaging.ImageOperations
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap, Stopwatch}
+import com.gu.mediaservice.lib.{BrowserViewableImage, ImageWrapper}
+import com.gu.mediaservice.model.{MimeType, Png, Tiff}
 
 import java.io.File
+import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
-import scala.sys.process._
 
 trait OptimiseOps {
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, tempDir: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)]
-  def shouldOptimise(mimeType: Option[MimeType], fileMetadata: FileMetadata): Boolean
+  def shouldOptimise(browserViewableImage: BrowserViewableImage): Boolean
   def optimiseMimeType: MimeType
 }
 
-object OptimiseWithPngQuant extends OptimiseOps {
+class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps with GridLogging {
 
   override def optimiseMimeType: MimeType = Png
 
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, optimisedFile: File)
-                     (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = Future {
+                     (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = {
 
     val marker = MarkerMap(
-      "fileName" -> file.getName()
+      "fileName" -> file.getName
     )
 
-    Stopwatch("pngquant") {
-      val result = Seq("pngquant", "-s10", "--quality", "1-85", file.getAbsolutePath,
-        "--force", "--output", optimisedFile.getAbsolutePath
-      ).!
-      if (result > 0)
-        throw new Exception(s"pngquant failed to convert to optimised png file (rc = $result)")
+    Stopwatch("toOptimisedFile") {
+      imageOperations.transformImage(imageWrapper.file, optimisedFile, ImageOperations.optimisedMimeType)
     }(marker)
-
-    if (optimisedFile.exists()) {
-      (optimisedFile, optimiseMimeType)
-    } else {
-      throw new Exception(s"Attempted to optimise PNG file ${optimisedFile.getPath}")
-    }
   }
 
-  def shouldOptimise(mimeType: Option[MimeType], fileMetadata: FileMetadata): Boolean =
-    mimeType match {
-      case Some(Png) =>
-        fileMetadata.colourModelInformation.get("colorType") match {
-          case Some("True Color") => true
-          case Some("True Color with Alpha") => true
-          case _ => false
-        }
-      case Some(Tiff) => true // TODO This should be done better, it could be better optimised into a jpeg if there is no transparency.
-      case _ => false
-    }
+  def shouldOptimise(browserViewableImage: BrowserViewableImage): Boolean = {
+    // Decide which source images we feel will be slow to render in the UI.
+    // These are the ones we will generate an optimised image for.
+    val mimeType = browserViewableImage.mimeType
+
+    val isTiff = mimeType == Tiff
+
+    val arena = Arena.ofConfined()
+    val image = VImage.newFromFile(arena, browserViewableImage.file.getAbsolutePath)
+    val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
+    arena.close()
+
+    val isTrueColour = numberOfBands >= 3
+    val isTrueColourPng = isTrueColour && mimeType == Png
+
+    isTiff || isTrueColourPng
+  }
 }
