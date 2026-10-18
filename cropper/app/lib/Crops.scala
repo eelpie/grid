@@ -45,7 +45,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     Stopwatch.async(s"creating master crop for ${apiImage.id}") {
       val source = crop.specification
       val metadata = apiImage.metadata
-      val iccColourSpace = FileMetadataHelper.normalisedIccColourSpace(apiImage.fileMetadata)
       // pngs are always lossless, so quality only means effort spent compressing them. We don't
       // care too much about filesize of master crops, so skip expensive compression to get faster cropping
       val quality = if (mediaType == Png) pngCropQuality else masterCropQuality
@@ -53,7 +52,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       for {
         file <- imageOperations.cropImage(
           sourceFile, apiImage.source.mimeType, source.bounds, quality, config.tempDir,
-          iccColourSpace, mediaType, isTransformedFromSource = false,
+          mediaType, isTransformedFromSource = false,
           orientationMetadata = orientationMetadata,
           metadata = metadata
         )
