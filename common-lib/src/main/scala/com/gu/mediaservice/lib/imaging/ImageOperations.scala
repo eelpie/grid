@@ -38,8 +38,6 @@ trait ImageOperations {
                  metadata: ImageMetadata
                )(implicit logMarker: LogMarker, arena: Arena): Future[VImage]
 
-  def optimiseCrop(resizedFile: File, mediaType: MimeType)(implicit logMarker: LogMarker): File
-
   def resizeImage(
                    sourceFile: VImage,
                    sourceMimeType: Option[MimeType],
