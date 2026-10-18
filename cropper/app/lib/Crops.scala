@@ -63,13 +63,16 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     Stopwatch.async(s"creating crops for ${apiImage.id}") {
       Future.sequence(dimensionList.map { dimensions =>
         val cropLogMarker = logMarker ++ Map("crop-dimensions" -> s"${dimensions.width}x${dimensions.height}")
+        val quantise = cropType == Png
         for {
           file <- imageOperations.resizeImage(sourceImage,
             apiImage.source.mimeType,
             dimensions,
             quality,
             config.tempDir,
-            cropType)(cropLogMarker, arena)
+            cropType,
+            quantise = quantise
+          )(cropLogMarker, arena)
           // TODO Decision on quantisation required
           filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
         }
