@@ -107,7 +107,6 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
         99.0,
         tempDirForOutputFiles,
         Jpeg,
-        isTransformedFromSource = false,
         None,
         ImageMetadata()
       )
@@ -128,7 +127,6 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
         99.0,
         tempDirForOutputFiles,
         Jpeg,
-        isTransformedFromSource = false,
         None,
         ImageMetadata()
       )
