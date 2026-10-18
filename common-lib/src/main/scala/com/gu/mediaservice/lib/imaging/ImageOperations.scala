@@ -30,7 +30,6 @@ trait ImageOperations {
 
   def cropImage(
                  sourceFile: File,
-                 sourceMimeType: Option[MimeType],
                  bounds: Bounds,
                  qual: Double = 100d,
                  tempDir: File,
