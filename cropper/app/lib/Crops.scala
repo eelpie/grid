@@ -38,7 +38,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     sourceFile: File,
     crop: Crop,
     orientationMetadata: Option[OrientationMetadata]
-  )(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Future[MasterCrop] = {
+  )(implicit logMarker: LogMarker, arena: Arena): Future[MasterCrop] = {
     Stopwatch.async(s"creating master crop for ${apiImage.id}") {
       val source = crop.specification
       val metadata = apiImage.metadata
