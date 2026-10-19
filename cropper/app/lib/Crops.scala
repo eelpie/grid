@@ -73,7 +73,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
             cropType,
             quantise = quantise
           )(cropLogMarker, arena)
-          // TODO Decision on quantisation required
           filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
         }
         yield {
