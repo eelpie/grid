@@ -1,6 +1,7 @@
 package model.upload
 
 import com.gu.mediaservice.lib.ImageWrapper
+import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap, Stopwatch}
 import com.gu.mediaservice.model.{FileMetadata, MimeType, Png, Tiff}
 import lib.ImageLoaderConfig
@@ -13,12 +14,9 @@ trait OptimiseOps {
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, tempDir: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)]
   def shouldOptimise(mimeType: MimeType, fileMetadata: FileMetadata): Boolean
-  def optimiseMimeType: MimeType
 }
 
 class OptimiseWithPngQuant(config: ImageLoaderConfig) extends OptimiseOps with GridLogging {
-
-  override def optimiseMimeType: MimeType = Png
 
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, optimisedFile: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = Future {
@@ -35,7 +33,7 @@ class OptimiseWithPngQuant(config: ImageLoaderConfig) extends OptimiseOps with G
     }(marker)
 
     if (optimisedFile.exists()) {
-      (optimisedFile, optimiseMimeType)
+      (optimisedFile, ImageOperations.optimisedMimeType)
     } else {
       throw new Exception(s"Attempted to optimise PNG file ${optimisedFile.getPath}")
     }
