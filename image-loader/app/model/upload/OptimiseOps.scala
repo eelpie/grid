@@ -25,8 +25,16 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
       "fileName" -> file.getName
     )
 
+    val arena = Arena.ofConfined()
+    val image = VImage.newFromFile(arena, file.getAbsolutePath)
+    val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
+    arena.close()
+
+    val isTrueColour = numberOfBands >= 3
+    val isTrueColourPng = isTrueColour && imageWrapper.mimeType == Png
+
     Stopwatch("toOptimisedFile") {
-      imageOperations.transformImage(imageWrapper.file, tempDir, ImageOperations.optimisedMimeType)
+      imageOperations.transformImage(imageWrapper.file, tempDir, ImageOperations.optimisedMimeType, quantise = isTrueColourPng)
     }(marker)
   }
 
