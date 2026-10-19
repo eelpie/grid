@@ -108,7 +108,8 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val secureUrl = s3.signUrlTony(imageBucket, key)
 
     implicit val arena: Arena = Arena.ofShared()
-    Stopwatch(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
+    // Generate the crop assets on local disk
+    val eventualCropAssets = Stopwatch.async(s"making crop local assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
         masterCrop <- createMasterCrop(apiImage, sourceFile, crop, apiImage.source.orientationMetadata)
@@ -126,10 +127,11 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
         masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
         _ = imageOperations.saveImageToFile(masterCrop.image, cropType, quality, masterCropFile, quantise = false, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP()))
-        masterCropFilename = outputFilename(apiImage, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true)
-        masterAsset <- store.storeCropSizing(masterCropFile, masterCropFilename, cropType, crop, masterCrop.dimensions)
 
-        resizeAssets <- Future.sequence {
+        masterCropFilename = outputFilename(apiImage, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true)
+        eventualMasterAsset: Future[Asset] = store.storeCropSizing(masterCropFile, masterCropFilename, cropType, crop, masterCrop.dimensions)
+
+        eventualResizeAssets: Future[List[Asset]] = Future.sequence {
           resizes.map { resize =>
             val file = resize._1
             val filename = resize._2
@@ -138,18 +140,27 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
             for {
               sizing <- store.storeCropSizing(file, filename, cropType, crop, dimensions)
               _ <- delete(file)
+            } yield {
+              sizing
             }
-            yield sizing
           }
         }
+      } yield {
+        logger.info("Image operations have finished; closing makeExport arena.")
+        arena.close()
+        (eventualMasterAsset, eventualResizeAssets)
+      }
+    }
 
-        _ <- Future.sequence(List(sourceFile, masterCropFile).map(delete))
+    // Once the assets have been rendered to local files we can close the arena
+    // to release the arena memory and then do the S3 uploads.
+    Stopwatch.async(s"Uploading crop assets to S3") {
+      for {
+        sentCropFiles <- eventualCropAssets
+        masterAsset <- sentCropFiles._1
+        resizeAssets <- sentCropFiles._2
       }
       yield ExportResult(apiImage.id, masterAsset, resizeAssets)
-
-    }.map { exportResult =>
-      arena.close()
-      exportResult
     }
   }
 }
