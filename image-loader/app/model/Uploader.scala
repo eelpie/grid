@@ -226,8 +226,6 @@ object Uploader extends GridLogging {
           mimeType = optimisedMimeType
         ).asStorableOptimisedImage
       )
-    } else if (browserViewableImage.isTransformedFromSource) {
-      Future.successful(Some(browserViewableImage.asStorableOptimisedImage))
     } else
       Future.successful(None)
   }
