@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 trait OptimiseOps {
   def toOptimisedFile(file: File, imageWrapper: ImageWrapper, tempDir: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)]
-  def shouldOptimise(browserViewableImage: BrowserViewableImage): Boolean
+  def shouldOptimise(browserViewableImage: BrowserViewableImage): Option[MimeType]
 }
 
 class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps with GridLogging {
@@ -38,7 +38,7 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     }(marker)
   }
 
-  def shouldOptimise(browserViewableImage: BrowserViewableImage): Boolean = {
+  def shouldOptimise(browserViewableImage: BrowserViewableImage): Option[MimeType] = {
     // Decide which source images we feel will be slow to render in the UI.
     // These are the ones we will generate an optimised image for.
     val mimeType = browserViewableImage.mimeType
@@ -53,6 +53,11 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     val isTrueColour = numberOfBands >= 3
     val isTrueColourPng = isTrueColour && mimeType == Png
 
-    isTiff || isTrueColourPng
+    val shouldOptimise = isTiff || isTrueColourPng
+    if (shouldOptimise) {
+      Some(ImageOperations.optimisedMimeType)
+    } else {
+      None
+    }
   }
 }
