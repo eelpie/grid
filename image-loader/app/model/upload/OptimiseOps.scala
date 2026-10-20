@@ -4,7 +4,7 @@ import app.photofox.vipsffm.{VImage, VipsHelper}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap, Stopwatch}
 import com.gu.mediaservice.lib.{BrowserViewableImage, ImageWrapper}
-import com.gu.mediaservice.model.{MimeType, Png, Tiff}
+import com.gu.mediaservice.model.{Jpeg, MimeType, Png, Tiff}
 
 import java.io.File
 import java.lang.foreign.Arena
@@ -48,14 +48,22 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     val arena = Arena.ofConfined()
     val image = VImage.newFromFile(arena, browserViewableImage.file.getAbsolutePath)
     val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
+    val hasAlpha = imageOperations.hasAlpha(image)(arena)
+    val isTrueColour = numberOfBands >= 3
     arena.close()
 
-    val isTrueColour = numberOfBands >= 3
-    val isTrueColourPng = isTrueColour && mimeType == Png
-
-    val shouldOptimise = isTiff || isTrueColourPng
-    if (shouldOptimise) {
-      Some(ImageOperations.optimisedMimeType)
+    if (mimeType == Png) {
+      if (isTrueColour && !hasAlpha) {
+        Some(Jpeg)
+      } else {
+        None
+      }
+    } else if (mimeType == Tiff) {
+      if (isTrueColour && !hasAlpha) {
+        Some(Jpeg)
+      } else {
+        Some(Png)
+      }
     } else {
       None
     }
