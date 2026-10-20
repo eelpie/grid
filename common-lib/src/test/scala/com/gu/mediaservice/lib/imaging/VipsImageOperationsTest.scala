@@ -25,7 +25,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("IMG_4403.jpg")
 
       val outputFile = tempFileNamed("thumbnail", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, isTransformedFromSource = false, Instance("TODO"))
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("TODO"))
 
       val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 95, outputFile, None, None, None)
       whenReady(eventualThumbnail) { r =>
@@ -37,7 +37,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("IMG_4445.jpg")
 
       val outputFile = tempFileNamed("thumbnail-tall", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, isTransformedFromSource = false, Instance("TODO"))
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("TODO"))
 
       // Use a large tall thumbnail to expose out of order read which exceeds the line cache
       val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 2800, 95, outputFile, None, None, Some(OrientationMetadata(exifOrientation = Some(6))))
@@ -51,7 +51,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("halfdome_LAB.tif")
 
       val outputFile = tempFileNamed("thumbnail-from-lab", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, false, Instance("TODO"))
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("TODO"))
 
       val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
       whenReady(eventualThumbnail) { r =>
@@ -63,7 +63,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("halfdome_LAB16.tif")
 
       val outputFile = tempFileNamed("thumbnail-from-lab16", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, false, Instance("TODO"))
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("TODO"))
 
       val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
       whenReady(eventualThumbnail) { r =>
@@ -75,7 +75,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("with-alpha.png")
 
       val outputFile = tempFileNamed("thumbnail-png-with-alpha", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, isTransformedFromSource = false, Instance("TODO"))
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("TODO"))
 
       val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
       whenReady(eventualThumbnail) { r =>
@@ -87,7 +87,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("with-alpha.tif")
 
       val outputFile = tempFileNamed("thumbnail-tif-with-alpha", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, isTransformedFromSource = false, Instance("TODO"))
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("TODO"))
 
       val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
       whenReady(eventualThumbnail) { r =>
