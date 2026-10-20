@@ -213,7 +213,7 @@ object Uploader extends GridLogging {
                                          tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]],
                                          instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
-    if (optimiseOps.shouldOptimise(browserViewableImage)) {
+    optimiseOps.shouldOptimise(browserViewableImage).map { optimisedMimeType =>
       for {
         tempFile <- createTempFile("optimisedpng-", optimisedMimeType.fileExtension, tempDir)
         maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, tempFile, instance)
@@ -229,8 +229,9 @@ object Uploader extends GridLogging {
           mimeType = optimisedMimeType
         ).asStorableOptimisedImage
       )
-    } else
+    }.getOrElse {
       Future.successful(None)
+    }
   }
 
   def toMetaMap(uploadRequest: UploadRequest): Map[String, String] = {
