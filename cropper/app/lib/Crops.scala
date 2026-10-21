@@ -19,7 +19,8 @@ case object InvalidCropRequest extends Exception("Crop request invalid for image
 
 case class MasterCrop(image: VImage, dimensions: Dimensions, aspectRatio: Float)
 
-class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOperations, imageBucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext) extends GridLogging {
+class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOperations, imageBucket: S3Bucket, s3: S3,
+            recordCropGenerationDuration: (Long, Boolean) => Unit = (_, _) => ())(implicit ec: ExecutionContext) extends GridLogging {
   import Files._
 
   private val cropQuality = 75d
@@ -109,6 +110,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
     implicit val arena: Arena = Arena.ofShared()
     // Generate the crop assets on local disk
+    val startNanos = System.nanoTime()
     val eventualCropAssets = Stopwatch.async(s"making crop local assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
@@ -150,6 +152,8 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         arena.close()
         (eventualMasterAsset, eventualResizeAssets)
       }
+    }.andThen {
+      case result => recordCropGenerationDuration(System.nanoTime() - startNanos, result.isSuccess)
     }
 
     // Once the assets have been rendered to local files we can close the arena

@@ -5,7 +5,7 @@ import com.gu.mediaservice.lib.imaging.VipsImageOperations
 import com.gu.mediaservice.lib.management.Management
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.CropperController
-import lib.{CropStore, CropperConfig, Crops, Notifications}
+import lib.{CropStore, CropperConfig, CropperMetrics, Crops, Notifications}
 import play.api.ApplicationLoader.Context
 import router.Routes
 
@@ -21,7 +21,9 @@ class CropperComponents(context: Context) extends GridComponents(context, new Cr
 
   private val s3 = new S3(config)
 
-  val crops = new Crops(config, store, imageOperations, config.imageBucket, s3)
+  private val metrics = new CropperMetrics()
+
+  val crops = new Crops(config, store, imageOperations, config.imageBucket, s3, metrics.recordCropGenerationDuration)
   val notifications = new Notifications(config)
 
   private val gridClient = GridClient(config.services, config.services.cropperBaseUri)(wsClient)
