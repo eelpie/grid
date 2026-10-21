@@ -33,14 +33,6 @@ trait ImageOperations {
                       orientationMetadata: Option[OrientationMetadata]
                      )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])]
 
-  // Given the path to an original image write a rendering of it which
-  // can be ingested by an embedding prediction end point.
-  def createEmbeddingSource(originalImageFile: File,
-                            orientationMetadata: Option[OrientationMetadata],
-                            embeddingSourceImageFormat: EmbeddingSourceImageFormat,
-                            outputFile: File
-                           ): Future[File]
-
   def cropImage(
                  sourceFile: File,
                  bounds: Bounds,
