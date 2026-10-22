@@ -46,13 +46,10 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
         val master = correctedForICCProfile
 
+        // TODO separate this local file create from the vips master image create
         val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-        master.jpegsave(outputFile.getAbsolutePath,
-          VipsOption.Int("Q", qual.toInt),
-          VipsOption.Int("keep", VipsRaw.VIPS_FOREIGN_KEEP_NONE)
-        )
+        saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
         outputFile
-
       } catch {
         case e: Exception =>
           logger.error(logMarker, "Error while cropping image", e)
