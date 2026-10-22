@@ -60,16 +60,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
       // TODO separate this local file create from the vips master image create
       val outputFile = File.createTempFile(s"crop-", s"${fileType.fileExtension}", tempDir) // TODO function for this
-      logger.info("Saving master crop tmp file to: " + outputFile.getAbsolutePath)
-      master.jpegsave(outputFile.getAbsolutePath,
-        VipsOption.Int("Q", qual.toInt),
-        //VipsOption.Boolean("optimize-scans", true),
-        //VipsOption.Boolean("optimize-coding", true),
-        //VipsOption.Boolean("interlace", true),
-        //VipsOption.Boolean("trellis-quant", true),
-        // VipsOption.Int("quant-table", 3),
-        VipsOption.Boolean("strip", true)
-      )
+      saveImageToFile(master, fileType, qual, outputFile, quantise = false, keep = None)
 
       arena.close()
       outputFile
