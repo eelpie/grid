@@ -43,8 +43,6 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     // These are the ones we will generate an optimised image for.
     val mimeType = browserViewableImage.mimeType
 
-    val isTiff = mimeType == Tiff
-
     val arena = Arena.ofConfined()
     val image = VImage.newFromFile(arena, browserViewableImage.file.getAbsolutePath)
     val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
@@ -52,20 +50,26 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     val isTrueColour = numberOfBands >= 3
     arena.close()
 
-    if (mimeType == Png) {
+    val x = if (mimeType == Png) {
       if (isTrueColour && !hasAlpha) {
+        logger.info(s"shouldOptimise choosing $Jpeg because true colour $Png with no alpha")
         Some(Jpeg)
       } else {
         None
       }
     } else if (mimeType == Tiff) {
       if (isTrueColour && !hasAlpha) {
+        logger.info(s"shouldOptimise choosing $Jpeg because true colour $Tiff with no alpha")
         Some(Jpeg)
       } else {
+        logger.info(s"shouldOptimise choosing $Png because $Tiff with alpha")
         Some(Png)
       }
     } else {
       None
     }
+    logger.info(s"shouldOptimise $browserViewableImage: $x")
+    x
   }
+
 }
