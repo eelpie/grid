@@ -3,11 +3,10 @@ package model
 import _root_.play.api.libs.json.Json
 import _root_.play.api.libs.ws.WSRequest
 import com.gu.mediaservice.lib.Files.createTempFile
-import com.gu.mediaservice.lib.ImageIngestOperations.fileKeyFromId
 import com.gu.mediaservice.lib._
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.auth.Authentication
-import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, S3Object, UpdateMessage}
+import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.formatting._
 import com.gu.mediaservice.lib.imaging.ImageOperations
@@ -22,9 +21,8 @@ import lib.imaging.{FileMetadataReader, MimeTypeDetection}
 import lib.storage.ImageLoaderStore
 import lib.{DigestedFile, ImageLoaderConfig, Notifications}
 import model.Uploader.{fromUploadRequestShared, toImageUploadOpsCfg}
-import model.upload.{OptimiseOps, OptimiseWithPngQuant, UploadRequest}
+import model.upload.{OptimiseOps, UploadRequest}
 import org.joda.time.DateTime
-import software.amazon.awssdk.services.s3.model.CopyObjectRequest
 
 import java.io.File
 import java.nio.file.Files
@@ -67,8 +65,8 @@ case class ImageUploadOpsCfg(
   thumbWidth: Int,
   thumbQuality: Double,
   transcodedMimeTypes: List[MimeType],
-  originalFileBucket: String,
-  thumbBucket: String
+  originalFileBucket: S3Bucket,
+  thumbBucket: S3Bucket
 )
 
 case class ImageUploadOpsDependencies(
@@ -99,7 +97,7 @@ object Uploader extends GridLogging {
     )
   }
 
-  def fromUploadRequestShared(uploadRequest: UploadRequest, deps: ImageUploadOpsDependencies, processor: ImageProcessor)
+  def fromUploadRequestShared(uploadRequest: UploadRequest, deps: ImageUploadOpsDependencies, processor: ImageProcessor, optimiseOps: OptimiseOps)
                              (implicit ec: ExecutionContext, logMarker: LogMarker): Future[Image] = {
 
     import deps._
@@ -115,7 +113,7 @@ object Uploader extends GridLogging {
         storeOrProjectOriginalFile,
         storeOrProjectThumbFile,
         storeOrProjectOptimisedImage,
-        OptimiseWithPngQuant,
+        optimiseOps,
         uploadRequest,
         deps,
         fileMetadata,
@@ -214,7 +212,7 @@ object Uploader extends GridLogging {
                                          tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]],
                                          instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
-    if (optimiseOps.shouldOptimise(Some(browserViewableImage.mimeType), optimisedFileMetadata)) {
+    if (optimiseOps.shouldOptimise(browserViewableImage.mimeType, optimisedFileMetadata)) {
       for {
         tempFile <- createTempFile("optimisedpng-", optimisedMimeType.fileExtension, tempDir)
         maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, tempFile, instance)
@@ -344,7 +342,8 @@ class Uploader(
   val maybeEmbedder: Option[Embedder],
                imageProcessor: ImageProcessor,
   gridClient: GridClient,
-  auth: Authentication
+  auth: Authentication,
+  optimiseOps: OptimiseOps
 )(
   implicit val ec: ExecutionContext
 ) extends MessageSubjects with ArgoHelpers {
@@ -375,7 +374,7 @@ class Uploader(
     val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps,
       storeSource, storeThumbnail, storeOptimisedImage)
     Stopwatch.async("finalImage") {
-      val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor)
+      val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor, optimiseOps)
       uploadRequest.identifiers.foreach{
         case (ImageStorageProps.derivativeOfMediaIdsIdentifierKey, commaSeparatedMediaIdsToAddUsagesTo) =>
           commaSeparatedMediaIdsToAddUsagesTo.split(",").map(_.trim).foreach(
@@ -475,6 +474,7 @@ class Uploader(
       ))
       // TODO: centralise where all these URLs are constructed
     } yield {
+      /*
       config.maybeLowerEnvironmentQueueBucketToSampleInto.foreach { lowerEnvironmentQueueBucket =>
         if (math.random() < config.lowerEnvironmentSamplingPercentageAsDecimal) {
           val mediaId = imageUpload.image.id
@@ -494,7 +494,7 @@ class Uploader(
           }
         }
       }
-
+      */
       UploadStatusUri(s"${config.rootUri(instance)}/uploadStatus/${uploadRequest.imageId}")
     }
 

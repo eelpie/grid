@@ -1,15 +1,17 @@
 package model
 
 import com.drew.imaging.ImageProcessingException
-import com.gu.mediaservice.lib.aws.{S3Metadata, S3Object, S3ObjectMetadata}
+import com.gu.mediaservice.lib.aws.{S3Bucket, S3Metadata, S3Object, S3ObjectMetadata}
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.imaging.{ImageOperations, MagickImageOperations}
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.lib.{StorableImage, StorableOptimisedImage, StorableOriginalImage, StorableThumbImage}
 import com.gu.mediaservice.model._
+import lib.ImageLoaderConfig
 import lib.imaging.MimeTypeDetection
 import model.upload.{OptimiseWithPngQuant, UploadRequest}
 import org.joda.time.DateTime
+import org.mockito.Mockito.when
 import org.scalatest.Assertion
 import org.scalatest.funsuite.AsyncFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -32,7 +34,10 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
   private implicit val logMarker: MockLogMarker = new MockLogMarker()
     // For mime type info, see https://github.com/guardian/grid/pull/2568
     val tempDir = new File("/tmp")
-    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), "img-bucket", "thumb-bucket")
+    val mockConfig: ImageUploadOpsCfg = ImageUploadOpsCfg(tempDir, 256, 85d, List(Tiff), ResourceHelpers.dummyBucket("img-bucket"), ResourceHelpers.dummyBucket("thumb-bucket"))
+
+  private val imageLoaderConfig = mock[ImageLoaderConfig]
+  when(imageLoaderConfig.transcodedMimeTypes).thenReturn(mockConfig.transcodedMimeTypes)
 
   /**
     * @todo: I flailed about until I found a path that worked, but
@@ -53,7 +58,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
 
     def mockStore = (a: StorableImage) =>
       Future.successful(
-        S3Object("madeupname", "madeupkey", a.file, Some(a.mimeType), None, a.meta, None)
+        mockS3Object
       )
 
     def storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object] = mockStore
@@ -86,7 +91,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
       storeOrProjectOriginalFile = mockDependencies.storeOrProjectOriginalFile,
       storeOrProjectThumbFile = mockDependencies.storeOrProjectThumbFile,
       storeOrProjectOptimisedFile = mockDependencies.storeOrProjectOptimisedImage,
-      optimiseOps = OptimiseWithPngQuant,
+      new OptimiseWithPngQuant(imageLoaderConfig),
       uploadRequest = uploadRequest,
       deps = mockDependencies,
       fileMetadata = FileMetadata(),
