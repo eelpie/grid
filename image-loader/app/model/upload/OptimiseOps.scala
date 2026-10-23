@@ -52,7 +52,7 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     val isTrueColour = numberOfBands >= 3
     arena.close()
 
-    if (mimeType == Png) {
+    val x = if (mimeType == Png) {
       if (isTrueColour && !hasAlpha) {
         Some(Jpeg)
       } else {
@@ -67,5 +67,8 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     } else {
       None
     }
+    logger.info(s"shouldOptimise $browserViewableImage: $x")
+    x
   }
+
 }
