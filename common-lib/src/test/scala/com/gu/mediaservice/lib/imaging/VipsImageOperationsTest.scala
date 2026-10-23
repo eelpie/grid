@@ -97,6 +97,16 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     }
   }
 
+  describe("crop") {
+    it("produce crop") {
+      implicit val arena: Arena = Arena.ofShared()
+      val eventualCropped = vipsImageOperations.cropImage(fileAt("IMG_4403.jpg"), Bounds(100, 100, 3000, 2000), new File("/Users/tony/tmp"), None, metadata = ImageMetadata())
+      whenReady(eventualCropped) { cropped =>
+        vipsImageOperations.resizeImage(cropped, None, Dimensions(800, 600), 90, new File("/Users/tony/tmp/"), Png, quantise = true)
+      }
+    }
+  }
+
   describe("resize") {
     it("should output resized image to file in chosen format") {
       implicit val arena: Arena = Arena.ofShared()
