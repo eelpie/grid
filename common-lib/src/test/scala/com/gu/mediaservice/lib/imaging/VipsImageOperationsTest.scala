@@ -186,6 +186,20 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
     }
   }
 
+  describe("transform") {
+    it("should output png with alpha to quantised png") {
+      implicit val arena: Arena = Arena.ofConfined()
+      val fullSizedImage = fileAt("Untitled_Artwork 2 (1398dfe2c75399dca2121aec4c939a91474db38e).png")
+
+      val eventualTransformed = vipsImageOperations.transformImage(fullSizedImage, new File("/Users/tony/tmp"), Png, quantise = true)
+
+      whenReady(eventualTransformed) { transformed =>
+        arena.close()
+        transformed._1.isFile should be(true)
+      }
+    }
+  }
+
   describe("alpha") {
     it("should return false for RGB for a Jpeg with no alpha") {
       implicit val arena: Arena = Arena.ofShared
