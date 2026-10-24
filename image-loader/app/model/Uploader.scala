@@ -9,8 +9,8 @@ import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.formatting._
+import com.gu.mediaservice.lib.imaging.ImageOperations.thumbMimeType
 import com.gu.mediaservice.lib.imaging.{ImageOperations, VipsImageOperations}
-import com.gu.mediaservice.lib.imaging.ImageOperations.{optimisedMimeType, thumbMimeType}
 import com.gu.mediaservice.lib.logging._
 import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
 import com.gu.mediaservice.lib.net.URI
@@ -75,7 +75,7 @@ case class ImageUploadOpsDependencies(
   storeOrProjectThumbFile: StorableThumbImage => Future[S3Object],
   storeOrProjectOptimisedImage: StorableOptimisedImage => Future[S3Object],
   tryFetchThumbFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
-  tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
+  tryFetchOptimisedFile: (String, MimeType, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _, _) => Future.successful(None),
 )
 
 
@@ -210,17 +210,17 @@ object Uploader extends GridLogging {
                                          tempDir: File,
                                          optimiseOps: OptimiseOps,
                                          browserViewableImage: BrowserViewableImage,
-                                         tryFetchOptimisedFile: (String, File, Instance) => Future[Option[(File, MimeType)]],
+                                         tryFetchOptimisedFile: (String, MimeType, File, Instance) => Future[Option[(File, MimeType)]],
                                          instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
     optimiseOps.shouldOptimise(browserViewableImage).map { optimisedMimeType =>
       for {
         tempFile <- createTempFile("optimisedpng-", optimisedMimeType.fileExtension, tempDir)
-        maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, tempFile, instance)
+        maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, optimisedMimeType, tempFile, instance)
         (optimisedFile, optimisedMimeType) <- {
           maybeDownloadedOptimisedFile match {
             case Some(optData) => Future.successful(optData)
-            case None => optimiseOps.toOptimisedFile(browserViewableImage.file, browserViewableImage, tempDir)
+            case None => optimiseOps.toOptimisedFile(browserViewableImage, optimisedMimeType, tempDir)
           }
         }
       } yield Some(

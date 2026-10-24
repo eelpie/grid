@@ -11,13 +11,11 @@ import scala.concurrent.Future
 
 object ImageOperations {
   val thumbMimeType: MimeType = Jpeg
-  val optimisedMimeType: MimeType = Png
 }
 
 trait ImageOperations {
 
   val thumbMimeType: MimeType = ImageOperations.thumbMimeType
-  val optimisedMimeType: MimeType = ImageOperations.optimisedMimeType
 
   def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage
 
