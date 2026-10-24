@@ -331,7 +331,6 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           //VipsOption.Boolean("interlace", true),
           //VipsOption.Boolean("trellis-quant", true),
           // VipsOption.Int("quant-table", 3),
-          VipsOption.Boolean("strip", true),
           VipsOption.Int("keep", k)
         )
         outputFile
