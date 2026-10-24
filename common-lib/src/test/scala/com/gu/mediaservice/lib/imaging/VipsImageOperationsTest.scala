@@ -12,6 +12,7 @@ import org.scalatest.time.{Millis, Span}
 
 import java.io.File
 import java.lang.foreign.Arena
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
