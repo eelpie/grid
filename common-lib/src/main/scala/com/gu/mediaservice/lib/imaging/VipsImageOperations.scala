@@ -386,7 +386,6 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           //VipsOption.Boolean("interlace", true),
           //VipsOption.Boolean("trellis-quant", true),
           // VipsOption.Int("quant-table", 3),
-          VipsOption.Boolean("strip", true),
           VipsOption.Int("keep", k)
         )
         outputFile
@@ -399,13 +398,11 @@ class VipsImageOperations extends GridLogging with ImageOperations {
             VipsOption.Int("Q", qual.toInt),
             VipsOption.Int("effort", 1),
             //VipsOption.Int("compression", 6),
-            VipsOption.Boolean("strip", true),
             VipsOption.Int("keep", k)
           )
         } else {
           image.pngsave(outputFile.getAbsolutePath,
             //VipsOption.Int("compression", 6),
-            VipsOption.Boolean("strip", true),
             VipsOption.Int("keep", k)
           )
         }
