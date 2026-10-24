@@ -25,9 +25,9 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
 
   private val cropQuality = 75d
   private val masterCropQuality = 95d
-  // For PNGs, Magick considers "quality" parameter as effort spent on compression - 1 meaning none, 100 meaning max.
-  // We don't overly care about output crop file sizes here, but prefer a fast output, so turn it right down.
-  private val pngCropQuality = 1d
+  // In libvips Q sets the quality target for the PNG quantiser. The range is 0–100 and the default is 100.
+  // A lower Q lets the quantiser use fewer colours and accept more error. You get a smaller, lossier file with more banding.
+  private val pngCropQuality = 70d
 
   def outputFilename(source: SourceImage, bounds: Bounds, outputWidth: Int, fileType: MimeType, isMaster: Boolean = false)(implicit instance: Instance): String = {
     val masterString: String = if (isMaster) "master/" else ""
