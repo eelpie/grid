@@ -12,6 +12,7 @@ import org.scalatest.time.{Millis, Span}
 
 import java.io.File
 import java.lang.foreign.Arena
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
@@ -101,9 +102,16 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
   describe("crop") {
     it("produce crop") {
       implicit val arena: Arena = Arena.ofShared()
-      val eventualCropped = vipsImageOperations.cropImage(fileAt("IMG_4403.jpg"), Bounds(100, 100, 3000, 2000), new File("/Users/tony/tmp"), None, metadata = ImageMetadata())
-      whenReady(eventualCropped) { cropped =>
-        vipsImageOperations.resizeImage(cropped, None, Dimensions(800, 600), 90, new File("/Users/tony/tmp/"), Png, quantise = true)
+
+      val eventualResizedCrop = for {
+        masterCrop <- vipsImageOperations.cropImage(fileAt("Untitled_Artwork 2 (1398dfe2c75399dca2121aec4c939a91474db38e).png"), Bounds(100, 100, 3000, 2000), new File("/Users/tony/tmp"), None, metadata = ImageMetadata())
+        resized <- vipsImageOperations.resizeImage(masterCrop, None, Dimensions(800, 600), 90, new File("/Users/tony/tmp/"), Png, quantise = true)
+      } yield  {
+        resized
+      }
+
+      whenReady(eventualResizedCrop) { resizedCrop =>
+        println(resizedCrop)
       }
     }
   }
