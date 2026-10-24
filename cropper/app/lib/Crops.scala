@@ -135,7 +135,12 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         resizes <- eventualResizes
 
         masterCropFilename = outputFilename(apiImage, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true)
-        eventualMasterAsset: Future[Asset] = store.storeCropSizing(masterCropFile, masterCropFilename, cropType, crop, masterCrop.dimensions)
+        eventualMasterAsset: Future[Asset] = for {
+          masterAsset <- store.storeCropSizing(masterCropFile, masterCropFilename, cropType, crop, masterCrop.dimensions)
+          _ <- delete(masterCropFile)
+        } yield {
+          masterAsset
+        }
 
         eventualResizeAssets: Future[List[Asset]] = Future.sequence {
           resizes.map { resize =>
