@@ -13,6 +13,7 @@ import org.scalatest.time.{Millis, Span}
 
 import java.io.File
 import java.lang.foreign.Arena
+import scala.concurrent.ExecutionContext.Implicits.global
 
 // This test is disabled for now as it doesn't run on our CI environment, because libvips is not present...
 @Ignore
