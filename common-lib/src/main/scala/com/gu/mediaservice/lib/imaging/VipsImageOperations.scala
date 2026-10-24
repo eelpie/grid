@@ -324,7 +324,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     mimeType match {
       case Jpeg =>
         image.jpegsave(outputFile.getAbsolutePath,
-          VipsOption.Int("Q", qual.toInt),
+          VipsOption.Int("Q", q),
           //VipsOption.Boolean("optimize-scans", true),
           VipsOption.Boolean("optimize-coding", true),
           //VipsOption.Boolean("interlace", true),
@@ -340,16 +340,14 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         if (quantise) {
           image.pngsave(outputFile.getAbsolutePath,
             VipsOption.Boolean("palette", true),
-            VipsOption.Int("Q", qual.toInt),
+            VipsOption.Int("Q", q),
             VipsOption.Int("effort", 1),
             //VipsOption.Int("compression", 6),
-            VipsOption.Boolean("strip", true),
             VipsOption.Int("keep", k)
           )
         } else {
           image.pngsave(outputFile.getAbsolutePath,
             //VipsOption.Int("compression", 6),
-            VipsOption.Boolean("strip", true),
             VipsOption.Int("keep", k)
           )
         }
