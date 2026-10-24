@@ -11,22 +11,22 @@ import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
 
 trait OptimiseOps {
-  def toOptimisedFile(file: File, imageWrapper: ImageWrapper, tempDir: File)
+  def toOptimisedFile(imageWrapper: ImageWrapper, optimisedMimeType: MimeType, tempDir: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)]
   def shouldOptimise(browserViewableImage: BrowserViewableImage): Option[MimeType]
 }
 
 class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps with GridLogging {
 
-  def toOptimisedFile(file: File, imageWrapper: ImageWrapper, tempDir: File)
+  def toOptimisedFile(imageWrapper: ImageWrapper, optimisedMimeType: MimeType, tempDir: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = {
 
     val marker = MarkerMap(
-      "fileName" -> file.getName
+      "fileName" -> imageWrapper.file.getName
     )
 
     val arena = Arena.ofConfined()
-    val image = VImage.newFromFile(arena, file.getAbsolutePath)
+    val image = VImage.newFromFile(arena, imageWrapper.file.getAbsolutePath)
     val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
     arena.close()
 
@@ -34,7 +34,7 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     val isTrueColourPng = isTrueColour && imageWrapper.mimeType == Png
 
     Stopwatch("toOptimisedFile") {
-      imageOperations.transformImage(imageWrapper.file, tempDir, ImageOperations.optimisedMimeType, quantise = isTrueColourPng)
+      imageOperations.transformImage(imageWrapper.file, tempDir, optimisedMimeType, quantise = isTrueColourPng)
     }(marker)
   }
 

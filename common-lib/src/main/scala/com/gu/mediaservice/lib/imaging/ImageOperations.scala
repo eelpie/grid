@@ -11,7 +11,6 @@ import scala.concurrent.Future
 
 object ImageOperations {
   val thumbMimeType: MimeType = Jpeg
-  val optimisedMimeType: MimeType = Png
 }
 
 trait ImageOperations {
