@@ -154,6 +154,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
       } yield {
         logger.info("Image operations have finished; closing makeExport arena.")
         arena.close()
+        sourceFile.delete()
         (eventualMasterAsset, eventualResizeAssets)
       }
     }
