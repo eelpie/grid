@@ -73,8 +73,8 @@ class ReaperController(
               implicit val i: Instance = instance
               if (isPaused) {
                 logger.info("Reaper is paused")
-                es.countTotalSoftReapable(isReapable).map(metrics.softReapable.increment(Nil, _))
-                es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.increment(Nil, _))
+                es.countTotalSoftReapable(isReapable).map(metrics.softReapable.record(_, instance))
+                es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.record(_, instance))
               } else {
                 val deletedBy = "reaper"
                 logger.info(s"Reaper running for instance: ${instance.id}")
@@ -134,7 +134,7 @@ class ReaperController(
 
   def doBatchSoftReap(count: Int, deletedBy: String, instance: Instance): Future[JsValue] = persistedBatchDeleteOperation("soft"){
     implicit val i: Instance = instance
-    es.countTotalSoftReapable(isReapable).map(metrics.softReapable.increment(Nil, _))
+    es.countTotalSoftReapable(isReapable).map(metrics.softReapable.record(_, instance))
 
     logger.info(s"Soft deleting next $count images...")
 
@@ -170,7 +170,7 @@ class ReaperController(
 
   def doBatchHardReap(count: Int, deletedBy: String, instance: Instance): Future[JsValue] = persistedBatchDeleteOperation("hard"){
     implicit val i: Instance = instance
-    es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.increment(Nil, _))
+    es.countTotalHardReapable(isReapable, config.hardReapImagesAge).map(metrics.hardReapable.record(_, instance))
 
     logger.info(s"Hard deleting next $count images for instance ${instance.id}...")
 
