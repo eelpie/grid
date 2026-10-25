@@ -41,6 +41,18 @@ class ThrallMetrics(config: ThrallConfig, actorSystem: ActorSystem, applicationL
     }
   }
 
+  private val imageCountGauge: LongGauge = meter.gaugeBuilder("images.count").ofLongs()
+    .setDescription("Number of images in the instance's index")
+    .build()
+
+  def recordImageCount(count: Long, softDeleted: Boolean, instance: Instance): Unit = {
+    val attributes = Attributes.of(
+      AttributeKey.stringKey("instance"), instance.id,
+      AttributeKey.booleanKey("softDeleted"), java.lang.Boolean.valueOf(softDeleted)
+    )
+    imageCountGauge.set(count, attributes)
+  }
+
   val indexedImages = new CountMetric("IndexedImages")
 
   val deletedImages: CountMetric = new DualWrittenCountMetric("DeletedImages", "images.deleted")
