@@ -77,13 +77,13 @@ case class ImageUploadOpsDependencies(
   storeOrProjectOriginalFile: StorableOriginalImage => Future[S3Object],
   storeOrProjectThumbFile: StorableThumbImage => Future[S3Object],
   storeOrProjectOptimisedImage: StorableOptimisedImage => Future[S3Object],
+  createEmbeddingsSource: (BrowserViewableImage, Option[OrientationMetadata], File) => Future[Option[StorableEmbeddingSourceImage]],
   storeEmbeddingSource: Option[StorableEmbeddingSourceImage] => Future[Option[S3Object]],
   tryFetchThumbFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
   tryFetchOptimisedFile: (String, MimeType, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _, _) => Future.successful(None),
   tryFetchEmbedding: (String, Instance) => Future[Option[Embedding]] = (_, _) => Future.successful(None),
   maybeEmbedder: Option[Embedder],
   recordThumbnailGenerationDuration: (Long, Boolean) => Unit = (_, _) => (),
-  recordEmbeddingSourceGenerationDuration: Long => Unit = (_) => (),
 )
 
 
@@ -184,7 +184,7 @@ object Uploader extends GridLogging {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
       }
-      embeddingSource <- createEmbeddingsSource(browserViewableImage, sourceOrientationMetadata, deps, tempDirForRequest)
+      embeddingSource <- deps.createEmbeddingsSource(browserViewableImage, sourceOrientationMetadata, tempDirForRequest)
       storedEmbeddingSource <- storeEmbeddingSource(embeddingSource)
       previouslyComputedEmbedding <- deps.tryFetchEmbedding(uploadRequest.imageId, uploadRequest.instance)
 
@@ -313,31 +313,6 @@ object Uploader extends GridLogging {
     }
   }
 
-  private def createEmbeddingsSource(browserViewableImage: BrowserViewableImage,
-                                     orientationMetadata: Option[OrientationMetadata],
-                                     deps: ImageUploadOpsDependencies,
-                                     tempDir: File)(implicit executionContext: ExecutionContext): Future[Option[StorableEmbeddingSourceImage]] = {
-    import deps._
-    maybeEmbedder.map { embedder =>
-      val startNanos = System.nanoTime()
-      createTempFile("embeddingsource-", embedder.embeddingSourceImageFormat().format.fileExtension, tempDir).flatMap { tempFile =>
-        val eventualEmbeddingSource = imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata, embedder.embeddingSourceImageFormat(), tempFile)
-        eventualEmbeddingSource.map { embeddingSource =>
-          Some(browserViewableImage.copy(
-            file = embeddingSource,
-            mimeType = embedder.embeddingSourceImageFormat().format
-          ).asStorableEmbeddingSourceImage)
-        }
-      }.map { r =>
-        recordEmbeddingSourceGenerationDuration(System.nanoTime() - startNanos)
-        r
-      }
-    }.getOrElse {
-      logger.info("Skipping createEmbeddingsSource because no embedder is configured")
-      Future.successful(None)
-    }
-  }
-
   private def createBrowserViewableFileFuture(
     uploadRequest: UploadRequest
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[BrowserViewableImage] = {
@@ -404,7 +379,7 @@ class Uploader(
 
   private def fromUploadRequest(uploadRequest: UploadRequest)
                                (implicit logMarker: LogMarker, instance: Instance): Future[ImageUpload] = {
-    val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps, storeSource, storeThumbnail, storeOptimisedImage, storeEmbeddingSource, maybeEmbedder = maybeEmbedder, recordThumbnailGenerationDuration = metrics.recordThumbnailGenerationDuration, recordEmbeddingSourceGenerationDuration = metrics.recordEmbeddingSourceGenerationDuration)
+    val sideEffectDependencies = ImageUploadOpsDependencies(toImageUploadOpsCfg(config), imageOps, storeSource, storeThumbnail, storeOptimisedImage, createEmbeddingsSource = createEmbeddingsSource, storeEmbeddingSource, maybeEmbedder = maybeEmbedder, recordThumbnailGenerationDuration = metrics.recordThumbnailGenerationDuration)
     Stopwatch.async("finalImage") {
       val finalImage = fromUploadRequestShared(uploadRequest, sideEffectDependencies, imageProcessor, optimiseOps)
       uploadRequest.identifiers.foreach{
@@ -436,6 +411,29 @@ class Uploader(
 
   private def storeOptimisedImage(storableOptimisedImage: StorableOptimisedImage)
                                  (implicit logMarker: LogMarker) = store.store(storableOptimisedImage)
+
+  private def createEmbeddingsSource(browserViewableImage: BrowserViewableImage,
+                                     orientationMetadata: Option[OrientationMetadata],
+                                     tempDir: File): Future[Option[StorableEmbeddingSourceImage]] = {
+    maybeEmbedder.map { embedder =>
+      val startNanos = System.nanoTime()
+      createTempFile("embeddingsource-", embedder.embeddingSourceImageFormat().format.fileExtension, tempDir).flatMap { tempFile =>
+        val eventualEmbeddingSource = imageOps.createEmbeddingSource(browserViewableImage.file, orientationMetadata, embedder.embeddingSourceImageFormat(), tempFile)
+        eventualEmbeddingSource.map { embeddingSource =>
+          Some(browserViewableImage.copy(
+            file = embeddingSource,
+            mimeType = embedder.embeddingSourceImageFormat().format
+          ).asStorableEmbeddingSourceImage)
+        }
+      }.map { r =>
+        metrics.recordEmbeddingSourceGenerationDuration(System.nanoTime() - startNanos)
+        r
+      }
+    }.getOrElse {
+      logger.info("Skipping createEmbeddingsSource because no embedder is configured")
+      Future.successful(None)
+    }
+  }
 
   private def storeEmbeddingSource(storableEmbeddingSourceImage: Option[StorableEmbeddingSourceImage])(implicit logMarker: LogMarker): Future[Option[S3Object]] = {
     storableEmbeddingSourceImage.map { storableEmbeddingSourceImage =>
