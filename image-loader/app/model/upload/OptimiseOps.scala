@@ -41,6 +41,7 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
   def shouldOptimise(browserViewableImage: BrowserViewableImage): Option[MimeType] = {
     // Decide which source images we feel will be slow to render in the UI.
     // These are the ones we will generate an optimised image for.
+    /*
     val mimeType = browserViewableImage.mimeType
 
     val arena = Arena.ofConfined()
@@ -70,6 +71,8 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     }
     logger.info(s"shouldOptimise $browserViewableImage: $x")
     x
+    */
+    None
   }
 
 }
