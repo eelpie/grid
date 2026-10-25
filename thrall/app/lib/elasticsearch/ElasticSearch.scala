@@ -349,7 +349,11 @@ class ElasticSearch(
     executeAndLog(
       ElasticDsl.count(imagesCurrentAlias(instance)).query(filters.existsOrMissing("softDeletedMetadata", exists = isSoftedDeleted)),
       s"counting total images with soft deleted: $isSoftedDeleted"
-    ).map(_.result.count)
+    ).map { response =>
+      val count = response.result.count
+      metrics.foreach(_.recordImageCount(count, isSoftedDeleted, instance))
+      count
+    }
   }
 
   def countTotalImageSize()(implicit ex: ExecutionContext, logMarker: LogMarker, instance: Instance): Future[Long] = {
