@@ -105,14 +105,19 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                    quantise: Boolean = false
                  )(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
 
-    Future {
-      val scale = dimensions.width.toDouble / sourceImage.getWidth.toDouble
-      val resized = sourceImage.resize(scale)
-
+    resize(sourceImage, dimensions).map { resized =>
       val outputFile = File.createTempFile(s"resize-", s"${fileType.fileExtension}", tempDir) // TODO function for this
       logger.info(s"Saving resized crop as ${fileType.name} with quantise = $quantise} to: " + outputFile.getAbsolutePath)
 
       saveImageToFile(resized, fileType, qual, outputFile, quantise = quantise, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP)) // TODO quantise false because it is still optimiseOps's decision
+    }
+  }
+
+  def resize(sourceImage: VImage, dimensions: Dimensions): Future[VImage] = {
+    Future {
+      val scale = dimensions.width.toDouble / sourceImage.getWidth.toDouble
+      val resized = sourceImage.resize(scale)
+      resized
     }
   }
 
@@ -121,7 +126,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                       qual: Double = 100d,
                       outputFile: File,
                       orientationMetadata: Option[OrientationMetadata]
-                     )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])] = {
+                         )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])] = {
     Future {
       var thumbDimensions: Option[Dimensions] = None
       val arena = Arena.ofConfined()

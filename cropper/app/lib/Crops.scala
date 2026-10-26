@@ -121,21 +121,39 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         // care too much about filesize of master crops, so skip expensive compression to get faster cropping
         quality = if (cropType == Png) pngCropQuality else masterCropQuality
 
+        // Restrict the dimensions of the master crop in line with CDN recommendations
+        maxMasterCropSize = 4096
+        masterCropSize = restrictedMasterCropDimensions(masterCrop.dimensions, maxMasterCropSize)
+
         // Start the master save and the resizes together so they render in parallel
-        eventualMasterCropFile = Future {
+        eventualMasterCropFile = {
           val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
-          imageOperations.saveImageToFile(masterCrop.image, cropType, quality, masterCropFile, quantise = false, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP()))
+          val eventuallyScaled = if (masterCropSize != masterCrop.dimensions) {
+            logger.info(s"Resizing oversized master crop from ${masterCrop.dimensions} to $masterCropSize")
+            imageOperations.resize(masterCrop.image, masterCropSize)
+
+          } else {
+            Future.successful{
+              masterCrop.image
+            }
+          }
+
+          eventuallyScaled.map { scaled =>
+            imageOperations.saveImageToFile(scaled, cropType, quality, masterCropFile, quantise = false, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP()))
+          }
         }
-        outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
+
+        // Start the resizes crops
+        outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCropSize
         eventualResizes = createCrops(masterCrop.image, outputDims, apiImage, crop, cropType)
 
         // Wait for both before storing anything; we don't want to send a partial set
         masterCropFile <- eventualMasterCropFile
         resizes <- eventualResizes
 
-        masterCropFilename = outputFilename(apiImage, source.bounds, masterCrop.dimensions.width, cropType, isMaster = true)
+        masterCropFilename = outputFilename(apiImage, source.bounds, masterCropSize.width, cropType, isMaster = true)
         eventualMasterAsset: Future[Asset] = for {
-          masterAsset <- store.storeCropSizing(masterCropFile, masterCropFilename, cropType, crop, masterCrop.dimensions)
+          masterAsset <- store.storeCropSizing(masterCropFile, masterCropFilename, cropType, crop, masterCropSize)
           _ <- delete(masterCropFile)
         } yield {
           masterAsset
@@ -172,6 +190,18 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         resizeAssets <- sentCropFiles._2
       }
       yield ExportResult(apiImage.id, masterAsset, resizeAssets)
+    }
+  }
+
+  def restrictedMasterCropDimensions(masterCropDimensions: Dimensions, maxMasterCropSize: Int): Dimensions = {
+    val maxDimensionLength = Seq(masterCropDimensions.width, masterCropDimensions.height).max
+    if (maxDimensionLength > maxMasterCropSize) {
+      val scale = maxMasterCropSize.toDouble / maxDimensionLength.toDouble
+      val scaled = Dimensions(math.round(masterCropDimensions.width.toDouble * scale).toInt, math.round(masterCropDimensions.height.toDouble * scale).toInt)
+      logger.info(s"Scaled oversized master dimensions from $masterCropDimensions to $scaled")
+      scaled
+    } else {
+      masterCropDimensions
     }
   }
 }
