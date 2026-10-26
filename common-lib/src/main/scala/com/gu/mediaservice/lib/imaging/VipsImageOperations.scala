@@ -98,12 +98,13 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
   def resizeImage(
                    sourceImage: VImage,
-                   sourceMimeType: Option[MimeType],
                    dimensions: Dimensions,
                    qual: Double = 100d,
                    tempDir: File,
                    fileType: MimeType,
-                   quantise: Boolean = false)(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
+                   quantise: Boolean = false
+                 )(implicit logMarker: LogMarker, arena: Arena): Future[File] = {
+
     Future {
       val scale = dimensions.width.toDouble / sourceImage.getWidth.toDouble
       val resized = sourceImage.resize(scale)

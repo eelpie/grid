@@ -66,7 +66,6 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         val quantise = cropType == Png && !imageOperations.isGraphic(sourceImage)
         for {
           file <- imageOperations.resizeImage(sourceImage,
-            apiImage.source.mimeType,
             dimensions,
             quality,
             config.tempDir,
