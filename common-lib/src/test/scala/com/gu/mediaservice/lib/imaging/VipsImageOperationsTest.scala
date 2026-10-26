@@ -110,8 +110,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
         99.0,
         tempDirForOutputFiles,
         Jpeg,
-        None,
-        ImageMetadata()
+        None
       )
 
       whenReady(eventualMasterCrop) { r =>
@@ -128,8 +127,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
         99.0,
         tempDirForOutputFiles,
         Jpeg,
-        None,
-        ImageMetadata()
+        None
       )
 
       whenReady(eventualMasterCrop) { r =>
@@ -143,7 +141,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       implicit val arena: Arena = Arena.ofShared()
       val fullSizedImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Jpeg), Dimensions(1000, 800), 95, tempDirForOutputFiles, Jpeg)
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(1000, 800), 95, tempDirForOutputFiles, Jpeg)
 
       whenReady(eventualResized) { resized =>
         arena.close()
@@ -156,7 +154,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       implicit val arena: Arena = Arena.ofShared
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
 
       whenReady(eventualResized) { resized =>
         arena.close()
@@ -169,7 +167,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       implicit val arena: Arena = Arena.ofShared
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Jpeg), Dimensions(140, 100), 85, tempDirForOutputFiles, Jpeg)
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(140, 100), 85, tempDirForOutputFiles, Jpeg)
 
       whenReady(eventualResized) { resized =>
         arena.close()
@@ -181,7 +179,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       implicit val arena: Arena = Arena.ofShared
       val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB16.tif").getAbsolutePath)
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
 
       whenReady(eventualResized) { resized =>
         arena.close()
@@ -193,7 +191,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       implicit val arena: Arena = Arena.ofShared
       val fullSizedImage = VImage.newFromFile(arena, fileAt("with-alpha.png").getAbsolutePath)
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Png), Dimensions(800, 600), 95, tempDirForOutputFiles, Png)
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, tempDirForOutputFiles, Png)
 
       whenReady(eventualResized) { resized =>
         arena.close()
@@ -207,7 +205,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val fullSizedImage = VImage.newFromFile(arena, fileAt("lab8-with-alpha.tif").getAbsolutePath)
       val outputFile = tempFileNamed("resized-lab-with-alpha", ".jpg")
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Tiff), Dimensions(800, 600), 95, outputFile, Jpeg)
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
 
       whenReady(eventualResized) { resized =>
         arena.close()
