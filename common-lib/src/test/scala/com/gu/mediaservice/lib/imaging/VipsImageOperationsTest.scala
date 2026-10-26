@@ -104,10 +104,9 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
       val eventualMasterCrop = vipsImageOperations.cropImage(image,
         Bounds(1000, 600, 2000, 1000),
-        99.0,
         tempDirForOutputFiles,
-        Jpeg,
-        None
+        None,
+        ImageMetadata()
       )
 
       whenReady(eventualMasterCrop) { r =>
@@ -121,10 +120,9 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
       val eventualMasterCrop = vipsImageOperations.cropImage(image,
         Bounds(0, 0, 5, 4),
-        99.0,
         tempDirForOutputFiles,
-        Jpeg,
-        None
+        None,
+        ImageMetadata()
       )
 
       whenReady(eventualMasterCrop) { r =>
