@@ -34,7 +34,6 @@ trait ImageOperations {
 
   def resizeImage(
                    sourceFile: VImage,
-                   sourceMimeType: Option[MimeType],
                    dimensions: Dimensions,
                    qual: Double = 100d,
                    tempDir: File,
