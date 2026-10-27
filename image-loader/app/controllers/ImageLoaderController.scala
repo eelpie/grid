@@ -660,7 +660,7 @@ class ImageLoaderController(auth: Authentication,
       "requestId" -> RequestLoggingFilter.getRequestId(request)
     )
 
-    val s3Key = fileKeyFromId(imageId, instance)
+    val s3Key = fileKeyFromId(imageId)
 
     Future {
       config.maybeImageReplicaBucket match {
