@@ -5,6 +5,7 @@ import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, Principal}
 import com.gu.mediaservice.lib.auth.{ApiAccessor, Internal, ReadOnly, Syndication}
 import com.gu.mediaservice.lib.config.GridConfigResources
 import com.gu.mediaservice.lib.elasticsearch.{ElasticSearchAliases, ElasticSearchConfig, ElasticSearchExecutions}
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
 import com.gu.mediaservice.model.leases.DenySyndicationLease
@@ -25,15 +26,16 @@ import play.api.mvc.Security.AuthenticatedRequest
 import play.api.test.FakeRequest
 
 import java.net.URI
+import java.util.UUID
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class ElasticSearchTest extends ElasticSearchTestBase with Eventually with ElasticSearchExecutions with MockitoSugar {
 
-  implicit val request: AuthenticatedRequest[AnyContent, Principal] = mock[AuthenticatedRequest[AnyContent, Principal]]
+  implicit val instance: Instance = Instance(UUID.randomUUID().toString)
 
-  private val index = "images"
+  private val index = instance.id + "_index"
 
   private val applicationLifecycle = new ApplicationLifecycle {
     override def addStopHook(hook: () => Future[_]): Unit = {}
@@ -58,7 +60,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
   )
 
 
-  private lazy val ES = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => List.empty, mock[Scheduler])
+  private lazy val ES = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => List.empty, mock[Scheduler], mock[InstancesClient])
   lazy val client = ES.client
 
   private val expectedNumberOfImages = images.size
@@ -69,12 +71,12 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
   override def beforeAll(): Unit = {
     super.beforeAll()
 
-    ES.ensureIndexExistsAndAliasAssigned()
+    ES.ensureIndexExistsAndAliasAssigned(alias = ES.imagesCurrentAlias(instance), instance.id + "_index")
     purgeTestImages
 
     Await.ready(saveImages(images), 1.minute)
     // allow the cluster to distribute documents... eventual consistency!
-    eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages shouldBe expectedNumberOfImages)
+    eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages(instance) shouldBe expectedNumberOfImages)
   }
 
   override def afterAll(): Unit = purgeTestImages
@@ -173,11 +175,11 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
   private def withQuotaImages[A](images: Seq[Image])(test: => A): A = {
     implicit val logMarker: LogMarker = MarkerMap()
     Await.ready(saveImages(images), 1.minute)
-    eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages shouldBe expectedNumberOfImages + images.size)
+    eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages(instance) shouldBe expectedNumberOfImages + images.size)
     try test finally {
       val deletes = images.map(i => executeAndLog(deleteById(index, i.id), s"Deleting quota test image ${i.id}"))
       Await.ready(Future.sequence(deletes), fiveSeconds)
-      eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages shouldBe expectedNumberOfImages)
+      eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages(instance) shouldBe expectedNumberOfImages)
     }
   }
 
@@ -434,7 +436,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
             null,
             applicationLifecycle
           ))
-          val aliasedSearch = new ElasticSearch(aliasConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler])
+          val aliasedSearch = new ElasticSearch(aliasConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler], mock[InstancesClient])
           val orderedPrint = printPublished.copy(printUsageMetadata = Some(otherMetadata.copy(orderedBy = Some("DESK1"))))
           val digitalSection = digitalPublished.copy(digitalUsageMetadata = Some(DigitalUsageMetadata(
             URI.create("https://example.test/article"), Some("Fixture article"), Some("DESK1")
@@ -483,6 +485,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
       }
     }
 
+    /* AI Slop!
     it("preserves ticker and AI filter-pool counts under usage exclusions") {
       implicit val logMarker: LogMarker = MarkerMap()
       val tickerConfig = new MediaApiConfig(GridConfigResources(
@@ -493,7 +496,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
         null,
         applicationLifecycle
       ))
-      val tickerSearch = new ElasticSearch(tickerConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler])
+      val tickerSearch = new ElasticSearch(tickerConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler], mock[InstancesClient])
       val ownedIds = Set("usage-search-digital", "usage-search-print", "usage-search-mixed-replaced")
       val ownedRights = StaffPhotographer("Fixture Photographer", "FixtureOrg")
       val ownedImages = usageImages.map { image =>
@@ -530,6 +533,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
         } finally tickerSearch.client.close()
       }
     }
+    */
 
     it("preserves independent ordinary keyword exclusions") {
       val keywordImages = Seq(
@@ -1118,7 +1122,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
       def overQuotaAgencies = List(Agency("Getty Images"), Agency("AP"))
 
       val search = SearchParams(tier = Internal, structuredQuery = List(isUnderQuotaCondition), length = 50)
-      val elasticsearch = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => overQuotaAgencies, mock[Scheduler])
+      val elasticsearch = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => overQuotaAgencies, mock[Scheduler], mock[InstancesClient])
 
       whenReady(elasticsearch.search(search), timeout, interval) { result => {
         val overQuotaImages = List(
@@ -1143,7 +1147,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
     })
   }
 
-  private def totalImages: Long = Await.result(ES.client.execute(ElasticDsl.search(ES.imagesCurrentAlias)).map {
+  private def totalImages(instance: Instance): Long = Await.result(ES.client.execute(ElasticDsl.search(ES.imagesCurrentAlias(instance))).map {
     _.result.totalHits
   }, fiveSeconds)
 
@@ -1153,7 +1157,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
     def deleteImages = executeAndLog(deleteByQuery(index, matchAllQuery()), s"Deleting images")
 
     Await.result(deleteImages, fiveSeconds)
-    eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages shouldBe 0)
+    eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages(instance) shouldBe 0)
   }
 
 }

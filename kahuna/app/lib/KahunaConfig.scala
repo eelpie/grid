@@ -3,6 +3,7 @@ package lib
 import com.gu.mediaservice.lib.auth.Permissions.Pinboard
 import com.gu.mediaservice.lib.auth.SimplePermission
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
+import com.gu.mediaservice.model.Instance
 import play.api.libs.json._
 
 case class ScriptToLoad(
@@ -14,16 +15,14 @@ case class ScriptToLoad(
 )
 
 class KahunaConfig(resources: GridConfigResources) extends CommonConfig(resources) {
-  val rootUri: String = services.kahunaBaseUri
-  val mediaApiUri: String = services.apiBaseUri
-  val authUri: String = services.authBaseUri
+  val rootUri: Instance => String = services.kahunaBaseUri
+  def mediaApiUri: Instance => String = services.apiBaseUri
+  val authUri: Instance => String = services.authBaseUri
 
   val sentryDsn: Option[String] = stringOpt("sentry.dsn").filterNot(_.isEmpty)
 
   val thumbOrigin: String = string("origin.thumb")
-  val fullOrigin: String = string("origin.full")
   val cropOrigin: String = string("origin.crops")
-  val imageOrigin: String = string("origin.images")
 
   val costFilterLabel: Option[String] = stringOpt("costFilter.label")
   val costFilterChargeable: Option[Boolean] = booleanOpt("costFilter.chargeable")
