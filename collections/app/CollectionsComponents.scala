@@ -1,23 +1,22 @@
-import com.gu.mediaservice.lib.management.InnerServiceStatusCheckController
 import com.gu.mediaservice.lib.play.GridComponents
 import controllers.{CollectionsController, ImageCollectionsController}
 import lib.{CollectionsConfig, CollectionsMetrics, Notifications}
 import play.api.ApplicationLoader.Context
 import router.Routes
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import store.{CollectionsStore, ImageCollectionsStore}
 
 class CollectionsComponents(context: Context) extends GridComponents(context, new CollectionsConfig(_)) {
   final override val buildInfo = utils.buildinfo.BuildInfo
 
-  val collectionsStore = new CollectionsStore(config)
-  val imageCollectionsStore = new ImageCollectionsStore(config)
+  private val collectionsStore = new CollectionsStore(config.collectionsTable, config.withAWSCredentials(DynamoDbAsyncClient.builder()).build())
+  val imageCollectionsStore = new ImageCollectionsStore(config.imageCollectionsTable, config.withAWSCredentials(DynamoDbAsyncClient.builder()).build())
   val metrics = new CollectionsMetrics(config, actorSystem, applicationLifecycle)
   val notifications = new Notifications(config)
 
   val collections = new CollectionsController(auth, config, collectionsStore, controllerComponents)
   val imageCollections = new ImageCollectionsController(auth, config, notifications, imageCollectionsStore, controllerComponents)
-  val InnerServiceStatusCheckController = new InnerServiceStatusCheckController(auth, controllerComponents, config.services, wsClient)
 
 
-  override val router = new Routes(httpErrorHandler, collections, imageCollections, management, InnerServiceStatusCheckController)
+  override val router = new Routes(httpErrorHandler, collections, imageCollections, management)
 }
