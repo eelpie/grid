@@ -436,7 +436,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
             null,
             applicationLifecycle
           ))
-          val aliasedSearch = new ElasticSearch(aliasConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler])
+          val aliasedSearch = new ElasticSearch(aliasConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler], mock[InstancesClient])
           val orderedPrint = printPublished.copy(printUsageMetadata = Some(otherMetadata.copy(orderedBy = Some("DESK1"))))
           val digitalSection = digitalPublished.copy(digitalUsageMetadata = Some(DigitalUsageMetadata(
             URI.create("https://example.test/article"), Some("Fixture article"), Some("DESK1")
@@ -495,7 +495,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
         null,
         applicationLifecycle
       ))
-      val tickerSearch = new ElasticSearch(tickerConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler])
+      val tickerSearch = new ElasticSearch(tickerConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler], mock[InstancesClient])
       val ownedIds = Set("usage-search-digital", "usage-search-print", "usage-search-mixed-replaced")
       val ownedRights = StaffPhotographer("Fixture Photographer", "FixtureOrg")
       val ownedImages = usageImages.map { image =>
