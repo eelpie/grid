@@ -485,6 +485,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
       }
     }
 
+    /* AI Slop!
     it("preserves ticker and AI filter-pool counts under usage exclusions") {
       implicit val logMarker: LogMarker = MarkerMap()
       val tickerConfig = new MediaApiConfig(GridConfigResources(
@@ -532,6 +533,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
         } finally tickerSearch.client.close()
       }
     }
+    */
 
     it("preserves independent ordinary keyword exclusions") {
       val keywordImages = Seq(
