@@ -302,6 +302,9 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
     .settings(commonSettings ++ buildInfo ++ Seq(
       dockerBaseImage := "eu.gcr.io/grid-301122/jdk-imageloader-vips:25-8.18.7",
       dockerExposedPorts := Seq(port),
+      dockerCommands ++= Seq(
+        Cmd("ENV", "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2")
+      ),
       playDefaultPort := port,
 
       bashScriptEnvConfigLocation := Some("/etc/environment"),
