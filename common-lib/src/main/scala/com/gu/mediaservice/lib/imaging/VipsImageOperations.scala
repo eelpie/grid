@@ -203,21 +203,16 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         }
 
         saveImageToFile(letterBoxed, embeddingFormat, 90, outputFile)
-        arena.close()
 
         logger.info("Created embedding source with length: " + outputFile.length())
         outputFile
 
       } catch {
         case e: Throwable =>
-          arena.close()
           throw e
+      } finally {
+        arena.close()
       }
-
-    }.recoverWith {
-      case e: Throwable =>
-        logger.error("Error creating embedding source", e)
-        Future.failed(e)
     }
   }
 
