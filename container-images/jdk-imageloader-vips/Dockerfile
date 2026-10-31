@@ -50,3 +50,10 @@ RUN rm -r /tmp/vips-8.18.7/
 # libjemalloc to prevent memory fragmentation
 RUN apt -y --no-install-suggests install \
   libjemalloc2
+
+RUN apt -y --no-install-suggests install \
+  graphicsmagick \
+  graphicsmagick-imagemagick-compat \
+  pngquant \
+  libimage-exiftool-perl
+
