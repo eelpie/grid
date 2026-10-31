@@ -1,6 +1,13 @@
 FROM eclipse-temurin:25-resolute
 RUN apt-get update
 
+RUN apt-get -y --no-install-suggests install graphicsmagick \
+  pngquant \
+  libimage-exiftool-perl
+
+RUN ln -s /usr/bin/gm /usr/local/bin/convert
+RUN ln -s /usr/bin/gm /usr/local/bin/identify
+
 # libvips build requirements
 RUN apt-get -y --no-install-suggests install -f build-essential ninja-build python3-pip bc wget
 RUN apt-get -y --no-install-suggests install meson
@@ -50,10 +57,4 @@ RUN rm -r /tmp/vips-8.18.7/
 # libjemalloc to prevent memory fragmentation
 RUN apt -y --no-install-suggests install \
   libjemalloc2
-
-RUN apt -y --no-install-suggests install \
-  graphicsmagick \
-  graphicsmagick-imagemagick-compat \
-  pngquant \
-  libimage-exiftool-perl
 
