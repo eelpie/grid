@@ -119,6 +119,7 @@ lazy val commonLib = project("common-lib").settings(
     "com.gu" %% "thrift-serializer" % "5.0.8",
     "org.scalaz" %% "scalaz-core" % "7.3.8",
     "org.im4java" % "im4java" % "1.4.0",
+    "app.photofox.vips-ffm" % "vips-ffm-core" % "1.9.9",
     "com.gu" % "kinesis-logback-appender" % "2.1.3",
     "net.logstash.logback" % "logstash-logback-encoder" % "5.0",
     logback, // play-logback; needed when running the scripts
@@ -300,8 +301,11 @@ def playImageLoaderProject(projectName: String, port: Int, path: Option[String] 
     .enablePlugins(PlayScala, BuildInfoPlugin, DockerPlugin)
     .dependsOn(restLib)
     .settings(commonSettings ++ buildInfo ++ Seq(
-      dockerBaseImage := "eu.gcr.io/grid-301122/jdk-imageloader:25",
+      dockerBaseImage := "eu.gcr.io/grid-301122/jdk-imageloader-vips:25-8.18.7",
       dockerExposedPorts := Seq(port),
+      dockerCommands ++= Seq(
+        Cmd("ENV", "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2")
+      ),
       playDefaultPort := port,
 
       bashScriptEnvConfigLocation := Some("/etc/environment"),
