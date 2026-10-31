@@ -1,16 +1,35 @@
 package com.gu.mediaservice.lib.imaging
 
-import java.io.File
-
+import app.photofox.vipsffm.{Vips, VipsHelper}
 import com.gu.mediaservice.lib.BrowserViewableImage
-import com.gu.mediaservice.lib.logging.LogMarker
+import com.gu.mediaservice.lib.config.CommonConfig
+import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model._
 
+import java.io.File
 import scala.concurrent.Future
 
-object ImageOperations {
+object ImageOperations extends GridLogging {
   val thumbMimeType: MimeType = Jpeg
   val optimisedMimeType: MimeType = Png
+
+  private val ImplementationConfigKey = "image.operations.implementation"
+  private val VipsOption: String = "vips"
+  private val MagickOption = "magick"
+
+  def apply(config: CommonConfig, playPath: String): ImageOperations = {
+    val implementation = config.stringDefault(ImplementationConfigKey, MagickOption)
+    logger.info(s"Using $implementation image operations")
+    implementation match {
+      case VipsOption =>
+        Vips.init()
+        VipsHelper.cache_set_max(0)
+        new VipsImageOperations()
+      case MagickOption => new MagickImageOperations(playPath)
+      case other => throw new IllegalArgumentException(
+        s"Unknown $ImplementationConfigKey '$other'; expected one of: $VipsOption, $MagickOption")
+    }
+  }
 }
 
 trait ImageOperations {
