@@ -8,6 +8,7 @@ import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
 
+import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -69,6 +70,8 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     val quality = if (cropType == Png) pngCropQuality else cropQuality
 
     Stopwatch.async(s"creating crops for ${apiImage.id}") {
+      implicit val arena: Arena = Arena.ofShared()
+
       Future.sequence(dimensionList.map { dimensions =>
         val cropLogMarker = logMarker ++ Map("crop-dimensions" -> s"${dimensions.width}x${dimensions.height}")
         for {
@@ -77,14 +80,17 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
             dimensions,
             quality,
             config.tempDir,
-            cropType)(cropLogMarker)
+            cropType)(cropLogMarker, arena)
           optimisedFile = imageOperations.optimiseCrop(file, cropType)(cropLogMarker)
           filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
           sizing <- store.storeCropSizing(optimisedFile, filename, cropType, crop, dimensions)(cropLogMarker)
           _ <- delete(file)
           _ <- delete(optimisedFile)
         }
-        yield sizing
+        yield {
+          arena.close()
+          sizing
+        }
       })
     }
   }
