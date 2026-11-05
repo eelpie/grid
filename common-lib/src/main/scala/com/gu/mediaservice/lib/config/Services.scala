@@ -38,7 +38,7 @@ trait Services {
 
 }
 
-protected class SingleHostServices(val rootUrl: String) extends Services {
+class SingleHostServices(val rootUrl: String) extends Services {
   val kahunaBaseUri: String = rootUrl
 
   val apiBaseUri: String = subpathedServiceBaseUri("media-api")
