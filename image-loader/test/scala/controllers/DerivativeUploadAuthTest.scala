@@ -64,7 +64,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
       override def onBehalfOf(principal: Principal): Either[String, WSRequest => WSRequest] = Left("Not authenticated")
     }
     val commonConfig = mock[CommonConfig]
-    when(commonConfig.services).thenReturn(new SingleHostServices("example.test"))
+    when(commonConfig.services).thenReturn(new SingleHostServices("https://example.test"))
     val auth = new Authentication(
       commonConfig,
       AuthenticationProviders(userProvider, machineProvider, new InnerServiceAuthenticationProvider(mock[CookieSigner], "test")),
