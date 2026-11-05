@@ -4,8 +4,8 @@ import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication.{Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, SimplePermission}
-import com.gu.mediaservice.lib.config.{CommonConfig, ServiceHosts, Services}
 import com.gu.mediaservice.lib.aws.S3Object
+import com.gu.mediaservice.lib.config.{CommonConfig, Services, SingleHostServices}
 import com.gu.mediaservice.lib.logging.LogMarker
 import lib._
 import lib.storage.ImageLoaderStore
@@ -19,16 +19,16 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
+import play.api.inject.ApplicationLifecycle
 import play.api.libs.crypto.CookieSigner
 import play.api.libs.ws.WSRequest
 import play.api.mvc.RequestHeader
-import play.api.test.Helpers.{ACCEPTED, BAD_REQUEST, FORBIDDEN, POST, UNSUPPORTED_MEDIA_TYPE, call, status, stubControllerComponents}
 import play.api.test.FakeRequest
-import play.api.inject.ApplicationLifecycle
+import play.api.test.Helpers.{ACCEPTED, BAD_REQUEST, FORBIDDEN, POST, UNSUPPORTED_MEDIA_TYPE, call, status, stubControllerComponents}
 
 import java.nio.file.Files
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSugar with BeforeAndAfterAll {
   private implicit val executionContext: ExecutionContext = ExecutionContext.global
@@ -64,7 +64,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
       override def onBehalfOf(principal: Principal): Either[String, WSRequest => WSRequest] = Left("Not authenticated")
     }
     val commonConfig = mock[CommonConfig]
-    when(commonConfig.services).thenReturn(new Services("example.test", ServiceHosts.guardianPrefixes, Set.empty))
+    when(commonConfig.services).thenReturn(new SingleHostServices("https://example.test"))
     val auth = new Authentication(
       commonConfig,
       AuthenticationProviders(userProvider, machineProvider, new InnerServiceAuthenticationProvider(mock[CookieSigner], "test")),
