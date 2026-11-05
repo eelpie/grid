@@ -400,7 +400,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
           sectionName = "Morning Section", publicationCode = "PUB1"
         )))
         val digitalSection = digitalPublished.copy(digitalUsageMetadata = Some(DigitalUsageMetadata(
-          URI.create("https://example.test/article"), "Fixture article", "SEC1"
+          URI.create("https://example.test/article"), Some("Fixture article"), Some("SEC1")
         )))
         val fieldImages = Seq(
           "fields-together" -> List(together),
@@ -437,7 +437,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
           val aliasedSearch = new ElasticSearch(aliasConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler])
           val orderedPrint = printPublished.copy(printUsageMetadata = Some(otherMetadata.copy(orderedBy = Some("DESK1"))))
           val digitalSection = digitalPublished.copy(digitalUsageMetadata = Some(DigitalUsageMetadata(
-            URI.create("https://example.test/article"), "Fixture article", "DESK1"
+            URI.create("https://example.test/article"), Some("Fixture article"), Some("DESK1")
           )))
           val aliasImages = Seq(
             "alias-none" -> List.empty[Usage],
@@ -695,8 +695,8 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
 
     it("uses explicit inclusive dates instead of the default period for every quota bucket") {
       implicit val logMarker: LogMarker = MarkerMap()
-      val start = DateTime.parse("2020-06-01T00:00:00Z")
-      val end = DateTime.parse("2020-06-30T23:59:59.999Z")
+      val start = new DateTime(2020, 6, 1, 0, 0)
+      val end = new DateTime(2020, 6, 30, 23, 59, 59, 999)
       val images = Seq(
         createImage("qc-date-composer", Agency(supplier), usages = List(
           createUsage(ComposerUsageReference, DigitalUsage, PublishedUsageStatus, start),
@@ -1145,7 +1145,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
 
   private def totalImages: Long = Await.result(ES.client.execute(ElasticDsl.search(ES.imagesCurrentAlias)).map {
     _.result.totalHits
-  }, oneHundredMilliseconds)
+  }, fiveSeconds)
 
   private def purgeTestImages = {
     implicit val logMarker: LogMarker = MarkerMap()

@@ -1,7 +1,6 @@
 package com.gu.mediaservice.lib.aws
 
 import com.gu.mediaservice.lib.aws.DynamoDB.{deleteExpr, jsonWithNullAsEmptyString, setExpr}
-import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.GridLogging
 import org.joda.time.DateTime
 import play.api.libs.json._
@@ -18,13 +17,12 @@ object NoItemFound extends Throwable("item not found")
 
 /**
   * A lightweight wrapper around AWS dynamo SDK for undertaking various operations
-  * @param config Common grid config including AWS credentials
+  * @param client DynamoDbClient client
   * @param tableName the table name for this instance of the dynamoDB wrapper
   * @param lastModifiedKey if set to a string the wrapper will maintain a last modified with that name on any update
   * @tparam T The type of this table
   */
-class DynamoDB[T](config: CommonConfig, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
-  lazy val client: DynamoDbClient = config.withAWSCredentials(DynamoDbClient.builder()).build()
+class DynamoDB[T](client: DynamoDbClient, tableName: String, lastModifiedKey: Option[String] = None) extends GridLogging {
   lazy val dynamo: DynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(client).build()
   lazy val tableSchema = TableSchema.documentSchemaBuilder()
     .addIndexPartitionKey(TableMetadata.primaryIndexName(), IdKey, AttributeValueType.S)
@@ -226,7 +224,7 @@ class DynamoDB[T](config: CommonConfig, tableName: String, lastModifiedKey: Opti
 
 object DynamoDB {
 
-  def jsonToAttributeValue(json: JsValue): AttributeValueV2 = {
+  private def jsonToAttributeValue(json: JsValue): AttributeValueV2 = {
     json match {
       case JsString(v)  => AttributeValueV2.fromS(v)
       case JsBoolean(b) => AttributeValueV2.fromBool(b)
@@ -268,7 +266,7 @@ object DynamoDB {
   // fenced in this Dynamo play area. `null` is continual and big annoyance with AWS libs.
   // see: https://forums.aws.amazon.com/message.jspa?messageID=389032
   // see: http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html
-  def mapJsValue(jsValue: JsValue)(f: JsValue => JsValue): JsValue = jsValue match {
+  private def mapJsValue(jsValue: JsValue)(f: JsValue => JsValue): JsValue = jsValue match {
     case JsObject(items) => JsObject(items.map{ case (k, v) => k -> mapJsValue(v)(f) })
     case JsArray(items) => JsArray(items.map(f))
     case value => f(value)

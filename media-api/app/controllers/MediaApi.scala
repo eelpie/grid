@@ -8,7 +8,6 @@ import com.gu.mediaservice.lib.auth.Authentication._
 import com.gu.mediaservice.lib.auth.Permissions.{ArchiveImages, DeleteCropsOrUsages, EditMetadata, UploadImages, DeleteImage => DeleteImagePermission}
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.aws._
-import com.gu.mediaservice.lib.config.Services
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ExifTool
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
@@ -36,6 +35,7 @@ import java.net.URI
 import java.nio.file.{Files, Path, StandardCopyOption}
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future, blocking}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 object MediaApi {
@@ -63,15 +63,14 @@ class MediaApi(
                 config: MediaApiConfig,
                 previewContentApi: PreviewContentApi,
                 override val controllerComponents: ControllerComponents,
-                s3Client: S3,
+                s3: S3,
                 mediaApiMetrics: MediaApiMetrics,
                 ws: WSClient,
                 authorisation: Authorisation,
                 embedder: Embedder,
 )(implicit val ec: ExecutionContext) extends BaseController with MessageSubjects with ArgoHelpers with ContentDisposition {
 
-  val services: Services = new Services(config.domainRoot, config.serviceHosts, Set.empty)
-  val gridClient: GridClient = GridClient(services, services.apiBaseUri)(ws)
+  private val gridClient: GridClient = GridClient(config.services, config.services.apiBaseUri)(ws)
 
   // Process-local cache keyed on normalised query text. Stores the Bedrock Future so that
   // concurrent requests for the same query share a single in-flight Bedrock call, and
@@ -342,7 +341,7 @@ class MediaApi(
         val maybeResult = for {
           export <- source.exports.find(_.id.contains(exportId))
           asset <- export.assets.find(_.dimensions.exists(_.width == width))
-          s3Res = Try(s3Client.getObject(config.imgPublishingBucket, asset.file))
+          s3Res = Try(s3.getObject(config.imgPublishingBucket, asset.file))
           _ = s3Res.failed.foreach { ex =>
             logger.error("Failed to fetch S3 object", ex)
           }
@@ -493,7 +492,7 @@ class MediaApi(
   /** Stream the original image bytes straight from S3, unmodified. */
   private def streamOriginal(image: Image, contentDisposition: String): Future[Result] =
     Future(blocking {
-      val s3Object = s3Client.getObject(config.imageBucket, image.source.file)
+      val s3Object = s3.getObject(config.imageBucket, image.source.file)
       val data = StreamConverters.fromInputStream(() => s3Object)
       Result(ResponseHeader(OK), HttpEntity.Streamed(data, image.source.size, image.source.mimeType.map(_.name)))
         .withHeaders("Content-Disposition" -> contentDisposition)
@@ -511,7 +510,7 @@ class MediaApi(
   private def streamWithStrippedMetadata(image: Image, contentDisposition: String)(implicit logMarker: LogMarker): Future[Result] =
     Future(blocking {
       val tempPath = Files.createTempFile("grid-download-", ".tmp")
-      val inputStream = s3Client.getObject(config.imageBucket, image.source.file)
+      val inputStream = s3.getObject(config.imageBucket, image.source.file)
       try {
         Files.copy(inputStream, tempPath, StandardCopyOption.REPLACE_EXISTING)
         tempPath
@@ -575,7 +574,7 @@ class MediaApi(
         mediaApiMetrics.incrementImageDownload(apiKey, mediaApiMetrics.OptimisedDownloadType)
 
         val sourceImageUri =
-          new URI(s3Client.signUrl(config.imageBucket, image.optimisedPng.getOrElse(image.source).file, image, imageType = image.optimisedPng match {
+          new URI(s3.signUrl(config.imageBucket, image.optimisedPng.getOrElse(image.source).file, image, imageType = image.optimisedPng match {
             case Some(_) => OptimisedPng
             case _ => Source
           }))
