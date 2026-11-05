@@ -1,8 +1,8 @@
 package auth
 
-import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProviders
-import com.gu.mediaservice.lib.config.{ServiceHosts, Services}
+import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
+import com.gu.mediaservice.lib.config.SingleHostServices
 import org.mockito.Mockito.when
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
@@ -15,7 +15,7 @@ class AuthControllerTest extends AnyFunSpec with Matchers with MockitoSugar {
 
   private def controller(domainRoot: String): AuthController = {
     val config = mock[AuthConfig]
-    val services = new Services("example.test", ServiceHosts.guardianPrefixes, Set.empty)
+    val services = new SingleHostServices("https:///example.test")
     when(config.domainRoot).thenReturn(domainRoot)
     when(config.services).thenReturn(services)
     when(config.mediaApiUri).thenReturn(services.apiBaseUri)
