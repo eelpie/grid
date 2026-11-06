@@ -5,8 +5,9 @@ import com.gu.mediaservice.lib.auth.Authentication.{Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, SimplePermission}
 import com.gu.mediaservice.lib.aws.S3Object
-import com.gu.mediaservice.lib.config.{CommonConfig, Services, SingleHostServices}
+import com.gu.mediaservice.lib.config.{CommonConfig, SingleHostServices}
 import com.gu.mediaservice.lib.events.UsageEvents
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.model.Instance
 import lib._
@@ -24,7 +25,7 @@ import org.scalatestplus.mockito.MockitoSugar
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.crypto.CookieSigner
 import play.api.libs.typedmap.TypedMap
-import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
+import play.api.libs.ws.WSRequest
 import play.api.mvc.RequestHeader
 import play.api.test.FakeRequest
 import play.api.test.Helpers.{ACCEPTED, BAD_REQUEST, FORBIDDEN, POST, UNSUPPORTED_MEDIA_TYPE, call, status, stubControllerComponents}
@@ -40,16 +41,9 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
   private implicit val timeout: Timeout = Timeout(10.seconds)
 
   // Authentication calls the landing service for the user's instances; answer with the FakeRequest's "localhost" instance
-  private val wsClient = {
-    val instancesResponse = mock[WSResponse]
-    when(instancesResponse.status).thenReturn(200)
-    when(instancesResponse.body).thenReturn("""[{"id":"localhost"}]""")
-    val instancesRequest = mock[WSRequest]
-    when(instancesRequest.addHttpHeaders(any())).thenReturn(instancesRequest)
-    when(instancesRequest.withQueryStringParameters(any())).thenReturn(instancesRequest)
-    when(instancesRequest.get()).thenReturn(Future.successful(instancesResponse))
-    val client = mock[WSClient]
-    when(client.url(anyString())).thenReturn(instancesRequest)
+  private val instancesClient = {
+    val client = mock[InstancesClient]
+    when(client.getMyInstances(anyString())(any[ExecutionContext])).thenReturn(Future.successful(Seq(Instance("localhost"))))
     client
   }
 
@@ -88,7 +82,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
     val auth = new Authentication(
       commonConfig,
       AuthenticationProviders(userProvider, machineProvider, new InnerServiceAuthenticationProvider(mock[CookieSigner], "test")),
-      wsClient,
+      instancesClient,
       controllerComponents.parsers.default,
       executionContext
     )
@@ -114,7 +108,7 @@ class DerivativeUploadAuthTest extends AnyFunSuite with Matchers with MockitoSug
       authorisation,
       mock[ImageLoaderMetrics],
       usageEvents,
-      wsClient,
+      instancesClient,
       mock[ApplicationLifecycle]
     )(executionContext, materializer)
   }

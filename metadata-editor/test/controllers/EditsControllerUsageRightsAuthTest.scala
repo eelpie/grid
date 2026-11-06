@@ -4,6 +4,7 @@ import com.gu.mediaservice.lib.auth.Authentication.{OnBehalfOfPrincipal, Princip
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
 import com.gu.mediaservice.lib.config.{CommonConfig, Services, SingleHostServices}
+import com.gu.mediaservice.lib.instances.InstancesClient
 import lib.{EditsConfig, EditsStore, Notifications}
 import org.apache.pekko.actor.ActorSystem
 import org.mockito.ArgumentMatchers.{any, anyString}
@@ -36,6 +37,7 @@ class EditsControllerUsageRightsAuthTest extends AnyFunSpec with Matchers with M
     val notifications: Notifications = mock[Notifications]
     val config: EditsConfig = mock[EditsConfig]
     val ws: WSClient = mock[WSClient]
+    val instancesClient: InstancesClient = mock[InstancesClient]
 
     private val services: Services = new SingleHostServices("https://example.com")
     when(config.domainRoot).thenReturn("https://example.com")
@@ -62,7 +64,7 @@ class EditsControllerUsageRightsAuthTest extends AnyFunSpec with Matchers with M
     when(userProvider.loginLink).thenReturn(DisableLoginLink)
     private val providers = AuthenticationProviders(userProvider, mock[MachineAuthenticationProvider], mock[InnerServiceAuthenticationProvider])
 
-    private val auth = new Authentication(mock[CommonConfig], providers, ws, PlayBodyParsers().default, ec) {
+    private val auth = new Authentication(mock[CommonConfig], providers, instancesClient, PlayBodyParsers().default, ec) {
       override def invokeBlock[A](request: Request[A], block: Authentication.Request[A] => Future[Result]): Future[Result] =
         block(new AuthenticatedRequest(user, request))
       override def getOnBehalfOfPrincipal(principal: Principal): OnBehalfOfPrincipal = identity

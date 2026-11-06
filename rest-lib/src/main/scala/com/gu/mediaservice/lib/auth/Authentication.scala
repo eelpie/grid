@@ -5,11 +5,11 @@ import com.gu.mediaservice.lib.argo.model.Link
 import com.gu.mediaservice.lib.auth.Authentication.{InnerServicePrincipal, MachinePrincipal, OnBehalfOfPrincipal, Principal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.config.{CommonConfig, InstanceForRequest}
-import com.gu.mediaservice.lib.instances.Instances
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.model.Instance
 import play.api.libs.typedmap.TypedMap
-import play.api.libs.ws.{WSClient, WSRequest}
+import play.api.libs.ws.WSRequest
 import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
 
@@ -17,10 +17,10 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class Authentication(val config: CommonConfig,
                      providers: AuthenticationProviders,
-                     val wsClient: WSClient,
+                     val instancesClient: InstancesClient,
                      override val parser: BodyParser[AnyContent],
                      override val executionContext: ExecutionContext)
-  extends ActionBuilder[Authentication.Request, AnyContent] with ArgoHelpers with InstanceForRequest with Instances {
+  extends ActionBuilder[Authentication.Request, AnyContent] with ArgoHelpers with InstanceForRequest {
 
   // make the execution context implicit so it will be picked up appropriately
   implicit val ec: ExecutionContext = executionContext
@@ -112,7 +112,7 @@ class Authentication(val config: CommonConfig,
           case _ =>
             val instance = instanceOf(request)
             principal.attributes.get(ApiKeyAuthenticationProvider.KindeIdKey).map { owner =>
-              getMyInstances(owner).flatMap { principalsInstances =>
+              instancesClient.getMyInstances(owner).flatMap { principalsInstances =>
                 // we have an end user principal, and a list of the instances they are allowed to access.
                 // Only process the block if the instance is allowed.
                 val isAllowedToAccessThisInstance = principalsInstances.exists(_.id == instance.id)

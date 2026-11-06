@@ -1,29 +1,26 @@
 package com.gu.mediaservice.lib.auth
 
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.stream.ActorMaterializer
 import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, OnBehalfOfPrincipal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources}
+import com.gu.mediaservice.lib.instances.InstancesClient
+import org.apache.pekko.actor.ActorSystem
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{BeforeAndAfterAll, EitherValues}
 import org.scalatestplus.mockito.MockitoSugar.mock
-import org.scalatestplus.play.PlaySpec
-import play.api.{Configuration, Environment}
 import play.api.http.Status
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.crypto.CookieSigner
 import play.api.libs.json.{Format, Json}
 import play.api.libs.typedmap.{TypedKey, TypedMap}
-import play.api.libs.ws.{DefaultWSCookie, WSClient, WSRequest}
-import play.api.mvc.{Cookie, DiscardingCookie, PlayBodyParsers, RequestHeader, Result}
+import play.api.libs.ws.{DefaultWSCookie, WSRequest}
+import play.api.mvc._
 import play.api.test.Helpers.defaultAwaitTimeout
 import play.api.test.{FakeRequest, Helpers, WsTestClient}
-import play.libs.ws.WSCookie
+import play.api.{Configuration, Environment}
 
-import java.lang.IllegalStateException
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.Future
 import scala.util.Try
@@ -66,7 +63,7 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
     new Authentication(
       config = config,
       providers = testProviders,
-      mock[WSClient],
+      mock[InstancesClient],
       parser = PlayBodyParsers().default,
       executionContext = global
     )
