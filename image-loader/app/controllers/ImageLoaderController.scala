@@ -5,16 +5,15 @@ import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.ImageIngestOperations.fileKeyFromId
 import com.gu.mediaservice.lib.argo.ArgoHelpers
 import com.gu.mediaservice.lib.argo.model.Link
-import com.gu.mediaservice.lib.auth.Authentication.OnBehalfOfPrincipal
-import com.gu.mediaservice.lib.auth.Permissions.UploadImages
 import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, OnBehalfOfPrincipal, UserPrincipal}
+import com.gu.mediaservice.lib.auth.Permissions.UploadImages
 import com.gu.mediaservice.lib.auth._
 import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider
 import com.gu.mediaservice.lib.aws.{S3Ops, SimpleSqsMessageConsumer, SqsHelpers}
 import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.events.UsageEvents
 import com.gu.mediaservice.lib.formatting.printDateTime
-import com.gu.mediaservice.lib.instances.Instances
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.{FALLBACK, LogMarker, MarkerMap}
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.lib.{DateTimeUtils, ImageIngestOperations, ImageStorageProps}
@@ -34,7 +33,6 @@ import play.api.data.Forms._
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.Json
 import play.api.libs.streams.Accumulator
-import play.api.libs.ws.WSClient
 import play.api.mvc._
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.cloudwatch.model.Dimension
@@ -64,10 +62,10 @@ class ImageLoaderController(auth: Authentication,
                             authorisation: Authorisation,
                             metrics: ImageLoaderMetrics,
                             usageEvents: UsageEvents,
-                            val wsClient: WSClient,
+                            instancesClient: InstancesClient,
                             applicationLifecycle: ApplicationLifecycle)
                            (implicit val ec: ExecutionContext, materializer: Materializer)
-  extends BaseController with ArgoHelpers with SqsHelpers with InstanceForRequest with Instances {
+  extends BaseController with ArgoHelpers with SqsHelpers with InstanceForRequest {
 
   private val AuthenticatedAndAuthorised = auth andThen authorisation.CommonActionFilters.authorisedForUpload
 
@@ -189,7 +187,7 @@ class ImageLoaderController(auth: Authentication,
         val path = pathComponents.drop(1).mkString("/")
         logger.info(s"Instance and key: $instanceId / $path")
 
-        val eventualIsValidInstanceId = getInstances().map { instances =>
+        val eventualIsValidInstanceId = instancesClient.getInstances().map { instances =>
           instances.map(_.id).contains(instanceId)
         }
 
