@@ -1,9 +1,10 @@
 package com.gu.mediaservice.lib.play
 
+import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{Authentication, Authorisation}
-import com.gu.mediaservice.lib.auth.provider.{AuthenticationProviderResources, AuthenticationProviders, AuthorisationProvider, AuthorisationProviderResources, InnerServiceAuthenticationProvider, MachineAuthenticationProvider, UserAuthenticationProvider}
-import com.gu.mediaservice.lib.config.{ApiAuthenticationProviderLoader, AuthorisationProviderLoader, CommonConfig, GridConfigResources, UserAuthenticationProviderLoader}
+import com.gu.mediaservice.lib.config._
 import com.gu.mediaservice.lib.events.UsageEvents
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.LogConfig
 import com.gu.mediaservice.lib.management.{BuildInfo, Management}
 import play.api.ApplicationLoader.Context
@@ -11,8 +12,7 @@ import play.api.BuiltInComponentsFromContext
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.mvc.EssentialFilter
 import play.filters.HttpFiltersComponents
-import play.filters.cors.CORSConfig.Origins
-import play.filters.cors.{CORSComponents, CORSConfig}
+import play.filters.cors.CORSComponents
 import play.filters.gzip.GzipFilterComponents
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsClient
@@ -80,5 +80,7 @@ abstract class GridComponents[Config <: CommonConfig](context: Context, val load
     innerServiceProvider = new InnerServiceAuthenticationProvider(cookieSigner, serviceName=config.appName)
   )
 
-  val auth = new Authentication(config, providers, wsClient, controllerComponents.parsers.default, executionContext)
+  val instancesClient = new InstancesClient(config, wsClient)
+
+  val auth = new Authentication(config, providers, instancesClient, controllerComponents.parsers.default, executionContext)
 }
