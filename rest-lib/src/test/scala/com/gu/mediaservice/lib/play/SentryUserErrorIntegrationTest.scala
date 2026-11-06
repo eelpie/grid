@@ -4,6 +4,7 @@ import com.gu.mediaservice.lib.auth.Authentication.{InnerServicePrincipal, Machi
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{ApiAccessor, Authentication, Internal}
 import com.gu.mediaservice.lib.config.{CommonConfig, SentryConfig}
+import com.gu.mediaservice.lib.instances.InstancesClient
 import io.sentry.{Sentry, SentryEvent}
 import io.sentry.transport.NoOpTransport
 import org.apache.pekko.actor.ActorSystem
@@ -98,7 +99,7 @@ class SentryUserErrorIntegrationTest extends AnyFunSuite with Matchers with Scal
     }
     new Authentication(
       mock(classOf[CommonConfig]), AuthenticationProviders(userProvider, apiProvider, innerProvider),
-      mock(classOf[WSClient]),
+      mock(classOf[InstancesClient]),
       PlayBodyParsers().default, ec
     )
   }

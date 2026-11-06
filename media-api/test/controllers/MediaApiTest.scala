@@ -6,6 +6,7 @@ import com.gu.mediaservice.lib.auth.{Authentication, Authorisation, SimplePermis
 import com.gu.mediaservice.lib.aws.{Embedder, S3, ThrallMessageSender, UpdateMessage}
 import com.gu.mediaservice.lib.config.{CommonConfig, SingleHostServices}
 import com.gu.mediaservice.lib.events.UsageEvents
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.LogMarker
 import com.gu.mediaservice.lib.metadata.SoftDeletedMetadataTable
 import com.gu.mediaservice.model.{Image, ImageStatusRecord, Instance, NoRights}
@@ -50,7 +51,7 @@ class MediaApiTest extends AnyFunSpec with Matchers with MockitoSugar with Scala
         mock[MachineAuthenticationProvider],
         mock[InnerServiceAuthenticationProvider]
       ),
-      mock[WSClient],
+      mock[InstancesClient],
       components.parsers.default,
       ec
     ) {

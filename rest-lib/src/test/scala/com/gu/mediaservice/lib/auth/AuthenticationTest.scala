@@ -5,6 +5,7 @@ import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, OnBehalfOf
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, SingleHostServices}
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.play.RequestLoggingFilter
 import com.gu.mediaservice.model.Instance
 import org.apache.pekko.actor.ActorSystem
@@ -19,7 +20,7 @@ import play.api.inject.ApplicationLifecycle
 import play.api.libs.crypto.CookieSigner
 import play.api.libs.json.{Format, Json}
 import play.api.libs.typedmap.{TypedKey, TypedMap}
-import play.api.libs.ws.{DefaultWSCookie, WSClient, WSRequest}
+import play.api.libs.ws.{DefaultWSCookie, WSRequest}
 import play.api.mvc._
 import play.api.test.Helpers.defaultAwaitTimeout
 import play.api.test.{FakeRequest, Helpers, WsTestClient}
@@ -68,7 +69,7 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
     new Authentication(
       config = config,
       providers = testProviders,
-      mock[WSClient],
+      mock[InstancesClient],
       parser = PlayBodyParsers().default,
       executionContext = global
     )
