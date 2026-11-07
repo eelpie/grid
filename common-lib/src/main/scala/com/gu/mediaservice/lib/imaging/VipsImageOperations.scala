@@ -1,8 +1,8 @@
 package com.gu.mediaservice.lib.imaging
 
-import app.photofox.vipsffm.enums.{VipsIntent, VipsInterpretation}
-import app.photofox.vipsffm.jextract.VipsRaw
 import app.photofox.vipsffm._
+import app.photofox.vipsffm.enums.{VipsForeignHeifCompression, VipsIntent, VipsInterpretation}
+import app.photofox.vipsffm.jextract.VipsRaw
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
@@ -119,8 +119,9 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                       width: Int,
                       qual: Double = 100d,
                       outputFile: File,
-                      orientationMetadata: Option[OrientationMetadata]
-                         )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])] = {
+                      orientationMetadata: Option[OrientationMetadata],
+                      outputFormat: MimeType
+                     )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])] = {
     Future {
       var thumbDimensions: Option[Dimensions] = None
       val arena = Arena.ofConfined()
@@ -147,8 +148,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           rotated
         }
 
-        saveImageToFile(flattened, ImageOperations.thumbMimeType, qual, outputFile)
-        (outputFile, ImageOperations.thumbMimeType, thumbDimensions)
+        saveImageToFile(flattened, outputFormat, qual, outputFile)
+        (outputFile, outputFormat, thumbDimensions)
       } catch {
         case e: Exception =>
           logger.error(logMarker, "Error while creating thumbnail", e)
@@ -270,6 +271,14 @@ class VipsImageOperations extends GridLogging with ImageOperations {
             VipsOption.Int("keep", k)
           )
         }
+        outputFile
+
+      case Avif =>
+        image.heifsave(outputFile.getAbsolutePath,
+          VipsOption.Enum("compression", VipsForeignHeifCompression.FOREIGN_HEIF_COMPRESSION_AV1),
+          VipsOption.Int("Q", q),
+          VipsOption.Int("keep", k)
+        )
         outputFile
 
       case _ =>

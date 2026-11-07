@@ -37,6 +37,18 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       }
     }
 
+    it("can write thumbnail to AVIF form") {
+      val image = fileAt("IMG_4403.jpg")
+
+      val outputFile = tempFileNamed("thumbnail", ".avif")
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Jpeg, Map.empty, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 65, outputFile, None, Avif)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
     it("should correct for exif orientation if provided") {
       val image = fileAt("IMG_4445.jpg")
 
@@ -447,11 +459,11 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
   }
 
   private def tempDirForOutputFiles: File = {
-    FileUtils.getTempDirectory
+    new File("/Users/tony/tmp/")
   }
 
   private def tempFileNamed(filename: String, suffix: String): File = {
-    File.createTempFile(filename, suffix)
+    new File("/Users/tony/tmp/" + filename + suffix)
   }
 
 }
