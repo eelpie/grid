@@ -54,7 +54,7 @@ class KindeAuthenticationProvider(
         val userProfile = UserProfile(
           id = id,
           first_name = userData.get("first_name"),
-          last_name = userData.get("first_name"),
+          last_name = userData.get("last_name"),
           preferred_email = userData.get("preferred_email")
         )
         Authenticated(authedUser = gridUserFrom(userProfile, request))
