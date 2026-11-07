@@ -1,6 +1,7 @@
 package lib
 
-import io.opentelemetry.api.metrics.LongCounter
+import io.opentelemetry.api.common.{AttributeKey, Attributes}
+import io.opentelemetry.api.metrics.{DoubleHistogram, LongCounter}
 import io.opentelemetry.sdk.OpenTelemetrySdk
 import org.apache.pekko.actor.ActorSystem
 import com.gu.mediaservice.lib.metrics.CloudWatchMetrics
@@ -32,6 +33,17 @@ class ImageLoaderMetrics(config: ImageLoaderConfig, actorSystem: ActorSystem, ap
   val failedIngestsFromQueue: CountMetric = new DualWrittenCountMetric("FailedIngestsFromQueue", "ingest.queue.failed")
 
   val abandonedMessagesFromQueue: CountMetric = new DualWrittenCountMetric("AbandonedMessagesFromQueue", "ingest.queue.abandoned")
+
+  private val processingDurationHistogram: DoubleHistogram = meter
+    .histogramBuilder("ingest.processing.duration")
+    .setDescription("Time taken to process an ingested image")
+    .setUnit("s")
+    .build()
+
+  def recordProcessingDuration(durationNanos: Long, succeeded: Boolean): Unit = {
+    val attributes = Attributes.of(AttributeKey.booleanKey("succeeded"), java.lang.Boolean.valueOf(succeeded))
+    processingDurationHistogram.record(durationNanos / 1e9, attributes)
+  }
 }
 
 object ImageLoaderMetrics {
