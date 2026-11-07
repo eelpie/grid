@@ -9,7 +9,6 @@ import com.gu.mediaservice.lib.auth.Authentication
 import com.gu.mediaservice.lib.aws._
 import com.gu.mediaservice.lib.cleanup.ImageProcessor
 import com.gu.mediaservice.lib.formatting._
-import com.gu.mediaservice.lib.imaging.ImageOperations.thumbMimeType
 import com.gu.mediaservice.lib.imaging.{ImageOperations, VipsImageOperations}
 import com.gu.mediaservice.lib.logging._
 import com.gu.mediaservice.lib.metadata.ImageMetadataConverter
@@ -298,7 +297,7 @@ object Uploader extends GridLogging {
     }
 
     for {
-      tempFile <- createTempFile(s"thumb-", thumbMimeType.fileExtension, tempDir)
+      tempFile <- createTempFile(s"thumb-", ".tmp", tempDir)
       maybeThumbFile <- deps.tryFetchThumbFile(browserViewableImage.id, tempFile, instance)
       (thumb, thumbMimeType, thumbDimensions) <- {
         maybeThumbFile match {
