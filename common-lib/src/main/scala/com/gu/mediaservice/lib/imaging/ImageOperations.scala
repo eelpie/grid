@@ -30,9 +30,6 @@ object ImageOperations extends GridLogging {
 
 trait ImageOperations {
 
-  val thumbMimeType: MimeType = ImageOperations.thumbMimeType
-  val optimisedMimeType: MimeType = ImageOperations.optimisedMimeType
-
   def appendMetadata(sourceFile: File, metadata: ImageMetadata): Future[File]
 
   def createThumbnail(browserViewableImage: BrowserViewableImage,
