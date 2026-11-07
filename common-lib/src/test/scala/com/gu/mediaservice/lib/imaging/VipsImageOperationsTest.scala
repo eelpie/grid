@@ -29,7 +29,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val outputFile = tempFileNamed("thumbnail", ".jpg")
       val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("TODO"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 500, 95, outputFile, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -41,7 +41,7 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val outputFile = tempFileNamed("thumbnail", ".avif")
       val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Jpeg, Map.empty, Instance("TODO"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 500, 95, outputFile, None, Avif)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 65, outputFile, None, Avif)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -476,11 +476,11 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
   }
 
   private def tempDirForOutputFiles: File = {
-    FileUtils.getTempDirectory
+    new File("/Users/tony/tmp/")
   }
 
   private def tempFileNamed(filename: String, suffix: String): File = {
-    File.createTempFile(filename, suffix)
+    new File("/Users/tony/tmp/" + filename + suffix)
   }
 
 }
