@@ -120,7 +120,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
                       qual: Double = 100d,
                       outputFile: File,
                       orientationMetadata: Option[OrientationMetadata],
-                      outputFormat: MimeType = ImageOperations.thumbMimeType
+                      outputFormat: MimeType
                      )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])] = {
     Future {
       var thumbDimensions: Option[Dimensions] = None
