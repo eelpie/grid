@@ -29,7 +29,19 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val outputFile = tempFileNamed("thumbnail", ".jpg")
       val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("TODO"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 95, outputFile, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 500, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("can write thumbnail to AVIF form") {
+      val image = fileAt("IMG_4403.jpg")
+
+      val outputFile = tempFileNamed("thumbnail", ".avif")
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Jpeg, Map.empty, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 500, 95, outputFile, None, Avif)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }

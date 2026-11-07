@@ -30,7 +30,8 @@ trait ImageOperations {
                       width: Int,
                       qual: Double = 100d,
                       outputFile: File,
-                      orientationMetadata: Option[OrientationMetadata]
+                      orientationMetadata: Option[OrientationMetadata],
+                      outputFormat: MimeType
                      )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])]
 
   def cropImage(
