@@ -222,7 +222,7 @@ object FileMetadataReader extends GridLogging {
           "colorType" -> maybeImageType,
           "photometricInterpretation" -> photometricInterpretation,
       ).flattenOptions
-      case Webp =>
+      case Webp | Avif =>
         Map(
           "hasAlpha" -> hasAlpha,
           "colorType" -> maybeImageType,
