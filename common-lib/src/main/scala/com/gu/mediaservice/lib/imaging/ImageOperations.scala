@@ -21,7 +21,8 @@ trait ImageOperations {
                       width: Int,
                       qual: Double = 100d,
                       outputFile: File,
-                      orientationMetadata: Option[OrientationMetadata]
+                      orientationMetadata: Option[OrientationMetadata],
+                      outputFormat: MimeType = ImageOperations.thumbMimeType
                      )(implicit logMarker: LogMarker): Future[(File, MimeType, Option[Dimensions])]
 
   def cropImage(
