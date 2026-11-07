@@ -282,7 +282,7 @@ object Uploader extends GridLogging {
     }
 
     for {
-      tempFile <- createTempFile(s"thumb-", thumbMimeType.fileExtension, tempDir)
+      tempFile <- createTempFile(s"thumb-", ".tmp", tempDir)
       maybeThumbFile <- deps.tryFetchThumbFile(browserViewableImage.id, tempFile, instance)
       (thumb, thumbMimeType) <- {
         maybeThumbFile match {
