@@ -16,8 +16,6 @@ object ImageOperations {
 
 trait ImageOperations {
 
-  val thumbMimeType: MimeType = ImageOperations.thumbMimeType
-
   def appendMetadata(image: VImage, metadata: ImageMetadata)(implicit arena: Arena): VImage
 
   def createEmbeddingSource(originalImageFile: File,
