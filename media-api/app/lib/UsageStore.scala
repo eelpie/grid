@@ -1,6 +1,7 @@
 package lib
 
 import com.gu.mediaservice.lib.BaseStore
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.logging.GridLogging
 import com.gu.mediaservice.model.{Agencies, Agency, UsageRights}
 import com.gu.mediaservice.model.usage.{DigitalUsage, PrintUsage, PublishedUsageStatus, RemovedUsageStatus, UnknownUsageStatus, Usage, UsageStatus, UsageType}
@@ -60,10 +61,11 @@ object UsageStore extends GridLogging {
 }
 
 class UsageStore(
-  bucket: String,
+  bucket: S3Bucket,
   config: MediaApiConfig,
-  quotaStore: QuotaStore
-)(implicit val ec: ExecutionContext) extends BaseStore[String, SupplierUsageStatus](bucket, config) with GridLogging {
+  quotaStore: QuotaStore,
+  s3: S3
+)(implicit val ec: ExecutionContext) extends BaseStore[String, SupplierUsageStatus](bucket, config, s3) with GridLogging {
 
   def getUsageStatusForUsageRights(usageRights: UsageRights): Future[SupplierUsageStatus] = {
     usageRights match {

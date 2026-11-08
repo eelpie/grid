@@ -20,7 +20,7 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
 
   private val s3 = new S3(config)
 
-  val usageQuota = new UsageQuota(config, actorSystem.scheduler)
+  val usageQuota = new UsageQuota(config, actorSystem.scheduler, s3)
   usageQuota.quotaStore.update()
   usageQuota.scheduleUpdates()
   applicationLifecycle.addStopHook(() => Future{usageQuota.stopUpdates()})

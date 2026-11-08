@@ -1,48 +1,24 @@
 package com.gu.mediaservice.lib
 
-import org.apache.pekko.actor.{Cancellable, Scheduler}
-import com.gu.mediaservice.lib.aws.S3
+import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.GridLogging
+import org.apache.pekko.actor.{Cancellable, Scheduler}
 import org.joda.time.DateTime
-import software.amazon.awssdk.services.s3.model.{GetObjectRequest, ListObjectsV2Request}
 
 import java.util.concurrent.atomic.AtomicReference
-import java.io.InputStream
-import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 
-abstract class BaseStore[TStoreKey, TStoreVal](bucket: String, config: CommonConfig)(implicit ec: ExecutionContext)
+abstract class BaseStore[TStoreKey, TStoreVal](bucket: S3Bucket, config: CommonConfig, s3: S3)(implicit ec: ExecutionContext)
   extends GridLogging {
-
-  val s3 = new S3(config)
 
   protected val store: AtomicReference[Map[TStoreKey, TStoreVal]] = new AtomicReference(Map.empty)
   protected val lastUpdated: AtomicReference[DateTime] = new AtomicReference(DateTime.now())
 
   protected def getS3Object(key: String): Option[String] = s3.getObjectAsString(bucket, key)
-
-  protected def getLatestS3Stream: Option[InputStream] = {
-    val objects = s3.client.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).build())
-      .contents().asScala.toList
-      .filterNot(_.key() == "AMAZON_SES_SETUP_NOTIFICATION")
-
-    if (objects.nonEmpty) {
-      val obj = objects.maxBy(_.lastModified())
-      logger.info(s"Latest key ${obj.key} in bucket $bucket")
-
-      val stream = s3.client.getObject(
-        GetObjectRequest.builder().key(obj.key()).bucket(bucket).build()
-      )
-      Some(stream)
-    } else {
-      logger.error(s"Bucket $bucket is empty")
-      None
-    }
-  }
 
   private var cancellable: Option[Cancellable] = None
 
