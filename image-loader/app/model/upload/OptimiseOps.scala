@@ -4,7 +4,7 @@ import app.photofox.vipsffm.{VImage, VipsHelper}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap, Stopwatch}
 import com.gu.mediaservice.lib.{BrowserViewableImage, ImageWrapper}
-import com.gu.mediaservice.model.{Jpeg, MimeType, Png, Tiff}
+import com.gu.mediaservice.model.{Avif, Jpeg, MimeType, Png, Tiff}
 
 import java.io.File
 import java.lang.foreign.Arena
@@ -25,16 +25,8 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
       "fileName" -> imageWrapper.file.getName
     )
 
-    val arena = Arena.ofConfined()
-    val image = VImage.newFromFile(arena, imageWrapper.file.getAbsolutePath)
-    val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
-    arena.close()
-
-    val isTrueColour = numberOfBands >= 3
-    val isTrueColourPng = isTrueColour && imageWrapper.mimeType == Png
-
     Stopwatch("toOptimisedFile") {
-      imageOperations.transformImage(imageWrapper.file, tempDir, optimisedMimeType, quantise = isTrueColourPng)
+      imageOperations.transformImage(imageWrapper.file, tempDir, optimisedMimeType, quantise = false)
     }(marker)
   }
 
@@ -53,17 +45,17 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     val x = if (mimeType == Png) {
       if (isTrueColour && !hasAlpha) {
         logger.info(s"shouldOptimise choosing $Jpeg because true colour $Png with no alpha")
-        Some(Jpeg)
+        Some(Avif)
       } else {
         None
       }
     } else if (mimeType == Tiff) {
       if (isTrueColour && !hasAlpha) {
         logger.info(s"shouldOptimise choosing $Jpeg because true colour $Tiff with no alpha")
-        Some(Jpeg)
+        Some(Avif)
       } else {
         logger.info(s"shouldOptimise choosing $Png because $Tiff with alpha")
-        Some(Png)
+        Some(Avif)
       }
     } else {
       None
