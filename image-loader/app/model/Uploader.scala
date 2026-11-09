@@ -180,6 +180,11 @@ object Uploader extends GridLogging {
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
       tempDirForRequest, optimiseOps, browserViewableImage, deps.tryFetchOptimisedFile, uploadRequest.instance)
+      // The optimised image may have been downscaled from the source so read its actual dimensions
+      optimisedDimensions <- maybeStorableOptimisedImage match {
+        case Some(storableOptimisedImage) => deps.imageOps.getImageInformation(storableOptimisedImage.file).map(_._1)
+        case None => Future.successful(None)
+      }
       s3PngOption <- maybeStorableOptimisedImage match {
         case Some(storableOptimisedImage) => storeOrProjectOptimisedFile(storableOptimisedImage).map(a=>Some(a))
         case None => Future.successful(None)
@@ -195,7 +200,7 @@ object Uploader extends GridLogging {
       val sourceAsset = Asset.fromS3Object(s3Source, sourceDimensions, sourceOrientationMetadata)
       val thumbAsset = Asset.fromS3Object(s3Thumb, thumbDimensions)
 
-      val pngAsset = s3PngOption.map(Asset.fromS3Object(_, sourceDimensions))
+      val pngAsset = s3PngOption.map(Asset.fromS3Object(_, optimisedDimensions))
       val baseImage = ImageUpload.createImage(
         mergedUploadRequest,
         sourceAsset,
