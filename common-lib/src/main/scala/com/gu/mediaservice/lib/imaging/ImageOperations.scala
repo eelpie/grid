@@ -12,6 +12,9 @@ import scala.concurrent.Future
 
 object ImageOperations {
   val thumbMimeType: MimeType = Avif
+
+  // Restrict the longest edge of full sized derived images (master crops, optimised images) in line with CDN recommendations
+  val maxDerivedImageDimension: Int = 4096
 }
 
 trait ImageOperations {
@@ -51,7 +54,7 @@ trait ImageOperations {
 
   def resize(sourceImage: VImage, dimensions: Dimensions): Future[VImage]
 
-  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType, quantise: Boolean)(implicit logMarker: LogMarker): Future[(File, MimeType)]
+  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType, quantise: Boolean, maxDimension: Option[Int] = None)(implicit logMarker: LogMarker): Future[(File, MimeType)]
 
   def getImageInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[Dimensions], Option[OrientationMetadata], Option[String], Map[String, String])]
 

@@ -124,7 +124,7 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
         quality = if (cropType == Png) pngCropQuality else masterCropQuality
 
         // Restrict the dimensions of the master crop in line with CDN recommendations
-        maxMasterCropSize = 4096
+        maxMasterCropSize = ImageOperations.maxDerivedImageDimension
         masterCropSize = restrictedMasterCropDimensions(masterCrop.dimensions, maxMasterCropSize)
 
         // Start the master save and the resizes together so they render in parallel
