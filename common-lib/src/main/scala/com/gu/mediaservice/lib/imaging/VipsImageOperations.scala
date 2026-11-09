@@ -219,7 +219,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
         val rotated = applyOrientationCorrection(correctedForICCProfile, orientationMetadata)
 
-        saveImageToFile(rotated, outputMimeType, 85.0, outputFile, quantise = quantise)
+        saveImageToFile(rotated, outputMimeType, 65.0, outputFile, quantise = quantise)
         (outputFile, outputMimeType)
 
       } catch {

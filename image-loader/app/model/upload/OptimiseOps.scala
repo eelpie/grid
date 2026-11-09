@@ -27,16 +27,8 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
       "fileName" -> imageWrapper.file.getName
     )
 
-    val arena = Arena.ofConfined()
-    val image = VImage.newFromFile(arena, imageWrapper.file.getAbsolutePath)
-    val numberOfBands = VipsHelper.image_get_bands(image.getUnsafeStructAddress)
-    arena.close()
-
-    val isTrueColour = numberOfBands >= 3
-    val isTrueColourPng = isTrueColour && imageWrapper.mimeType == Png
-
     Stopwatch("toOptimisedFile") {
-      imageOperations.transformImage(imageWrapper.file, orientationMetadata, tempDir, optimisedMimeType, quantise = isTrueColourPng, maxDimension = Some(maxOptimisedImageDimension))
+      imageOperations.transformImage(imageWrapper.file, orientationMetadata: Option[OrientationMetadata], tempDir, optimisedMimeType, quantise = false, maxDimension = Some(maxOptimisedImageDimension))
     }(marker)
   }
 
@@ -55,17 +47,17 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     val x = if (mimeType == Png) {
       if (isTrueColour && !hasAlpha) {
         logger.info(s"shouldOptimise choosing $Jpeg because true colour $Png with no alpha")
-        Some(Jpeg)
+        Some(Avif)
       } else {
         None
       }
     } else if (mimeType == Tiff) {
       if (isTrueColour && !hasAlpha) {
         logger.info(s"shouldOptimise choosing $Jpeg because true colour $Tiff with no alpha")
-        Some(Jpeg)
+        Some(Avif)
       } else {
         logger.info(s"shouldOptimise choosing $Png because $Tiff with alpha")
-        Some(Png)
+        Some(Avif)
       }
     } else {
       None
