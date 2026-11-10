@@ -217,7 +217,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           correctedForICCProfile.resize(scale)
         }.getOrElse(correctedForICCProfile)
 
-        saveImageToFile(restricted, outputMimeType, 85.0, outputFile, quantise = quantise)
+        saveImageToFile(restricted, outputMimeType, 65.0, outputFile, quantise = quantise)
         (outputFile, outputMimeType)
 
       } catch {
