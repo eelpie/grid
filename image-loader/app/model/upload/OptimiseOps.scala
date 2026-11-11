@@ -60,8 +60,23 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     } else {
       None
     }
-    logger.info(s"shouldOptimise $browserViewableImage: $x")
-    x
+
+    val fileSize = browserViewableImage.file.length()
+    val y = x.orElse {
+      if (fileSize > OptimiseWithPngQuant.LargeFileThresholdBytes) {
+        logger.info(s"shouldOptimise choosing $Avif because $mimeType file size $fileSize bytes exceeds ${OptimiseWithPngQuant.LargeFileThresholdBytes} bytes")
+        Some(Avif)
+      } else {
+        None
+      }
+    }
+    logger.info(s"shouldOptimise $browserViewableImage: $y")
+    y
   }
 
+}
+
+object OptimiseWithPngQuant {
+  // Source images larger than this are slow to load in the UI regardless of format
+  val LargeFileThresholdBytes: Long = 5L * 1024 * 1024
 }
