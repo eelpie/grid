@@ -217,7 +217,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           correctedForICCProfile.resize(scale)
         }.getOrElse(correctedForICCProfile)
 
-        saveImageToFile(restricted, outputMimeType, 50.0, outputFile, quantise = quantise)
+        saveImageToFile(restricted, outputMimeType, 60.0, outputFile, quantise = quantise)
         (outputFile, outputMimeType)
 
       } catch {
@@ -325,7 +325,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         image.heifsave(outputFile.getAbsolutePath,
           VipsOption.Enum("compression", VipsForeignHeifCompression.FOREIGN_HEIF_COMPRESSION_AV1),
           VipsOption.Int("Q", q),
-          VipsOption.Int("effort", 1),
+          VipsOption.Int("effort", 0),
           VipsOption.Int("keep", k)
         )
         outputFile
