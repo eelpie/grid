@@ -1,6 +1,6 @@
 package com.gu.mediaservice.lib.imaging
 
-import app.photofox.vipsffm.VImage
+import app.photofox.vipsffm.{VImage, VipsHelper}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.embeddings.EmbeddingSourceImageFormat
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
@@ -57,6 +57,29 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 2800, 95, outputFile, Some(OrientationMetadata(exifOrientation = Some(6))))
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
+      }
+    }
+
+    it("should not leave an orientation tag on an AVIF thumbnail which has already been rotated") {
+      val image = fileAt("exif-orientated.jpg") // 3456x2304 landscape pixels with EXIF orientation 6
+
+      val outputFile = tempFileNamed("thumbnail-orientated", ".avif")
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Jpeg, Map.empty, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 256, 65, outputFile, Some(OrientationMetadata(exifOrientation = Some(6))), Avif)
+      whenReady(eventualThumbnail) { r =>
+        r._3 shouldBe Some(Dimensions(171, 256))
+
+        val arena = Arena.ofConfined()
+        try {
+          val thumbnail = VImage.newFromFile(arena, r._1.getAbsolutePath)
+          // heifsave writes any remaining orientation as an irot box, causing browsers to rotate a second time
+          VipsHelper.image_get_orientation(thumbnail.getUnsafeStructAddress) shouldBe 1
+          thumbnail.getWidth shouldBe 171
+          thumbnail.getHeight shouldBe 256
+        } finally {
+          arena.close()
+        }
       }
     }
 
