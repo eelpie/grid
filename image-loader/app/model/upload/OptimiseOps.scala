@@ -4,7 +4,7 @@ import app.photofox.vipsffm.{VImage, VipsHelper}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap, Stopwatch}
 import com.gu.mediaservice.lib.{BrowserViewableImage, ImageWrapper}
-import com.gu.mediaservice.model.{Jpeg, MimeType, Png, Tiff}
+import com.gu.mediaservice.model.{Avif, Jpeg, MimeType, Png, Tiff}
 
 import java.io.File
 import java.lang.foreign.Arena
@@ -70,8 +70,23 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     } else {
       None
     }
-    logger.info(s"shouldOptimise $browserViewableImage: $x")
-    x
+
+    val fileSize = browserViewableImage.file.length()
+    val y = x.orElse {
+      if (fileSize > OptimiseWithPngQuant.LargeFileThresholdBytes) {
+        logger.info(s"shouldOptimise choosing $Avif because $mimeType file size $fileSize bytes exceeds ${OptimiseWithPngQuant.LargeFileThresholdBytes} bytes")
+        Some(Avif)
+      } else {
+        None
+      }
+    }
+    logger.info(s"shouldOptimise $browserViewableImage: $y")
+    y
   }
 
+}
+
+object OptimiseWithPngQuant {
+  // Source images larger than this are slow to load in the UI regardless of format
+  val LargeFileThresholdBytes: Long = 5L * 1024 * 1024
 }
