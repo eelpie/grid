@@ -36,11 +36,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       // Read source image
       val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
       // Orient
-      val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-        image.rotate(angle)
-      }.getOrElse {
-        image
-      }
+      val rotated = applyOrientationCorrection(image, orientationMetadata)
       val cropped = rotated.extractArea(bounds.x, bounds.y, bounds.width, bounds.height)
 
       // If we saw and ICC profile than we will need to transform
@@ -134,12 +130,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
         val inMemoryCopy = thumbnail.copyMemory()
 
-        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-          logger.info("Rotating thumbnail: " + angle)
-          inMemoryCopy.rotate(angle)
-        }.getOrElse{
-          inMemoryCopy
-        }
+        val rotated = applyOrientationCorrection(inMemoryCopy, orientationMetadata)
         thumbDimensions = Some(Dimensions(rotated.getWidth, rotated.getHeight))
 
         val flattened = if (rotated.hasAlpha) {
@@ -182,12 +173,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
         val inMemoryCopy = thumbnail.copyMemory()
 
-        val rotated = orientationMetadata.map(_.orientationCorrection()).map { angle =>
-          logger.info("Rotating thumbnail: " + angle)
-          inMemoryCopy.rotate(angle)
-        }.getOrElse {
-          inMemoryCopy
-        }
+        val rotated = applyOrientationCorrection(inMemoryCopy, orientationMetadata)
         logger.info("Created embedding source: " + rotated.getWidth + "x" + rotated.getHeight)
 
         // Letter box to preserve aspect ratio of subjects
@@ -339,6 +325,21 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       case _ =>
         logger.error(s"Save to $mimeType is not supported.")
         throw new UnsupportedCropOutputTypeException
+    }
+  }
+
+  // Physically rotate the pixels to correct for EXIF orientation.
+  // The source's orientation tag is carried through in the vips image header; once the pixels are rotated it must be
+  // removed or encoders which write orientation outside of EXIF (ie. heifsave writing an AVIF irot box, regardless of keep)
+  // will cause viewers to apply the rotation a second time.
+  private def applyOrientationCorrection(image: VImage, orientationMetadata: Option[OrientationMetadata]): VImage = {
+    orientationMetadata.map(_.orientationCorrection()).map { angle =>
+      logger.info("Rotating image to correct for orientation: " + angle)
+      val rotated = image.rotate(angle)
+      rotated.remove("orientation")
+      rotated
+    }.getOrElse {
+      image
     }
   }
 
