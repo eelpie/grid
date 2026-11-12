@@ -208,17 +208,16 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         val outputFile = createTempFileInTempDir("transformed", outputMimeType, tempDir)
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
-        val correctedForICCProfile = correctForICCProfile(image)
-
-        val longestEdge = math.max(correctedForICCProfile.getWidth, correctedForICCProfile.getHeight)
+        val longestEdge = math.max(image.getWidth, image.getHeight)
         val restricted = maxDimension.filter(longestEdge > _).map { max =>
           val scale = max.toDouble / longestEdge.toDouble
-          logger.info(s"Resizing oversized transformed image from ${correctedForICCProfile.getWidth}x${correctedForICCProfile.getHeight} by scale $scale to fit within $max")
-          correctedForICCProfile.resize(scale)
-        }.getOrElse(correctedForICCProfile)
+          logger.info(s"Resizing oversized transformed image from ${image.getWidth}x${image.getHeight} by scale $scale to fit within $max")
+          image.resize(scale)
+        }.getOrElse(image)
 
+        val correctedForICCProfile = correctForICCProfile(restricted)
 
-        val inMemoryCopy = restricted.copyMemory()
+        val inMemoryCopy = correctedForICCProfile.copyMemory()
 
         val rotated = applyOrientationCorrection(inMemoryCopy, orientationMetadata)
         logger.info("Created embedding source: " + rotated.getWidth + "x" + rotated.getHeight)
