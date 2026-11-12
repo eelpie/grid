@@ -307,7 +307,7 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
 
   "GridClient should set write methods before signing" in {
     WsTestClient.withClient { client =>
-      val services = new SingleHostServices("example.com")
+      val services = new SingleHostServices("http://example.com")
       val gridClient = GridClient(services, services.apiBaseUri)(client)
       val stop = new IllegalStateException("Stop before sending HTTP")
 
