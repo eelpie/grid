@@ -3,6 +3,7 @@ package com.gu.mediaservice.lib.auth
 import com.gu.mediaservice.GridClient
 import com.gu.mediaservice.lib.auth.Authentication.{MachinePrincipal, OnBehalfOfPrincipal, UserPrincipal}
 import com.gu.mediaservice.lib.auth.provider.AuthenticationProvider.RedirectUri
+import com.gu.mediaservice.lib.auth.provider.ApiKeyAuthenticationProvider.{ApiKeyInstance, KindeIdKey}
 import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.config.{CommonConfig, GridConfigResources, SingleHostServices}
 import com.gu.mediaservice.lib.instances.InstancesClient
@@ -11,6 +12,8 @@ import com.gu.mediaservice.model.Instance
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.{Materializer, SystemMaterializer}
 import org.joda.time.{DateTime, DateTimeZone}
+import org.mockito.ArgumentMatchers
+import org.mockito.Mockito.when
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{BeforeAndAfterAll, EitherValues}
@@ -19,7 +22,7 @@ import play.api.http.Status
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.crypto.CookieSigner
 import play.api.libs.json.{Format, Json}
-import play.api.libs.typedmap.{TypedKey, TypedMap}
+import play.api.libs.typedmap.{TypedEntry, TypedKey, TypedMap}
 import play.api.libs.ws.{DefaultWSCookie, WSRequest}
 import play.api.mvc._
 import play.api.test.Helpers.defaultAwaitTimeout
@@ -27,7 +30,7 @@ import play.api.test.{FakeRequest, Helpers, WsTestClient}
 import play.api.{Configuration, Environment}
 
 import scala.concurrent.ExecutionContext.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 //noinspection NotImplementedCode,SpellCheckingInspection
@@ -43,17 +46,29 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
 
   private val COOKIE_NAME = "TestGridAuth"
   private val HEADER_NAME = "X-TestMachine-Auth"
-  private case class AuthToken(firstName: String, lastName: String, email: String, expired: Boolean, veryExpired: Boolean) {
-    def user: UserPrincipal = UserPrincipal(firstName, lastName, email)
+  private case class AuthToken(firstName: String, lastName: String, email: String, expired: Boolean, veryExpired: Boolean, kindeId: Option[String] = None) {
+    def user: UserPrincipal = UserPrincipal(firstName, lastName, email,
+      kindeId.map(id => TypedMap(TypedEntry(KindeIdKey, id))).getOrElse(TypedMap.empty))
   }
   private implicit val cookieFormats: Format[AuthToken] = Json.format[AuthToken]
-  private def makeCookie(firstName: String = "Test", lastName: String = "User", email: String = "test@user", expired: Boolean = false, veryExpired: Boolean = false): Cookie = {
-    val data = AuthToken(firstName, lastName, email, expired, veryExpired)
+  private def makeCookie(firstName: String = "Test", lastName: String = "User", email: String = "test@user", expired: Boolean = false, veryExpired: Boolean = false, kindeId: Option[String] = None): Cookie = {
+    val data = AuthToken(firstName, lastName, email, expired, veryExpired, kindeId)
     val value = Json.stringify(Json.toJson(data))
     Cookie(COOKIE_NAME, value)
   }
   private def parseCookie(cookie: Cookie): Option[AuthToken] = {
     Try(Json.parse(cookie.value)).toOption.flatMap(_.asOpt[AuthToken])
+  }
+
+  // FakeRequest's host is "localhost", so that is the instance requests resolve to
+  private val requestInstance = Instance("localhost")
+  private val TEST_KINDE_ID = "kinde-test-user"
+
+  private val instancesClient = {
+    val client = mock[InstancesClient]
+    when(client.getMyInstances(ArgumentMatchers.eq(TEST_KINDE_ID))(ArgumentMatchers.any[ExecutionContext]()))
+      .thenReturn(Future.successful(Seq(requestInstance)))
+    client
   }
 
   def makeAuthenticationInstance(testProviders: AuthenticationProviders): Authentication = {
@@ -69,7 +84,7 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
     new Authentication(
       config = config,
       providers = testProviders,
-      mock[InstancesClient],
+      instancesClient,
       parser = PlayBodyParsers().default,
       executionContext = global
     )
@@ -86,8 +101,8 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
             case Some(cookie) =>
               parseCookie(cookie) match {
                 case None => Invalid("Token not valid")
-                case Some(token@AuthToken(_, _, _, true, false)) => GracePeriod(token.user)
-                case Some(token@AuthToken(_, _, _, _, true)) => Expired(token.user)
+                case Some(token@AuthToken(_, _, _, true, false, _)) => GracePeriod(token.user)
+                case Some(token@AuthToken(_, _, _, _, true, _)) => Expired(token.user)
                 case Some(token) if token.email == "test@user" => Authenticated(token.user)
                 case Some(token) => NotAuthorised(s"${token.email} not authorised")
               }
@@ -106,6 +121,10 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
           request.headers.get(HEADER_NAME) match {
             case None => NotAuthenticated
             case Some(key) if key.startsWith("key-") && key.endsWith("-blocked") => NotAuthorised(s"$key is blocked")
+            case Some(key) if key.startsWith("key-") && key.contains("@") =>
+              // key-<name>@<instance> is an API key scoped to an instance
+              val instanceId = key.substring(key.indexOf('@') + 1)
+              Authenticated(MachinePrincipal(ApiAccessor(key, Internal), TypedMap(TypedEntry(ApiKeyInstance, instanceId))))
             case Some(key) if key.startsWith("key-") => Authenticated(MachinePrincipal(ApiAccessor(key, Internal)))
             case Some(_) => Invalid("Key doesn't start with 'key-'")
           }
@@ -148,13 +167,13 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
           Future.successful(Results.Ok(request.user.accessor.identity))
         }
         for {
-          userResult <- Helpers.call(action, FakeRequest().withBody("").withCookies(makeCookie()))
-          apiResult <- Helpers.call(action, FakeRequest().withBody("").withHeaders(HEADER_NAME -> "key-client"))
+          userResult <- Helpers.call(action, FakeRequest().withBody("").withCookies(makeCookie(kindeId = Some(TEST_KINDE_ID))))
+          apiResult <- Helpers.call(action, FakeRequest().withBody("").withHeaders(HEADER_NAME -> s"key-client@${requestInstance.id}"))
         } yield {
           userResult.header.status shouldBe Status.OK
           Helpers.contentAsString(Future.successful(userResult)) shouldBe "test@user"
           apiResult.header.status shouldBe Status.OK
-          Helpers.contentAsString(Future.successful(apiResult)) shouldBe "key-client"
+          Helpers.contentAsString(Future.successful(apiResult)) shouldBe s"key-client@${requestInstance.id}"
         }
       }
 
