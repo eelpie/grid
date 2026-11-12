@@ -332,6 +332,8 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           VipsOption.Enum("compression", VipsForeignHeifCompression.FOREIGN_HEIF_COMPRESSION_AV1),
           VipsOption.Int("Q", q),
           VipsOption.Int("effort", 0),
+          // libvips defaults to 12-bit output for 16-bit sources; 8-bit is faster to encode, smaller and more widely supported
+          VipsOption.Int("bitdepth", 8),
           VipsOption.Int("keep", k)
         )
         outputFile
