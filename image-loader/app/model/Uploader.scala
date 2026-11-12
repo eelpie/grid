@@ -80,7 +80,7 @@ case class ImageUploadOpsDependencies(
   createEmbeddingsSource: (BrowserViewableImage, Option[OrientationMetadata], File) => Future[Option[StorableEmbeddingSourceImage]],
   storeEmbeddingSource: Option[StorableEmbeddingSourceImage] => Future[Option[S3Object]],
   tryFetchThumbFile: (String, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _) => Future.successful(None),
-  tryFetchOptimisedFile: (String, MimeType, File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _, _) => Future.successful(None),
+  tryFetchOptimisedFile: (String, MimeType, Option[OrientationMetadata], File, Instance) => Future[Option[(File, MimeType)]] = (_, _, _, _, _) => Future.successful(None),
   tryFetchEmbedding: (String, Instance) => Future[Option[Embedding]] = (_, _) => Future.successful(None),
   maybeEmbedder: Option[Embedder],
   recordThumbnailGenerationDuration: (Long, Boolean) => Unit = (_, _) => (),
@@ -179,7 +179,7 @@ object Uploader extends GridLogging {
       }
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
-      tempDirForRequest, optimiseOps, browserViewableImage, deps.tryFetchOptimisedFile, uploadRequest.instance)
+      tempDirForRequest, optimiseOps, browserViewableImage, sourceOrientationMetadata, deps.tryFetchOptimisedFile, uploadRequest.instance)
       // The optimised image may have been downscaled from the source so read its actual dimensions
       optimisedDimensions <- maybeStorableOptimisedImage match {
         case Some(storableOptimisedImage) => deps.imageOps.getImageInformation(storableOptimisedImage.file).map(_._1)
@@ -232,17 +232,18 @@ object Uploader extends GridLogging {
                                          tempDir: File,
                                          optimiseOps: OptimiseOps,
                                          browserViewableImage: BrowserViewableImage,
-                                         tryFetchOptimisedFile: (String, MimeType, File, Instance) => Future[Option[(File, MimeType)]],
+                                         orientationMetadata: Option[OrientationMetadata],
+                                         tryFetchOptimisedFile: (String, MimeType, Option[OrientationMetadata], File, Instance) => Future[Option[(File, MimeType)]],
                                          instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
     optimiseOps.shouldOptimise(browserViewableImage).map { optimisedMimeType =>
       for {
         tempFile <- createTempFile("optimisedpng-", optimisedMimeType.fileExtension, tempDir)
-        maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, optimisedMimeType, tempFile, instance)
+        maybeDownloadedOptimisedFile <- tryFetchOptimisedFile(browserViewableImage.id, optimisedMimeType, orientationMetadata, tempFile, instance)
         (optimisedFile, optimisedMimeType) <- {
           maybeDownloadedOptimisedFile match {
             case Some(optData) => Future.successful(optData)
-            case None => optimiseOps.toOptimisedFile(browserViewableImage, optimisedMimeType, tempDir)
+            case None => optimiseOps.toOptimisedFile(browserViewableImage, optimisedMimeType, tempDir, orientationMetadata)
           }
         }
       } yield Some(

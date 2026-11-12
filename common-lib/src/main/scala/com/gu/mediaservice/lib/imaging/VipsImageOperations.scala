@@ -201,7 +201,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType, quantise: Boolean = false, maxDimension: Option[Int] = None)(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
+  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType, quantise: Boolean = false, orientationMetadata: Option[OrientationMetadata], maxDimension: Option[Int] = None)(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
     Future {
       implicit val arena: Arena = Arena.ofConfined
       try {
@@ -217,7 +217,13 @@ class VipsImageOperations extends GridLogging with ImageOperations {
           correctedForICCProfile.resize(scale)
         }.getOrElse(correctedForICCProfile)
 
-        saveImageToFile(restricted, outputMimeType, 60.0, outputFile, quantise = quantise)
+
+        val inMemoryCopy = restricted.copyMemory()
+
+        val rotated = applyOrientationCorrection(inMemoryCopy, orientationMetadata)
+        logger.info("Created embedding source: " + rotated.getWidth + "x" + rotated.getHeight)
+
+        saveImageToFile(rotated, outputMimeType, 60.0, outputFile, quantise = quantise)
         (outputFile, outputMimeType)
 
       } catch {

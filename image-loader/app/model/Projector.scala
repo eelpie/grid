@@ -11,7 +11,7 @@ import com.gu.mediaservice.lib.config.InstanceForRequest
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.lib.net.URI
-import com.gu.mediaservice.model.{Embedding, Image, Instance, MimeType, Png, UploadInfo}
+import com.gu.mediaservice.model.{Embedding, Image, Instance, MimeType, OrientationMetadata, Png, UploadInfo}
 import com.gu.mediaservice.{GridClient, ImageDataMerger}
 import lib.imaging.{MimeTypeDetection, NoSuchImageExistsInS3}
 import lib.{DigestedFile, ImageLoaderConfig}
@@ -228,7 +228,7 @@ class ImageUploadProjectionOps(config: ImageUploadOpsCfg,
   }
 
   private def fetchOptimisedFile(
-    imageId: String, optimisedMimeType: MimeType, outFile: File, instance: Instance
+    imageId: String, optimisedMimeType: MimeType, orientationMetadata: Option[OrientationMetadata], outFile: File, instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[(File, MimeType)]] = {
     val key = optimisedPngKeyFromId(imageId)(instance)
 

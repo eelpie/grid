@@ -54,7 +54,7 @@ trait ImageOperations {
 
   def resize(sourceImage: VImage, dimensions: Dimensions): Future[VImage]
 
-  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType, quantise: Boolean, maxDimension: Option[Int] = None)(implicit logMarker: LogMarker): Future[(File, MimeType)]
+  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType, quantise: Boolean, orientationMetadata: Option[OrientationMetadata], maxDimension: Option[Int] = None)(implicit logMarker: LogMarker): Future[(File, MimeType)]
 
   def getImageInformation(sourceFile: File)(implicit logMarker: LogMarker): Future[(Option[Dimensions], Option[OrientationMetadata], Option[String], Map[String, String])]
 

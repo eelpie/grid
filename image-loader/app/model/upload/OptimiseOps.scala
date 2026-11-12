@@ -4,21 +4,21 @@ import app.photofox.vipsffm.{VImage, VipsHelper}
 import com.gu.mediaservice.lib.imaging.ImageOperations
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap, Stopwatch}
 import com.gu.mediaservice.lib.{BrowserViewableImage, ImageWrapper}
-import com.gu.mediaservice.model.{Avif, Jpeg, MimeType, Png, Tiff}
+import com.gu.mediaservice.model.{Avif, Jpeg, MimeType, OrientationMetadata, Png, Tiff}
 
 import java.io.File
 import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
 
 trait OptimiseOps {
-  def toOptimisedFile(imageWrapper: ImageWrapper, optimisedMimeType: MimeType, tempDir: File)
+  def toOptimisedFile(imageWrapper: ImageWrapper, optimisedMimeType: MimeType, tempDir: File, orientationMetadata: Option[OrientationMetadata])
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)]
   def shouldOptimise(browserViewableImage: BrowserViewableImage): Option[MimeType]
 }
 
 class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps with GridLogging {
 
-  def toOptimisedFile(imageWrapper: ImageWrapper, optimisedMimeType: MimeType, tempDir: File)
+  def toOptimisedFile(imageWrapper: ImageWrapper, optimisedMimeType: MimeType, tempDir: File, orientationMetadata: Option[OrientationMetadata])
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = {
 
     val marker = MarkerMap(
@@ -26,7 +26,7 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     )
 
     Stopwatch("toOptimisedFile") {
-      imageOperations.transformImage(imageWrapper.file, tempDir, optimisedMimeType, quantise = false, maxDimension = Some(ImageOperations.maxDerivedImageDimension))
+      imageOperations.transformImage(imageWrapper.file, tempDir, optimisedMimeType, quantise = false, orientationMetadata, maxDimension = Some(ImageOperations.maxDerivedImageDimension))
     }(marker)
   }
 
