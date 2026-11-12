@@ -1,7 +1,7 @@
 package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm._
-import app.photofox.vipsffm.enums.{VipsCompassDirection, VipsForeignHeifCompression, VipsIntent, VipsInterpretation}
+import app.photofox.vipsffm.enums.{VipsCompassDirection, VipsForeignHeifCompression, VipsForeignHeifEncoder, VipsIntent, VipsInterpretation}
 import app.photofox.vipsffm.jextract.VipsRaw
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
@@ -324,6 +324,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
       case Avif =>
         image.heifsave(outputFile.getAbsolutePath,
           VipsOption.Enum("compression", VipsForeignHeifCompression.FOREIGN_HEIF_COMPRESSION_AV1),
+          VipsOption.Enum("encoder", VipsForeignHeifEncoder.FOREIGN_HEIF_ENCODER_AOM),  // lowest memory foot-print; speed comparable on single images
           VipsOption.Int("Q", q),
           VipsOption.Int("effort", 0),
           // libvips defaults to 12-bit output for 16-bit sources; 8-bit is faster to encode, smaller and more widely supported
