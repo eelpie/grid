@@ -38,7 +38,7 @@ RUN apt -y --no-install-suggests install \
     libheif-plugin-x265 `# HEVC encoding (writing HEIC)` \
     libheif-plugins-all `# Metapackage pulling in every libheif plugin; makes the individual plugins redundant` \
     libheif-plugin-aomdec `# AV1 decoding (reading AVIF)` \
-    libheif-plugin-svtenc `# SVT-AV1 encoding
+    libheif-plugin-svtenc `# SVT-AV1 encoding`
 
 # build libvips from source
 WORKDIR /tmp
