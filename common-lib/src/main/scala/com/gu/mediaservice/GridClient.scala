@@ -183,7 +183,7 @@ class GridClient(services: Services, originDomain: Instance => String)(implicit 
   def createCollection(name: String, authFn: WSRequest => WSRequest)(implicit ec: ExecutionContext, instance: Instance): Future[Option[Collection]] = {
     val url = URI.create(s"${services.collectionsBaseUri(instance)}/collections").toURL
     val request = wsClient.url(url.toString).withRequestTimeout(Duration(10, SECONDS))
-    val authorisedRequest = authFn(request)
+    val authorisedRequest = authFn(request.withMethod("POST"))
     val data = Json.obj("data" -> JsString(name))
     authorisedRequest.post(data).map { response =>
       logger.info("Got new collection response: " + response.body)
