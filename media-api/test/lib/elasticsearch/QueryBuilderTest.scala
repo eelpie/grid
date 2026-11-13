@@ -1,6 +1,6 @@
 package lib.elasticsearch
 
-import com.gu.mediaservice.model.{Agency, Chargeable, PayToUse, PublisherIllustration, UsageRights}
+import com.gu.mediaservice.model.{Agency, Chargeable, Instance, PayToUse, PublisherIllustration, UsageRights}
 import com.sksamuel.elastic4s.ElasticDsl
 import com.sksamuel.elastic4s.requests.common.Operator
 import com.sksamuel.elastic4s.requests.searches.queries._
@@ -21,7 +21,8 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
 
   private val mediaApiConfig: MediaApiConfig = buildMediaApiConfig()
 
-  val queryBuilder = new QueryBuilder(matchFields, () => Nil, mediaApiConfig)
+  private implicit val instance: Instance = Instance("test-instance")
+  val queryBuilder = new QueryBuilder(matchFields, _ => Nil, mediaApiConfig)
 
   describe("Query builder") {
     it("Nil conditions parameter should give the match all query") {
@@ -123,7 +124,7 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
 
     it("any field words queries should be applied to all of the match fields with best fields type and fuzziness, operator and analyzers set") {
       val mediaApiConfigWithFuzzySearch = buildMediaApiConfig(Map("search.fuzziness.enabled" -> true))
-      val queryBuilder = new QueryBuilder(matchFields, () => Nil, mediaApiConfigWithFuzzySearch)
+      val queryBuilder = new QueryBuilder(matchFields, _ => Nil, mediaApiConfigWithFuzzySearch)
       val query = queryBuilder.makeQuery(List(anyFieldWordsCondition)).asInstanceOf[BoolQuery]
 
       query.must.size shouldBe 1
@@ -263,7 +264,7 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
         "elasticsearchPath" -> path,
         "label" -> "Ordered by"
       ))))
-      val aliasedBuilder = new QueryBuilder(matchFields, () => Nil, aliasConfig)
+      val aliasedBuilder = new QueryBuilder(matchFields, _ => Nil, aliasConfig)
 
       Seq("", "-").foreach { prefix =>
         it(s"preserves the configured $path redirect for ${prefix}usages@orderedBy") {
@@ -281,7 +282,7 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
         "elasticsearchPath" -> "metadata.credit",
         "label" -> "Ordered by"
       ))))
-      val aliasedBuilder = new QueryBuilder(matchFields, () => Nil, rootAliasConfig)
+      val aliasedBuilder = new QueryBuilder(matchFields, _ => Nil, rootAliasConfig)
 
       Seq("", "-").foreach { prefix =>
         val query = aliasedBuilder.makeQuery(Parser.parse(s"${prefix}usages@orderedBy:DESK1")).asInstanceOf[BoolQuery]
@@ -311,7 +312,7 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
       "matchViaExistence" -> true
     )
     val configWithC2paAlias = buildMediaApiConfig(Map("field.aliases" -> Seq(c2paFieldAliasConfig)))
-    val queryBuilderWithC2paAlias = new QueryBuilder(matchFields, () => Nil, configWithC2paAlias)
+    val queryBuilderWithC2paAlias = new QueryBuilder(matchFields, _ => Nil, configWithC2paAlias)
 
     def existsClauseOf(query: Query): ExistsQuery =
       query.asInstanceOf[BoolQuery].filters.head.asInstanceOf[ExistsQuery]
@@ -452,7 +453,7 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
     }
 
     it("should expand a search for a replacement category into a terms query across all the legacy categories it replaces, when that replacement is in config.applicableUsageRights") {
-      val qBuilder = new QueryBuilder(matchFields, () => Nil, mediaApiConfigWithApplicableUsageRights(List("com.gu.mediaservice.model.PayToUse")))
+      val qBuilder = new QueryBuilder(matchFields, _ => Nil, mediaApiConfigWithApplicableUsageRights(List("com.gu.mediaservice.model.PayToUse")))
       val query = qBuilder.makeQuery(List(Match(SingleField("usageRights.category"), Words(PayToUse.category)))).asInstanceOf[BoolQuery]
 
       val termsQuery = query.must.head.asInstanceOf[TermsQuery[String]]
@@ -461,7 +462,7 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
     }
 
     it("should not expand a search for a replacement category when that replacement is not in config.applicableUsageRights") {
-      val qBuilder = new QueryBuilder(matchFields, () => Nil, mediaApiConfigWithApplicableUsageRights(List("com.gu.mediaservice.model.Chargeable")))
+      val qBuilder = new QueryBuilder(matchFields, _ => Nil, mediaApiConfigWithApplicableUsageRights(List("com.gu.mediaservice.model.Chargeable")))
       val query = qBuilder.makeQuery(List(Match(SingleField("usageRights.category"), Words(PayToUse.category)))).asInstanceOf[BoolQuery]
 
       val termQuery = query.must.head.asInstanceOf[MatchQuery]
@@ -470,7 +471,7 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
     }
 
     it("should resolve an organisation-specific category search alias before expanding it into a terms query across its legacy categories") {
-      val qBuilder = new QueryBuilder(matchFields, () => Nil, mediaApiConfigWithApplicableUsageRights(List("com.gu.mediaservice.model.PublisherIllustration")))
+      val qBuilder = new QueryBuilder(matchFields, _ => Nil, mediaApiConfigWithApplicableUsageRights(List("com.gu.mediaservice.model.PublisherIllustration")))
       // config.staffPhotographerOrganisation defaults to "GNM" when not overridden
       val query = qBuilder.makeQuery(List(Match(SingleField("usageRights.category"), Words("gnm-illustration")))).asInstanceOf[BoolQuery]
 
@@ -480,7 +481,7 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
     }
 
     it("should not resolve an organisation-specific category search alias when that category is not in config.applicableUsageRights") {
-      val qBuilder = new QueryBuilder(matchFields, () => Nil, mediaApiConfigWithApplicableUsageRights(List("com.gu.mediaservice.model.Chargeable")))
+      val qBuilder = new QueryBuilder(matchFields, _ => Nil, mediaApiConfigWithApplicableUsageRights(List("com.gu.mediaservice.model.Chargeable")))
       val query = qBuilder.makeQuery(List(Match(SingleField("usageRights.category"), Words("gnm-illustration")))).asInstanceOf[BoolQuery]
 
       val termQuery = query.must.head.asInstanceOf[MatchQuery]
@@ -496,7 +497,7 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
     }
 
     it("should return the match all query when no agencies are over quota") {
-      val qBuilder = new QueryBuilder(matchFields, () => List.empty, mediaApiConfig)
+      val qBuilder = new QueryBuilder(matchFields, _ => List.empty, mediaApiConfig)
       val query = qBuilder.makeQuery(List(isUnderQuotaCondition)).asInstanceOf[BoolQuery]
       query.must.size shouldBe 1
       query.must.head shouldBe ElasticDsl.matchAllQuery()
@@ -505,7 +506,7 @@ class QueryBuilderTest extends AnyFunSpec with Matchers with ConditionFixtures w
     it("should correctly construct an under quota query") {
       def overQuotaAgencies = List(Agency("Getty Images"), Agency("AP"))
 
-      val qBuilder = new QueryBuilder(matchFields, () => overQuotaAgencies, mediaApiConfig)
+      val qBuilder = new QueryBuilder(matchFields, _ => overQuotaAgencies, mediaApiConfig)
       val query = qBuilder.makeQuery(List(isUnderQuotaCondition)).asInstanceOf[BoolQuery]
       query.must.size shouldBe 1
 

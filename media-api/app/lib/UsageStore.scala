@@ -2,17 +2,18 @@ package lib
 
 import com.gu.mediaservice.lib.BaseStore
 import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
+import com.gu.mediaservice.lib.instances.InstancesClient
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, MarkerMap}
 import com.gu.mediaservice.model.usage._
-import com.gu.mediaservice.model.{Agencies, Agency, UsageRights}
+import com.gu.mediaservice.model.{Agencies, Agency, Instance, UsageRights}
 import org.apache.pekko.actor.{Cancellable, Scheduler}
 import org.joda.time.{DateTime, Duration}
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 
 import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
@@ -73,18 +74,23 @@ object UsageStore extends GridLogging {
 }
 
 class UsageStore(
-  getSupplierQuotaCount: String => Future[SupplierQuotaCount],
+  getSupplierQuotaCount: (String, Instance) => Future[SupplierQuotaCount],
   quotaStore: QuotaStore,
+  instancesClient: InstancesClient
 )(implicit val ec: ExecutionContext) extends GridLogging {
 
-  private val store: AtomicReference[Map[String, SupplierUsageStatus]] = new AtomicReference(Map.empty)
+  // Keyed by instance id, then by supplier. Each instance has its own images and usages, so its counts must not be mixed with any other instance's.
+  private val store: AtomicReference[Map[String, Map[String, SupplierUsageStatus]]] = new AtomicReference(Map.empty)
   private val lastUpdated: AtomicReference[DateTime] = new AtomicReference(DateTime.now())
   private var cancellable: Option[Cancellable] = None
 
-  def getUsageStatusForUsageRights(usageRights: UsageRights): Future[SupplierUsageStatus] =
+  private def storeFor(instance: Instance): Map[String, SupplierUsageStatus] =
+    store.get().getOrElse(instance.id, Map.empty)
+
+  def getUsageStatusForUsageRights(usageRights: UsageRights)(implicit instance: Instance): Future[SupplierUsageStatus] =
     usageRights match {
       case agency: Agency =>
-        store.get().get(agency.supplier) match {
+        storeFor(instance).get(agency.supplier) match {
           case Some(status) => Future.successful(status)
           case None         => Future.failed(NoUsageQuota())
         }
@@ -92,24 +98,30 @@ class UsageStore(
         Future.failed(new Exception("Image is not supplied by Agency"))
     }
 
-  def getUsageStatus(): Future[StoreAccess] =
-    Future.successful(StoreAccess(store.get(), lastUpdated.get()))
+  def getUsageStatus()(implicit instance: Instance): Future[StoreAccess] =
+    Future.successful(StoreAccess(storeFor(instance), lastUpdated.get()))
 
-  def overQuotaAgencies: List[Agency] = store.get().collect {
+  def overQuotaAgencies(instance: Instance): List[Agency] = storeFor(instance).collect {
     case (_, status) if status.exceeded => status.usage.agency
   }.toList
 
   def update(): Unit = {
     implicit val logMarker: LogMarker = MarkerMap()
     logger.info("Updating UsageStore from ElasticSearch")
-    fetchQuotaCount.onComplete {
-      case Success(newStore) =>
-        store.set(newStore)
-        lastUpdated.set(DateTime.now())
-        logger.info(s"UsageStore updated: ${newStore.size} suppliers")
-      case Failure(e) =>
-        val staleForMinutes = new Duration(lastUpdated.get(), DateTime.now()).getStandardMinutes
-        logger.error(s"Failed to update UsageStore. Data is now $staleForMinutes minute(s) stale; last updated at: ${lastUpdated.get()}", e)
+
+
+    val instances = Await.result(instancesClient.getInstances(), 10.seconds)
+    instances.foreach { implicit instance =>
+      logger.info(s"fetchQuotaCount for instance ${instance.id}")
+      fetchQuotaCount.onComplete {
+        case Success(newInstanceStore) =>
+          store.updateAndGet(_.updated(instance.id, newInstanceStore))
+          lastUpdated.set(DateTime.now())
+          logger.info(s"UsageStore updated for instance ${instance.id}: ${newInstanceStore.size} suppliers")
+        case Failure(e) =>
+          val staleForMinutes = new Duration(lastUpdated.get(), DateTime.now()).getStandardMinutes
+          logger.error(s"Failed to update UsageStore for instance: ${instance.id}. Data is now $staleForMinutes minute(s) stale; last updated at: ${lastUpdated.get()}", e)
+      }
     }
   }
 
@@ -122,11 +134,13 @@ class UsageStore(
 
   def stopUpdates(): Unit = cancellable.foreach(_.cancel())
 
-  private def fetchQuotaCount(implicit logMarker: LogMarker): Future[Map[String, SupplierUsageStatus]] = {
+  private def fetchQuotaCount(implicit logMarker: LogMarker, instance: Instance): Future[Map[String, SupplierUsageStatus]] = {
     val supplierQuota = quotaStore.getQuota
+    logger.info(s"Got supplier quota for instance ${instance.id}: " + supplierQuota)
+
     Future.sequence(
       Agencies.all.map { case (id, agency) =>
-        getSupplierQuotaCount(id).map { quotaCount =>
+        getSupplierQuotaCount(id, instance).map { quotaCount =>
           val quota = supplierQuota.get(id)
           agency.supplier -> UsageStore.getSupplierUsageStatus(quotaCount, quota)
         }
@@ -139,7 +153,8 @@ class QuotaStore(
   quotaFile: String,
   bucket: S3Bucket,
   config: MediaApiConfig,
-  s3: S3
+  s3: S3,
+  instancesClient: InstancesClient
 )(implicit ec: ExecutionContext) extends BaseStore[String, SupplierUsageQuota](bucket, config, s3)(ec) {
 
   def getQuota: Map[String, SupplierUsageQuota] = store.get()

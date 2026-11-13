@@ -22,16 +22,19 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   private val s3 = new S3(config)
 
   lazy val usageQuota: UsageQuota = new UsageQuota(config, actorSystem.scheduler,
-    id => {
-      implicit val instance: Instance = ??? // TODO
-      implicit val lm = com.gu.mediaservice.lib.logging.MarkerMap(); elasticSearch.quotaCountBySupplier(id) },
-    s3
+    (id, instance) => {
+      implicit val i: Instance = instance
+      implicit val lm = com.gu.mediaservice.lib.logging.MarkerMap()
+      elasticSearch.quotaCountBySupplier(id)
+    },
+    s3,
+    instancesClient
   )
   usageQuota.quotaStore.update()
   usageQuota.scheduleUpdates()
   applicationLifecycle.addStopHook(() => Future{usageQuota.stopUpdates()})
 
-  val elasticSearch = new ElasticSearch(config, mediaApiMetrics, config.esConfig, () => usageQuota.usageStore.overQuotaAgencies, actorSystem.scheduler, new InstancesClient(config, wsClient))
+  val elasticSearch = new ElasticSearch(config, mediaApiMetrics, config.esConfig, usageQuota.usageStore.overQuotaAgencies, actorSystem.scheduler, new InstancesClient(config, wsClient))
   // TODO needs to move somewhere more instance aware elasticSearch.ensureIndexExistsAndAliasAssigned()
 
   val imageResponse = new ImageResponse(config, s3, usageQuota)
