@@ -1,7 +1,7 @@
 package com.gu.mediaservice.lib.imaging
 
 import app.photofox.vipsffm._
-import app.photofox.vipsffm.enums.{VipsCompassDirection, VipsForeignHeifCompression, VipsForeignHeifEncoder, VipsIntent, VipsInterpretation}
+import app.photofox.vipsffm.enums._
 import app.photofox.vipsffm.jextract.VipsRaw
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
@@ -216,6 +216,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         }.getOrElse(image)
 
         val correctedForICCProfile = correctForICCProfile(restricted)
+        correctedForICCProfile.remove("orientation")
 
         saveImageToFile(correctedForICCProfile, outputMimeType, 60.0, outputFile, quantise = quantise)
         (outputFile, outputMimeType)

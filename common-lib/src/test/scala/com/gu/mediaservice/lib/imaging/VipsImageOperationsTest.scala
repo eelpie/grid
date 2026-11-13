@@ -13,6 +13,7 @@ import org.scalatest.time.{Millis, Span}
 
 import java.io.File
 import java.lang.foreign.Arena
+import scala.concurrent.Future
 
 class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
@@ -285,6 +286,16 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       whenReady(eventualTransformed) { transformed =>
         arena.close()
         transformed._1.isFile should be(true)
+      }
+    }
+
+    it("should rotate AVIF correctly") {
+      val image = fileAt("exif-orientated.jpg") // 3456x2304 landscape pixels with EXIF orientation 6
+      val outputFile = new File("/Users/tony/tmp/")
+
+      val eventualThumbnail: Future[(File, MimeType)] = vipsImageOperations.transformImage(image, outputFile, Avif, quantise = false)
+      whenReady(eventualThumbnail) { r =>
+        println("!!!!! " + r)
       }
     }
   }
