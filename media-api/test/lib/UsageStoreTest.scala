@@ -1,16 +1,17 @@
 package lib
 
-import com.gu.mediaservice.model.{Agencies, Agency}
-import com.gu.mediaservice.model.usage.{DigitalUsage, PrintUsage, PublishedUsageStatus}
+import com.gu.mediaservice.lib.instances.InstancesClient
+import com.gu.mediaservice.model.{Agencies, Agency, Instance}
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.when
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatestplus.mockito.MockitoSugar
-import org.mockito.Mockito.when
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class UsageStoreTest extends AnyFunSpec with Matchers with ScalaFutures with MockitoSugar {
 
@@ -23,6 +24,14 @@ class UsageStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Moc
   val rexId = "rex"
   val rexAgency: Agency = Agencies.all(rexId)
 
+  private val testInstance = Instance("test-instance")
+
+  private def mockInstancesClient(instances: Seq[Instance] = Seq(testInstance)): InstancesClient = {
+    val client = mock[InstancesClient]
+    when(client.getInstances()(any[ExecutionContext])).thenReturn(Future.successful(instances))
+    client
+  }
+
   private def makeStore(
     quotaCounts: Map[String, Long],          // agencyId → ES count
     quotaLimits: Map[String, Int] = Map.empty // agencyId → configured quota
@@ -33,20 +42,24 @@ class UsageStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Moc
     }
     when(mockQuotaStore.getQuota).thenReturn(quotaMap)
 
-    val getSupplierQuotaCount: String => Future[SupplierQuotaCount] = id =>
+    val getSupplierQuotaCount: (String, Instance) => Future[SupplierQuotaCount] = (id, _) =>
       Future.successful(SupplierQuotaCount(Agencies.get(id), quotaCounts.getOrElse(id, 0L)))
 
-    new UsageStore(getSupplierQuotaCount, mockQuotaStore)
+    val instancesClient = mockInstancesClient()
+
+    new UsageStore(getSupplierQuotaCount, mockQuotaStore, instancesClient)
   }
 
   private def makeFailingStore(): UsageStore = {
     val mockQuotaStore = mock[QuotaStore]
     when(mockQuotaStore.getQuota).thenReturn(Map.empty[String, SupplierUsageQuota])
 
-    val getSupplierQuotaCount: String => Future[SupplierQuotaCount] = _ =>
+    val instancesClient = mockInstancesClient()
+
+    val getSupplierQuotaCount: (String, Instance) => Future[SupplierQuotaCount] = (_, _) =>
       Future.failed(new Exception("ElasticSearch is unavailable"))
 
-    new UsageStore(getSupplierQuotaCount, mockQuotaStore)
+    new UsageStore(getSupplierQuotaCount, mockQuotaStore, instancesClient)
   }
 
   private def updateAndGet(store: UsageStore) = {
@@ -133,11 +146,13 @@ class UsageStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Moc
         val mockQuotaStore = mock[QuotaStore]
         when(mockQuotaStore.getQuota).thenReturn(Map.empty[String, SupplierUsageQuota])
 
-        val getSupplierQuotaCount: String => Future[SupplierQuotaCount] = id =>
+        val instancesClient = mockInstancesClient()
+
+        val getSupplierQuotaCount: (String, Instance) => Future[SupplierQuotaCount] = (id, _) =>
           if (shouldFail) Future.failed(new Exception("ElasticSearch is unavailable"))
           else Future.successful(SupplierQuotaCount(Agencies.get(id), 42L))
 
-        val store = new UsageStore(getSupplierQuotaCount, mockQuotaStore)
+        val store = new UsageStore(getSupplierQuotaCount, mockQuotaStore, instancesClient)
         updateAndGet(store) // first update succeeds, populating the store
 
         shouldFail = true
