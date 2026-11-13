@@ -99,6 +99,7 @@ class UsageController(auth: Authentication, config: MediaApiConfig, elasticSearc
   }
 
   def quotas = auth.async { request =>
+    implicit val instance: Instance = instanceOf(request)
     implicit val logMarker: LogMarker = MarkerMap(
       "requestType" -> "quotas",
       "requestId" -> RequestLoggingFilter.getRequestId(request)
