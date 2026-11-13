@@ -23,10 +23,13 @@ class MediaApiComponents(context: Context) extends GridComponents(context, new M
   private val s3 = new S3(config)
 
   lazy val usageQuota: UsageQuota = new UsageQuota(config, actorSystem.scheduler,
-    id => {
-      implicit val instance: Instance = ??? // TODO
-      implicit val lm = com.gu.mediaservice.lib.logging.MarkerMap(); elasticSearch.quotaCountBySupplier(id) },
-    s3
+    (id, instance) => {
+      implicit val i: Instance = instance
+      implicit val lm = com.gu.mediaservice.lib.logging.MarkerMap()
+      elasticSearch.quotaCountBySupplier(id)
+    },
+    s3,
+    instancesClient
   )
   usageQuota.quotaStore.update()
   usageQuota.scheduleUpdates()
