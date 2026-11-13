@@ -6,7 +6,6 @@ import app.photofox.vipsffm.jextract.VipsRaw
 import com.adobe.internal.xmp.options.SerializeOptions
 import com.adobe.internal.xmp.{XMPConst, XMPMetaFactory}
 import com.gu.mediaservice.lib.BrowserViewableImage
-import com.gu.mediaservice.lib.imaging.ImageOperations.{optimisedMimeType, thumbMimeType}
 import com.gu.mediaservice.lib.imaging.im4jwrapper.ImageMagick.ctx
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model._
