@@ -12,10 +12,11 @@ class CostCalculatorTest extends AnyFunSpec with Matchers with MockitoSugar {
   describe("from usage rights") {
 
     val Quota = mock[UsageQuota]
+    implicit val instance: Instance = Instance("test-instance")
 
     object Costing extends CostCalculator {
       val quotas = Quota
-      override def isOverQuota(usageRights: UsageRights) = false
+      override def isOverQuota(usageRights: UsageRights)(implicit instance: Instance): Boolean = false
 
       override val freeSuppliers: List[String] = GuardianUsageRightsConfig.freeSuppliers
       override val suppliersCollectionExcl: Map[String, List[String]] = GuardianUsageRightsConfig.suppliersCollectionExcl
@@ -23,7 +24,7 @@ class CostCalculatorTest extends AnyFunSpec with Matchers with MockitoSugar {
 
     object OverQuotaCosting extends CostCalculator {
       val quotas = Quota
-      override def isOverQuota(usageRights: UsageRights) = true
+      override def isOverQuota(usageRights: UsageRights)(implicit instance: Instance): Boolean = true
 
       override val freeSuppliers: List[String] = GuardianUsageRightsConfig.freeSuppliers
       override val suppliersCollectionExcl: Map[String, List[String]] = GuardianUsageRightsConfig.suppliersCollectionExcl
