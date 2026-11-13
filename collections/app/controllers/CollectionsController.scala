@@ -148,7 +148,7 @@ class CollectionsController(authenticated: Authentication, config: CollectionsCo
   // Basically default parameters, which Play doesn't support
   def addChildToRoot = addChildTo(None)
   def addChildToCollection(collectionPathId: String) = addChildTo(Some(collectionPathId))
-  def addChildTo(collectionPathId: Option[String]) = authenticated.async(parse.json) { req =>
+  def addChildTo(collectionPathId: Option[String]) = authenticated.allowInnerService.async(parse.json) { req =>
     implicit val instance: Instance = instanceOf(req)
     (req.body \ "data").asOpt[String] map { child =>
       if (isValidPathBit(child)) {
