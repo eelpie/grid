@@ -23,21 +23,9 @@ object MimeType extends GridLogging {
     case "image/png" => Png
     case "image/tiff" => Tiff
 
-    // Support crops created in the early years of Grid (~2016) which state mime type w/out an 'image/' prefix
-    // TODO correct these values in a reindex
-    case "jpg" => {
-      logger.info("Encountered legacy mime type representation (jpg)")
-      Jpeg
-    }
-    case "png" => {
-      logger.info("Encountered legacy mime type representation (png)")
-      Png
-    }
-
-    case _ => {
+    case _ =>
       logger.warn(s"Unsupported mime type $value")
       throw new UnsupportedMimeTypeException(value)
-    }
   }
 
   implicit val reads: Reads[MimeType] = JsPath.read[String].map(MimeType(_))
