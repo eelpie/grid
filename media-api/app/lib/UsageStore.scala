@@ -132,7 +132,7 @@ class UsageStore(
 
   private def fetchQuotaCount(implicit logMarker: LogMarker, instance: Instance): Future[Map[String, SupplierUsageStatus]] = {
     val supplierQuota = quotaStore.getQuota
-    logger.info("Got supplier quota: " + supplierQuota)
+    logger.info(s"Got supplier quota for instance ${instance.id}: " + supplierQuota)
 
     Future.sequence(
       Agencies.all.map { case (id, agency) =>
