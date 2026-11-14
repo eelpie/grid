@@ -149,7 +149,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3, usageQuota: UsageQuota
     import BoolImplicitMagic.BoolToOption
     val cropLinkMaybe = valid.toOption(Link("crops", s"${config.cropperUri(instance)}/crops/$id"))
     val editLinkMaybe = withWritePermission.toOption(Link("edits", s"${config.metadataUri(instance)}/metadata/$id"))
-    val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeImgProxyUri(new URI(secureUrl), orientationMetadata)) }
+    val optimisedPngLinkMaybe = securePngUrl map { case secureUrl => Link("optimisedPng", makeOptimisedPngImgProxyUri(new URI(secureUrl))) }
 
     val optimisedLink = Link("optimised", makeImgProxyUri(new URI(secureUrl), orientationMetadata))
     val imageLink = Link("ui:image", s"${config.kahunaUri(instance)}/images/$id")
@@ -263,6 +263,12 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3, usageQuota: UsageQuota
     __.json.update(__.read[JsObject]).map(_ ++ Json.obj(
       "aliases" -> JsObject(aliases)
     ))
+
+  private def makeOptimisedPngImgProxyUri(uri: URI)(implicit instance: Instance): String = {
+    // The optimised PNG is already resized, rotated and converted to sRGB when it is generated, so imgproxy can stream it back unprocessed.
+    val source = new String(Base64.encodeBase64URLSafe(uri.toURL.toExternalForm.getBytes), "UTF-8")
+    Seq(config.imgopsUri(instance), "no-signature", "raw:1", source).mkString("/")
+  }
 
   private def makeImgProxyUri(uri: URI, orientationMetadata: Option[OrientationMetadata])(implicit instance: Instance): String = {
     def normaliseRotation(rotation: Int) = {
