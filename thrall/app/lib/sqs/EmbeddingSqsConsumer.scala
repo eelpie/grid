@@ -51,11 +51,12 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
             maybeMimeType.map { mimeType =>
               val eventualEmbedding = embedder.createImageEmbedding(bytes, mimeType, parsed.imageMetadata)
               eventualEmbedding.map { embedding =>
-                logger.info("Got embedding: " + embedding)
+                logger.info("Got embedding; storing")
 
                 // Store the embedding for reindexing
                 thrallStore.storeEmbedding(ImageIngestOperations.embeddingKeyFromId(parsed.imageId)(Instance(parsed.instance)), embedding)
 
+                logger.info(s"Sending UpdateEmbedding for ${parsed.imageId}")
                 // Issue an UpdateEmbedding message
                 val updateEmbeddingMessage = UpdateEmbeddingMessage(
                   id = parsed.imageId,
