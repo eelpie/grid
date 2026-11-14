@@ -54,9 +54,6 @@ imageDownloadsService.factory('imageDownloadsService', ['imgops', '$http', funct
         const downloadUri$
             = Rx.Observable.fromPromise(imageResource.getLink("download"))
                                         .map((download) => download.href);
-        // Never used by a download, and no longer signed as an imgproxy size
-        // const lowRezUri$
-        //     = Rx.Observable.fromPromise(imgops.getLowResUri(imageResource));
         const lowResDownloadUri$
             = Rx.Observable.fromPromise(imgops.getLowResDownloadUri(imageResource));
         const fullScreenUri$

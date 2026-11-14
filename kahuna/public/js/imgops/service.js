@@ -22,15 +22,6 @@ imgops.factory('imgops', ['$window', '$q', function($window, $q) {
         return getOptimisedUri(image, { w, h, q: quality });
     }
 
-    // Never rendered, and no longer signed as an imgproxy size
-    // function getLowResUri(image) {
-    //     return getOptimisedUri(image, {
-    //         w: lowResMaxWidth,
-    //         h: lowResMaxHeight,
-    //         q: quality
-    //     });
-    // }
-
     function getLowResDownloadUri(image) {
         return getOptimisedDownloadUri(image, {
             width: lowResMaxWidth,
@@ -68,7 +59,6 @@ imgops.factory('imgops', ['$window', '$q', function($window, $q) {
 
     return {
         getFullScreenUri,
-        // getLowResUri,
         getLowResDownloadUri
     };
 
