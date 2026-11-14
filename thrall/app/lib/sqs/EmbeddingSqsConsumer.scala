@@ -64,7 +64,7 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
                 logger.info(s"Sending UpdateEmbedding message for ${parsed.imageId}")
                 val updateEmbeddingMessage = UpdateEmbeddingMessage(
                   id = parsed.imageId,
-                  lastModified = DateTime.now, // TODO check this against the lambda
+                  lastModified = DateTime.now,
                   embedding = embedding,
                   instance = instance
                 )
