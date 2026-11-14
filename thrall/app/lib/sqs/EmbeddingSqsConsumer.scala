@@ -36,7 +36,8 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
         maybeParsed.map { parsed =>
           // TODO check file exists
           try {
-            val s3Object = thrallStore.getEmbeddingStoreImage(parsed.s3Key) // TODO imageid to keep knowledge of path in the store
+            implicit val instance: Instance = Instance(parsed.instance)
+            val s3Object = thrallStore.getEmbeddingStoreImage(parsed.imageId)
             val response = s3Object.response()
             val bytes =
               try s3Object.readAllBytes()
@@ -56,13 +57,13 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
                 // Store the embedding for reindexing
                 thrallStore.storeEmbedding(ImageIngestOperations.embeddingKeyFromId(parsed.imageId)(Instance(parsed.instance)), embedding)
 
-                logger.info(s"Sending UpdateEmbedding for ${parsed.imageId}")
                 // Issue an UpdateEmbedding message
+                logger.info(s"Sending UpdateEmbedding message for ${parsed.imageId}")
                 val updateEmbeddingMessage = UpdateEmbeddingMessage(
                   id = parsed.imageId,
                   lastModified = DateTime.now, // TODO check this against the lambda
                   embedding = embedding,
-                  instance = Instance(id = parsed.instance)
+                  instance = instance
                 )
                 messageSender.publish(updateEmbeddingMessage)
               }
