@@ -68,8 +68,9 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, em
       overwrite = true)
   }
 
-  def getEmbeddingStoreImage(key: String): ResponseInputStream[GetObjectResponse] = {
-    getObject(embeddingSourceBucket, key)
+  def getEmbeddingStoreImage(imageId: String)(implicit instance: Instance): ResponseInputStream[GetObjectResponse] = {
+    val instanceSpecificKey = fileKeyFromId(imageId)
+    getObject(embeddingSourceBucket, instanceSpecificKey)
   }
 
   def storeEmbedding(key: String, embedding: Embedding): Unit = {
