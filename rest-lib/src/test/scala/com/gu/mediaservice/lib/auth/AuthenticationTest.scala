@@ -220,6 +220,23 @@ class AuthenticationTest extends AsyncFreeSpec with Matchers with EitherValues w
         }
       }
 
+      "should accept signatures for the service's path-prefixed public url when the proxy strips the prefix" in {
+        val contentSigner = new CookieSigner {
+          override def sign(message: String, key: Array[Byte]): String = message
+          override def sign(message: String): String = message
+        }
+        val provider = new InnerServiceAuthenticationProvider(contentSigner, "collections")
+        WsTestClient.withClient { client =>
+          val signed = provider.signRequest(client.url("https://instance.example.com/collections/collections").withMethod("POST"))
+          val headers = signed.headers.toSeq.flatMap { case (name, values) => values.map(name -> _) }
+
+          provider.authenticateRequest(FakeRequest("POST", "/collections").withHeaders(headers: _*)) shouldBe a[Authenticated]
+          provider.authenticateRequest(FakeRequest("POST", "/collections/collections").withHeaders(headers: _*)) shouldBe a[Authenticated]
+          provider.authenticateRequest(FakeRequest("POST", "/other").withHeaders(headers: _*)) shouldBe Invalid("Invalid inner service signature")
+          provider.authenticateRequest(FakeRequest("GET", "/collections").withHeaders(headers: _*)) shouldBe Invalid("Invalid inner service signature")
+        }
+      }
+
       Seq("stale" -> -10000, "future" -> 10000).foreach { case (label, offset) =>
         s"should reject $label service timestamps outside the clock-skew window" in {
           val request = serviceRequest.withHeaders(
