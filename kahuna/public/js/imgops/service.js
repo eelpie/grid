@@ -5,8 +5,6 @@ export var imgops = angular.module('kahuna.imgops', []);
 imgops.factory('imgops', ['$window', function($window) {
     const quality = 85;
 
-    const lowResMaxWidth  = 800;
-    const lowResMaxHeight = 800;
     const isFF = !!$window.navigator.userAgent.match(/firefox/i);
 
     function getFullScreenUri(image) {
@@ -22,14 +20,6 @@ imgops.factory('imgops', ['$window', function($window) {
         return getOptimisedUri(image, { w, h, q: quality });
     }
 
-    function getLowResDownloadUri(image) {
-        return getOptimisedDownloadUri(image, {
-            width: lowResMaxWidth,
-            height: lowResMaxHeight,
-            quality: quality
-        });
-    }
-
     function getOptimisedUri(image, options) {
 
         if (image.data.optimisedPng) {
@@ -43,15 +33,8 @@ imgops.factory('imgops', ['$window', function($window) {
         }
     }
 
-    function getOptimisedDownloadUri(image, options) {
-        return image.follow('downloadOptimised', options).getUri().catch(() => {
-            return image.follow('download');
-        });
-    }
-
     return {
-        getFullScreenUri,
-        getLowResDownloadUri
+        getFullScreenUri
     };
 
 }]);
