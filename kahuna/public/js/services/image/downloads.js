@@ -2,13 +2,11 @@ import angular from 'angular';
 import JSZip from 'jszip';
 import Rx from 'rx';
 
-import '../../imgops/service';
-
 export const imageDownloadsService = angular.module(
-    'gr.image-downloads.service', ['kahuna.imgops']);
+    'gr.image-downloads.service', []);
 
 
-imageDownloadsService.factory('imageDownloadsService', ['imgops', '$http', function(imgops, $http) {
+imageDownloadsService.factory('imageDownloadsService', ['$http', function($http) {
     function stripExtension(filename) {
         return filename.replace(/\.[a-zA-Z]{3,4}$/, '');
     }
@@ -49,25 +47,16 @@ imageDownloadsService.factory('imageDownloadsService', ['imgops', '$http', funct
 
         const originalName$   = image$.map((image) => imageName(image));
 
-        const secureUri$
-            = image$.map((image) => image.source.secureUrl);
         const downloadUri$
             = Rx.Observable.fromPromise(imageResource.getLink("download"))
                                         .map((download) => download.href);
-        const lowResDownloadUri$
-            = Rx.Observable.fromPromise(imgops.getLowResDownloadUri(imageResource));
-        const fullScreenUri$
-            = Rx.Observable.fromPromise(imgops.getFullScreenUri(imageResource));
 
         return Rx.Observable.zip(
-            originalName$, secureUri$, fullScreenUri$, downloadUri$, lowResDownloadUri$,
+            originalName$, downloadUri$,
                 (originalName,
-                 secureUri,
-                 fullScreenUri,
-                 downloadUri,
-                 lowResDownloadUri) => ({
+                 downloadUri) => ({
                     filename: originalName,
-                    uris: {secureUri, fullScreenUri, downloadUri, lowResDownloadUri}
+                    uris: {downloadUri}
                 }));
     }
 
