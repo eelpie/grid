@@ -22,14 +22,6 @@ imgops.factory('imgops', ['$window', function($window) {
         return getOptimisedUri(image, { w, h, q: quality });
     }
 
-    function getLowResUri(image) {
-        return getOptimisedUri(image, {
-            w: lowResMaxWidth,
-            h: lowResMaxHeight,
-            q: quality
-        });
-    }
-
     function getLowResDownloadUri(image) {
         return getOptimisedDownloadUri(image, {
             width: lowResMaxWidth,
@@ -59,7 +51,6 @@ imgops.factory('imgops', ['$window', function($window) {
 
     return {
         getFullScreenUri,
-        getLowResUri,
         getLowResDownloadUri
     };
 
