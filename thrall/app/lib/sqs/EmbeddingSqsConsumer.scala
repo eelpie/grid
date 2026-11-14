@@ -73,7 +73,7 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
             }
           } catch {
             case t: Throwable =>
-              logger.error("Error processing embed request message", t)
+              logger.error("Error processing embed request message; ignoring it", t)
               MessageAction.delete(message)
           }
         }
