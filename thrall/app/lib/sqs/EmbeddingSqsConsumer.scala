@@ -34,46 +34,52 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
         logger.info("Parsed: " + maybeParsed)
 
         maybeParsed.map { parsed =>
-          // TODO check file exists
           try {
             implicit val instance: Instance = Instance(parsed.instance)
-            val s3Object = thrallStore.getEmbeddingStoreImage(parsed.imageId)
-            val response = s3Object.response()
-            val bytes =
-              try s3Object.readAllBytes()
-              finally s3Object.close()
-
-            // Take the source image mimeType from S3 metadata for embedders who want it
-            val maybeMimeTypeHeader = Option(response.contentType())
-              .filterNot(_.equalsIgnoreCase("application/octet-stream"))
-            val maybeMimeType = maybeMimeTypeHeader.flatMap { header =>
-              try Some(MimeType(header))
-              catch { case _: UnsupportedMimeTypeException => None }
-            }
-            logger.info(s"Got embedding source with mineType $maybeMimeTypeHeader / $maybeMimeType and image metadata title: ${parsed.imageMetadata.flatMap(_.title)}")
-
-            maybeMimeType.map { mimeType =>
-              val eventualEmbedding = embedder.createImageEmbedding(bytes, mimeType, parsed.imageMetadata)
-              eventualEmbedding.map { embedding =>
-                logger.info("Got embedding; storing")
-
-                // Store the embedding for reindexing
-                thrallStore.storeEmbedding(ImageIngestOperations.embeddingKeyFromId(parsed.imageId)(Instance(parsed.instance)), embedding)
-
-                // Issue an UpdateEmbedding message
-                logger.info(s"Sending UpdateEmbedding message for ${parsed.imageId}")
-                val updateEmbeddingMessage = UpdateEmbeddingMessage(
-                  id = parsed.imageId,
-                  lastModified = DateTime.now,
-                  embedding = embedding,
-                  instance = instance
-                )
-                messageSender.publish(updateEmbeddingMessage)
-              }
-
-            }.getOrElse {
-              logger.warn(s"Skipping embedding source with missing or unsupported mimeType ($maybeMimeTypeHeader): ${parsed.s3Key}")
+            if (!thrallStore.doesEmbeddingSourceExist(parsed.imageId)) {
+              logger.warn(s"Embedding source image not found for ${parsed.imageId}; skipping")
               Future.successful(())
+            } else {
+              val s3Object = thrallStore.getEmbeddingStoreImage(parsed.imageId)
+              val response = s3Object.response()
+              val bytes =
+                try s3Object.readAllBytes()
+                finally s3Object.close()
+
+              // Take the source image mimeType from S3 metadata for embedders who want it
+              val maybeMimeTypeHeader = Option(response.contentType())
+                .filterNot(_.equalsIgnoreCase("application/octet-stream"))
+              val maybeMimeType = maybeMimeTypeHeader.flatMap { header =>
+                try Some(MimeType(header))
+                catch {
+                  case _: UnsupportedMimeTypeException => None
+                }
+              }
+              logger.info(s"Got embedding source with mineType $maybeMimeTypeHeader / $maybeMimeType and image metadata title: ${parsed.imageMetadata.flatMap(_.title)}")
+
+              maybeMimeType.map { mimeType =>
+                val eventualEmbedding = embedder.createImageEmbedding(bytes, mimeType, parsed.imageMetadata)
+                eventualEmbedding.map { embedding =>
+                  logger.info("Got embedding; storing")
+
+                  // Store the embedding for reindexing
+                  thrallStore.storeEmbedding(ImageIngestOperations.embeddingKeyFromId(parsed.imageId)(Instance(parsed.instance)), embedding)
+
+                  // Issue an UpdateEmbedding message
+                  logger.info(s"Sending UpdateEmbedding message for ${parsed.imageId}")
+                  val updateEmbeddingMessage = UpdateEmbeddingMessage(
+                    id = parsed.imageId,
+                    lastModified = DateTime.now,
+                    embedding = embedding,
+                    instance = instance
+                  )
+                  messageSender.publish(updateEmbeddingMessage)
+                }
+
+              }.getOrElse {
+                logger.warn(s"Skipping embedding source with missing or unsupported mimeType ($maybeMimeTypeHeader): ${parsed.s3Key}")
+                Future.successful(())
+              }
             }
           } catch {
             case t: Throwable =>

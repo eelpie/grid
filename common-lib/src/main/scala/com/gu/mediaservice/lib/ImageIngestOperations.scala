@@ -96,6 +96,9 @@ class ImageIngestOperations(imageBucket: S3Bucket, thumbnailBucket: S3Bucket, em
   def doesOriginalExist(id: String)(implicit instance: Instance): Boolean =
     this.doesObjectExist(imageBucket, fileKeyFromId(id))
 
+  def doesEmbeddingSourceExist(id: String)(implicit instance: Instance): Boolean =
+    this.doesObjectExist(embeddingSourceBucket, fileKeyFromId(id))
+
   private def instanceAwareOriginalImageKey(storableImage: StorableOriginalImage) = {
     fileKeyFromId(storableImage.id)(storableImage.instance)
   }
