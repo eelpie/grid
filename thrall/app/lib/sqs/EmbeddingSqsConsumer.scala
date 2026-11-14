@@ -3,7 +3,7 @@ package lib.sqs
 import com.gu.mediaservice.lib.ImageIngestOperations
 import com.gu.mediaservice.lib.aws.{Embedder, EmbedderMessage, ThrallMessageSender}
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
-import com.gu.mediaservice.model.{Instance, MimeType, UpdateEmbeddingMessage}
+import com.gu.mediaservice.model.{Instance, MimeType, UnsupportedMimeTypeException, UpdateEmbeddingMessage}
 import com.typesafe.scalalogging.StrictLogging
 import lib.ThrallStore
 import org.apache.pekko.actor.ActorSystem
@@ -46,7 +46,10 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
             // Take the source image mimeType from S3 metadata for embedders who want it
             val maybeMimeTypeHeader = Option(response.contentType())
               .filterNot(_.equalsIgnoreCase("application/octet-stream"))
-            val maybeMimeType = maybeMimeTypeHeader.map(MimeType(_)) // TODO recover to None
+            val maybeMimeType = maybeMimeTypeHeader.flatMap { header =>
+              try Some(MimeType(header))
+              catch { case _: UnsupportedMimeTypeException => None }
+            }
             logger.info(s"Got embedding source with mineType $maybeMimeTypeHeader / $maybeMimeType and image metadata title: ${parsed.imageMetadata.flatMap(_.title)}")
 
             maybeMimeType.map { mimeType =>
@@ -69,7 +72,7 @@ class EmbeddingSqsConsumer(queueUrl: String, sqsClient: SqsAsyncClient, embedder
               }
 
             }.getOrElse {
-              logger.warn("Skipping embedding source with missing mimeType: " + parsed.s3Key)
+              logger.warn(s"Skipping embedding source with missing or unsupported mimeType ($maybeMimeTypeHeader): ${parsed.s3Key}")
               Future.successful(())
             }
           } catch {
