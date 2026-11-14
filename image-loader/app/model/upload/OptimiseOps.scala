@@ -26,7 +26,7 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     )
 
     Stopwatch("toOptimisedFile") {
-      imageOperations.transformImage(imageWrapper.file, tempDir, optimisedMimeType, quantise = false, maxDimension = Some(ImageOperations.maxDerivedImageDimension))
+      imageOperations.transformImage(imageWrapper.file, tempDir, optimisedMimeType, quantise = false, maxDimension = Some(ImageOperations.maxDerivedOptimisedImageDimension))
     }(marker)
   }
 

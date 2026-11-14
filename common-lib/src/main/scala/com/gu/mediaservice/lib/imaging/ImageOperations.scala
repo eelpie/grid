@@ -15,6 +15,8 @@ object ImageOperations {
 
   // Restrict the longest edge of full sized derived images (master crops, optimised images) in line with CDN recommendations
   val maxDerivedImageDimension: Int = 4096
+
+  val maxDerivedOptimisedImageDimension: Int = 3840
 }
 
 trait ImageOperations {
