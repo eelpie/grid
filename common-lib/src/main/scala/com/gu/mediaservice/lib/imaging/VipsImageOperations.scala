@@ -150,7 +150,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType, quantise: Boolean = false, maxDimension: Option[Int] = None)(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
+  def transformImage(sourceFile: File, orientationMetadata: Option[OrientationMetadata], tempDir: File, outputMimeType: MimeType, quantise: Boolean = false, maxDimension: Option[Int] = None)(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
     Future {
       implicit val arena: Arena = Arena.ofConfined
       try {
@@ -166,7 +166,9 @@ class VipsImageOperations extends GridLogging with ImageOperations {
 
         val correctedForICCProfile = correctForICCProfile(restricted)
 
-        saveImageToFile(correctedForICCProfile, outputMimeType, 85.0, outputFile, quantise = quantise)
+        val rotated = applyOrientationCorrection(correctedForICCProfile, orientationMetadata)
+
+        saveImageToFile(rotated, outputMimeType, 85.0, outputFile, quantise = quantise)
         (outputFile, outputMimeType)
 
       } catch {

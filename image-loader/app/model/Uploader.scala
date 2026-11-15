@@ -169,7 +169,7 @@ object Uploader extends GridLogging {
       }
       s3Thumb <- storeOrProjectThumbFile(thumbViewableImage)
       maybeStorableOptimisedImage <- getStorableOptimisedImage(
-      tempDirForRequest, optimiseOps, browserViewableImage, deps.tryFetchOptimisedFile, uploadRequest.instance)
+      tempDirForRequest, optimiseOps, browserViewableImage, sourceOrientationMetadata, deps.tryFetchOptimisedFile, uploadRequest.instance)
       // The optimised image may have been downscaled from the source so read its actual dimensions
       optimisedDimensions <- maybeStorableOptimisedImage match {
         case Some(storableOptimisedImage) => deps.imageOps.getImageInformation(storableOptimisedImage.file).map(_._1)
@@ -215,6 +215,7 @@ object Uploader extends GridLogging {
                                          tempDir: File,
                                          optimiseOps: OptimiseOps,
                                          browserViewableImage: BrowserViewableImage,
+                                         orientationMetadata: Option[OrientationMetadata],
                                          tryFetchOptimisedFile: (String, MimeType, File, Instance) => Future[Option[(File, MimeType)]],
                                          instance: Instance
   )(implicit ec: ExecutionContext, logMarker: LogMarker): Future[Option[StorableOptimisedImage]] = {
@@ -225,7 +226,7 @@ object Uploader extends GridLogging {
         (optimisedFile, optimisedMimeType) <- {
           maybeDownloadedOptimisedFile match {
             case Some(optData) => Future.successful(optData)
-            case None => optimiseOps.toOptimisedFile(browserViewableImage, optimisedMimeType, tempDir)
+            case None => optimiseOps.toOptimisedFile(browserViewableImage, orientationMetadata, optimisedMimeType, tempDir)
           }
         }
       } yield Some(
