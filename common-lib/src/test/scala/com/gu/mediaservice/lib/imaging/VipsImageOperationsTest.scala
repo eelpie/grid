@@ -260,11 +260,21 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       implicit val arena: Arena = Arena.ofConfined()
       val fullSizedImage = fileAt("Untitled_Artwork 2 (1398dfe2c75399dca2121aec4c939a91474db38e).png")
 
-      val eventualTransformed = vipsImageOperations.transformImage(fullSizedImage, new File("/Users/tony/tmp"), Png, quantise = true)
+      val eventualTransformed = vipsImageOperations.transformImage(fullSizedImage, None, new File("/Users/tony/tmp"), Png, quantise = true)
 
       whenReady(eventualTransformed) { transformed =>
         arena.close()
         transformed._1.isFile should be(true)
+      }
+    }
+
+    it("should rotate AVIF correctly") {
+      val image = fileAt("exif-orientated.jpg")
+
+      val eventualThumbnail = vipsImageOperations.transformImage(image, None, tempDirForOutputFiles, Avif, quantise = false)
+
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile shouldBe true
       }
     }
   }
