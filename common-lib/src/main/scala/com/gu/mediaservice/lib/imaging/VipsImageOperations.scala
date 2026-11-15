@@ -267,6 +267,7 @@ class VipsImageOperations extends GridLogging with ImageOperations {
         image.heifsave(outputFile.getAbsolutePath,
           VipsOption.Enum("compression", VipsForeignHeifCompression.FOREIGN_HEIF_COMPRESSION_AV1),
           VipsOption.Int("Q", q),
+          VipsOption.Int("effort", 0),
           VipsOption.Int("keep", k)
         )
         outputFile
