@@ -24,7 +24,7 @@ class UsageStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Moc
   val rexId = "rex"
   val rexAgency: Agency = Agencies.all(rexId)
 
-  private val testInstance = Instance("test-instance")
+  private implicit val testInstance: Instance = Instance("test-instance")
 
   private def mockInstancesClient(instances: Seq[Instance] = Seq(testInstance)): InstancesClient = {
     val client = mock[InstancesClient]
@@ -173,6 +173,24 @@ class UsageStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Moc
         val after = store.getUsageStatus().futureValue.lastUpdated
         after shouldBe before
       }
+      it("keeps each instance's counts separate rather than letting the last instance to update overwrite the others") {
+        val otherInstance = Instance("other-instance")
+        val mockQuotaStore = mock[QuotaStore]
+        when(mockQuotaStore.getQuota).thenReturn(Map(gettyId -> SupplierUsageQuota(gettyAgency, 100)))
+
+        val countsByInstance = Map(testInstance.id -> 150L, otherInstance.id -> 3L)
+        val getSupplierQuotaCount: (String, Instance) => Future[SupplierQuotaCount] = (id, instance) =>
+          Future.successful(SupplierQuotaCount(Agencies.get(id), if (id == gettyId) countsByInstance(instance.id) else 0L))
+
+        val store = new UsageStore(getSupplierQuotaCount, mockQuotaStore, mockInstancesClient(Seq(testInstance, otherInstance)))
+        store.update()
+        Thread.sleep(200)
+
+        store.getUsageStatusForUsageRights(gettyAgency)(testInstance).futureValue.usage.count shouldBe 150L
+        store.getUsageStatusForUsageRights(gettyAgency)(otherInstance).futureValue.usage.count shouldBe 3L
+        store.overQuotaAgencies(testInstance) should contain(gettyAgency)
+        store.overQuotaAgencies(otherInstance) should not contain gettyAgency
+      }
     }
 
     describe("overQuotaAgencies") {
@@ -184,8 +202,8 @@ class UsageStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Moc
         store.update()
         Thread.sleep(200)
 
-        store.overQuotaAgencies should contain(gettyAgency)
-        store.overQuotaAgencies should not contain rexAgency
+        store.overQuotaAgencies(testInstance) should contain(gettyAgency)
+        store.overQuotaAgencies(testInstance) should not contain rexAgency
       }
 
       it("returns an empty list when no agency is over quota") {
@@ -196,7 +214,7 @@ class UsageStoreTest extends AnyFunSpec with Matchers with ScalaFutures with Moc
         store.update()
         Thread.sleep(200)
 
-        store.overQuotaAgencies shouldBe empty
+        store.overQuotaAgencies(testInstance) shouldBe empty
       }
     }
 

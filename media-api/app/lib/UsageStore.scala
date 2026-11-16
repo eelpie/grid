@@ -79,14 +79,18 @@ class UsageStore(
   instancesClient: InstancesClient
 )(implicit val ec: ExecutionContext) extends GridLogging {
 
-  private val store: AtomicReference[Map[String, SupplierUsageStatus]] = new AtomicReference(Map.empty)
+  // Keyed by instance id, then by supplier. Each instance has its own images and usages, so its counts must not be mixed with any other instance's.
+  private val store: AtomicReference[Map[String, Map[String, SupplierUsageStatus]]] = new AtomicReference(Map.empty)
   private val lastUpdated: AtomicReference[DateTime] = new AtomicReference(DateTime.now())
   private var cancellable: Option[Cancellable] = None
 
-  def getUsageStatusForUsageRights(usageRights: UsageRights): Future[SupplierUsageStatus] =
+  private def storeFor(instance: Instance): Map[String, SupplierUsageStatus] =
+    store.get().getOrElse(instance.id, Map.empty)
+
+  def getUsageStatusForUsageRights(usageRights: UsageRights)(implicit instance: Instance): Future[SupplierUsageStatus] =
     usageRights match {
       case agency: Agency =>
-        store.get().get(agency.supplier) match {
+        storeFor(instance).get(agency.supplier) match {
           case Some(status) => Future.successful(status)
           case None         => Future.failed(NoUsageQuota())
         }
@@ -94,10 +98,10 @@ class UsageStore(
         Future.failed(new Exception("Image is not supplied by Agency"))
     }
 
-  def getUsageStatus(): Future[StoreAccess] =
-    Future.successful(StoreAccess(store.get(), lastUpdated.get()))
+  def getUsageStatus()(implicit instance: Instance): Future[StoreAccess] =
+    Future.successful(StoreAccess(storeFor(instance), lastUpdated.get()))
 
-  def overQuotaAgencies: List[Agency] = store.get().collect {
+  def overQuotaAgencies(instance: Instance): List[Agency] = storeFor(instance).collect {
     case (_, status) if status.exceeded => status.usage.agency
   }.toList
 
@@ -108,12 +112,12 @@ class UsageStore(
 
     val instances = Await.result(instancesClient.getInstances(), 10.seconds)
     instances.foreach { implicit instance =>
-      logger.info(s"fetchQuotaCount for instance $instance.id")
+      logger.info(s"fetchQuotaCount for instance ${instance.id}")
       fetchQuotaCount.onComplete {
-        case Success(newStore) =>
-          store.set(newStore)
+        case Success(newInstanceStore) =>
+          store.updateAndGet(_.updated(instance.id, newInstanceStore))
           lastUpdated.set(DateTime.now())
-          logger.info(s"UsageStore updated: ${newStore.size} suppliers")
+          logger.info(s"UsageStore updated for instance ${instance.id}: ${newInstanceStore.size} suppliers")
         case Failure(e) =>
           val staleForMinutes = new Duration(lastUpdated.get(), DateTime.now()).getStandardMinutes
           logger.error(s"Failed to update UsageStore for instance: ${instance.id}. Data is now $staleForMinutes minute(s) stale; last updated at: ${lastUpdated.get()}", e)

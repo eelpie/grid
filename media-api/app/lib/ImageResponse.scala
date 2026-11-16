@@ -207,7 +207,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3, usageQuota: UsageQuota
       .map { case (action, active) => action }
   }
 
-  def addUsageCost(source: JsValue): Reads[JsObject] = {
+  def addUsageCost(source: JsValue)(implicit instance: Instance): Reads[JsObject] = {
     // We do the merge here as some records haven't had the user override applied
     // to the root level `usageRights`
     // TODO: Solve with reindex
