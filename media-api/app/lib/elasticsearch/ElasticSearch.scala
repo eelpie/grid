@@ -554,7 +554,15 @@ class ElasticSearch(
         rangeQuery("usages.dateAdded").gte(printDateTime(from)).lte(printDateTime(to))
     }
     val haveQualifyingPlatform = termsQuery("usages.platform", UsageStore.countQualifyingPlatforms.map(_.toString))
-    val haveQualifyingUsage    = nestedQuery("usages", boolQuery().must(haveQualifyingStatus, haveQualifyingPlatform, dateAddedQuery))
+    val haveQualifyingDownload = boolQuery().must(
+      termQuery("usages.status", UsageStore.countQualifyingDownloadStatus.toString),
+      termQuery("usages.platform", UsageStore.countQualifyingDownloadPlatform.toString)
+    )
+    val haveQualifyingStatusAndPlatform = boolQuery().should(
+      boolQuery().must(haveQualifyingStatus, haveQualifyingPlatform),
+      haveQualifyingDownload
+    ).minimumShouldMatch(1)
+    val haveQualifyingUsage    = nestedQuery("usages", boolQuery().must(haveQualifyingStatusAndPlatform, dateAddedQuery))
 
     val beSupplier = boolQuery().should(
       termQuery("usageRights.supplier", supplierName),
@@ -579,23 +587,30 @@ class ElasticSearch(
       haveQualifyingStatus, dateAddedQuery,
       termQuery("usages.platform", PrintUsage.toString)
     )
+    val downloadUsageFilter = boolQuery().must(haveQualifyingDownload, dateAddedQuery)
     // Document-level filters: classify images by which quota bucket they fall into.
     val hasQualifyingComposer = nestedQuery("usages", composerUsageFilter)
     val hasQualifyingFronts = nestedQuery("usages", frontsUsageFilter)
     val hasQualifyingPrint = nestedQuery("usages", printUsageFilter)
+    val hasQualifyingDownload = nestedQuery("usages", downloadUsageFilter)
 
     val imagesWithComposer = hasQualifyingComposer
     val imagesWithFrontsButNoComposer = boolQuery().must(hasQualifyingFronts).withNot(hasQualifyingComposer)
     val imagesWithPrintButNoComposer  = boolQuery().must(hasQualifyingPrint).withNot(hasQualifyingComposer)
+    val imagesWithOnlyDownloads       = boolQuery().must(hasQualifyingDownload)
+      .withNot(hasQualifyingComposer).withNot(hasQualifyingFronts).withNot(hasQualifyingPrint)
 
     // Quota counting logic per image:
     // - Each Composer usage counts as 1; if any exist, Fronts and Print on the same image are not counted additionally.
     // - Multiple Fronts count as 1 in total.
     // - Multiple Print usages each count separately.
-    // Three mutually exclusive aggregations:
+    // - Downloads count as 1 per image, and only when the image has no Composer, Fronts or Print usage
+    //   (a download usually precedes publication, so this avoids counting the same use twice).
+    // Four mutually exclusive aggregations:
     //  1. Images with composer: sum of composer usage counts
     //  2. Images with fronts, no composer: count of images (each image contributes 1)
     //  3. Images with print, no composer:  sum of print usage counts
+    //  4. Images with only downloads:      count of images (each image contributes 1)
     val composerQuotaAgg = filterAgg("has_composer", imagesWithComposer)
       .subAggregations(
         nestedAggregation("usages_agg", "usages")
@@ -612,7 +627,9 @@ class ElasticSearch(
           )
       )
 
-    val search = prepareSearch(query, None).size(0).aggs(composerQuotaAgg, frontsQuotaAgg, printQuotaAgg)
+    val downloadsQuotaAgg = filterAgg("downloads_only", imagesWithOnlyDownloads)
+
+    val search = prepareSearch(query, None).size(0).aggs(composerQuotaAgg, frontsQuotaAgg, printQuotaAgg, downloadsQuotaAgg)
 
     executeAndLog(search, s"$id quota count by supplier search").map { r =>
       import r.result
@@ -621,8 +638,9 @@ class ElasticSearch(
       val composerQuota = aggs.filter("has_composer").nested("usages_agg").filter("qualifying").docCount.toInt
       val frontsQuota   = aggs.filter("fronts_no_composer").docCount.toInt
       val printQuota    = aggs.filter("print_no_composer").nested("usages_agg").filter("qualifying").docCount.toInt
-      logger.info(s"Quota count for supplier $supplierName with date filter $dateAddedQuery: composer=$composerQuota, fronts=$frontsQuota, print=$printQuota")
-      SupplierQuotaCount(supplier, composerQuota + frontsQuota + printQuota)
+      val downloadsQuota = aggs.filter("downloads_only").docCount.toInt
+      logger.info(s"Quota count for supplier $supplierName with date filter $dateAddedQuery: composer=$composerQuota, fronts=$frontsQuota, print=$printQuota, downloads=$downloadsQuota")
+      SupplierQuotaCount(supplier, composerQuota + frontsQuota + printQuota + downloadsQuota)
     }
   }
 
@@ -640,6 +658,13 @@ class ElasticSearch(
 
     val haveQualifyingStatus = termsQuery("usages.status", UsageStore.countQualifyingStatuses.map(_.toString))
     val haveQualifyingPlatform = termsQuery("usages.platform", UsageStore.countQualifyingPlatforms.map(_.toString))
+    val haveQualifyingStatusAndPlatform = boolQuery().should(
+      boolQuery().must(haveQualifyingStatus, haveQualifyingPlatform),
+      boolQuery().must(
+        termQuery("usages.status", UsageStore.countQualifyingDownloadStatus.toString),
+        termQuery("usages.platform", UsageStore.countQualifyingDownloadPlatform.toString)
+      )
+    ).minimumShouldMatch(1)
 
     // e.g. usages@<added:2026-07-31 usages@>added:2026-07-01 - each date bound is inclusive,
     // and since they all apply within the same nested "usages" entry, multiple bounds combine into a range.
@@ -655,7 +680,7 @@ class ElasticSearch(
         Some((from, to))
     }
 
-    val qualifyingUsageClauses = List(haveQualifyingStatus, haveQualifyingPlatform) ++
+    val qualifyingUsageClauses = List(haveQualifyingStatusAndPlatform) ++
       maybeDateAddedRange.map { case (from, to) => rangeQuery("usages.dateAdded").gte(printDateTime(from)).lte(printDateTime(to)) }
     val haveQualifyingUsage = nestedQuery("usages", boolQuery().must(qualifyingUsageClauses))
 
@@ -669,8 +694,7 @@ class ElasticSearch(
     val search = prepareSearch(query, None).trackTotalHits(true).from(offset).size(length)
 
     def isQualifyingUsage(usage: Usage): Boolean =
-      UsageStore.countQualifyingStatuses.contains(usage.status) &&
-        UsageStore.countQualifyingPlatforms.contains(usage.platform) &&
+      UsageStore.isCountQualifying(usage) &&
         maybeDateAddedRange.forall { case (from, to) =>
           usage.dateAdded.exists(dateAdded => !dateAdded.isBefore(from) && !dateAdded.isAfter(to))
         }
