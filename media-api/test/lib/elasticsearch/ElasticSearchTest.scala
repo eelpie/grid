@@ -756,6 +756,53 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
         Await.result(ES.quotaCountBySupplier(supplier, query), fiveSeconds).count shouldBe 0
       }
     }
+
+    it("counts multiple download usages on the same image as 1") {
+      implicit val logMarker: LogMarker = MarkerMap()
+      val images = Seq(createImage("qc-download-only", Agency(supplier),
+        usages = List(
+          createUsage(DownloadUsageReference, DownloadUsage, DownloadedUsageStatus, inRange),
+          createUsage(DownloadUsageReference, DownloadUsage, DownloadedUsageStatus, inRange)
+        )))
+      withQuotaImages(images) {
+        Await.result(ES.quotaCountBySupplier(supplier), fiveSeconds).count shouldBe 1
+      }
+    }
+
+    it("does not count downloads when the image also has a composer, fronts or print usage") {
+      implicit val logMarker: LogMarker = MarkerMap()
+      val download = createUsage(DownloadUsageReference, DownloadUsage, DownloadedUsageStatus, inRange)
+      val images = Seq(
+        createImage("qc-download-composer", Agency(supplier), usages = List(
+          download, createUsage(ComposerUsageReference, DigitalUsage, PublishedUsageStatus, inRange))),
+        createImage("qc-download-fronts", Agency(supplier), usages = List(
+          download, createUsage(FrontUsageReference, DigitalUsage, PublishedUsageStatus, inRange))),
+        createImage("qc-download-print", Agency(supplier), usages = List(
+          download, createUsage(InDesignUsageReference, PrintUsage, PublishedUsageStatus, inRange)))
+      )
+      withQuotaImages(images) {
+        Await.result(ES.quotaCountBySupplier(supplier), fiveSeconds).count shouldBe 3
+      }
+    }
+
+    it("excludes download usages outside the date range") {
+      implicit val logMarker: LogMarker = MarkerMap()
+      val images = Seq(createImage("qc-download-old", Agency(supplier),
+        usages = List(createUsage(DownloadUsageReference, DownloadUsage, DownloadedUsageStatus,
+          DateTime.now.minusDays(UsageStore.countPeriodInDays + 1)))))
+      withQuotaImages(images) {
+        Await.result(ES.quotaCountBySupplier(supplier), fiveSeconds).count shouldBe 0
+      }
+    }
+
+    it("does not count a downloaded status on a non-download platform") {
+      implicit val logMarker: LogMarker = MarkerMap()
+      val images = Seq(createImage("qc-download-wrong-platform", Agency(supplier),
+        usages = List(createUsage(InDesignUsageReference, PrintUsage, DownloadedUsageStatus, inRange))))
+      withQuotaImages(images) {
+        Await.result(ES.quotaCountBySupplier(supplier), fiveSeconds).count shouldBe 0
+      }
+    }
   }
 
   describe("images usages by supplier") {

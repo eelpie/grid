@@ -63,6 +63,13 @@ object StoreAccess {
 object UsageStore extends GridLogging {
   val countQualifyingStatuses: Set[UsageStatus] = Set(PublishedUsageStatus, UnknownUsageStatus, RemovedUsageStatus)
   val countQualifyingPlatforms: Set[UsageType] = Set(PrintUsage, DigitalUsage)
+  // Downloads are recorded with their own platform and status, so they qualify as a separate pair
+  val countQualifyingDownloadPlatform: UsageType = DownloadUsage
+  val countQualifyingDownloadStatus: UsageStatus = DownloadedUsageStatus
+
+  def isCountQualifying(usage: Usage): Boolean =
+    (countQualifyingStatuses.contains(usage.status) && countQualifyingPlatforms.contains(usage.platform)) ||
+      (usage.status == countQualifyingDownloadStatus && usage.platform == countQualifyingDownloadPlatform)
   val countPeriodInDays: Int = 30
   val refreshInterval: FiniteDuration = 10.minutes
 
