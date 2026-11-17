@@ -39,7 +39,7 @@ class ImageUploadTest extends AsyncFunSuite with Matchers with MockitoSugar {
     *        what arcane magic System.getProperty relies upon, and exactly
     *        _how_ it will break in CI, I do not know
     */
-  val imageOps: ImageOperations = new VipsImageOperations()
+  val imageOps: ImageOperations = mock[ImageOperations]
 
   private def imageUpload(
                    fileName: String,
