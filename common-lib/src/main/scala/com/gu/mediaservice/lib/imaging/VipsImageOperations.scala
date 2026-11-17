@@ -150,14 +150,21 @@ class VipsImageOperations extends GridLogging with ImageOperations {
     }
   }
 
-  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType, quantise: Boolean = false)(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
+  def transformImage(sourceFile: File, tempDir: File, outputMimeType: MimeType, quantise: Boolean = false, maxDimension: Option[Int] = None)(implicit logMarker: LogMarker): Future[(File, MimeType)] = {
     Future {
       implicit val arena: Arena = Arena.ofConfined
       try {
         val outputFile = createTempFileInTempDir("transformed", outputMimeType, tempDir)
         val image = VImage.newFromFile(arena, sourceFile.getAbsolutePath)
 
-        val correctedForICCProfile = correctForICCProfile(image)
+        val longestEdge = math.max(image.getWidth, image.getHeight)
+        val restricted = maxDimension.filter(longestEdge > _).map { max =>
+          val scale = max.toDouble / longestEdge.toDouble
+          logger.info(s"Resizing oversized transformed image from ${image.getWidth}x${image.getHeight} by scale $scale to fit within $max")
+          image.resize(scale)
+        }.getOrElse(image)
+
+        val correctedForICCProfile = correctForICCProfile(restricted)
 
         saveImageToFile(correctedForICCProfile, outputMimeType, 85.0, outputFile, quantise = quantise)
         (outputFile, outputMimeType)

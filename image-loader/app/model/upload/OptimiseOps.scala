@@ -18,6 +18,8 @@ trait OptimiseOps {
 
 class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps with GridLogging {
 
+  private val maxOptimisedImageDimension: Int = 3840
+
   def toOptimisedFile(imageWrapper: ImageWrapper, optimisedMimeType: MimeType, tempDir: File)
                      (implicit ec: ExecutionContext, logMarker: LogMarker): Future[(File, MimeType)] = {
 
@@ -34,7 +36,7 @@ class OptimiseWithPngQuant(imageOperations: ImageOperations) extends OptimiseOps
     val isTrueColourPng = isTrueColour && imageWrapper.mimeType == Png
 
     Stopwatch("toOptimisedFile") {
-      imageOperations.transformImage(imageWrapper.file, tempDir, optimisedMimeType, quantise = isTrueColourPng)
+      imageOperations.transformImage(imageWrapper.file, tempDir, optimisedMimeType, quantise = isTrueColourPng, maxDimension = Some(maxOptimisedImageDimension))
     }(marker)
   }
 
