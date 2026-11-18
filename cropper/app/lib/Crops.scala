@@ -1,13 +1,15 @@
 package lib
 
-import java.io.File
-import com.gu.mediaservice.lib.metadata.FileMetadataHelper
+import app.photofox.vipsffm.VImage
+import app.photofox.vipsffm.jextract.VipsRaw
 import com.gu.mediaservice.lib.Files
 import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.imaging.{ExportResult, ImageOperations}
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker, Stopwatch}
 import com.gu.mediaservice.model._
 
+import java.io.File
+import java.lang.foreign.Arena
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -15,7 +17,7 @@ case object InvalidImage extends Exception("Invalid image cannot be cropped")
 case object MissingMimeType extends Exception("Missing mimeType from source API")
 case object InvalidCropRequest extends Exception("Crop request invalid for image dimensions")
 
-case class MasterCrop(sizing: Future[Asset], file: File, dimensions: Dimensions, aspectRatio: Float)
+case class MasterCrop(image: VImage, dimensions: Dimensions, aspectRatio: Float)
 
 class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOperations, imageBucket: S3Bucket, s3: S3)(implicit ec: ExecutionContext) extends GridLogging {
   import Files._
@@ -35,56 +37,46 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
     apiImage: SourceImage,
     sourceFile: File,
     crop: Crop,
-    mediaType: MimeType,
-    colourModel: Option[String],
-    orientationMetadata: Option[OrientationMetadata],
-  )(implicit logMarker: LogMarker, instance: Instance): Future[MasterCrop] = {
-
+    orientationMetadata: Option[OrientationMetadata]
+  )(implicit logMarker: LogMarker, arena: Arena): Future[MasterCrop] = {
     Stopwatch.async(s"creating master crop for ${apiImage.id}") {
       val source = crop.specification
       val metadata = apiImage.metadata
-      val iccColourSpace = FileMetadataHelper.normalisedIccColourSpace(apiImage.fileMetadata)
-      // pngs are always lossless, so quality only means effort spent compressing them. We don't
-      // care too much about filesize of master crops, so skip expensive compression to get faster cropping
-      val quality = if (mediaType == Png) pngCropQuality else masterCropQuality
 
       for {
-        strip <- imageOperations.cropImage(
-          sourceFile, apiImage.source.mimeType, source.bounds, quality, config.tempDir,
-          iccColourSpace, colourModel, mediaType, isTransformedFromSource = false,
-          orientationMetadata = orientationMetadata
+        image <- imageOperations.cropImage(
+          sourceFile, source.bounds, config.tempDir,
+          orientationMetadata = orientationMetadata,
+          metadata = metadata
         )
-        file: File <- imageOperations.appendMetadata(strip, metadata)
         dimensions = Dimensions(source.bounds.width, source.bounds.height)
-        filename = outputFilename(apiImage, source.bounds, dimensions.width, mediaType, isMaster = true)
-        sizing = store.storeCropSizing(file, filename, mediaType, crop, dimensions)
         dirtyAspect = source.bounds.width.toFloat / source.bounds.height
         aspect = crop.specification.aspectRatio.flatMap(AspectRatio.clean).getOrElse(dirtyAspect)
       }
-      yield MasterCrop(sizing, file, dimensions, aspect)
+      yield MasterCrop(image, dimensions, aspect)
     }
   }
 
-  private def createCrops(sourceFile: File, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker, instance: Instance): Future[List[Asset]] = {
+  private def createCrops(sourceImage: VImage, dimensionList: List[Dimensions], apiImage: SourceImage, crop: Crop, cropType: MimeType)(implicit logMarker: LogMarker, instance: Instance, arena: Arena): Future[List[(File, String, Dimensions)]] = {
     val quality = if (cropType == Png) pngCropQuality else cropQuality
 
     Stopwatch.async(s"creating crops for ${apiImage.id}") {
       Future.sequence(dimensionList.map { dimensions =>
         val cropLogMarker = logMarker ++ Map("crop-dimensions" -> s"${dimensions.width}x${dimensions.height}")
+        val quantise = cropType == Png && !imageOperations.isGraphic(sourceImage)
         for {
-          file <- imageOperations.resizeImage(sourceFile,
-            apiImage.source.mimeType,
+          file <- imageOperations.resizeImage(sourceImage,
             dimensions,
             quality,
             config.tempDir,
-            cropType)(cropLogMarker)
-          optimisedFile = imageOperations.optimiseCrop(file, cropType)(cropLogMarker)
+            cropType,
+            quantise = quantise
+          )(cropLogMarker, arena)
           filename = outputFilename(apiImage, crop.specification.bounds, dimensions.width, cropType)
-          sizing <- store.storeCropSizing(optimisedFile, filename, cropType, crop, dimensions)(cropLogMarker)
-          _ <- delete(file)
-          _ <- delete(optimisedFile)
         }
-        yield sizing
+        yield {
+          (file, filename, dimensions)
+        }
       })
     }
   }
@@ -107,47 +99,129 @@ class Crops(config: CropperConfig, store: CropStore, imageOperations: ImageOpera
   }
 
   def makeExport(apiImage: SourceImage, crop: Crop)(implicit logMarker: LogMarker, instance: Instance): Future[ExportResult] = {
-    val source    = crop.specification
+    val source = crop.specification
     val mimeType = apiImage.source.mimeType.getOrElse(throw MissingMimeType)
     val secureFile = apiImage.source.file
-    val colourType = apiImage.fileMetadata.colourModelInformation.getOrElse("colorType", "")
-    val hasAlpha = apiImage.fileMetadata.colourModelInformation.get("hasAlpha").flatMap(a => Try(a.toBoolean).toOption).getOrElse(true)
-    val cropType = Crops.cropType(mimeType, colourType, hasAlpha)
 
     val key = imageBucket.keyFromURL(secureFile)
     val secureUrl = s3.signUrlTony(imageBucket, key)
 
-    Stopwatch.async(s"making crop assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
+    implicit val arena: Arena = Arena.ofShared()
+    // Generate the crop assets on local disk
+    val eventualCropAssets = Stopwatch.async(s"making crop local assets for ${apiImage.id} ${Crop.getCropId(source.bounds)}") {
       for {
         sourceFile <- tempFileFromURL(secureUrl, "cropSource", "", config.tempDir)
-        colourModel <- imageOperations.identifyColourModel(sourceFile, mimeType)
-        masterCrop <- createMasterCrop(apiImage, sourceFile, crop, cropType, colourModel, apiImage.source.orientationMetadata)
+        masterCrop <- createMasterCrop(apiImage, sourceFile, crop, apiImage.source.orientationMetadata)
 
-        outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCrop.dimensions
+        isGraphic = imageOperations.isGraphic(masterCrop.image)
+        hasAlpha = imageOperations.hasAlpha(masterCrop.image)
+        cropType = Crops.cropType(mimeType, isGraphic = isGraphic, hasAlpha = hasAlpha)
 
-        sizes <- createCrops(masterCrop.file, outputDims, apiImage, crop, cropType)
-        masterSize <- masterCrop.sizing
+        // pngs are always lossless, so quality only means effort spent compressing them. We don't
+        // care too much about filesize of master crops, so skip expensive compression to get faster cropping
+        quality = if (cropType == Png) pngCropQuality else masterCropQuality
 
-        _ <- Future.sequence(List(masterCrop.file, sourceFile).map(delete))
+        // Restrict the dimensions of the master crop in line with CDN recommendations
+        maxMasterCropSize = 4096
+        masterCropSize = restrictedMasterCropDimensions(masterCrop.dimensions, maxMasterCropSize)
+
+        // Start the master save and the resizes together so they render in parallel
+        eventualMasterCropFile = {
+          val masterCropFile = File.createTempFile(s"crop-", s"${cropType.fileExtension}", config.tempDir) // TODO function for this
+          val eventuallyScaled = if (masterCropSize != masterCrop.dimensions) {
+            logger.info(s"Resizing oversized master crop from ${masterCrop.dimensions} to $masterCropSize")
+            imageOperations.resize(masterCrop.image, masterCropSize)
+
+          } else {
+            Future.successful{
+              masterCrop.image
+            }
+          }
+
+          eventuallyScaled.map { scaled =>
+            imageOperations.saveImageToFile(scaled, cropType, quality, masterCropFile, quantise = false, keep = Some(VipsRaw.VIPS_FOREIGN_KEEP_XMP()))
+          }
+        }
+
+        // Start the resizes crops
+        outputDims = dimensionsFromConfig(source.bounds, masterCrop.aspectRatio) :+ masterCropSize
+        eventualResizes = createCrops(masterCrop.image, outputDims, apiImage, crop, cropType)
+
+        // Wait for both before storing anything; we don't want to send a partial set
+        masterCropFile <- eventualMasterCropFile
+        resizes <- eventualResizes
+
+        masterCropFilename = outputFilename(apiImage, source.bounds, masterCropSize.width, cropType, isMaster = true)
+        eventualMasterAsset: Future[Asset] = for {
+          masterAsset <- store.storeCropSizing(masterCropFile, masterCropFilename, cropType, crop, masterCropSize)
+          _ <- delete(masterCropFile)
+        } yield {
+          masterAsset
+        }
+
+        eventualResizeAssets: Future[List[Asset]] = Future.sequence {
+          resizes.map { resize =>
+            val file = resize._1
+            val filename = resize._2
+            val dimensions = resize._3
+            logger.info(s"Storing crop for: $file, $filename, $cropType")
+            for {
+              sizing <- store.storeCropSizing(file, filename, cropType, crop, dimensions)
+              _ <- delete(file)
+            } yield {
+              sizing
+            }
+          }
+        }
+      } yield {
+        logger.info("Image operations have finished; closing makeExport arena.")
+        arena.close()
+        sourceFile.delete()
+        (eventualMasterAsset, eventualResizeAssets)
       }
-      yield ExportResult(apiImage.id, masterSize, sizes)
+    }
+
+    // Once the assets have been rendered to local files we can close the arena
+    // to release the arena memory and then do the S3 uploads.
+    Stopwatch.async(s"Uploading crop assets to S3") {
+      for {
+        sentCropFiles <- eventualCropAssets
+        masterAsset <- sentCropFiles._1
+        resizeAssets <- sentCropFiles._2
+      }
+      yield ExportResult(apiImage.id, masterAsset, resizeAssets)
+    }
+  }
+
+  def restrictedMasterCropDimensions(masterCropDimensions: Dimensions, maxMasterCropSize: Int): Dimensions = {
+    val maxDimensionLength = Seq(masterCropDimensions.width, masterCropDimensions.height).max
+    if (maxDimensionLength > maxMasterCropSize) {
+      val scale = maxMasterCropSize.toDouble / maxDimensionLength.toDouble
+      val scaled = Dimensions(math.round(masterCropDimensions.width.toDouble * scale).toInt, math.round(masterCropDimensions.height.toDouble * scale).toInt)
+      logger.info(s"Scaled oversized master dimensions from $masterCropDimensions to $scaled")
+      scaled
+    } else {
+      masterCropDimensions
     }
   }
 }
 
-object Crops {
+object Crops extends GridLogging {
   /**
-    * The aim here is to decide whether the crops should be JPEG or PNGs depending on a predicted quality/size trade-off.
-    *  - If the image has transparency then it should always be a PNG as the transparency is not available in JPEG
-    *  - If the image is not true colour then we assume it is a graphic that should be retained as a PNG
-    */
-  def cropType(mediaType: MimeType, colourType: String, hasAlpha: Boolean): MimeType = {
-    val isGraphic = !colourType.matches("True[ ]?Color.*")
+   * The aim here is to decide whether the crops should be JPEG or PNGs depending on a predicted quality/size trade-off.
+   *  - If the image has transparency then it should always be a PNG as the transparency is not available in JPEG
+   *  - If the image is not true colour then we assume it is a graphic that should be retained as a PNG
+   */
+  def cropType(mediaType: MimeType, isGraphic: Boolean, hasAlpha: Boolean): MimeType = {
     val outputAsPng = hasAlpha || isGraphic
 
-    mediaType match {
-      case Png | Tiff if outputAsPng => Png
+    val decision = mediaType match {
+      case Png if outputAsPng => Png
+      case Tiff if outputAsPng => Png
       case _ => Jpeg
     }
+
+    logger.info(s"Choose crop type for $mediaType, $isGraphic, $hasAlpha: " + decision)
+    decision
   }
 }

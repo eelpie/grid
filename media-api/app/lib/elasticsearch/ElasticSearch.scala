@@ -40,7 +40,7 @@ class ElasticSearch(
   val config: MediaApiConfig,
   mediaApiMetrics: MediaApiMetrics,
   val elasticSearchConfig: ElasticSearchConfig,
-  overQuotaAgencies: () => List[Agency],
+  overQuotaAgencies: Instance => List[Agency],
   val scheduler: Scheduler,
   val instancesClient: InstancesClient,
 ) extends ElasticSearchClient with ImageFields with MatchFields with FutureSyntax with GridLogging with MigrationStatusProvider {
@@ -455,7 +455,7 @@ class ElasticSearch(
 
   // The aggregations used to compute the ticker count badges ("GNM-owned",
   // "agency picks" etc) shown above search results.
-  private def extraCountAggregations = aggregationsNameToSearchClauseMap.map {
+  private def extraCountAggregations(implicit instance: Instance) = aggregationsNameToSearchClauseMap.map {
     case (name, ExtraCountConfig(searchClause, _, maybeSubAggregation)) =>
       filterAgg(name, queryBuilder.makeQuery(Parser.run(searchClause))).subAggregations(maybeSubAggregation)
   }

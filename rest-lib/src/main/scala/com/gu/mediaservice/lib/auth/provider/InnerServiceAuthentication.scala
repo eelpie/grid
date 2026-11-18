@@ -49,10 +49,16 @@ trait InnerServiceAuthentication {
 
   def verifyRequest(request: RequestHeader)(signatureFromHeader: String) = {
 
-    val signingData = SigningData.from(request)
+    // Callers sign the full public path. When services share a host behind a path-prefix-stripping proxy
+    // (eg. https://instance.domain/collections/... -> collections app sees /...), this service sees the path
+    // without its /<serviceName> prefix; also accept the signature for the prefixed form.
+    val signingData = SigningData.from(request).flatMap { d =>
+      val candidates = List(d, d.copy(target = s"/$serviceName${d.target}"))
+      candidates.find(_.validate(signatureFromHeader))
+    }
 
     signingData match {
-      case Some(d) if d.validate(signatureFromHeader) =>
+      case Some(d) =>
         Right(
           InnerServicePrincipal(
             identity = request.headers(innerServiceIdentityHeaderName),

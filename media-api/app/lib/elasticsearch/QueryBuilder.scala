@@ -4,7 +4,7 @@ import com.gu.mediaservice.lib.ImageFields
 import com.gu.mediaservice.lib.elasticsearch.filters
 import com.gu.mediaservice.lib.formatting.printDateTime
 import com.gu.mediaservice.lib.logging.GridLogging
-import com.gu.mediaservice.model.{Agency, ReplacementUsageRightsSpec}
+import com.gu.mediaservice.model.{Agency, Instance, ReplacementUsageRightsSpec}
 import com.sksamuel.elastic4s.ElasticDsl
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.requests.common.Operator
@@ -16,7 +16,7 @@ import lib.{ImagePersistenceReasons, MediaApiConfig}
 import scalaz.NonEmptyList
 import scalaz.syntax.std.list._
 
-class QueryBuilder(matchFields: Seq[String], overQuotaAgencies: () => List[Agency], config: MediaApiConfig) extends ImageFields with GridLogging {
+class QueryBuilder(matchFields: Seq[String], overQuotaAgencies: Instance => List[Agency], config: MediaApiConfig) extends ImageFields with GridLogging {
 
   // Users can search by either the friendly alias (e.g. "c2paMetadataAvailable") or the underlying
   // Elasticsearch path it resolves to (e.g. "fileMetadata.c2pa.isAvailable"), so field alias configs
@@ -79,7 +79,7 @@ class QueryBuilder(matchFields: Seq[String], overQuotaAgencies: () => List[Agenc
     case e => throw InvalidQuery(s"Cannot do multiQuery on $e")
   }
 
-  private def makeQueryBit(condition: Match): Query = condition.field match {
+  private def makeQueryBit(condition: Match)(implicit instance: Instance): Query = condition.field match {
     case AnyField => makeMultiQuery(condition.value, matchFields)
     case MultipleField(fields) => makeMultiQuery(condition.value, fields)
     case SingleField("persisted") => condition.value match {
@@ -120,7 +120,7 @@ class QueryBuilder(matchFields: Seq[String], overQuotaAgencies: () => List[Agenc
       case _ => throw InvalidQuery(s"Cannot perform has field on ${condition.value}")
     }
     case IsField => condition.value match {
-      case IsValue(value) => IsQueryFilter.apply(value, overQuotaAgencies, config) match {
+      case IsValue(value) => IsQueryFilter.apply(value, () => overQuotaAgencies(instance), config) match {
         case Some(isQuery) => isQuery.query
         case _ => {
           logger.info(s"Cannot perform IS query on ${condition.value}")
@@ -152,7 +152,7 @@ class QueryBuilder(matchFields: Seq[String], overQuotaAgencies: () => List[Agenc
   private def addMustNotQueries(query: BoolQuery, queries: Seq[Query]): BoolQuery =
     queries.foldLeft(query) { (combinedQuery, excludedQuery) => combinedQuery.withNot(excludedQuery) }
 
-  def makeQuery(conditions: List[Condition]) = conditions match {
+  def makeQuery(conditions: List[Condition])(implicit instance: Instance) = conditions match {
     case Nil => matchAllQuery()
     case condList => {
 
