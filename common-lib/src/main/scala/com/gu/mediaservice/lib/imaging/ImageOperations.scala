@@ -11,7 +11,7 @@ import java.lang.foreign.Arena
 import scala.concurrent.Future
 
 object ImageOperations {
-  val thumbMimeType: MimeType = Avif
+  val thumbMimeType: MimeType = Jpeg
 }
 
 trait ImageOperations {
