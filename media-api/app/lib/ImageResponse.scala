@@ -290,7 +290,7 @@ class ImageResponse(config: MediaApiConfig, s3Client: S3, usageQuota: UsageQuota
       case OptimisedPng => image.optimisedPng.getOrElse(image.source)
       case _ => image.source
     }
-    ImgProxyUrlBuilder.s3SourceUri(config.imageBucket, asset.file)
+    ImgProxyUrlBuilder.s3SourceUri(config.imageBucket.name, asset.file)
   }
 
   private def imgproxyExpiry: Option[Long] =
