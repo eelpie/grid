@@ -14,6 +14,7 @@ import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.{Millis, Seconds, Span}
 import play.api.http.{DefaultHttpRequestHandler, HttpConfiguration, HttpRequestHandler}
 import play.api.libs.typedmap.TypedMap
 import play.api.mvc.{EssentialAction, Handler, PlayBodyParsers, RequestHeader, Result, Results}
@@ -31,6 +32,8 @@ class SentryUserErrorIntegrationTest extends AnyFunSuite with Matchers with Scal
   private implicit val mat: Materializer = Materializer(system)
   private implicit val ec: scala.concurrent.ExecutionContext = system.dispatcher
   private val captured = new ConcurrentLinkedQueue[SentryEvent]()
+
+  implicit override val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds), interval = Span(25, Millis))
 
   private val sentryConfig = SentryConfig(
     dsn = Some("https://key@sentry.example.com/1"), environment = "TEST",
