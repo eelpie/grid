@@ -9,6 +9,7 @@ import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.{Millis, Seconds, Span}
 import play.api.{Configuration, Environment, Mode}
 import play.api.http.{DefaultHttpRequestHandler, HttpConfiguration}
 import play.api.libs.streams.Accumulator
@@ -24,6 +25,8 @@ class SentryTracingFilterTest extends AnyFunSuiteLike with Matchers with ScalaFu
   private implicit val system: ActorSystem = ActorSystem("SentryTracingFilterTest")
   private implicit val mat: Materializer = Materializer(system)
   private implicit val ec: scala.concurrent.ExecutionContext = system.dispatcher
+
+  implicit override val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds), interval = Span(25, Millis))
 
   override def beforeEach(): Unit = {
     super.beforeEach()
