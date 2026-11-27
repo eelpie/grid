@@ -7,6 +7,7 @@ import com.gu.permissions.PermissionDefinition
 import play.api.libs.json.{JsError, JsSuccess, Json}
 import play.api.mvc.RequestHeader
 
+import java.net.URI
 import java.time.Instant
 
 sealed trait Tier
@@ -65,7 +66,9 @@ object ApiAccessor extends ArgoHelpers with GridLogging {
   def hasAccess(apiKey: ApiAccessor, request: RequestHeader, services: Services): Boolean = apiKey.tier match {
     case Internal => request.method != "DELETE"
     case ReadOnly => request.method == "GET"
-    case Syndication => request.method == "GET" && request.host == services.apiHost && request.path.startsWith("/images")
+    case Syndication =>
+      val isMediaApiRequest = request.host == URI.create(services.apiBaseUri).getHost
+      request.method == "GET" && isMediaApiRequest && request.path.startsWith("/images")
     case Administrator => true
     case _ => true // Pass through for future permissioned tiers, which will be handled by the PermissionsAuthorisationProvider
   }
