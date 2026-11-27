@@ -5,6 +5,7 @@ import com.gu.mediaservice.lib.auth.provider._
 import com.gu.mediaservice.lib.auth.{ApiAccessor, Authentication, Internal}
 import com.gu.mediaservice.lib.config.{CommonConfig, SentryConfig}
 import com.gu.mediaservice.lib.instances.InstancesClient
+import com.gu.mediaservice.model.Instance
 import io.sentry.{Sentry, SentryEvent}
 import io.sentry.transport.NoOpTransport
 import org.apache.pekko.actor.ActorSystem
@@ -26,7 +27,7 @@ import play.api.{Configuration, Environment, Mode}
 import play.core.WebCommands
 
 import java.util.concurrent.ConcurrentLinkedQueue
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.jdk.CollectionConverters._
 
 class SentryUserErrorIntegrationTest extends AnyFunSuite with Matchers with ScalaFutures with BeforeAndAfterAll with BeforeAndAfterEach {
@@ -69,6 +70,9 @@ class SentryUserErrorIntegrationTest extends AnyFunSuite with Matchers with Scal
     super.afterAll()
   }
 
+  private def userPrincipal(email: String): UserPrincipal =
+    UserPrincipal("Test", "User", email, TypedMap(ApiKeyAuthenticationProvider.KindeIdKey -> s"kinde-$email"))
+
   private def authentication(): Authentication = {
     val userProvider = mock(classOf[UserAuthenticationProvider])
     val apiProvider = mock(classOf[MachineAuthenticationProvider])
@@ -79,7 +83,10 @@ class SentryUserErrorIntegrationTest extends AnyFunSuite with Matchers with Scal
       if (request.headers.get("X-Test-Machine").isDefined)
         Authenticated(MachinePrincipal(
           ApiAccessor("machine-name", Internal),
-          TypedMap(ApiKeyAuthenticationProvider.ApiKeyHeader -> ("X-Gu-Media-Key" -> "secret"))
+          TypedMap(
+            ApiKeyAuthenticationProvider.ApiKeyHeader -> ("X-Gu-Media-Key" -> "secret"),
+            ApiKeyAuthenticationProvider.ApiKeyInstance -> "localhost"
+          )
         ))
       else NotAuthenticated
     }
@@ -87,8 +94,8 @@ class SentryUserErrorIntegrationTest extends AnyFunSuite with Matchers with Scal
       val request = invocation.getArgument[RequestHeader](0)
       request.headers.get("X-Test-User") match {
         case Some("before-authentication-error") => throw new IllegalStateException("authentication failed")
-        case Some("grace@example.com") => GracePeriod(UserPrincipal("Test", "User", "grace@example.com"))
-        case Some(email) => Authenticated(UserPrincipal("Test", "User", email))
+        case Some("test@example.com") => GracePeriod(userPrincipal("test@example.com"))
+        case Some(email) => Authenticated(userPrincipal(email))
         case None => NotAuthenticated
       }
     }
@@ -97,9 +104,12 @@ class SentryUserErrorIntegrationTest extends AnyFunSuite with Matchers with Scal
       if (request.headers.get("X-Test-Inner-Service").isDefined) Authenticated(InnerServicePrincipal("media-api"))
       else NotAuthenticated
     }
+    val instancesClient = mock(classOf[InstancesClient])
+    when(instancesClient.getMyInstances(any(classOf[String]))(any(classOf[ExecutionContext])))
+      .thenReturn(Future.successful(Seq(Instance("localhost"))))
     new Authentication(
       mock(classOf[CommonConfig]), AuthenticationProviders(userProvider, apiProvider, innerProvider),
-      mock(classOf[InstancesClient]),
+      instancesClient,
       PlayBodyParsers().default, ec
     )
   }
@@ -162,11 +172,11 @@ class SentryUserErrorIntegrationTest extends AnyFunSuite with Matchers with Scal
 
   test("records a grace-period user only when that request accepts the grace period") {
     val auth = authentication()
-    val accepted = SentryUserContext.withContext(FakeRequest().withHeaders("X-Test-User" -> "grace@example.com"), sentryConfig)
-    val rejected = SentryUserContext.withContext(FakeRequest().withHeaders("X-Test-User" -> "grace@example.com"), sentryConfig)
+    val accepted = SentryUserContext.withContext(FakeRequest().withHeaders("X-Test-User" -> "test@example.com"), sentryConfig)
+    val rejected = SentryUserContext.withContext(FakeRequest().withHeaders("X-Test-User" -> "test@example.com"), sentryConfig)
     auth.authenticationStatus(accepted, gracePeriodCountsAsAuthenticated = true).isRight shouldBe true
     auth.authenticationStatus(rejected, gracePeriodCountsAsAuthenticated = false).isLeft shouldBe true
-    SentryUserContext.identityFor(accepted).flatMap(_.email) shouldBe Some("grace@example.com")
+    SentryUserContext.identityFor(accepted).flatMap(_.email) shouldBe Some("test@example.com")
     SentryUserContext.identityFor(rejected) shouldBe None
   }
 
