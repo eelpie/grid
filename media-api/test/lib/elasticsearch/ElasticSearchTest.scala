@@ -12,6 +12,7 @@ import com.gu.mediaservice.model.leases.DenySyndicationLease
 import com.gu.mediaservice.model.usage._
 import com.sksamuel.elastic4s.ElasticDsl
 import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.requests.common.RefreshPolicy
 import lib.querysyntax._
 import lib.{MediaApiConfig, MediaApiMetrics, UsageStore}
 import org.apache.http.client.utils.URIBuilder
@@ -252,7 +253,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
     Await.ready(saveImages(images), 1.minute)
     eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages shouldBe expectedNumberOfImages + images.size)
     try test finally {
-      val deletes = images.map(i => executeAndLog(deleteById(index, i.id), s"Deleting quota test image ${i.id}"))
+      val deletes = images.map(i => executeAndLog(deleteById(index, i.id).refresh(RefreshPolicy.Immediate), s"Deleting quota test image ${i.id}"))
       Await.ready(Future.sequence(deletes), fiveSeconds)
       eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(totalImages shouldBe expectedNumberOfImages)
     }
@@ -1216,7 +1217,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
     implicit val logMarker: LogMarker = MarkerMap()
 
     Future.sequence(images.map { i =>
-      executeAndLog(indexInto(index) id i.id source Json.stringify(Json.toJson(i)), s"Indexing test image")
+      executeAndLog(indexInto(index).id(i.id).source(Json.stringify(Json.toJson(i))).refresh(RefreshPolicy.Immediate), s"Indexing test image")
     })
   }
 
