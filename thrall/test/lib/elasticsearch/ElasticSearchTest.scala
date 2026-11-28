@@ -214,7 +214,8 @@ class ElasticSearchTest extends ElasticSearchTestBase {
           val id = UUID.randomUUID().toString
           val image = createImageForSyndication(id = UUID.randomUUID().toString, true, Some(now), None)
           Await.result(ES.migrationAwareIndexImage(id, image, now), fiveSeconds)
-          eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(indexedImage(id).map(_.id) shouldBe Some(image.id))
+          eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(reloadedImage(id).map{_.id} shouldBe Some(image.id))
+          eventually(timeout(fiveSeconds), interval(oneHundredMilliseconds))(Await.result(ES.ensureImageDeletable(id), fiveSeconds))
 
           Await.result(ES.deleteImage(id), fiveSeconds)
 

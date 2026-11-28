@@ -77,11 +77,5 @@ trait ElasticSearchTestBase extends AnyFreeSpec with Matchers with Fixtures with
     Await.result(ES.getImage(id), fiveSeconds)
   }
 
-  def indexedImage(id: String) = {
-    implicit val logMarker: LogMarker = MarkerMap()
-    Thread.sleep(1000) // TODO use eventually clause
-    Await.result(ES.getImage(id), fiveSeconds)
-  }
-
   def asJsLookup(d: DateTime): JsLookupResult = JsDefined(Json.toJson(d.toString))
 }
