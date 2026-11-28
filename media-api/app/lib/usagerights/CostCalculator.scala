@@ -9,7 +9,7 @@ trait CostCalculator {
   val suppliersCollectionExcl: Map[String, List[String]]
   val quotas: UsageQuota
 
-  private def getAgencyCost(agencyUsageRights: Agency): Option[Cost] = {
+  private def getAgencyCost(agencyUsageRights: Agency)(implicit instance: Instance): Option[Cost] = {
     val supplier = agencyUsageRights.supplier
     val isFreeFromAgency = isFreeSupplier(supplier) && !agencyUsageRights.suppliersCollection.exists(isExcludedColl(supplier, _))
 
@@ -24,15 +24,15 @@ trait CostCalculator {
     }
   }
 
-  def isConditional(usageRights: UsageRights): Boolean =
+  def isConditional(usageRights: UsageRights)(implicit instance: Instance): Boolean =
     getCost(usageRights) == Conditional
 
-  def isPay(usageRights: UsageRights): Boolean =
+  def isPay(usageRights: UsageRights)(implicit instance: Instance): Boolean =
     getCost(usageRights) == Pay
 
-  def isOverQuota(usageRights: UsageRights): Boolean = quotas.isOverQuota(usageRights)
+  def isOverQuota(usageRights: UsageRights)(implicit instance: Instance): Boolean = quotas.isOverQuota(usageRights)
 
-  def getCost(usageRights: UsageRights): Cost = {
+  def getCost(usageRights: UsageRights)(implicit instance: Instance): Cost = {
     val restricted: Option[Cost] = usageRights.restrictions.map(r => Conditional)
     val categoryCost: Option[Cost] = usageRights.defaultCost
     val supplierCost: Option[Cost] = usageRights match {

@@ -62,7 +62,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
   )
 
 
-  private lazy val ES = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => List.empty, mock[Scheduler], mock[InstancesClient])
+  private lazy val ES = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, _ => List.empty, mock[Scheduler], mock[InstancesClient])
   lazy val client = ES.client
 
   private val expectedNumberOfImages = images.size
@@ -174,7 +174,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
           null,
           applicationLifecycle
         ))
-        val identifierSearch = new ElasticSearch(identifierConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler], mock[InstancesClient])
+        val identifierSearch = new ElasticSearch(identifierConfig, mediaApiMetrics, elasticConfig, (instance) => Nil, mock[Scheduler], mock[InstancesClient])
         val params = SearchParams(
           tier = Internal,
           length = identifierImages.size,
@@ -514,7 +514,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
             null,
             applicationLifecycle
           ))
-          val aliasedSearch = new ElasticSearch(aliasConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler], mock[InstancesClient])
+          val aliasedSearch = new ElasticSearch(aliasConfig, mediaApiMetrics, elasticConfig, _ => Nil, mock[Scheduler], mock[InstancesClient])
           val orderedPrint = printPublished.copy(printUsageMetadata = Some(otherMetadata.copy(orderedBy = Some("DESK1"))))
           val digitalSection = digitalPublished.copy(digitalUsageMetadata = Some(DigitalUsageMetadata(
             URI.create("https://example.test/article"), Some("Fixture article"), Some("DESK1")
@@ -573,7 +573,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
         null,
         applicationLifecycle
       ))
-      val tickerSearch = new ElasticSearch(tickerConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler], mock[InstancesClient])
+      val tickerSearch = new ElasticSearch(tickerConfig, mediaApiMetrics, elasticConfig, _ => Nil, mock[Scheduler], mock[InstancesClient])
       val ownedIds = Set("usage-search-digital", "usage-search-print", "usage-search-mixed-replaced")
       val ownedRights = StaffPhotographer("Fixture Photographer", "FixtureOrg")
       val ownedImages = usageImages.map { image =>
@@ -1198,7 +1198,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
       def overQuotaAgencies = List(Agency("Getty Images"), Agency("AP"))
 
       val search = SearchParams(tier = Internal, structuredQuery = List(isUnderQuotaCondition), length = 50)
-      val elasticsearch = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => overQuotaAgencies, mock[Scheduler], mock[InstancesClient])
+      val elasticsearch = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, _ => overQuotaAgencies, mock[Scheduler], mock[InstancesClient])
 
       whenReady(elasticsearch.search(search), timeout, interval) { result => {
         val overQuotaImages = List(

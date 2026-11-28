@@ -1,11 +1,10 @@
 package com.gu.mediaservice.lib.imaging
 
-import app.photofox.vipsffm.VImage
+import app.photofox.vipsffm.{VImage, VipsHelper}
 import com.gu.mediaservice.lib.BrowserViewableImage
 import com.gu.mediaservice.lib.logging.{LogMarker, MarkerMap}
 import com.gu.mediaservice.model._
 import org.apache.commons.io.FileUtils
-import org.scalatest.Ignore
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers
@@ -13,10 +12,7 @@ import org.scalatest.time.{Millis, Span}
 
 import java.io.File
 import java.lang.foreign.Arena
-import scala.concurrent.Future
 
-// This test is disabled for now as it doesn't run on our CI environment, because libvips is not present...
-@Ignore
 class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures {
 
   implicit override val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(1000, Millis), interval = Span(25, Millis))
@@ -29,9 +25,21 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("IMG_4403.jpg")
 
       val outputFile = tempFileNamed("thumbnail", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, isTransformedFromSource = false, Instance("an-instance"))
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("an-instance"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 95, outputFile, None, None, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("can write thumbnail to AVIF form") {
+      val image = fileAt("IMG_4403.jpg")
+
+      val outputFile = tempFileNamed("thumbnail", ".avif")
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Jpeg, Map.empty, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 240, 65, outputFile, None, Avif)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -41,10 +49,58 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("IMG_4445.jpg")
 
       val outputFile = tempFileNamed("thumbnail-tall", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, isTransformedFromSource = false, Instance("an-instance"))
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("an-instance"))
 
       // Use a large tall thumbnail to expose out of order read which exceeds the line cache
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 2800, 95, outputFile, None, None, Some(OrientationMetadata(exifOrientation = Some(6))))
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 2800, 95, outputFile, Some(OrientationMetadata(exifOrientation = Some(6))))
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("should not leave an orientation tag on an AVIF thumbnail which has already been rotated") {
+      val image = fileAt("exif-orientated.jpg") // 3456x2304 landscape pixels with EXIF orientation 6
+
+      val outputFile = tempFileNamed("thumbnail-orientated", ".avif")
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Jpeg, Map.empty, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 256, 65, outputFile, Some(OrientationMetadata(exifOrientation = Some(6))), Avif)
+      whenReady(eventualThumbnail) { r =>
+        r._3 shouldBe Some(Dimensions(171, 256))
+
+        val arena = Arena.ofConfined()
+        try {
+          val thumbnail = VImage.newFromFile(arena, r._1.getAbsolutePath)
+          // heifsave writes any remaining orientation as an irot box, causing browsers to rotate a second time
+          VipsHelper.image_get_orientation(thumbnail.getUnsafeStructAddress) shouldBe 1
+          thumbnail.getWidth shouldBe 171
+          thumbnail.getHeight shouldBe 256
+        } finally {
+          arena.close()
+        }
+      }
+    }
+
+    // regression in libvips 8.18.6 - labq
+    ignore("render LAB colour spaces correctly in sRGB") {
+      val image = fileAt("halfdome_LAB.tif")
+
+      val outputFile = tempFileNamed("thumbnail-from-lab", ".jpg")
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("an-instance"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("render LAB 16 bits colour spaces correctly in 8 bit sRGB") {
+      val image = fileAt("halfdome_LAB16.tif")
+
+      val outputFile = tempFileNamed("thumbnail-from-lab16", ".jpg")
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("an-instance"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -54,9 +110,9 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("with-alpha.png")
 
       val outputFile = tempFileNamed("thumbnail-png-with-alpha", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, isTransformedFromSource = false, Instance("an-instance"))
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("an-instance"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -66,9 +122,21 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
       val image = fileAt("with-alpha.tif")
 
       val outputFile = tempFileNamed("thumbnail-tif-with-alpha", ".jpg")
-      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, isTransformedFromSource = false, Instance("an-instance"))
+      val browserViewableImageImage = BrowserViewableImage("an-image-id", image, Tiff, Map.empty, Instance("an-instance"))
 
-      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None, None, None)
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile should be(true)
+      }
+    }
+
+    it("render Heif correctly") {
+      val image = fileAt("IMG_0128.HEIC")
+
+      val outputFile = new File("/Users/tony/Desktop/thumbnail-heic.jpg")
+      val browserViewableImageImage = BrowserViewableImage("TODO", image, Jpeg, Map.empty, Instance("TODO"))
+
+      val eventualThumbnail = vipsImageOperations.createThumbnail(browserViewableImageImage, 1000, 95, outputFile, None)
       whenReady(eventualThumbnail) { r =>
         r._1.isFile should be(true)
       }
@@ -77,52 +145,83 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
   describe("crop") {
     it("should output cropped master image to file in chosen format") {
+      implicit val arena: Arena = Arena.ofShared()
       val image = fileAt("IMG_4403.jpg")
 
       val eventualMasterCrop = vipsImageOperations.cropImage(image,
-        Some(Jpeg),
         Bounds(1000, 600, 2000, 1000),
-        99.0,
         tempDirForOutputFiles,
         None,
-        None,
-        Jpeg,
-        isTransformedFromSource = false,
-        None
+        ImageMetadata()
       )
 
       whenReady(eventualMasterCrop) { r =>
-        r.isFile should be(true)
+        arena.close()
       }
     }
 
     it("should convert CMYK with no profile to sRGB") {
+      implicit val arena: Arena = Arena.ofShared()
       val image = fileAt("cmyk.jpg")
 
       val eventualMasterCrop = vipsImageOperations.cropImage(image,
-        Some(Jpeg),
         Bounds(0, 0, 5, 4),
-        99.0,
         tempDirForOutputFiles,
         None,
-        None,
-        Jpeg,
-        isTransformedFromSource = false,
-        None
+        ImageMetadata()
       )
 
       whenReady(eventualMasterCrop) { r =>
-        r.isFile should be(true)
+        arena.close()
       }
     }
   }
 
   describe("resize") {
     it("should output resized image to file in chosen format") {
-      implicit val arena: Arena = Arena.ofConfined
-      val fullSizedJpegImage = fileAt("IMG_4403.jpg")
+      implicit val arena: Arena = Arena.ofShared()
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("IMG_4403.jpg").getAbsolutePath)
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedJpegImage, Some(Jpeg), Dimensions(140, 100), 85, tempDirForOutputFiles, Jpeg)
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(1000, 800), 95, tempDirForOutputFiles, Jpeg)
+
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    // regression in libvips 8.18.6 - labq
+    ignore("render LAB colour spaces correctly in sRGB") {
+      implicit val arena: Arena = Arena.ofShared
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
+
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
+
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    // regression in libvips 8.18.6 - labq
+    ignore("render LAB colour spaces correctly as PNG") {
+      implicit val arena: Arena = Arena.ofShared
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB.tif").getAbsolutePath)
+
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(140, 100), 85, tempDirForOutputFiles, Jpeg)
+
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+
+    it("render LAB 16 bit colour spaces correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("halfdome_LAB16.tif").getAbsolutePath)
+
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, FileUtils.getTempDirectory, Jpeg)
+
       whenReady(eventualResized) { resized =>
         arena.close()
         resized.isFile should be(true)
@@ -131,13 +230,51 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
 
     it("render PNG with alpha correctly") {
       implicit val arena: Arena = Arena.ofShared
-      val fullSizedImage = fileAt("with-alpha.png")
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("with-alpha.png").getAbsolutePath)
 
-      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Some(Png), Dimensions(800, 600), 95, FileUtils.getTempDirectory, Png)
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, tempDirForOutputFiles, Png)
 
       whenReady(eventualResized) { resized =>
         arena.close()
         resized.isFile should be(true)
+      }
+    }
+
+    // regression in libvips 8.18.6 - labq
+    ignore("render LAB TIFF with alpha correctly") {
+      implicit val arena: Arena = Arena.ofShared
+      val fullSizedImage = VImage.newFromFile(arena, fileAt("lab8-with-alpha.tif").getAbsolutePath)
+      val outputFile = tempFileNamed("resized-lab-with-alpha", ".jpg")
+
+      val eventualResized = vipsImageOperations.resizeImage(fullSizedImage, Dimensions(800, 600), 95, outputFile, Jpeg)
+
+      whenReady(eventualResized) { resized =>
+        arena.close()
+        resized.isFile should be(true)
+      }
+    }
+  }
+
+  describe("transform") {
+    it("should output png with alpha to quantised png") {
+      implicit val arena: Arena = Arena.ofConfined()
+      val fullSizedImage = fileAt("Untitled_Artwork 2 (1398dfe2c75399dca2121aec4c939a91474db38e).png")
+
+      val eventualTransformed = vipsImageOperations.transformImage(fullSizedImage, None, new File("/Users/tony/tmp"), Png, quantise = true)
+
+      whenReady(eventualTransformed) { transformed =>
+        arena.close()
+        transformed._1.isFile should be(true)
+      }
+    }
+
+    it("should rotate AVIF correctly") {
+      val image = fileAt("exif-orientated.jpg")
+
+      val eventualThumbnail = vipsImageOperations.transformImage(image, None, tempDirForOutputFiles, Avif, quantise = false)
+
+      whenReady(eventualThumbnail) { r =>
+        r._1.isFile shouldBe true
       }
     }
   }
@@ -163,73 +300,85 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
   describe("identifyColourModel") {
     it("should return RGB for a JPG image with RGB image data and no embedded profile") {
       val image = fileAt("rgb-wo-profile.jpg")
-      val colourModelFuture = vipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = vipsImageOperations.getImageInformation(image)
       whenReady(colourModelFuture) { colourModel =>
-        colourModel should be (Some("RGB"))
+        colourModel._3 should be (Some("RGB"))
       }
     }
 
     it("should return RGB for a JPG image with RGB image data and an RGB embedded profile") {
       val image = fileAt("rgb-with-rgb-profile.jpg")
-      val colourModelFuture = vipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = vipsImageOperations.getImageInformation(image)
         whenReady(colourModelFuture) { colourModel =>
-          colourModel should be(Some("RGB"))
+          colourModel._3 should be(Some("RGB"))
       }
     }
 
     it("should return RGB for a PNG image with RGB image data and an embedded profile") {
       val image = fileAt("cs-black-000.png")
-      val colourModelFuture = vipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = vipsImageOperations.getImageInformation(image)
       whenReady(colourModelFuture) { colourModel =>
-        colourModel should be(Some("RGB"))
+        colourModel._3 should be(Some("RGB"))
       }
     }
 
     it("should return RGB for a JPG image with RGB image data and an incorrect CMYK embedded profile") {
       val image = fileAt("rgb-with-cmyk-profile.jpg")
-      val colourModelFuture = vipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = vipsImageOperations.getImageInformation(image)
       whenReady(colourModelFuture) { colourModel =>
-        colourModel should be (Some("RGB"))
+        colourModel._3 should be (Some("RGB"))
       }
     }
 
     it("should return CMYK for a JPG image with CMYK image data") {
       val image = fileAt("cmyk.jpg")
-      val colourModelFuture = vipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = vipsImageOperations.getImageInformation(image)
       whenReady(colourModelFuture) { colourModel =>
-        colourModel should be (Some("CMYK"))
+        colourModel._3 should be (Some("CMYK"))
       }
     }
 
     it("should return Greyscale for a JPG image with greyscale image data and no embedded profile") {
       val image = fileAt("grayscale-wo-profile.jpg")
-      val colourModelFuture = vipsImageOperations.identifyColourModel(image, Jpeg)
+      val colourModelFuture = vipsImageOperations.getImageInformation(image)
       whenReady(colourModelFuture) { colourModel =>
-        colourModel should be (Some("Greyscale"))
+        colourModel._3 should be (Some("Greyscale"))
       }
     }
 
     it("should return RGB for a PNG image with 16 bit RGB image data") {
       val image = fileAt("schaik.com_pngsuite/basi2c16.png")
-      val colourModelFuture = vipsImageOperations.identifyColourModel(image, Png)
+      val colourModelFuture = vipsImageOperations.getImageInformation(image)
       whenReady(colourModelFuture) { colourModel =>
-        colourModel should be(Some("RGB"))
+        colourModel._3 should be(Some("RGB"))
       }
     }
 
     it("should return LAB for a TIFF image with LAB16 image data") {
       val image = fileAt("halfdome_LAB16.tif")
-      val colourModelFuture = vipsImageOperations.identifyColourModel(image, Png)
+      val colourModelFuture = vipsImageOperations.getImageInformation(image)
       whenReady(colourModelFuture) { colourModel =>
-        colourModel should be(Some("LAB"))
+        colourModel._3 should be(Some("LAB"))
       }
     }
 
     it("should return CMYK for a TIFF image with CMYK image data") {
       val image = fileAt("CMYK-with-profile.jpg")
-      val colourModelFuture = vipsImageOperations.identifyColourModel(image, Png)
+      val colourModelFuture = vipsImageOperations.getImageInformation(image)
       whenReady(colourModelFuture) { colourModel =>
-        colourModel should be(Some("CMYK"))
+        colourModel._3 should be(Some("CMYK"))
+      }
+    }
+  }
+
+  describe("getColorModelInformation") {
+    it("should show hasAlpha false for image without alpha channel") {
+      val image = fileAt("IMG_4403.jpg")
+      val getImageInformationFuture = vipsImageOperations.getImageInformation(image)
+      whenReady(getImageInformationFuture) { imageInformation =>
+        imageInformation._4 should contain(
+          "hasAlpha" -> "false"
+        )
       }
     }
   }
@@ -237,37 +386,37 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
   describe("dimensions") {
     it("should return dimensions of horizontal image") {
       val inputFile = fileAt("exif-orientated-no-rotation.jpg")
-      val dimsFuture = vipsImageOperations.dimensions(inputFile)
+      val dimsFuture = vipsImageOperations.getImageInformation(inputFile)
       whenReady(dimsFuture) { dims =>
-        dims.get shouldBe new Dimensions(3456, 2304)
+        dims._1.get shouldBe new Dimensions(3456, 2304)
       }
     }
 
     it("should return uncorrected dimensions for exif oriented images") {
       val inputFile = fileAt("exif-orientated.jpg")
-      val dimsFuture = vipsImageOperations.dimensions(inputFile)
+      val dimsFuture = vipsImageOperations.getImageInformation(inputFile)
       whenReady(dimsFuture) { dims =>
-        dims.get shouldBe new Dimensions(3456, 2304)
+        dims._1.get shouldBe new Dimensions(3456, 2304)
       }
     }
 
     it("should read the correct dimensions for a tiff image") {
       val inputFile = fileAt("flower.tif")
-      val dimsFuture = vipsImageOperations.dimensions(inputFile)
+      val dimsFuture = vipsImageOperations.getImageInformation(inputFile)
       whenReady(dimsFuture) { dimOpt =>
-        dimOpt should be(Symbol("defined"))
-        dimOpt.get.width should be(73)
-        dimOpt.get.height should be(43)
+        dimOpt._1 should be(Symbol("defined"))
+        dimOpt._1.get.width should be(73)
+        dimOpt._1.get.height should be(43)
       }
     }
 
     it("should read the correct dimensions for a png image") {
       val inputFile = fileAt("schaik.com_pngsuite/basn0g08.png")
-      val dimsFuture = vipsImageOperations.dimensions(inputFile)
+      val dimsFuture = vipsImageOperations.getImageInformation(inputFile)
       whenReady(dimsFuture) { dimOpt =>
-        dimOpt should be(Symbol("defined"))
-        dimOpt.get.width should be(32)
-        dimOpt.get.height should be(32)
+        dimOpt._1 should be(Symbol("defined"))
+        dimOpt._1.get.width should be(32)
+        dimOpt._1.get.height should be(32)
       }
     }
   }
@@ -275,18 +424,18 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
   describe("orientation") {
     it("should capture exif orientation tag from JPG images") {
       val image = fileAt("exif-orientated.jpg")
-      val orientationFuture = vipsImageOperations.orientation(image)
+      val orientationFuture = vipsImageOperations.getImageInformation(image)
       whenReady(orientationFuture) { orientationOpt =>
-        orientationOpt should be(defined)
-        orientationOpt.get.exifOrientation should be(Some(6))
+        orientationOpt._2 should be(defined)
+        orientationOpt._2.get.exifOrientation should be(Some(6))
       }
     }
 
     it("should ignore 0 degree exif orientation tag as it has no material effect") {
       val image = fileAt("exif-orientated-no-rotation.jpg")
-      val orientationFuture = vipsImageOperations.orientation(image)
+      val orientationFuture = vipsImageOperations.getImageInformation(image)
       whenReady(orientationFuture) { orientationOpt =>
-        orientationOpt should be(None)
+        orientationOpt._2 should be(None)
       }
     }
   }
@@ -339,11 +488,11 @@ class VipsImageOperationsTest extends AnyFunSpec with Matchers with ScalaFutures
   }
 
   private def tempDirForOutputFiles: File = {
-    FileUtils.getTempDirectory
+    new File("/Users/tony/tmp/")
   }
 
   private def tempFileNamed(filename: String, suffix: String): File = {
-    File.createTempFile(filename, suffix)
+    new File("/Users/tony/tmp/" + filename + suffix)
   }
 
 }

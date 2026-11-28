@@ -58,7 +58,7 @@ class HybridSearchTest extends AnyFunSpec
     replicas = 0
   )
 
-  private lazy val ES = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, () => List.empty, mock[Scheduler], mock[InstancesClient])
+  private lazy val ES = new ElasticSearch(mediaApiConfig, mediaApiMetrics, elasticConfig, _ => List.empty, mock[Scheduler], mock[InstancesClient])
   lazy val client = ES.client
 
   private val oneHundredMilliseconds = Duration(100, MILLISECONDS)
