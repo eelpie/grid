@@ -174,7 +174,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
           null,
           applicationLifecycle
         ))
-        val identifierSearch = new ElasticSearch(identifierConfig, mediaApiMetrics, elasticConfig, () => Nil, mock[Scheduler], mock[InstancesClient])
+        val identifierSearch = new ElasticSearch(identifierConfig, mediaApiMetrics, elasticConfig, (instance) => Nil, mock[Scheduler], mock[InstancesClient])
         val params = SearchParams(
           tier = Internal,
           length = identifierImages.size,
