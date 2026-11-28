@@ -4,11 +4,10 @@ import com.gu.mediaservice.lib.aws.{S3, S3Bucket}
 import com.gu.mediaservice.lib.config.CommonConfig
 import com.gu.mediaservice.lib.logging.{GridLogging, LogMarker}
 import com.gu.mediaservice.model.MimeType
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException
 
 import java.io.File
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters._
 
 // TODO: If deleteObject fails - we should be catching the errors here to avoid them bubbling to the application
 class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage with GridLogging {
@@ -33,11 +32,16 @@ class S3ImageStorage(config: CommonConfig) extends S3(config) with ImageStorage 
   }
 
   def deleteVersionedImage(bucket: S3Bucket, id: String)(implicit logMarker: LogMarker) = Future {
-    val objectVersion = getMetadata(bucket, id).objectVersion.getOrElse(
-      throw new IllegalStateException(s"No version id found for $id in bucket ${bucket.name}")
-    )
-    deleteVersion(bucket, id, objectVersion)
-    logger.info(logMarker, s"Deleted image $id from bucket ${bucket.name} (version: $objectVersion)")
+    try {
+      val objectVersion = getMetadata(bucket, id).objectVersion.getOrElse(
+        throw new IllegalStateException(s"No version id found for $id in bucket ${bucket.name}")
+      )
+      deleteVersion(bucket, id, objectVersion)
+      logger.info(logMarker, s"Deleted image $id from bucket ${bucket.name} (version: $objectVersion)")
+    } catch {
+      case _: NoSuchKeyException =>
+        logger.info(logMarker, s"Image $id already absent from bucket ${bucket.name}")
+    }
   }
 
   def deleteFolder(bucket: S3Bucket, id: String)(implicit logMarker: LogMarker): Future[Unit] = list(bucket, id).map { files =>
