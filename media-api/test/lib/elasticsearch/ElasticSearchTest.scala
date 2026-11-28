@@ -156,7 +156,6 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
     describe("persistence identifiers") {
       val identifierImages = Seq(
         "none" -> Map.empty[String, String],
-        "primary" -> Map("picdarUrn" -> "urn-1"),
         "derivative" -> Map(ImageStorageProps.derivativeOfMediaIdsIdentifierKey -> "parent-1"),
         "replaces" -> Map(ImageStorageProps.replacesMediaIdIdentifierKey -> "original-1"),
         "derivative-and-replaces" -> Map(
@@ -164,13 +163,14 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
           ImageStorageProps.replacesMediaIdIdentifierKey -> "original-1"
         )
       ).map { case (suffix, identifiers) =>
-        createImageUploadedInThePast(s"persistence-identifier-$suffix").copy(identifiers = identifiers)
+        val image = createImageUploadedInThePast(s"persistence-identifier-$suffix")
+        // Only feed uploads are eligible for reaping
+        image.copy(identifiers = identifiers, uploadInfo = image.uploadInfo.copy(isFeedUpload = Some(true)))
       }
 
       def expectMatches(queryText: String, expected: Set[String]): Unit = {
         val identifierConfig = new MediaApiConfig(GridConfigResources(
-          Configuration.from(USED_CONFIGS_IN_TEST ++ MOCK_CONFIG_KEYS.map(_ -> NOT_USED_IN_TEST).toMap ++
-            Map("persistence.identifier" -> "picdarUrn")),
+          Configuration.from(USED_CONFIGS_IN_TEST ++ MOCK_CONFIG_KEYS.map(_ -> NOT_USED_IN_TEST).toMap),
           null,
           applicationLifecycle
         ))
@@ -190,7 +190,7 @@ class ElasticSearchTest extends ElasticSearchTestBase with Eventually with Elast
 
       it("matches images carrying any one of the persistence identifiers") {
         withQuotaImages(identifierImages) {
-          expectMatches("persisted:persistence-identifier", Set("primary", "derivative", "replaces", "derivative-and-replaces"))
+          expectMatches("persisted:persistence-identifier", Set("derivative", "replaces", "derivative-and-replaces"))
         }
       }
 
